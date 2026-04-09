@@ -168,12 +168,40 @@ UI/
 
 ---
 
+## Milestone 5 — Backend Polish & UI Fixes ✅ (2026-04-09)
+
+### Backend
+- Added full Swagger UI (`/swagger`) with Bearer security scheme and XML doc comments on all 11 controllers
+- Fixed DI startup crash: `RedisFeedCache` always registered; `AddDistributedMemoryCache()` as fallback when Redis not configured
+- Added Clerk JWT dev bypass: `SignatureValidator` delegate accepts any well-formed JWT in Development (no Clerk config needed)
+- `Program.cs` passes `builder.Environment` to `AddClerkJwt()` so dev bypass activates correctly
+
+### Frontend
+- Fixed Turbopack workspace root confusion — added `turbopack.root` to `next.config.mjs`
+- Restored missing barrel files deleted during UI reorganization:
+  - `UI/lib/mock-data.ts` → re-exports from `lib/api/__mocks__/mock-data`
+  - `UI/lib/schemas.ts` → re-exports from `lib/validation/schemas`
+  - `UI/lib/utils.ts` → re-exports from `lib/utils/` (cn, string, date, array, number)
+- Created `UI/lib/api/__mocks__/api.ts` with correct frontend `Post` and `Comment` types matching component usage
+- Added all missing stub functions to `UI/lib/api/client.ts`:
+  - `likePost`, `unlikePost`, `bookmarkPost`, `sharePost`, `reactToPost`, `addComment`, `voteComment`
+  - `saveOnboardingData`, `updateFeedPreferences`, `updateTechStack`, `updateTheme`, `updateNotificationSettings`, `updatePrivacy`
+  - `search`, `getReachEstimate`, `saveDraft`, `createPost`
+- Exported `Post` and `Comment` types from `@/lib/api` (frontend shape, not domain shape)
+
+---
+
 ## Pending Phases
 
 | Phase | Description |
 |-------|-------------|
-| Phase 4 | Core API endpoints — Bytes CRUD, Users, Feed, Reactions, Bookmarks, Comments, Follow |
-| Phase 5 | Search — full-text (`tsvector`) + pgvector hybrid |
-| Phase 6 | AI — ONNX `EmbeddingService`, `GroqService`, MediatR event handlers |
-| Phase 7 | Wire `UI/lib/api.ts` to real endpoints (replace all mock stubs) |
-| Phase 8 | Dockerfile polish, Bicep IaC, GitHub Actions CI/CD |
+| Next | Wire `UI/lib/api/client.ts` to real backend HTTP calls (replace all stubs) |
+| Next | Add Clerk token to all frontend API requests (`getToken()` → `Authorization: Bearer`) |
+| Next | AI Chat UI — floating "Ask AI" button or per-byte panel (endpoint exists, no UI) |
+| Next | Tag suggestion in compose screen (endpoint exists, not wired) |
+| Infra | docker-compose.yml for local Postgres + Redis dev |
+| Infra | Clerk webhook svix signature validation (security gap) |
+| Infra | AI rate limiter on `/api/ai/*` (stricter than global 120 req/min) |
+| Infra | OpenTelemetry tracing + Prometheus metrics |
+| Infra | Dockerfile, Bicep IaC, GitHub Actions CI/CD |
+| Quality | Write tests — `ByteAI.Api.Tests` project is empty |

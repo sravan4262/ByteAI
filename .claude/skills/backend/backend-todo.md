@@ -5,11 +5,20 @@ description: ByteAI backend remaining work — what's NOT yet implemented, in pr
 
 # Backend TODO — Remaining Work
 
-Status as of 2026-04-09. Backend code compiles and has 0 errors. The items below are missing, incomplete, or not yet wired up.
+Status as of 2026-04-09. Backend compiles (0 errors), Swagger UI works at `/swagger`, Clerk JWT dev bypass active.
+
+## Recently Completed ✅
+- Swagger UI with Bearer security scheme, XML doc comments on all controllers
+- Redis DI fix — `RedisFeedCache` always registered, `AddDistributedMemoryCache()` fallback
+- Clerk JWT dev bypass — any well-formed JWT accepted in Development
+- All frontend stub functions added to `UI/lib/api/client.ts`
+- Frontend module errors fixed (`@/lib/mock-data`, `@/lib/schemas`, `@/lib/utils` barrels restored)
 
 ---
 
-## Phase 4 — Config & Local Dev (Blocker for any real testing)
+---
+
+## Phase 1 — Config & Local Dev (Blocker for any real testing)
 
 ### appsettings.json / appsettings.Development.json
 
@@ -84,7 +93,7 @@ supabase db push    # applies all supabase/tables/*.sql
 
 ---
 
-## Phase 5 — Security Hardening
+## Phase 2 — Security Hardening
 
 ### Clerk Webhook svix Signature Validation
 
@@ -136,7 +145,7 @@ public async Task<IActionResult> SuggestTags(...)
 
 ---
 
-## Phase 6 — Frontend ↔ Backend Wiring
+## Phase 3 — Frontend ↔ Backend Wiring
 
 ### UI `lib/api/` → Real HTTP Calls
 
@@ -162,7 +171,20 @@ Ensure `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` are in the fro
 
 ---
 
-## Phase 7 — Observability
+## Phase 4 — New AI Features (UI)
+
+### AI Chat — Ask AI Button
+Backend endpoint `POST /api/ai/ask` exists. No UI yet. Options:
+- Floating chat button on every authenticated page
+- Per-byte "Ask AI" panel on the detail screen
+- Dedicated `/ask` page
+
+### Tag Suggestion in Compose
+Backend endpoint `POST /api/ai/suggest-tags` exists. Compose screen has no wiring to it yet. Should trigger on title/body input and display suggested tags the user can click to add.
+
+---
+
+## Phase 5 — Observability
 
 ### OpenTelemetry Setup (Not yet added to Program.cs)
 
@@ -189,7 +211,7 @@ builder.Services.AddOpenTelemetry()
 
 ---
 
-## Phase 8 — Infrastructure & Deployment
+## Phase 6 — Infrastructure & Deployment
 
 ### Dockerfile
 
