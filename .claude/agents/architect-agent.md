@@ -183,29 +183,57 @@ Watch for these architectural anti-patterns:
 - **Tight Coupling**: Components too dependent
 - **God Object**: One class/component does everything
 
-## Project-Specific Architecture (Example)
+## ByteAI Architecture Reference
 
-Example architecture for an AI-powered SaaS platform:
+### Stack
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui — Azure Static Web Apps |
+| **Auth** | Clerk — Magic Link · Google · Facebook · Phone OTP · issues JWTs |
+| **API Gateway** | YARP on ASP.NET Core 8 — JWT validation, rate limiting, path routing |
+| **Microservices** | 6 × ASP.NET Core 8 on Azure Container Apps |
+| **Relational DB** | PostgreSQL + pgvector (Azure Flexible Server) |
+| **Document DB** | MongoDB via Azure Cosmos DB (free forever tier) |
+| **Cache** | Redis 7 on Azure Container Instance |
+| **Messaging** | RabbitMQ via CloudAMQP + MassTransit (pub/sub, DLQ) |
+| **Embeddings** | ONNX Runtime — all-MiniLM-L6-v2, 384-dim, in-process, CPU |
+| **LLM / NLP** | Groq API — Llama 3.3 70B (tagging, RAG, compose assist) |
+| **Observability** | OpenTelemetry → Jaeger (traces) + Prometheus/Grafana (metrics) |
+| **IaC** | Bicep (Azure-native) |
+| **CI/CD** | GitHub Actions → Azure Container Registry → Azure Container Apps |
 
-### Current Architecture
-- **Frontend**: Next.js 15 (Vercel/Cloud Run)
-- **Backend**: FastAPI or Express (Cloud Run/Railway)
-- **Database**: PostgreSQL (Supabase)
-- **Cache**: Redis (Upstash/Railway)
-- **AI**: Claude API with structured output
-- **Real-time**: Supabase subscriptions
+### Microservice Responsibilities
+| Service | Data Store | Owns |
+|---------|-----------|------|
+| **User Service** | PostgreSQL | Profiles, follows, XP/level/streak, badges, preferences |
+| **Bytes Service** | MongoDB (Cosmos DB) | Bytes (posts), comments, reactions, bookmarks |
+| **Feed Service** | Redis | Materialized FOR_YOU / Following / Trending feeds |
+| **Search Service** | PostgreSQL + pgvector | Keyword + vector hybrid search (Reciprocal Rank Fusion) |
+| **AI Service** | PostgreSQL + pgvector | Embeddings, auto-tagging, RAG Q&A, feed personalisation, toxicity detection |
+| **Notification Service** | PostgreSQL | Push + in-app notifications, read/unread state |
 
-### Key Design Decisions
-1. **Hybrid Deployment**: Vercel (frontend) + Cloud Run (backend) for optimal performance
-2. **AI Integration**: Structured output with Pydantic/Zod for type safety
-3. **Real-time Updates**: Supabase subscriptions for live data
-4. **Immutable Patterns**: Spread operators for predictable state
-5. **Many Small Files**: High cohesion, low coupling
+### Key RabbitMQ Events
+`byte.created` · `byte.deleted` · `byte.reacted` · `comment.created` · `user.followed` · `user.registered` · `embedding.completed`
+
+### Solution Structure
+```
+ByteAI.sln
+├── src/
+│   ├── Services/           # 6 microservices (Domain / Application / Infrastructure / Consumers)
+│   ├── Gateway/            # ByteAI.Gateway — YARP config, JWT validation
+│   └── Shared/             # Contracts · Auth helpers · MassTransit setup
+├── tests/                  # Unit + integration + E2E per service
+├── infra/
+│   ├── docker-compose.yml           # Local dev: all services
+│   ├── docker-compose.infra.yml     # Local infra: Redis · RabbitMQ · PG · Mongo
+│   └── bicep/                       # Azure IaC
+└── .github/workflows/               # ci.yml (build+test) · cd.yml (deploy)
+```
 
 ### Scalability Plan
-- **10K users**: Current architecture sufficient
-- **100K users**: Add Redis clustering, CDN for static assets
-- **1M users**: Microservices architecture, separate read/write databases
-- **10M users**: Event-driven architecture, distributed caching, multi-region
+- **10K users**: Current microservices on Container Apps (scale to zero)
+- **100K users**: Redis clustering, pgvector HNSW tuning, CDN for static assets
+- **1M users**: Read replicas for PostgreSQL, Cosmos DB throughput scaling
+- **10M users**: Multi-region Container Apps, Kafka replacing RabbitMQ
 
 **Remember**: Good architecture enables rapid development, easy maintenance, and confident scaling. The best architecture is simple, clear, and follows established patterns.

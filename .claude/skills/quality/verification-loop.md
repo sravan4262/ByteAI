@@ -1,6 +1,6 @@
 ---
 name: verification-loop
-description: "A comprehensive verification system for Claude Code sessions — adapted for ByteAI (.NET backend + React frontend)."
+description: "A comprehensive verification system for Claude Code sessions — adapted for ByteAI (.NET 8 microservices backend + Next.js 16 frontend)."
 origin: ECC (adapted for ByteAI)
 ---
 
@@ -86,39 +86,39 @@ git diff HEAD~1 --name-only
 
 ---
 
-## React Frontend Verification
+## Next.js Frontend Verification
 
 ### Phase 1: Build
 
 ```bash
-cd client && npm run build 2>&1 | tail -20
+cd UI && pnpm run build 2>&1 | tail -20
 ```
 
 ### Phase 2: Type Check
 
 ```bash
-cd client && npx tsc --noEmit 2>&1 | head -30
+cd UI && npx tsc --noEmit 2>&1 | head -30
 ```
 
 ### Phase 3: Lint
 
 ```bash
-cd client && npm run lint 2>&1 | head -30
+cd UI && pnpm run lint 2>&1 | head -30
 ```
 
 ### Phase 4: Tests
 
 ```bash
-cd client && npm test -- --coverage 2>&1 | tail -30
+cd UI && pnpm test -- --coverage 2>&1 | tail -30
 ```
 
 ### Phase 5: Security
 
 ```bash
-cd client && npm audit 2>&1 | head -20
+cd UI && pnpm audit 2>&1 | head -20
 
 # Check for secrets in frontend
-grep -rn "sk-\|api_key\|apiKey" --include="*.ts" --include="*.tsx" client/src/ | grep -v "process.env\|import.meta.env" | head -10
+grep -rn "sk-\|api_key\|apiKey" --include="*.ts" --include="*.tsx" UI/app/ UI/components/ UI/lib/ | grep -v "process.env\|NEXT_PUBLIC_" | head -10
 ```
 
 ---
@@ -130,7 +130,7 @@ After running all phases, produce a verification report:
 ```
 VERIFICATION REPORT
 ==================
-Layer:      [Backend .NET | Frontend React]
+Layer:      [Backend .NET | Frontend Next.js]
 
 Build:      [PASS/FAIL]
 Types:      [PASS/FAIL] (X errors)

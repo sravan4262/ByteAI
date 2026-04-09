@@ -1,0 +1,275 @@
+"use client"
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Bookmark, Share2, Heart, MessageSquare, Lightbulb, ChevronLeft } from 'lucide-react'
+import { toast } from 'sonner'
+import { PhoneFrame } from '@/components/layout/phone-frame'
+import { Avatar } from '@/components/layout/avatar'
+import { CodeBlock } from '@/components/code-block'
+import { mockComments } from '@/lib/mock-data'
+import * as api from '@/lib/api'
+import type { Post } from '@/lib/api'
+
+interface DetailScreenProps {
+  post: Post
+}
+
+export function DetailScreen({ post }: DetailScreenProps) {
+  const router = useRouter()
+  const [comment, setComment] = useState('')
+  const [activeReactions, setActiveReactions] = useState<string[]>([])
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const postComments = mockComments.filter((c) => c.postId === post.id)
+
+  const handleReaction = async (emoji: string) => {
+    await api.reactToPost(post.id, emoji)
+    setActiveReactions((prev) =>
+      prev.includes(emoji) ? prev.filter((e) => e !== emoji) : [...prev, emoji]
+    )
+  }
+
+  const handleAddComment = async () => {
+    if (!comment.trim()) return
+    await api.addComment(post.id, comment)
+    toast.success('Comment added!')
+    setComment('')
+  }
+
+  const handleVoteComment = async (commentId: string, direction: 'up' | 'down') => {
+    await api.voteComment(commentId, direction)
+  }
+
+  const handleBookmark = async () => {
+    await api.bookmarkPost(post.id)
+    const next = !isBookmarked
+    setIsBookmarked(next)
+    toast.success(next ? 'Saved to bookmarks' : 'Removed from bookmarks')
+  }
+
+  const handleShare = async () => {
+    await api.sharePost(post.id)
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`)
+      toast.success('Link copied')
+    }
+  }
+
+  return (
+    <PhoneFrame>
+      {/* Header */}
+      <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.92)] backdrop-blur-md">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 font-mono text-[9px] lg:text-[10px] text-[var(--t2)] px-[10px] py-[5px] rounded-md border border-[var(--border-m)] bg-[var(--bg-el)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] hover:-translate-x-px"
+        >
+          <ChevronLeft size={12} /> BACK
+        </button>
+        <span className="font-mono text-[8px] text-[var(--green)] bg-[var(--green-d)] border border-[rgba(16,217,160,0.2)] px-2 py-[3px] rounded">
+          v1.0.4
+        </span>
+      </header>
+
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
+        <div className="px-4 py-4 lg:px-8 lg:py-6 flex flex-col gap-4 lg:gap-5 max-w-4xl mx-auto">
+          {/* Author */}
+          <div className="flex items-center gap-3">
+            <Avatar
+              initials={post.author.initials}
+              size="md"
+              variant={post.author.id === '1' ? 'cyan' : post.author.id === '4' ? 'purple' : 'green'}
+            />
+            <div>
+              <div className="font-mono text-xs lg:text-sm font-bold text-[var(--t1)] flex items-center gap-1.5">
+                @{post.author.username}
+                {post.author.isVerified && (
+                  <span className="text-[9px] text-[var(--accent)]">✦</span>
+                )}
+              </div>
+              <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-[3px] tracking-[0.04em]">
+                {post.author.role} @ {post.author.company}
+              </div>
+            </div>
+          </div>
+
+          {/* Title */}
+          <h1 className="text-xl lg:text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight">{post.title}</h1>
+
+          {/* Body */}
+          <p className="text-sm lg:text-base leading-relaxed text-[var(--t2)]">{post.body}</p>
+
+          {/* Code block */}
+          {post.code && (
+            <CodeBlock
+              code={post.code.content}
+              language={post.code.language}
+              filename={post.code.filename}
+              showLineNumbers={true}
+              maxHeight="400px"
+            />
+          )}
+
+          {/* Tags */}
+          <div className="flex gap-[5px] lg:gap-2 flex-wrap">
+            {post.tags.map((tag) => (
+              <span
+                key={tag}
+                className="font-mono text-[8px] lg:text-[10px] py-[3px] px-2 lg:px-3 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] transition-all cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          {/* Reactions */}
+          <div className="flex gap-2 lg:gap-3 flex-wrap py-3 lg:py-4 border-t border-b border-[var(--border)]">
+            <button
+              onClick={() => handleReaction('💡')}
+              className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+                activeReactions.includes('💡')
+                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
+                  : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]'
+              }`}
+            >
+              <Lightbulb size={12} fill={activeReactions.includes('💡') ? 'currentColor' : 'none'} />
+              INSIGHTFUL
+              <span className="font-bold text-[10px] lg:text-xs text-[var(--t1)]">
+                {(post.reactions.find((r) => r.emoji === '💡')?.count || 0) + (activeReactions.includes('💡') ? 1 : 0)}
+              </span>
+            </button>
+
+            <button
+              onClick={() => handleReaction('❤️')}
+              className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+                activeReactions.includes('❤️')
+                  ? 'border-[var(--red)] text-[var(--red)] bg-[rgba(244,63,94,0.1)]'
+                  : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--red)] hover:text-[var(--red)] hover:bg-[rgba(244,63,94,0.1)]'
+              }`}
+            >
+              <Heart size={12} fill={activeReactions.includes('❤️') ? 'currentColor' : 'none'} />
+              LOVE
+              <span className="font-bold text-[10px] lg:text-xs text-[var(--t1)]">
+                {(post.reactions.find((r) => r.emoji === '❤️')?.count || 0) + (activeReactions.includes('❤️') ? 1 : 0)}
+              </span>
+            </button>
+
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]"
+            >
+              <Share2 size={12} /> SHARE
+            </button>
+
+            <button
+              onClick={handleBookmark}
+              className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+                isBookmarked
+                  ? 'border-[var(--green)] text-[var(--green)] bg-[rgba(16,217,160,0.1)]'
+                  : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--green)] hover:text-[var(--green)] hover:bg-[rgba(16,217,160,0.1)]'
+              }`}
+            >
+              <Bookmark size={12} fill={isBookmarked ? 'currentColor' : 'none'} />
+              {isBookmarked ? 'SAVED' : 'SAVE'}
+            </button>
+          </div>
+
+          {/* Discussion */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <div className="font-mono text-[8px] lg:text-[10px] font-bold tracking-[0.12em] text-[var(--t2)] flex items-center gap-1.5">
+                <MessageSquare size={12} /> DISCUSSION
+                <span className="bg-[var(--bg-el)] border border-[var(--border-m)] rounded-full px-[7px] py-px text-[7px] lg:text-[8px] text-[var(--t1)]">
+                  {postComments.length || post.comments}
+                </span>
+              </div>
+              <button className="font-mono text-[8px] lg:text-[9px] text-[var(--accent)]">
+                SORT: TOP ↓
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {postComments.length > 0 ? (
+                postComments.map((c) => (
+                  <div key={c.id} className="flex gap-[10px] lg:gap-4">
+                    <div
+                      className={`w-[30px] h-[30px] lg:w-10 lg:h-10 rounded-full border border-[var(--border-m)] flex-shrink-0 flex items-center justify-center font-mono text-[8px] lg:text-[10px] font-bold ${
+                        c.author.id === '2'
+                          ? 'bg-gradient-to-br from-[#1e1040] to-[#3a1a90] text-[var(--purple)]'
+                          : 'bg-gradient-to-br from-[#0a1e14] to-[#145840] text-[var(--green)]'
+                      }`}
+                    >
+                      {c.author.initials}
+                    </div>
+                    <div className="flex-1 min-w-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-3 py-[10px] lg:px-4 lg:py-3">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="font-mono text-[10px] lg:text-xs font-bold text-[var(--t1)]">@{c.author.username}</span>
+                        {c.badge && (
+                          <span className="font-mono text-[6px] lg:text-[8px] px-1.5 py-0.5 rounded-sm bg-[var(--accent-d)] text-[var(--accent)] border border-[rgba(59,130,246,0.18)]">
+                            {c.badge}
+                          </span>
+                        )}
+                        <span className="font-mono text-[9px] font-bold text-[var(--t3)] ml-auto">+{c.votes}</span>
+                      </div>
+                      <p className="text-[11px] lg:text-sm leading-relaxed text-[var(--t2)] mb-1.5">{c.content}</p>
+                      <div className="flex gap-[10px] lg:gap-4">
+                        <button
+                          onClick={() => handleVoteComment(c.id, 'up')}
+                          className="font-mono text-[8px] lg:text-[9px] text-[var(--t3)] opacity-70 transition-all hover:opacity-100 hover:text-[var(--accent)]"
+                        >
+                          ▲ UPVOTE
+                        </button>
+                        <button className="font-mono text-[8px] lg:text-[9px] text-[var(--t3)] opacity-70 transition-all hover:opacity-100 hover:text-[var(--accent)]">
+                          ↩ REPLY
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-el)] px-4 py-6 text-center text-[var(--t2)]">
+                  <p className="font-mono text-[11px] lg:text-sm">No comments yet. Be the first to add insight on this byte.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Next post suggestion */}
+            <button
+              onClick={() => router.push('/feed')}
+              className="flex items-center gap-[14px] px-[17px] py-[15px] lg:px-6 lg:py-5 mt-4 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg transition-all hover:border-[var(--accent)] hover:shadow-[0_0_20px_rgba(59,130,246,0.1)] hover:-translate-y-0.5 group w-full"
+            >
+              <span className="text-2xl lg:text-3xl">🚀</span>
+              <div className="flex-1 min-w-0 text-left">
+                <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t3)] mb-1">UP_NEXT</div>
+                <div className="font-mono text-[10px] lg:text-sm font-bold text-[var(--t1)] truncate">
+                  React Server Components: What Nobody Tells You.
+                </div>
+                <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">@kl_builds · STAFF ENG @ SHOPIFY</div>
+              </div>
+              <span className="font-mono text-[18px] lg:text-2xl text-[var(--accent)] transition-all group-hover:translate-x-1">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Comment input */}
+      <div className="flex items-center gap-2 px-3 py-2 lg:px-6 lg:py-3 border-t border-[var(--border)] bg-[var(--bg-card)] flex-shrink-0">
+        <Avatar initials="AX" size="xs" />
+        <input
+          type="text"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+          placeholder="ADD_YOUR_INSIGHT..."
+          className="flex-1 bg-transparent font-mono text-[10px] lg:text-sm text-[var(--t1)] outline-none placeholder:text-[var(--t3)]"
+        />
+        <button
+          onClick={handleAddComment}
+          className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-mono text-sm lg:text-base transition-all hover:bg-[var(--accent)]/80"
+        >
+          →
+        </button>
+      </div>
+    </PhoneFrame>
+  )
+}

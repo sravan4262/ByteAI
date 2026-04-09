@@ -1,6 +1,6 @@
 ---
 name: coding-standards
-description: Baseline coding conventions for ByteAI — C# naming/patterns for ASP.NET Core 8 backend, TypeScript/React conventions for the PWA frontend.
+description: Baseline coding conventions for ByteAI — C# naming/patterns for ASP.NET Core 8 microservices backend, TypeScript/React conventions for the Next.js 16 frontend.
 origin: ECC (adapted for ByteAI)
 ---
 

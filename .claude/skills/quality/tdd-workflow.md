@@ -1,6 +1,6 @@
 ---
 name: tdd-workflow
-description: Test-driven development workflow for ByteAI — xUnit + WebApplicationFactory for ASP.NET Core 8 backend, Jest/Vitest + React Testing Library for React PWA frontend, Playwright for E2E.
+description: Test-driven development workflow for ByteAI — xUnit + WebApplicationFactory for ASP.NET Core 8 backend, Jest/Vitest + React Testing Library for Next.js 16 frontend, Playwright for E2E.
 origin: ECC (adapted for ByteAI)
 ---
 
@@ -87,8 +87,8 @@ public class BytesControllerTests : IClassFixture<WebApplicationFactory<Program>
 # .NET backend
 dotnet test src/Services/ByteAI.BytesService.Tests/ --no-build 2>&1 | tail -20
 
-# React frontend
-cd client && npm test -- --watchAll=false 2>&1 | tail -20
+# Next.js frontend
+cd UI && pnpm test -- --watchAll=false 2>&1 | tail -20
 ```
 
 The RED state is mandatory before writing any production code.
@@ -115,8 +115,8 @@ dotnet test ByteAI.sln --collect:"XPlat Code Coverage"
 dotnet reportgenerator -reports:"**/coverage.cobertura.xml" -targetdir:coverage/report -reporttypes:TextSummary
 cat coverage/report/Summary.txt
 
-# React frontend
-cd client && npm run test:coverage
+# Next.js frontend
+cd UI && pnpm run test:coverage
 ```
 
 ---

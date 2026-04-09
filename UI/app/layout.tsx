@@ -1,0 +1,40 @@
+import type { Metadata, Viewport } from 'next'
+import { Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
+import './globals.css'
+
+const bricolage = Bricolage_Grotesque({ 
+  subsets: ['latin'],
+  variable: '--font-sans'
+})
+
+const jetbrains = JetBrains_Mono({ 
+  subsets: ['latin'],
+  variable: '--font-mono'
+})
+
+export const metadata: Metadata = {
+  title: 'ByteAI — Social Platform for Developers',
+  description: 'Share insights, learn from peers, and level up your dev skills with the ByteAI developer community.',
+}
+
+export const viewport: Viewport = {
+  themeColor: '#05050e',
+  width: 'device-width',
+  initialScale: 1,
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="en" className="dark h-full">
+      <body className={`${bricolage.variable} ${jetbrains.variable} font-sans antialiased h-full w-full`}>
+        {children}
+        {process.env.NODE_ENV === 'production' && <Analytics />}
+      </body>
+    </html>
+  )
+}
