@@ -6,13 +6,13 @@
 
 | Layer | Status |
 |-------|--------|
-| UI Shell | Complete — all screens built, mock data only |
+| UI Shell | Complete — all screens running, module errors fixed |
 | Backend Structure | Complete — 3-project solution, 0 build errors |
 | Database Schema | Complete — 9 SQL tables in `supabase/tables/` |
-| API Endpoints | Not started (Phase 4) |
-| AI Features | Not started (Phase 6) |
-| Frontend ↔ Backend | Not wired (Phase 7) |
-| CI/CD / IaC | Not started (Phase 8) |
+| Backend API | Complete — all controllers with Swagger docs, Clerk JWT dev bypass |
+| AI Endpoints | Complete — `/api/ai/suggest-tags`, `/api/ai/ask` (Groq) exist; no UI yet |
+| Frontend ↔ Backend | Not wired — all `client.ts` functions are stubs |
+| CI/CD / IaC | Not started |
 
 ---
 
