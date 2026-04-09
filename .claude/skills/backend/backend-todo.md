@@ -276,6 +276,42 @@ No `.github/workflows/` yet. Needs:
 
 ---
 
+## Future Features — Web Scraping
+
+### Use Case 1 — Nightly Content Discovery
+Scrape tech content from Dev.to, Hacker News, GitHub Trending → summarize via Groq into byte format → insert into DB as system-authored bytes surfaced in a "Trending from the web" feed section.
+
+**How:**
+- `ScraperService` in `ByteAI.Core/Services/` using `AngleSharp` (HTML) + Dev.to API + HN Algolia API (no scraping needed for these two)
+- `IHostedService` background job runs nightly (or use Hangfire for scheduling UI)
+- MediatR event `ExternalByteDiscovered` → Groq summarizes → ONNX embeds → insert to `bytes` table with `source_url` and `author_id = system`
+- NuGet: `AngleSharp` for HTML parsing, `PuppeteerSharp` only for JS-rendered pages
+
+**New DB column needed:** `source_url TEXT` on `bytes` table to track origin and avoid duplicates.
+
+**Sources to scrape:**
+| Source | Method |
+|--------|--------|
+| Dev.to | Free API — `GET /api/articles?tag={stack}&per_page=30` |
+| Hacker News | Algolia API — `hn.algolia.com/api/v1/search?tags={stack}` |
+| GitHub Trending | HTML scrape via AngleSharp |
+| Medium tech tags | HTML scrape (JS-rendered — needs PuppeteerSharp) |
+
+---
+
+### Use Case 2 — "Share from URL" in Compose
+User pastes any URL in the compose screen → backend scrapes the page → Groq summarizes into byte format → pre-fills title, body, tags in compose form.
+
+**How:**
+- New endpoint: `POST /api/ai/summarize-url` — accepts `{ url: string }`
+- Backend: fetch HTML via `HttpClient`, parse with `AngleSharp`, extract main content, send to Groq with summarize prompt
+- Frontend: "Paste URL" button in compose screen → calls endpoint → auto-fills form fields
+- Extend `POST /api/ai/suggest-tags` to also accept a URL (scrape + tag in one call)
+
+**Security note:** Validate URL is HTTP/HTTPS, block private IP ranges (SSRF risk) before fetching.
+
+---
+
 ## Existing Tests
 
 `ByteAI.Api.Tests` project exists but has no test files yet — it's an empty shell. Priority test files to create:
