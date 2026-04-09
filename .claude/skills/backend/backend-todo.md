@@ -232,17 +232,47 @@ EXPOSE 8080
 ENTRYPOINT ["dotnet", "ByteAI.Api.dll"]
 ```
 
+### Container Registry
+
+**Dev / MVP: GitHub Container Registry (ghcr.io)** — free
+```bash
+# Build and push
+docker build -t ghcr.io/<github-username>/byteai-api:latest -f Service/Dockerfile Service/
+echo $GITHUB_TOKEN | docker login ghcr.io -u <github-username> --password-stdin
+docker push ghcr.io/<github-username>/byteai-api:latest
+```
+- Free up to 500 MB/month for private repos (then $0.008/GB)
+- Integrates directly with GitHub Actions — no extra credentials needed in CI
+- Azure Container Apps can pull from it using a registry secret
+
+**Production: Azure Container Registry (ACR)** — ~$5/month (Basic tier)
+- Native Azure integration — Container App uses managed identity to pull, no credentials stored
+- Migrate from ghcr.io → ACR when moving to production by updating the image reference in Bicep
+
+**Wiring ghcr.io to Azure Container App (until ACR is set up):**
+```bicep
+// In Container App Bicep resource
+registries: [
+  {
+    server: 'ghcr.io'
+    username: ghcrUsername  // GitHub username
+    passwordSecretRef: 'ghcr-token'  // GitHub PAT with read:packages scope
+  }
+]
+```
+
 ### Bicep IaC
 
-`infra/` folder exists but is empty. Needs:
-- `main.bicep` — Azure Container App, ACR, Key Vault, PostgreSQL Flexible Server, Redis Cache
+`infra/bicep/` folder exists but is empty. Needs:
+- `main.bicep` — Azure Container App, Key Vault, PostgreSQL Flexible Server, Redis Cache
+- Add ACR module when moving off ghcr.io
 - `modules/` — individual resource modules
 
 ### GitHub Actions CI/CD
 
 No `.github/workflows/` yet. Needs:
 - `ci.yml` — on push: build + test
-- `cd.yml` — on main merge: build Docker image → push to ACR → deploy to Container App
+- `cd.yml` — on main merge: build Docker image → push to ghcr.io → deploy to Container App
 
 ---
 
