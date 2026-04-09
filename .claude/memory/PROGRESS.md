@@ -1,114 +1,179 @@
 # ByteAI — Progress Log
 
-## Milestone 0 — Session Initialized (2026-04-08)
+---
 
-### What's Done
-- **UI Shell** — Complete. Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui.
-  - Screens: Auth, Onboarding, Feed, Compose, Search, Profile, Post Detail, Comments, Interviews
-  - Routing: `/feed`, `/search`, `/profile`, `/compose`, `/post/[id]`, `/interviews`, `/auth`
-  - API layer (`UI/lib/api.ts`) — fully stubbed with mock data, all TODOs
-  - Mock data in `UI/lib/mock-data.ts`
-- **.claude setup** — All agents, commands, skills, guides, memory installed and path-corrected.
-  - Agents: architect, planner, code-reviewer, security-reviewer, database-reviewer, performance-optimizer, seo-specialist
-  - Commands: /plan, /feature-dev, /tdd, /code-review, /optimize
-  - `settings.json` created with safe permission defaults
+## Current State (2026-04-09)
 
-### What's NOT Done (Backend — 0%)
-- `Service/` directory is empty — no .NET code
-- `DB/` directory is empty — no migrations
-- No real API endpoints
-- No auth integration (Clerk JWT)
-- No database schema
-
-### Architecture (Designed, Not Built)
-- YARP Gateway → 6 microservices (User, Bytes, Feed, Search, AI, Notification)
-- PostgreSQL + pgvector on Azure DB Flexible Server
-- MongoDB (Azure Cosmos DB) for document storage
-- Redis cache on Azure Container Instance
-- Clerk Auth issuing JWTs
-- RabbitMQ (CloudAMQP) for async messaging
-- ONNX Runtime (all-MiniLM-L6-v2) for embeddings in-container
-- Groq API (Llama 3.3 70B) for LLM/NLP
-
-### Next Decision Required
-Monolith-first vs. direct microservices for the backend bootstrap.
+| Layer | Status |
+|-------|--------|
+| UI Shell | Complete — all screens built, mock data only |
+| Backend Structure | Complete — 3-project solution, 0 build errors |
+| Database Schema | Complete — 9 SQL tables in `supabase/tables/` |
+| API Endpoints | Not started (Phase 4) |
+| AI Features | Not started (Phase 6) |
+| Frontend ↔ Backend | Not wired (Phase 7) |
+| CI/CD / IaC | Not started (Phase 8) |
 
 ---
 
-## Milestone 1 — UI Restructure + Polish (2026-04-08)
+## Milestone 4 — Solution Reorganization ✅ (2026-04-09)
 
-### UI Architecture Overhaul
-- **Folder structure** refactored to industry standard:
-  - `app/(auth)/` — unauthenticated routes (`/`, `/onboarding`)
-  - `app/(app)/` — authenticated routes (`/feed`, `/interviews`, `/search`, `/compose`, `/profile`, `/post/[id]`, `/post/[id]/comments`)
-  - `components/features/` — feature-sliced components (auth, feed, compose, search, profile, interviews, onboarding, detail, comments)
-  - `components/layout/` — shared layout primitives (AppShell, PhoneFrame, Avatar, ByteAILogo, AuthGuard)
-- **Route groups**: 9 clean routes, all building successfully with Next.js 16 Turbopack
+Moved `ByteAI.sln` and `tests/` from repo root into `Service/` so the backend is fully self-contained.
 
-### Auth & Session
-- `proxy.ts` — Next.js 16 middleware (renamed from `middleware.ts`, export renamed `proxy` per Next.js 16 API)
-- `hooks/use-auth.ts` — SPA auth persistence via localStorage (`byteai_auth_state`) + cookies (`byteai_auth`, `byteai_onboarded`)
-- `hooks/use-local-storage.ts` — SSR-safe localStorage hook
-- `AuthGuard` component — client-side guard in `(app)/layout.tsx` to catch stale cookies and redirect unauthenticated users to `/`
-- Cookie sync on mount — prevents stale 30-day cookies from bypassing auth after clearing localStorage
+```
+repo/
+├── UI/              ← Next.js frontend (standalone: cd UI && pnpm dev)
+├── Service/         ← .NET backend (standalone: cd Service && dotnet build)
+│   ├── ByteAI.sln
+│   ├── ByteAI.Api/
+│   ├── ByteAI.Core/
+│   └── tests/
+│       └── ByteAI.Api.Tests/
+├── supabase/        ← SQL schema source of truth
+└── infra/           ← docker-compose, Bicep (future)
+```
 
-### Component Decomposition
-- `FeedScreen` split into: `FeedHeader`, `FeedFilters`, `PostCard`, `FollowingList`, `FeedScreen`
-- `AuthScreen` split into: `LoginForm`, `SignupForm`, `GoogleIcon`, `AuthScreen`
-- All screens now use `useRouter()` internally — no more `onNavigate`/`onViewPost`/`onViewComments` prop drilling
+- `ByteAI.Api.Tests.csproj` now references both `ByteAI.Api` and `ByteAI.Core` projects.
+- `dotnet build Service/ByteAI.sln` → 0 errors, 0 warnings ✅
 
-### Emoji → Lucide React
-- All emoji/SVG icons replaced with Lucide throughout: `Home`, `Briefcase`, `Search`, `SquarePen`, `User`, `Heart`, `MessageSquare`, `Bookmark`, `Share2`, `BadgeCheck`, `Bell`, `Plus`, `ChevronLeft`, `Lightbulb`, `X`, `Code2`, `Pencil`, `Github`, `Globe`, `Lock`, `LogOut`, `Smartphone`
+---
 
-### Forms
-- Zod + react-hook-form on all auth forms (`loginEmailSchema`, `loginPhoneSchema`, `signupEmailSchema`, `signupPhoneSchema` in `lib/schemas.ts`)
-- Field-level error messages, live username availability indicator
+## Milestone 3 — Backend Restructure ✅ (2026-04-09)
 
-### Bug Fixes
-- Removed `pb-[180px]` on feed post articles (was causing massive blank gap)
-- Fixed `handleBookmark` and `handleShare` in feed/interviews not calling `setPosts()` — state now updates correctly
-- Fixed compose code editor from `<input>` (single-line) to `<textarea>` with line numbers
-- Fixed Next.js 16 async `params` — `post/[id]/page.tsx` uses `await params`
-- Fixed `seniorityLevels`/`domains` in onboarding — were `{id, label, icon}[]` objects, not strings
+### Architecture: 3-Project Solution + Table-First Database
 
-### Animated ByteAI Logo
-- New `ByteAILogo` component (`components/layout/byteai-logo.tsx`) with shimmer sweep + glow orb animation
-- Three sizes: `sm` (headers), `md` (sidebar), `lg` (auth screen)
-- Used consistently in: sidebar, onboarding header, compose header, auth screen
+| Project | Type | Responsibility |
+|---------|------|----------------|
+| `ByteAI.Api` | ASP.NET Core 9 Web API | Controllers, ViewModels, Mappers, Auth |
+| `ByteAI.Core` | Class Library (net9.0) | Entities, EF Fluent configs, Validators, Services, Commands, Events |
+| `ByteAI.Tests` | xUnit Class Library | All unit + integration tests |
 
-### Feed Personalization
-- FOR_YOU tab now defaults to user's onboarding preferences (filters posts by `feedPreferences` when no specific stack selected)
-- Specific stack filter overrides preference filter
-- Tech stack chip row replaced with `SearchableDropdown` — alphabetical, live search
+**Dependency graph:** `ByteAI.Tests → ByteAI.Api → ByteAI.Core`
 
-### Searchable Dropdowns
-- New reusable `SearchableDropdown` component (`components/ui/searchable-dropdown.tsx`)
-- Search input at top, alphabetical options, accent color variants (accent/cyan/green/purple)
-- Used in: feed tech stack filter, interviews company filter, interviews technology filter
+**Table-first rule:** `supabase/tables/*.sql` is the schema source of truth. EF Core reads from existing tables via `IEntityTypeConfiguration<T>`. `dotnet ef migrations add` is banned.
 
-### UI/UX Fixes
-- Sidebar nav label: `BYTES` → `BITS`
-- Feed header: `BYTES` → `BITS`
-- Dropdown z-index fixed — filter bars get `relative z-20` to render above post cards (backdrop-filter stacking context issue)
-- Search filters reduced to `ALL / BYTES / PEOPLE` only
-- Compose ESC key: clears all content (text, code, tags) with toast confirmation
-- Toast feedback (sonner) on: like, bookmark, share, post, draft save, login, logout, ESC clear
+### What Was Built
 
-### Font Size Pass
-Bumped all tiny mono text up one step across auth, onboarding, profile, feed, and dropdown components:
-- Labels: `text-[8px]` → `text-[10px]`
-- Buttons/tabs: `text-[9px]` → `text-[11px]`
-- Input fields: `text-[11px]` → `text-sm`
-- Section headers: `text-[8px]` → `text-[11px]`
-- Stat grid labels: `text-[6.5px]` → `text-[9px]`
-- Badge names: `text-[7px]` → `text-[9px]`
+**`supabase/tables/`** — 9 SQL files
+- `users.sql` — `interest_embedding vector(384)`, unique on `clerk_id` and `username`
+- `bytes.sql` — generated `tsvector`, HNSW index on embedding, GIN on `search_vector` and `tags`
+- `comments.sql` — `parent_id` FK for threading
+- `reactions.sql` — composite PK `(byte_id, user_id)`, CHECK `type IN ('like')`
+- `bookmarks.sql` — composite PK `(byte_id, user_id)`
+- `follows.sql` — composite PK, `CHECK (follower_id <> following_id)`
+- `notifications.sql` — `jsonb payload`, partial index on unread
+- `badges.sql` — unique `(user_id, badge_type)`
+- `drafts.sql`
 
-### Loading Skeletons
-- `loading.tsx` added for `/feed`, `/interviews`, `/search`, `/profile` routes
+**`Service/ByteAI.Core/`**
+- `Entities/` — 9 entities (`User`, `Byte`, `Comment`, `Reaction`, `Bookmark`, `Follow`, `Notification`, `Badge`, `Draft`)
+- `Entities/Configurations/` — 9 `IEntityTypeConfiguration<T>` classes (one per table)
+- `Validators/` — `UserValidator`, `ByteValidator` (FluentValidation)
+- `Commands/Bytes/` — `CreateByteCommand`, `UpdateByteCommand`, `DeleteByteCommand`, `GetBytesQuery`, `GetByteByIdQuery` + handlers
+- `Commands/Users/` — `GetUserByIdQuery`, `GetUserByUsernameQuery`, `UpdateProfileCommand`, `GetFollowersQuery`, `GetFollowingQuery` + handlers
+- `Commands/Comments/` — create, delete, get + handlers
+- `Commands/Bookmarks/` — create, delete, get user bookmarks + handlers
+- `Commands/Reactions/` — add, remove, get counts + handlers
+- `Commands/Follow/` — `FollowUserCommand`, `UnfollowUserCommand` + handlers
+- `Commands/Feed/` — `GetFeedQuery` with in-memory scoring (followed bytes first, `(likes×10 + comments×5) / (days+1)`)
+- `Events/` — `ByteCreatedEvent`, `ByteReactedEvent`, `UserFollowedEvent`
+- `Infrastructure/Persistence/AppDbContext.cs` — `ApplyConfigurationsFromAssembly`, no auto-migrate
+- `Infrastructure/PagedResult.cs` — `PagedResult<T>`, `PaginationParams`, `ReactionsCount`
+- `GlobalUsings.cs` — `global using Byte = ByteAI.Core.Entities.Byte` (disambiguates from `System.Byte`)
 
-### Still TODO (UI)
-- Connect real user identity from Clerk to Avatar/initials (currently hardcoded `AX`)
-- Onboarding data not yet persisted to backend
-- Search filter `PEOPLE` tab has no separate UI (shows bytes for all filters currently)
-- Profile photo upload not wired
+**`Service/ByteAI.Api/`**
+- `Controllers/` — `BytesController`, `UsersController`, `CommentsController`, `ReactionsController`, `BookmarksController`, `FollowController`, `FeedController`
+- `ViewModels/` — immutable `sealed record` request/response types per domain
+- `ViewModels/Common/` — `ApiResponse<T>`, `ApiError`, `PagedResponse<T>`
+- `Mappers/` — static extension methods: `ToResponse()`, `ToCommand()`
+- `Common/Auth/ClerkJwtExtensions.cs` — `AddClerkJwt()`, `GetClerkUserId()`
+- `GlobalUsings.cs` — same `Byte` alias
+- `Program.cs` — MediatR + FluentValidation scan `ByteAI.Core` assembly; no auto-migrate
+
+**`dotnet build` → 0 errors, 0 warnings ✅**
+
+---
+
+## Milestone 2 — UI Shell ✅ (2026-04-08)
+
+### Folder Structure
+
+```
+UI/
+├── app/
+│   ├── (auth)/                   ← unauthenticated routes
+│   │   ├── page.tsx              ← / (Auth screen)
+│   │   ├── onboarding/page.tsx
+│   │   └── layout.tsx
+│   ├── (app)/                    ← authenticated routes (wrapped by AuthGuard)
+│   │   ├── feed/page.tsx + loading.tsx
+│   │   ├── interviews/page.tsx + loading.tsx
+│   │   ├── search/page.tsx + loading.tsx
+│   │   ├── profile/page.tsx + loading.tsx
+│   │   ├── compose/page.tsx
+│   │   ├── post/[id]/page.tsx
+│   │   ├── post/[id]/comments/page.tsx
+│   │   └── layout.tsx            ← mounts AppShell + AuthGuard
+│   ├── globals.css
+│   └── layout.tsx                ← root layout (ThemeProvider, Toaster)
+├── components/
+│   ├── features/                 ← feature-sliced screen components
+│   │   ├── auth/                 ← AuthScreen, LoginForm, SignupForm, GoogleIcon
+│   │   ├── feed/                 ← FeedScreen, FeedHeader, FeedFilters, PostCard, FollowingList
+│   │   ├── compose/              ← ComposeScreen
+│   │   ├── comments/             ← CommentsScreen
+│   │   ├── detail/               ← DetailScreen
+│   │   ├── interviews/           ← InterviewsScreen
+│   │   ├── onboarding/           ← OnboardingScreen
+│   │   ├── profile/              ← ProfileScreen
+│   │   └── search/               ← SearchScreen
+│   ├── layout/                   ← shared structural primitives
+│   │   ├── app-shell.tsx         ← sidebar nav + bottom nav
+│   │   ├── auth-guard.tsx        ← client-side auth redirect
+│   │   ├── avatar.tsx
+│   │   ├── byteai-logo.tsx       ← animated shimmer logo (sm/md/lg)
+│   │   └── phone-frame.tsx
+│   └── ui/                       ← shadcn/ui primitives + custom
+│       ├── searchable-dropdown.tsx ← reusable searchable select
+│       └── [all shadcn primitives]
+├── hooks/
+│   ├── use-auth.ts               ← SPA auth state (localStorage + cookies)
+│   ├── use-local-storage.ts      ← SSR-safe localStorage hook
+│   └── use-mobile.ts
+├── lib/
+│   ├── api.ts                    ← typed API client (stubbed — all mock)
+│   ├── mock-data.ts              ← placeholder data for all screens
+│   ├── schemas.ts                ← Zod schemas for auth forms
+│   └── utils.ts                  ← cn() and helpers
+├── styles/globals.css
+└── proxy.ts                      ← Next.js 16 middleware (auth cookie check)
+```
+
+### Key Decisions
+- Route groups `(auth)` / `(app)` enforce auth boundary at the layout level
+- `AuthGuard` component prevents stale cookies bypassing auth after clearing localStorage
+- `use-auth.ts` persists state to `localStorage` (`byteai_auth_state`) + cookies (`byteai_auth`, `byteai_onboarded`)
+- All screens use `useRouter()` internally — no prop-drilled navigation callbacks
+- Icons: Lucide React throughout (no emojis or custom SVGs)
+- Forms: Zod + react-hook-form on all auth forms (`lib/schemas.ts`)
+- Toast feedback (sonner): like, bookmark, share, post, draft save, login, logout, ESC clear
+- Feed FOR_YOU tab defaults to onboarding preferences when no stack selected
+- `SearchableDropdown` used in: feed tech stack filter, interviews company + technology filters
+
+### What Still Uses Mock Data
+- `lib/api.ts` — fully stubbed, all endpoints return mock data
+- Avatar initials hardcoded as `AX` (Clerk identity not wired)
+- Onboarding preferences not persisted to backend
 - Notification bell has no real data
+
+---
+
+## Pending Phases
+
+| Phase | Description |
+|-------|-------------|
+| Phase 4 | Core API endpoints — Bytes CRUD, Users, Feed, Reactions, Bookmarks, Comments, Follow |
+| Phase 5 | Search — full-text (`tsvector`) + pgvector hybrid |
+| Phase 6 | AI — ONNX `EmbeddingService`, `GroqService`, MediatR event handlers |
+| Phase 7 | Wire `UI/lib/api.ts` to real endpoints (replace all mock stubs) |
+| Phase 8 | Dockerfile polish, Bicep IaC, GitHub Actions CI/CD |

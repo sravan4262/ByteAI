@@ -1,12 +1,402 @@
 ---
 name: frontend-patterns
-description: Frontend development patterns for React, Next.js, state management, performance optimization, and UI best practices.
-origin: ECC
+description: ByteAI frontend patterns — Next.js 16, React 19, Tailwind v4, shadcn/ui. Project structure, auth, API layer, forms, coding standards, and general React/Next.js patterns.
+origin: ByteAI (extended from ECC)
 ---
 
 # Frontend Development Patterns
 
-Modern frontend patterns for React, Next.js, and performant user interfaces.
+Next.js 16 · React 19 · TypeScript · Tailwind v4 · shadcn/ui · Lucide React · Sonner
+
+---
+
+## ByteAI Project Structure
+
+```
+UI/
+├── app/
+│   ├── (auth)/          ← unauthenticated routes (no sidebar, no AuthGuard)
+│   ├── (app)/           ← authenticated routes (AppShell + AuthGuard in layout.tsx)
+│   ├── globals.css
+│   └── layout.tsx       ← root layout: ThemeProvider, Toaster
+├── components/
+│   ├── features/        ← one subfolder per domain, owns its screen + subcomponents
+│   ├── layout/          ← structural primitives shared across routes
+│   └── ui/              ← shadcn/ui primitives + reusable custom components
+├── hooks/               ← custom hooks (state/browser APIs only — no business logic)
+├── lib/                 ← api.ts, schemas.ts, mock-data.ts, utils.ts
+└── proxy.ts             ← Next.js 16 middleware (cookie-based auth guard)
+```
+
+### Route Groups
+
+```
+app/(auth)/              ← no AppShell, no AuthGuard
+  page.tsx               ← / → AuthScreen
+  onboarding/page.tsx
+  layout.tsx
+
+app/(app)/               ← AppShell + AuthGuard
+  layout.tsx             ← mounts <AppShell><AuthGuard>{children}</AuthGuard></AppShell>
+  feed/page.tsx + loading.tsx
+  search/page.tsx + loading.tsx
+  profile/page.tsx + loading.tsx
+  interviews/page.tsx + loading.tsx
+  compose/page.tsx
+  post/[id]/page.tsx          ← use `await params` — Next.js 16 async params
+  post/[id]/comments/page.tsx
+```
+
+**Rule:** Never import from `(auth)` into `(app)` or vice versa. Route groups are isolation boundaries.
+
+### Component Layers
+
+**`components/features/`** — Domain screens. Each feature folder owns its screen + all subcomponents for that domain. Nothing in `features/` is reused cross-domain.
+
+```
+features/feed/
+  feed-screen.tsx     ← top-level screen, holds state, wires subcomponents
+  feed-header.tsx
+  feed-filters.tsx    ← FOR_YOU / FOLLOWING tabs + SearchableDropdown
+  post-card.tsx       ← like/bookmark/share callbacks from parent
+  following-list.tsx
+
+features/auth/
+  auth-screen.tsx
+  login-form.tsx      ← Zod + react-hook-form
+  signup-form.tsx
+  google-icon.tsx     ← SVG, auth-specific only
+```
+
+**`components/layout/`** — Structural primitives shared across all authenticated routes. Never hold domain data.
+
+```
+app-shell.tsx         ← sidebar nav + bottom nav, uses usePathname()
+auth-guard.tsx        ← client-side auth check, redirects to / if unauthenticated
+avatar.tsx
+byteai-logo.tsx       ← animated shimmer logo, sizes: sm | md | lg
+phone-frame.tsx
+```
+
+**`components/ui/`** — shadcn/ui primitives (do not modify) + project-wide custom components.
+
+Custom additions:
+- `searchable-dropdown.tsx` — reusable searchable select, `colorVariant: 'accent' | 'cyan' | 'green' | 'purple'`
+
+---
+
+## Auth Pattern
+
+### `proxy.ts` (Next.js 16 Middleware)
+
+Named export `proxy` (not `middleware`) per Next.js 16 API. Checks `byteai_auth` cookie → redirects to `/` if missing.
+
+### `hooks/use-auth.ts`
+
+```typescript
+const { user, isAuthenticated, login, logout } = useAuth()
+// login()  → sets byteai_auth cookie + localStorage byteai_auth_state
+// logout() → clears both, redirects to /
+```
+
+Persists to both `localStorage` and cookies. Syncs on mount to prevent stale cookie bypass after clearing storage.
+
+### AuthGuard
+
+```typescript
+// (app)/layout.tsx
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AppShell>
+      <AuthGuard>{children}</AuthGuard>
+    </AppShell>
+  )
+}
+```
+
+---
+
+## API Layer (`lib/api.ts`)
+
+All HTTP calls go through `lib/api.ts`. Components never call `fetch` directly. Functions are typed, return domain types, and throw on error. Currently all return mock data — replace the body when wiring to real endpoints.
+
+```typescript
+export async function getBytes(params: GetBytesParams): Promise<PagedResponse<BytePost>> {
+  // TODO: replace with real fetch
+  return mockBytes
+}
+
+export async function createByte(payload: CreateBytePayload): Promise<BytePost> {
+  const res = await fetch('/api/bytes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(await res.text())
+  return res.json()
+}
+```
+
+---
+
+## ByteAI Form Pattern (Zod + react-hook-form)
+
+Schemas live in `lib/schemas.ts`:
+
+```typescript
+export const loginEmailSchema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(8, 'Min 8 characters'),
+})
+export type LoginEmailForm = z.infer<typeof loginEmailSchema>
+```
+
+Forms use `zodResolver`. Display field-level errors inline — no `alert()`:
+
+```typescript
+const form = useForm<LoginEmailForm>({ resolver: zodResolver(loginEmailSchema) })
+
+const onSubmit = async (data: LoginEmailForm) => {
+  try {
+    await login(data)
+    toast.success('Welcome back')
+    router.push('/feed')
+  } catch {
+    toast.error('Invalid credentials')
+  }
+}
+```
+
+---
+
+## Toast Feedback (Sonner)
+
+All user-triggered actions show a toast. Required on: like, bookmark, share, post, draft save, login, logout, ESC clear.
+
+```typescript
+import { toast } from 'sonner'
+
+toast.success('Bookmarked')
+toast.error('Something went wrong')
+toast('Draft saved', { description: 'You can resume from Compose.' })
+```
+
+---
+
+## PostCard Interaction Pattern (Optimistic Updates)
+
+State lives in the screen component. PostCard receives a post + callbacks. Mutate local state first, call API second. No loading spinner on social actions.
+
+```typescript
+const handleLike = async (postId: string) => {
+  setPosts(prev => prev.map(p =>
+    p.id === postId ? { ...p, likes: p.isLiked ? p.likes - 1 : p.likes + 1, isLiked: !p.isLiked } : p
+  ))
+  toast.success('Liked')
+  await api.toggleReaction(postId).catch(() => {
+    setPosts(prev => prev.map(p =>
+      p.id === postId ? { ...p, likes: p.isLiked ? p.likes - 1 : p.likes + 1, isLiked: !p.isLiked } : p
+    ))
+    toast.error('Failed to like')
+  })
+}
+```
+
+---
+
+## Navigation
+
+All screens use `useRouter()` and `usePathname()` from `next/navigation`. No `onNavigate` prop drilling.
+
+---
+
+## Icons
+
+Lucide React throughout. No emojis, no custom SVG icon components (except `GoogleIcon` which is auth-specific):
+
+```typescript
+import { Heart, MessageSquare, Bookmark, Share2, BadgeCheck } from 'lucide-react'
+```
+
+---
+
+## Loading States
+
+Each authenticated route has a `loading.tsx` beside its `page.tsx`. Use shadcn `Skeleton`:
+
+```typescript
+export default function FeedLoading() {
+  return (
+    <div className="space-y-4 p-4">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-32 w-full rounded-xl" />
+      ))}
+    </div>
+  )
+}
+```
+
+---
+
+## Tailwind Conventions
+
+- Font size floor: `text-[10px]` minimum for labels, `text-sm` for inputs
+- Z-index discipline: filter bars `relative z-20` to render above post cards (backdrop-filter creates stacking context)
+- Dark-first: all colors use `dark:` variants — app ships dark mode by default
+- Prefer Tailwind scale over arbitrary spacing values
+
+---
+
+## Coding Standards
+
+### Core Principles
+
+| Principle | Rule |
+|-----------|------|
+| **Readability** | Self-documenting names > comments. Comment the *why*, never the *what*. |
+| **KISS** | Simplest solution that works. No premature abstractions. |
+| **DRY** | Extract repeated logic — but only when used 3+ times. |
+| **YAGNI** | Don't build for hypothetical future requirements. |
+| **50-line limit** | Functions over 50 lines must be split. |
+
+### Naming
+
+```typescript
+// GOOD — descriptive, verb-noun
+const feedSearchQuery = 'react'
+const isUserAuthenticated = true
+async function fetchFeedPosts(userId: string) {}
+function isValidUsername(username: string): boolean {}
+
+// BAD
+const q = 'react'
+const flag = true
+async function feed(id: string) {}
+```
+
+File naming: `kebab-case` for all files (`post-card.tsx`, `use-auth.ts`, `feed-screen.tsx`).
+
+### Immutability (Critical)
+
+```typescript
+// GOOD — always spread
+const updatedPost = { ...post, likes: post.likes + 1 }
+const updatedPosts = [...posts, newPost]
+setPosts(prev => prev.map(p => p.id === id ? { ...p, isLiked: true } : p))
+
+// BAD — never mutate
+post.likes++
+posts.push(newPost)
+```
+
+### TypeScript — No `any`
+
+```typescript
+// GOOD
+interface BytePost {
+  id: string
+  title: string
+  status: 'draft' | 'published'
+  createdAt: Date
+}
+function getPost(id: string): Promise<BytePost> {}
+
+// BAD
+function getPost(id: any): Promise<any> {}
+```
+
+### State Updates
+
+```typescript
+// GOOD — functional update prevents stale closure
+setCount(prev => prev + 1)
+
+// BAD
+setCount(count + 1)  // stale in async context
+```
+
+### Async/Await
+
+```typescript
+// GOOD — parallel when independent
+const [posts, profile] = await Promise.all([fetchFeed(userId), fetchProfile(userId)])
+
+// BAD — unnecessary sequential
+const posts = await fetchFeed(userId)
+const profile = await fetchProfile(userId)
+```
+
+### Conditional Rendering
+
+```typescript
+// GOOD — flat conditions
+{isLoading && <Skeleton className="h-32 w-full" />}
+{error && <p className="text-destructive text-sm">{error}</p>}
+{data && <PostCard post={data} />}
+
+// BAD — ternary hell
+{isLoading ? <Skeleton /> : error ? <p>{error}</p> : data ? <PostCard post={data} /> : null}
+```
+
+### Early Returns Over Deep Nesting
+
+```typescript
+// GOOD
+if (!user) return null
+if (!user.isAuthenticated) return <Redirect to="/" />
+if (!post) return <NotFound />
+return <PostDetail post={post} user={user} />
+
+// BAD
+if (user) {
+  if (user.isAuthenticated) {
+    if (post) { return <PostDetail post={post} user={user} /> }
+  }
+}
+```
+
+### Named Constants
+
+```typescript
+// GOOD
+const DEBOUNCE_DELAY_MS = 500
+const MAX_POST_LENGTH = 300
+const FEED_PAGE_SIZE = 20
+
+// BAD
+setTimeout(search, 500)
+if (content.length > 300) {}
+```
+
+---
+
+## Dev Commands (Next.js 16 + Turbopack)
+
+```bash
+# Start dev server — Turbopack by default (faster HMR, FS caching)
+pnpm dev
+
+# Production build
+pnpm build
+
+# Start production server
+pnpm start
+
+# Type check
+pnpm tsc --noEmit
+
+# Lint
+pnpm lint
+```
+
+**Turbopack notes:**
+- Default since Next.js 16 — `next dev` uses Turbopack automatically
+- Incremental bundler in Rust — 5–14× faster cold start on large apps
+- FS caching under `.next/` — restarts reuse prior work
+- Fall back to webpack only if a plugin is incompatible: `next dev --no-turbopack`
+- Bundle analysis (Next.js 16.1+): check Next.js docs for `@next/bundle-analyzer` config
+
+---
 
 ## When to Activate
 

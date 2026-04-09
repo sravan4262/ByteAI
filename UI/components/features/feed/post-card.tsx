@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Heart, MessageSquare, Bookmark, Share2, BadgeCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
-import { CodeBlock } from '@/components/code-block'
+import { CodeBlock } from '@/components/ui/code-block'
 import type { Post } from '@/lib/api'
 
 interface PostCardProps {

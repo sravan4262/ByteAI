@@ -319,3 +319,197 @@ public async Task<ProcessResult> ProcessPaymentAsync(
 | `dynamic` in business logic | Use generics or explicit types |
 | Mutable `static` state | Use DI scoping or `ConcurrentDictionary` |
 | `string.Format` in loops | Use `StringBuilder` or interpolated string handlers |
+
+---
+
+## ByteAI-Specific Patterns
+
+These patterns are specific to the ByteAI solution structure. Follow them in all backend code.
+
+### Solution Project Layout
+
+ByteAI uses 3 projects with a strict dependency direction:
+
+```
+ByteAI.Api  →  ByteAI.Core   (Api depends on Core; Core never depends on Api)
+ByteAI.Tests → ByteAI.Core
+ByteAI.Tests → ByteAI.Api
+```
+
+| Project | Role | Key contents |
+|---|---|---|
+| `ByteAI.Api` | HTTP surface | Controllers, ViewModels, Mappers |
+| `ByteAI.Core` | Domain + app logic | Entities, Configurations, Validators, Services, Commands, Events, Infrastructure |
+| `ByteAI.Tests` | All tests | Unit + integration |
+
+### Table-First with EF Core (No Migrations)
+
+ByteAI uses a **table-first** approach. Tables are defined as SQL scripts in `supabase/tables/`.
+EF Core only _reads_ — it never creates or alters tables. There are no EF Core migrations and no `__EFMigrationsHistory`.
+
+**Rules:**
+- Never run `dotnet ef migrations add` or `dotnet ef database update`
+- Never call `Database.MigrateAsync()` or `Database.EnsureCreatedAsync()` in `Program.cs`
+- Schema changes always go in a new `supabase/tables/<table>.sql` file first, then pushed via `supabase db push`
+- `AppDbContext` only wires up `IEntityTypeConfiguration<T>` classes; it does nothing else on startup
+
+```csharp
+// ByteAI.Core/Infrastructure/Persistence/AppDbContext.cs
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Byte> Bytes => Set<Byte>();
+    // ... all entity sets
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Apply all IEntityTypeConfiguration<T> in this assembly
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        modelBuilder.HasPostgresExtension("vector");
+    }
+}
+```
+
+### ViewModel Pattern (ByteAI.Api/ViewModels/)
+
+ViewModels are immutable `record` types. Request records use `required` properties. Response records are always positive — they do not expose internal IDs or entity internals unnecessary for the client.
+
+```csharp
+// ByteAI.Api/ViewModels/ByteViewModels.cs
+
+// Request
+public sealed record CreateByteRequest
+{
+    public required string Title { get; init; }
+    public required string Body { get; init; }
+    public string? CodeSnippet { get; init; }
+    public string? Language { get; init; }
+    public string[] Tags { get; init; } = [];
+    public string Type { get; init; } = "byte";
+}
+
+// Response
+public sealed record ByteResponse(
+    Guid Id,
+    string Title,
+    string Body,
+    string? CodeSnippet,
+    string? Language,
+    string[] Tags,
+    int LikeCount,
+    int CommentCount,
+    int BookmarkCount,
+    DateTimeOffset CreatedAt
+);
+```
+
+### Mapper Pattern (ByteAI.Api/Mappers/)
+
+Mappers are static extension methods only — no instances, no DI, no AutoMapper.
+Always have two directions: `ToEntity()` (for writes) and `ToResponse()` (for reads).
+
+```csharp
+// ByteAI.Api/Mappers/ByteMappers.cs
+public static class ByteMappers
+{
+    public static Byte ToEntity(this CreateByteRequest request, string authorId) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            AuthorId = Guid.Parse(authorId),
+            Title = request.Title,
+            Body = request.Body,
+            CodeSnippet = request.CodeSnippet,
+            Language = request.Language,
+            Tags = request.Tags,
+            Type = request.Type,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+    public static ByteResponse ToResponse(this Byte entity) =>
+        new(
+            Id: entity.Id,
+            Title: entity.Title,
+            Body: entity.Body,
+            CodeSnippet: entity.CodeSnippet,
+            Language: entity.Language,
+            Tags: entity.Tags,
+            LikeCount: entity.LikeCount,
+            CommentCount: entity.CommentCount,
+            BookmarkCount: entity.BookmarkCount,
+            CreatedAt: entity.CreatedAt
+        );
+}
+```
+
+### Controller Pattern (ByteAI.Api/Controllers/)
+
+Controllers dispatch via MediatR — they do NOT contain business logic. They:
+1. Validate the request (FluentValidation auto-validated via `[ApiController]`)
+2. Map ViewModel → Command via mapper
+3. Send command via `IMediator`
+4. Map result → ViewModel response
+
+```csharp
+// ByteAI.Api/Controllers/BytesController.cs
+[ApiController]
+[Route("api/bytes")]
+public sealed class BytesController(IMediator mediator) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> GetBytes(
+        [FromQuery] PaginationParams pagination,
+        CancellationToken ct)
+    {
+        var result = await mediator.Send(new GetBytesQuery(pagination), ct);
+        return Ok(ApiResponse.Success(result.Select(b => b.ToResponse())));
+    }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> CreateByte(
+        [FromBody] CreateByteRequest request,
+        CancellationToken ct)
+    {
+        var authorId = HttpContext.GetClerkUserId();
+        var command = new CreateByteCommand(request.ToEntity(authorId));
+        var created = await mediator.Send(command, ct);
+        return CreatedAtAction(nameof(GetBytes), new { id = created.Id },
+            ApiResponse.Success(created.ToResponse()));
+    }
+}
+```
+
+### FluentValidation (ByteAI.Core/Validators/)
+
+Validators live in `ByteAI.Core` and validate business constraints, not database constraints (those are enforced by the SQL schema). Register all validators via assembly scan in `Program.cs`.
+
+```csharp
+// ByteAI.Core/Validators/ByteValidator.cs
+public sealed class ByteValidator : AbstractValidator<CreateByteCommand>
+{
+    public ByteValidator()
+    {
+        RuleFor(x => x.Byte.Title)
+            .NotEmpty().WithMessage("Title is required")
+            .MaximumLength(200).WithMessage("Title cannot exceed 200 characters");
+
+        RuleFor(x => x.Byte.Body)
+            .NotEmpty().WithMessage("Body is required")
+            .MaximumLength(2000).WithMessage("Body cannot exceed 2000 characters");
+
+        RuleFor(x => x.Byte.Tags)
+            .Must(tags => tags.Length <= 5).WithMessage("Maximum 5 tags allowed");
+    }
+}
+
+// Program.cs registration
+builder.Services.AddValidatorsFromAssembly(typeof(ByteValidator).Assembly);
+builder.Services.AddFluentValidationAutoValidation();
+```
+
+### Database & Schema
+
+- Table SQL lives in `supabase/tables/` — see `backend/db/postgres.md` for full schema conventions, EF Fluent config patterns, pgvector usage, and indexing rules.
+- EF Core Fluent configurations live in `ByteAI.Core/Entities/Configurations/` — one file per entity, must match the SQL exactly.

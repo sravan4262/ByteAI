@@ -1,4 +1,8 @@
-# ByteAI — Backend Architecture
+# ByteAI — Backend Architecture (Monolith Phase)
+
+> **Decision (2026-04-09):** Start as a single ASP.NET Core 8 monolith.
+> Microservices extraction is deferred. The vertical-slice folder structure means
+> any domain can be promoted to its own service later without rewriting business logic.
 
 ---
 
@@ -7,73 +11,42 @@
 ```mermaid
 graph TB
     subgraph CLIENT["📱 CLIENT LAYER"]
-        PWA[React PWA<br/>iPhone Home Screen]
+        PWA[Next.js 16 PWA<br/>Azure Static Web Apps]
     end
 
-    subgraph AUTH["🔐 AUTH LAYER"]
-        CLERK[Clerk Auth<br/>Magic Link · Google · Facebook · Phone OTP<br/>Issues JWT Tokens]
+    subgraph AUTH["🔐 AUTH"]
+        CLERK[Clerk Auth<br/>Magic Link · Google · Facebook · Phone OTP<br/>Issues JWTs · Webhooks for user sync]
     end
 
-    subgraph GATEWAY["🚪 API GATEWAY LAYER"]
-        YARP[YARP Reverse Proxy<br/>ASP.NET Core 8<br/>JWT Validation · Rate Limiting · Routing]
-    end
-
-    subgraph SERVICES["⚙️ MICROSERVICES LAYER — Azure Container Apps"]
-        US[User Service]
-        BS[Bytes Service]
-        FS[Feed Service]
-        SS[Search Service]
-        AI[AI Service]
-        NS[Notification Service]
-    end
-
-    subgraph BROKER["📨 MESSAGE BROKER"]
-        RMQ[RabbitMQ<br/>CloudAMQP Free Tier<br/>Topics · Dead Letter Queues]
+    subgraph API["⚙️ API LAYER — Single Container"]
+        MONO[ByteAI.Api<br/>ASP.NET Core 8 · Minimal APIs<br/>JWT Validation · Rate Limiting]
+        MEDI[MediatR<br/>In-process Domain Events]
+        ONNX[ONNX Runtime<br/>all-MiniLM-L6-v2<br/>384-dim Embeddings · Singleton]
+        GROQ[Groq HTTP Client<br/>Llama 3.3 70B · NLP / RAG]
     end
 
     subgraph DATA["🗄️ DATA LAYER"]
-        PG[(PostgreSQL + pgvector<br/>Azure DB Flexible Server)]
-        MONGO[(MongoDB<br/>Azure Cosmos DB)]
-        REDIS[(Redis Cache<br/>Azure Container Instance)]
-    end
-
-    subgraph AI_EXTERNAL["🤖 AI LAYER"]
-        ONNX[ONNX Runtime<br/>all-MiniLM-L6-v2<br/>Embeddings · In-container]
-        GROQ[Groq API<br/>Llama 3.3 70B<br/>LLM · NLP · RAG]
+        PG[(PostgreSQL + pgvector<br/>Azure DB Flexible Server<br/>All application data)]
+        REDIS[(Redis Cache<br/>Azure Container Instance<br/>Feed materialization · optional MVP)]
     end
 
     subgraph OBS["📊 OBSERVABILITY"]
-        OT[OpenTelemetry<br/>Distributed Tracing]
-        JAE[Jaeger<br/>Trace UI]
-        PROM[Prometheus + Grafana<br/>Metrics · Dashboards]
+        OT[OpenTelemetry · Serilog]
+        PROM[Prometheus + Grafana]
     end
 
     PWA -->|HTTPS| CLERK
     CLERK -->|JWT| PWA
-    PWA -->|JWT Bearer| YARP
+    CLERK -->|Webhook user.created/updated| MONO
+    PWA -->|JWT Bearer| MONO
 
-    YARP --> US
-    YARP --> BS
-    YARP --> FS
-    YARP --> SS
-    YARP --> AI
+    MONO --> MEDI
+    MONO --> ONNX
+    MONO --> GROQ
+    MONO --> PG
+    MONO --> REDIS
 
-    US & BS & FS & SS & AI & NS -->|Publish Events| RMQ
-    RMQ -->|Subscribe| US & BS & FS & SS & AI & NS
-
-    US --> PG
-    BS --> MONGO
-    FS --> REDIS
-    SS --> PG
-    AI --> PG
-    NS --> PG
-
-    AI --> ONNX
-    AI --> GROQ
-
-    SERVICES --> OT
-    OT --> JAE
-    OT --> PROM
+    MONO --> OT --> PROM
 ```
 
 ---
@@ -84,307 +57,308 @@ graph TB
 sequenceDiagram
     participant U as 📱 User (PWA)
     participant C as Clerk Auth
-    participant G as API Gateway (YARP)
-    participant S as Microservice
+    participant A as ByteAI.Api
 
     Note over U,C: Magic Link / Google SSO / Phone OTP
-    U->>C: POST /auth/signin (email or provider)
-    C-->>U: Send OTP email or redirect to provider
-    U->>C: Submit OTP code or OAuth callback
-    C-->>U: JWT Access Token + Refresh Token
+    U->>C: Sign in (email / provider)
+    C-->>U: JWT Access Token
 
-    Note over U,G: Every subsequent API call
-    U->>G: Request + Authorization: Bearer {JWT}
-    G->>G: Validate JWT signature (Clerk public key)
-    G->>G: Check expiry, claims, rate limit
-    G->>S: Forward request + user context headers
-    S-->>G: Response
-    G-->>U: Response
+    Note over U,A: Every API call
+    U->>A: Request + Authorization: Bearer {JWT}
+    A->>A: Validate JWT via Clerk JWKS endpoint
+    A->>A: Extract userId from sub claim
+    A-->>U: Response
 
-    Note over U,C: Token refresh
-    U->>C: POST /auth/refresh (refresh token)
-    C-->>U: New JWT Access Token
+    Note over C,A: User sync (webhook)
+    C->>A: POST /webhooks/clerk (user.created / user.updated)
+    A->>A: Upsert user record in PostgreSQL
 ```
 
 ---
 
-## 3. Microservices — Responsibilities & Data Ownership
+## 3. Solution Structure
 
-```mermaid
-graph LR
-    subgraph US["👤 User Service"]
-        direction TB
-        U1[Register Profile]
-        U2[Update Profile / Avatar]
-        U3[Follow · Unfollow]
-        U4[XP · Level · Streak]
-        U5[Badges]
-        U6[Preferences · Tech Stack]
-        DB_US[(PostgreSQL<br/>users · profiles<br/>follows · badges<br/>notifications)]
-    end
+> **Architecture decision (2026-04-09):** 3-project solution. Table-first approach — schema lives in
+> `supabase/tables/*.sql`; EF Core reads existing tables via Fluent API configurations.
+> No EF Core migrations. No `__EFMigrationsHistory`.
 
-    subgraph BS["📝 Bytes Service"]
-        direction TB
-        B1[Create Byte]
-        B2[Edit · Delete Byte]
-        B3[React to Byte]
-        B4[Comment · Reply]
-        B5[Bookmark Byte]
-        DB_BS[(MongoDB / Cosmos DB<br/>bytes · comments<br/>reactions · bookmarks)]
-    end
+```
+ByteAI.sln
+│
+├── Service/
+│   │
+│   ├── ByteAI.Api/                       ← ASP.NET Core 9 Web API (HTTP surface only)
+│   │   ├── ByteAI.Api.csproj             ← References ByteAI.Core
+│   │   ├── Program.cs                    ← DI wiring, middleware pipeline (no auto-migrate)
+│   │   ├── appsettings.json
+│   │   ├── appsettings.Development.json  ← local connection strings (gitignored)
+│   │   ├── Dockerfile
+│   │   │
+│   │   ├── Controllers/                  ← MVC controllers, one per domain
+│   │   │   ├── BytesController.cs        ← /api/bytes/**
+│   │   │   ├── UsersController.cs        ← /api/users/**
+│   │   │   ├── FeedController.cs         ← /api/feed/**
+│   │   │   ├── CommentsController.cs     ← /api/bytes/:id/comments/**
+│   │   │   ├── ReactionsController.cs    ← /api/bytes/:id/reactions/**
+│   │   │   ├── BookmarksController.cs    ← /api/bookmarks/**
+│   │   │   ├── FollowController.cs       ← /api/users/:id/follow/**
+│   │   │   ├── SearchController.cs       ← /api/search/**
+│   │   │   ├── NotificationsController.cs← /api/notifications/**
+│   │   │   └── AiController.cs           ← /api/ai/**
+│   │   │
+│   │   ├── ViewModels/                   ← Request / response records (immutable)
+│   │   │   ├── ByteViewModels.cs         ← CreateByteRequest, ByteResponse, …
+│   │   │   ├── UserViewModels.cs         ← UpdateProfileRequest, UserResponse, …
+│   │   │   ├── CommentViewModels.cs
+│   │   │   ├── FeedViewModels.cs
+│   │   │   └── Common/
+│   │   │       ├── ApiResponse.cs        ← ApiResponse<T>, PagedResponse<T>
+│   │   │       └── Pagination.cs
+│   │   │
+│   │   └── Mappers/                      ← Static extension methods: ViewModel ↔ Entity
+│   │       ├── ByteMappers.cs            ← ToEntity(), ToResponse()
+│   │       ├── UserMappers.cs
+│   │       └── CommentMappers.cs
+│   │
+│   └── ByteAI.Core/                      ← Class library — domain + application logic
+│       ├── ByteAI.Core.csproj            ← net9.0; EF Core, FluentValidation, MediatR, Npgsql, Pgvector
+│       │
+│       ├── Entities/                     ← Pure domain entity classes (no EF attributes)
+│       │   ├── User.cs
+│       │   ├── Byte.cs
+│       │   ├── Comment.cs
+│       │   ├── Follow.cs
+│       │   ├── Reaction.cs
+│       │   ├── Bookmark.cs
+│       │   ├── Notification.cs
+│       │   ├── Badge.cs
+│       │   ├── Draft.cs
+│       │   └── Configurations/           ← EF Core Fluent API — maps to existing PG tables
+│       │       ├── UserConfiguration.cs
+│       │       ├── ByteConfiguration.cs
+│       │       ├── CommentConfiguration.cs
+│       │       ├── ReactionConfiguration.cs
+│       │       ├── BookmarkConfiguration.cs
+│       │       ├── FollowConfiguration.cs
+│       │       ├── NotificationConfiguration.cs
+│       │       ├── BadgeConfiguration.cs
+│       │       └── DraftConfiguration.cs
+│       │
+│       ├── Validators/                   ← FluentValidation per entity / command
+│       │   ├── UserValidator.cs
+│       │   ├── ByteValidator.cs
+│       │   └── CommentValidator.cs
+│       │
+│       ├── Services/                     ← Business logic — interface + implementation
+│       │   ├── Bytes/
+│       │   │   ├── IByteService.cs
+│       │   │   └── ByteService.cs
+│       │   ├── Feed/
+│       │   │   ├── IFeedService.cs
+│       │   │   └── FeedService.cs        ← FOR_YOU / FOLLOWING / TRENDING scoring
+│       │   ├── Search/
+│       │   │   ├── ISearchService.cs
+│       │   │   └── SearchService.cs      ← full-text + pgvector hybrid
+│       │   ├── AI/
+│       │   │   ├── IEmbeddingService.cs
+│       │   │   ├── EmbeddingService.cs   ← ONNX Runtime singleton
+│       │   │   ├── IGroqService.cs
+│       │   │   └── GroqService.cs        ← Groq API HTTP client
+│       │   └── Notifications/
+│       │       ├── INotificationService.cs
+│       │       └── NotificationService.cs
+│       │
+│       ├── Commands/                     ← MediatR IRequest + IRequestHandler per domain
+│       │   ├── Bytes/
+│       │   │   ├── CreateByteCommand.cs
+│       │   │   ├── CreateByteCommandHandler.cs
+│       │   │   ├── UpdateByteCommand.cs
+│       │   │   ├── UpdateByteCommandHandler.cs
+│       │   │   ├── DeleteByteCommand.cs
+│       │   │   ├── DeleteByteCommandHandler.cs
+│       │   │   ├── GetBytesQuery.cs
+│       │   │   ├── GetBytesQueryHandler.cs
+│       │   │   ├── GetByteByIdQuery.cs
+│       │   │   └── GetByteByIdQueryHandler.cs
+│       │   ├── Users/
+│       │   │   ├── UpdateProfileCommand.cs
+│       │   │   ├── UpdateProfileCommandHandler.cs
+│       │   │   ├── GetUserByUsernameQuery.cs
+│       │   │   └── GetUserByUsernameQueryHandler.cs
+│       │   ├── Reactions/
+│       │   ├── Bookmarks/
+│       │   ├── Comments/
+│       │   └── Follow/
+│       │
+│       ├── Events/                       ← MediatR INotification + INotificationHandler
+│       │   ├── ByteCreatedEvent.cs       ← triggers embed + tag via MediatR
+│       │   ├── ByteCreatedEventHandler.cs← OnnxEmbedder + GroqService + FeedInvalidate
+│       │   ├── ByteReactedEvent.cs       ← triggers XP award + notification
+│       │   ├── ByteReactedEventHandler.cs
+│       │   ├── UserFollowedEvent.cs      ← triggers notification
+│       │   └── UserFollowedEventHandler.cs
+│       │
+│       └── Infrastructure/
+│           ├── Persistence/
+│           │   └── AppDbContext.cs       ← EF Core DbContext; applies all IEntityTypeConfiguration<T>
+│           ├── Cache/
+│           │   └── RedisFeedCache.cs     ← optional Redis feed wrapper
+│           └── AI/
+│               └── OnnxEmbedder.cs      ← loads model, runs inference
+│
+├── supabase/
+│   ├── config.toml                       ← Supabase local dev config
+│   └── tables/                           ← ⭐ Schema source of truth (table-first)
+│       ├── users.sql
+│       ├── bytes.sql
+│       ├── comments.sql
+│       ├── reactions.sql
+│       ├── bookmarks.sql
+│       ├── follows.sql
+│       ├── notifications.sql
+│       ├── badges.sql
+│       └── drafts.sql
+│
+├── tests/
+│   └── ByteAI.Tests/                     ← Renamed from ByteAI.Api.Tests
+│       ├── ByteAI.Tests.csproj
+│       ├── Commands/                     ← Unit tests per command handler
+│       ├── Services/                     ← Unit tests per service
+│       └── Integration/                  ← WebApplicationFactory tests
+│
+└── infra/
+    ├── docker-compose.yml                ← api + pgvector/pgvector:pg16 + redis:7-alpine
+    └── bicep/
+        ├── main.bicep                    ← 1 Container App
+        └── databases.bicep
+```
 
-    subgraph FS["📰 Feed Service"]
-        direction TB
-        F1[Build FOR_YOU Feed]
-        F2[Following Feed]
-        F3[Trending Feed]
-        F4[Invalidate on New Byte]
-        DB_FS[(Redis Cache<br/>Materialized Feeds<br/>Trending Counts<br/>Feed Cursors)]
-    end
+### Project Dependency Graph
 
-    subgraph SS["🔍 Search Service"]
-        direction TB
-        S1[Keyword Search]
-        S2[Semantic Vector Search]
-        S3[Hybrid Search]
-        S4[Index New Bytes]
-        S5[Search Filters by Tag]
-        DB_SS[(PostgreSQL + pgvector<br/>bytes_search_index<br/>vector embeddings)]
-    end
+```
+ByteAI.Api  ──→  ByteAI.Core
+ByteAI.Tests ──→  ByteAI.Core
+ByteAI.Tests ──→  ByteAI.Api   (WebApplicationFactory)
+```
 
-    subgraph AI["🤖 AI Service"]
-        direction TB
-        A1[Generate Embeddings]
-        A2[Auto-Tag Bytes]
-        A3[RAG Q&A]
-        A4[AI Compose Assist]
-        A5[Feed Personalisation Score]
-        A6[Toxic Comment Detection]
-    end
+### Table-First Workflow
 
-    subgraph NS["🔔 Notification Service"]
-        direction TB
-        N1[Push Notifications]
-        N2[In-App Notifications]
-        N3[Notification History]
-        N4[Read · Unread State]
-        DB_NS[(PostgreSQL<br/>notifications)]
-    end
+```
+supabase/tables/*.sql          ← Developer edits schema here
+    │
+    ▼  (supabase db push / psql)
+PostgreSQL tables              ← Source of truth at runtime
+    │
+    ▼  (EF Core Fluent API configs in ByteAI.Core/Entities/Configurations/)
+AppDbContext                   ← Reads existing tables; NO migrations; NO __EFMigrationsHistory
 ```
 
 ---
 
-## 4. Event Flow — RabbitMQ Topics
+## 4. API Endpoints
 
-```mermaid
-graph TD
-    subgraph PUBLISHERS["📤 EVENT PUBLISHERS"]
-        BS_P[Bytes Service]
-        US_P[User Service]
-        AI_P[AI Service]
-    end
-
-    subgraph RMQ["📨 RabbitMQ — Topics & Exchanges"]
-        T1[[byte.created]]
-        T2[[byte.deleted]]
-        T3[[byte.reacted]]
-        T4[[comment.created]]
-        T5[[user.followed]]
-        T6[[user.registered]]
-        T7[[embedding.completed]]
-        DLQ[[Dead Letter Queue<br/>Failed messages · Retry logic]]
-    end
-
-    subgraph CONSUMERS["📥 EVENT CONSUMERS"]
-        FS_C[Feed Service]
-        SS_C[Search Service]
-        AI_C[AI Service]
-        NS_C[Notification Service]
-        US_C[User Service]
-    end
-
-    BS_P -->|publishes| T1 & T2 & T3 & T4
-    US_P -->|publishes| T5 & T6
-    AI_P -->|publishes| T7
-
-    T1 -->|rebuild feed| FS_C
-    T1 -->|index byte| SS_C
-    T1 -->|generate embedding + tags| AI_C
-
-    T2 -->|remove from feed| FS_C
-    T2 -->|remove from index| SS_C
-
-    T3 -->|send push| NS_C
-    T3 -->|award XP| US_C
-
-    T4 -->|send push| NS_C
-
-    T5 -->|merge feed| FS_C
-    T5 -->|send push| NS_C
-
-    T6 -->|build interest profile| AI_C
-
-    T7 -->|update search index| SS_C
-
-    RMQ -->|on failure| DLQ
-```
+| Method | Route | Feature | Auth |
+|--------|-------|---------|------|
+| `POST` | `/webhooks/clerk` | Auth | Clerk signature |
+| `GET` | `/api/users/me` | Users | JWT |
+| `GET` | `/api/users/:username` | Users | public |
+| `PUT` | `/api/users/me` | Users | JWT |
+| `PUT` | `/api/users/me/preferences` | Users | JWT |
+| `POST` | `/api/users/:username/follow` | Users | JWT |
+| `DELETE` | `/api/users/:username/follow` | Users | JWT |
+| `GET` | `/api/bytes` | Bytes | public |
+| `POST` | `/api/bytes` | Bytes | JWT |
+| `GET` | `/api/bytes/:id` | Bytes | public |
+| `DELETE` | `/api/bytes/:id` | Bytes | JWT (owner) |
+| `POST` | `/api/bytes/:id/like` | Bytes | JWT |
+| `DELETE` | `/api/bytes/:id/like` | Bytes | JWT |
+| `POST` | `/api/bytes/:id/bookmark` | Bytes | JWT |
+| `DELETE` | `/api/bytes/:id/bookmark` | Bytes | JWT |
+| `GET` | `/api/bytes/:id/comments` | Bytes | public |
+| `POST` | `/api/bytes/:id/comments` | Bytes | JWT |
+| `GET` | `/api/feed` | Feed | JWT |
+| `GET` | `/api/search` | Search | public |
+| `GET` | `/api/notifications` | Notifications | JWT |
+| `PUT` | `/api/notifications/:id/read` | Notifications | JWT |
+| `POST` | `/api/ai/suggest-tags` | AI | JWT |
+| `POST` | `/api/ai/ask` | AI | JWT |
 
 ---
 
-## 5. AI Service — Internal Architecture
-
-```mermaid
-graph TB
-    subgraph INPUT["📥 Inputs"]
-        RMQ_IN[RabbitMQ Events<br/>byte.created · user.registered]
-        API_IN[Direct API Calls<br/>from Gateway]
-    end
-
-    subgraph AI_SVC["🤖 AI Service — ASP.NET Core 8 Container"]
-        direction TB
-
-        subgraph EMBED["Embedding Pipeline"]
-            TOK[Tokenizer<br/>Microsoft.ML.Tokenizers]
-            ONNX_RT[ONNX Runtime<br/>all-MiniLM-L6-v2<br/>Runs in-process · CPU only]
-            VEC[384-dim Vector]
-            TOK --> ONNX_RT --> VEC
-        end
-
-        subgraph NLP["NLP Pipeline — via Groq"]
-            PROMPT_NLP[Structured Prompt]
-            GROQ_NLP[Groq API<br/>Llama 3.3 70B]
-            JSON_OUT[JSON Output<br/>tags · category · toxic flag]
-            PROMPT_NLP --> GROQ_NLP --> JSON_OUT
-        end
-
-        subgraph RAG_PIPE["RAG Pipeline"]
-            Q_EMBED[Encode Query → Vector]
-            RETRIEVE[pgvector Similarity Search<br/>SELECT * ORDER BY embedding <=> query_vec LIMIT 5]
-            CONTEXT[Build Context Window<br/>Top-5 relevant Bytes]
-            GROQ_RAG[Groq API<br/>Llama 3.3 70B<br/>Query + Context]
-            ANSWER[Grounded Answer]
-            Q_EMBED --> RETRIEVE --> CONTEXT --> GROQ_RAG --> ANSWER
-        end
-
-        subgraph PERSONAL["Feed Personalisation"]
-            USER_VEC[User Interest Vector<br/>avg of reacted Byte embeddings]
-            BYTE_VEC[Incoming Byte Vector]
-            SCORE[Cosine Similarity Score<br/>Pure vector math · No LLM needed]
-            USER_VEC & BYTE_VEC --> SCORE
-        end
-    end
-
-    subgraph OUTPUT["📤 Outputs"]
-        PG_OUT[(pgvector<br/>Store embeddings)]
-        RMQ_OUT[RabbitMQ<br/>embedding.completed event]
-        API_OUT[API Response<br/>tags · answers · scores]
-    end
-
-    INPUT --> EMBED & NLP & RAG_PIPE & PERSONAL
-    VEC --> PG_OUT
-    VEC --> RMQ_OUT
-    JSON_OUT & ANSWER & SCORE --> API_OUT
-```
-
----
-
-## 6. Feed Personalisation Algorithm
-
-```mermaid
-flowchart TD
-    A[New Byte Created] --> B[AI Service generates embedding\n384-dim vector stored in pgvector]
-    B --> C[RabbitMQ: byte.created event]
-    C --> D[Feed Service receives event]
-
-    D --> E{Which users\nshould see this?}
-
-    E --> F[Followers of author\n→ add to following feed]
-    E --> G[Personalisation scoring\nfor FOR_YOU feed]
-
-    G --> H[Fetch user interest vectors\nfrom Redis cache]
-    H --> I[Cosine similarity:\nnew_byte_vec · user_interest_vec]
-    I --> J{Score > threshold?}
-
-    J -->|Yes · High relevance| K[Add to user FOR_YOU feed\nHigh position]
-    J -->|No · Low relevance| L[Skip or low position]
-
-    K & F --> M[Update Redis\nMaterialized feed list]
-    M --> N[User opens app\nFeed Service reads from Redis\nSub-millisecond response]
-
-    subgraph USER_VECTOR["How user interest vector is built"]
-        UV1[User reacts to a Byte] --> UV2[Fetch that Byte's embedding]
-        UV2 --> UV3[Running average with\nexisting interest vector]
-        UV3 --> UV4[Store updated vector\nin Redis + PostgreSQL]
-    end
-```
-
----
-
-## 7. Search Flow — Hybrid Keyword + Vector
-
-```mermaid
-sequenceDiagram
-    participant U as 📱 User
-    participant G as API Gateway
-    participant SS as Search Service
-    participant AI as AI Service
-    participant PG as PostgreSQL + pgvector
-
-    U->>G: GET /search?q=react+performance
-    G->>SS: Forward request
-
-    par Keyword Search
-        SS->>PG: Full-text search on bytes_search_index<br/>WHERE to_tsvector(body) @@ plainto_tsquery('react performance')
-        PG-->>SS: Keyword results with rank scores
-    and Vector Search
-        SS->>AI: POST /embed {text: "react performance"}
-        AI-->>SS: [0.12, -0.34, 0.87, ...] 384-dim vector
-        SS->>PG: SELECT * FROM bytes<br/>ORDER BY embedding <=> query_vector<br/>LIMIT 20
-        PG-->>SS: Semantic results with distance scores
-    end
-
-    SS->>SS: Reciprocal Rank Fusion<br/>Merge + re-rank both result sets
-
-    SS-->>G: Top 10 blended results
-    G-->>U: Search results with highlighted excerpts
-```
-
----
-
-## 8. Data Architecture
+## 5. Data Model (PostgreSQL Only)
 
 ```mermaid
 erDiagram
-    POSTGRESQL {
+    users {
         uuid id PK
-        text username
+        text clerk_id UK
+        text username UK
+        text display_name
         text bio
         text role_title
         text company
+        text avatar_url
         int level
         int xp
         int streak
         text domain
         text seniority
         text[] tech_stack
-        text[] algo_preferences
+        text[] feed_preferences
+        bool is_verified
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    bytes {
+        uuid id PK
+        uuid author_id FK
+        text title
+        text body
+        text code_snippet
+        text language
+        text[] tags
+        int like_count
+        int comment_count
+        int bookmark_count
+        int view_count
+        vector embedding
+        tsvector search_vector
+        text type
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    comments {
+        uuid id PK
+        uuid byte_id FK
+        uuid author_id FK
+        uuid parent_id FK
+        text body
+        int vote_count
         timestamp created_at
     }
 
-    FOLLOWS {
+    reactions {
+        uuid byte_id FK
+        uuid user_id FK
+        text type
+        timestamp created_at
+    }
+
+    bookmarks {
+        uuid byte_id FK
+        uuid user_id FK
+        timestamp created_at
+    }
+
+    follows {
         uuid follower_id FK
         uuid following_id FK
         timestamp created_at
     }
 
-    BADGES {
-        uuid id PK
-        uuid user_id FK
-        text badge_type
-        timestamp earned_at
-    }
-
-    NOTIFICATIONS {
+    notifications {
         uuid id PK
         uuid user_id FK
         text type
@@ -393,221 +367,169 @@ erDiagram
         timestamp created_at
     }
 
-    BYTES_SEARCH_INDEX {
-        uuid byte_id PK
+    badges {
+        uuid id PK
+        uuid user_id FK
+        text badge_type
+        timestamp earned_at
+    }
+
+    drafts {
+        uuid id PK
+        uuid author_id FK
         text title
         text body
-        text author_id
+        text code_snippet
+        text language
         text[] tags
-        vector embedding
-        tsvector search_vector
         timestamp created_at
+        timestamp updated_at
     }
 
-    MONGODB_BYTES {
-        ObjectId _id PK
-        string author_id
-        string title
-        string body
-        string code_snippet
-        string language
-        string[] tags
-        int reaction_count
-        int comment_count
-        timestamp created_at
-    }
-
-    MONGODB_COMMENTS {
-        ObjectId _id PK
-        string byte_id FK
-        string author_id
-        string body
-        string parent_id
-        timestamp created_at
-    }
-
-    MONGODB_REACTIONS {
-        ObjectId _id PK
-        string byte_id FK
-        string user_id
-        string type
-        timestamp created_at
-    }
-
-    POSTGRESQL ||--o{ FOLLOWS : "has"
-    POSTGRESQL ||--o{ BADGES : "earns"
-    POSTGRESQL ||--o{ NOTIFICATIONS : "receives"
-    POSTGRESQL ||--o{ BYTES_SEARCH_INDEX : "indexes"
-    MONGODB_BYTES ||--o{ MONGODB_COMMENTS : "has"
-    MONGODB_BYTES ||--o{ MONGODB_REACTIONS : "has"
+    users ||--o{ bytes : "writes"
+    users ||--o{ comments : "writes"
+    users ||--o{ reactions : "makes"
+    users ||--o{ bookmarks : "saves"
+    users ||--o{ follows : "follows"
+    users ||--o{ notifications : "receives"
+    users ||--o{ badges : "earns"
+    users ||--o{ drafts : "drafts"
+    bytes ||--o{ comments : "has"
+    bytes ||--o{ reactions : "receives"
+    bytes ||--o{ bookmarks : "saved in"
 ```
 
 ---
 
-## 9. Deployment Architecture on Azure
+## 6. In-Process Event Flow (MediatR)
+
+Replaces RabbitMQ for the monolith phase. Events are synchronous but handlers
+can be made async with background `IHostedService` if needed.
+
+```
+POST /api/bytes
+  └── BytesService.CreateAsync()
+        ├── INSERT INTO bytes
+        └── Publish ByteCreatedEvent
+              ├── EmbeddingHandler    → OnnxEmbedder → UPDATE bytes SET embedding
+              ├── TaggingHandler      → GroqService  → UPDATE bytes SET tags
+              └── FeedInvalidateHandler → RedisFeedCache.InvalidateAsync()
+
+POST /api/bytes/:id/like
+  └── BytesService.LikeAsync()
+        ├── INSERT INTO reactions
+        ├── UPDATE bytes SET like_count
+        └── Publish ByteReactedEvent
+              ├── XpHandler           → award XP to author → UPDATE users SET xp
+              └── NotificationHandler → INSERT INTO notifications
+```
+
+---
+
+## 7. Feed Personalisation
+
+No Redis dependency for MVP — query Postgres directly with indexes.
+Redis added as a caching layer once traffic warrants it.
+
+```
+GET /api/feed?filter=for_you
+  └── FeedService.GetForYouAsync(userId)
+        1. Fetch user.feed_preferences + user.interest_embedding from users table
+        2. SELECT bytes
+           ORDER BY (
+             0.4 * cosine_similarity(embedding, user_interest_vec)  -- semantic match
+           + 0.3 * recency_score(created_at)                        -- freshness
+           + 0.2 * engagement_score(like_count, comment_count)      -- popularity
+           + 0.1 * following_boost(author_id, following_ids)        -- social graph
+           )
+           LIMIT 20
+```
+
+---
+
+## 8. Search — Hybrid Full-Text + Vector
+
+```
+GET /api/search?q=react+performance
+  └── SearchService.SearchAsync(query)
+        ├── Full-text:  WHERE search_vector @@ plainto_tsquery('react performance')
+        ├── Vector:     ORDER BY embedding <=> query_embedding LIMIT 20
+        └── Merge via Reciprocal Rank Fusion → return top 10
+```
+
+---
+
+## 9. Deployment — Single Container
 
 ```mermaid
 graph TB
-    subgraph INTERNET["🌐 Internet"]
-        USER[📱 iPhone PWA User]
+    subgraph AZURE["☁️ Azure"]
+        SWA[Azure Static Web Apps<br/>Next.js PWA · Free]
+        ACA[Azure Container Apps<br/>ByteAI.Api<br/>Single container · Scales to zero]
+        PG_MS[Azure DB for PostgreSQL<br/>Flexible Server + pgvector<br/>Free 12 months]
+        ACI1[Redis · ACI Container<br/>Optional MVP]
     end
 
-    subgraph AZURE["☁️ Microsoft Azure"]
-
-        subgraph FRONTEND["Static Hosting"]
-            SWA[Azure Static Web Apps\nReact PWA · Free Tier\nGlobal CDN]
-        end
-
-        subgraph GATEWAY_ZONE["API Gateway"]
-            YARP_ACA[YARP Gateway\nAzure Container Apps\nJWT Validation · Routing · Rate Limit]
-        end
-
-        subgraph ACA_ZONE["Azure Container Apps — Microservices"]
-            ACA1[User Service\nASP.NET Core 8]
-            ACA2[Bytes Service\nASP.NET Core 8]
-            ACA3[Feed Service\nASP.NET Core 8]
-            ACA4[Search Service\nASP.NET Core 8]
-            ACA5[AI Service\nASP.NET Core 8\n+ ONNX Runtime]
-            ACA6[Notification Service\nASP.NET Core 8]
-        end
-
-        subgraph ACI_ZONE["Azure Container Instances — Always On"]
-            ACI1[Redis\nredis:7-alpine]
-            ACI2[Jaeger\nTracing UI]
-            ACI3[Grafana\nMetrics UI]
-        end
-
-        subgraph MANAGED["Managed Services — No Containers Needed"]
-            PG_MS[Azure Database for PostgreSQL\nFlexible Server + pgvector\n12-month free tier]
-            COSMOS[Azure Cosmos DB\nMongoDB API\nFree tier forever]
-            ACR[Azure Container Registry\nStores Docker images]
-        end
-
-        subgraph EXTERNAL_SVC["External Free Services"]
-            CLERK_EXT[Clerk Auth\nFree 10k MAU]
-            CLOUDAMQP[CloudAMQP\nRabbitMQ\nFree 1M msg/month]
-            GROQ_EXT[Groq API\nLlama 3.3 70B\nFree tier]
-        end
-
-        subgraph CICD["CI/CD"]
-            GH[GitHub Actions\nBuild · Test · Push to ACR\nDeploy to ACA]
-        end
-
+    subgraph EXTERNAL["External Services"]
+        CLERK_EXT[Clerk Auth · Free 10k MAU]
+        GROQ_EXT[Groq API · Free tier]
+        GH[GitHub Actions · CI/CD]
+        ACR[Azure Container Registry]
     end
 
-    USER --> SWA
-    USER --> CLERK_EXT
-    SWA --> YARP_ACA
-    YARP_ACA --> ACA1 & ACA2 & ACA3 & ACA4 & ACA5 & ACA6
-
-    ACA1 --> PG_MS
-    ACA2 --> COSMOS
-    ACA3 --> ACI1
-    ACA4 --> PG_MS
-    ACA5 --> PG_MS
-    ACA5 --> GROQ_EXT
-    ACA6 --> PG_MS
-
-    ACA1 & ACA2 & ACA3 & ACA4 & ACA5 & ACA6 --> CLOUDAMQP
-    ACA1 & ACA2 & ACA3 & ACA4 & ACA5 & ACA6 --> ACI2
-    ACA1 & ACA2 & ACA3 & ACA4 & ACA5 & ACA6 --> ACI3
-
-    GH --> ACR --> ACA_ZONE
+    SWA --> ACA
+    ACA --> PG_MS
+    ACA --> ACI1
+    ACA --> GROQ_EXT
+    GH --> ACR --> ACA
 ```
 
 ---
 
-## 10. .NET Solution Structure
-
-```
-ByteAI.sln
-│
-├── src/
-│   ├── Services/
-│   │   ├── ByteAI.UserService/
-│   │   │   ├── Controllers/
-│   │   │   ├── Domain/
-│   │   │   │   ├── Entities/        User.cs · Follow.cs · Badge.cs
-│   │   │   │   ├── Events/          UserRegisteredEvent.cs
-│   │   │   │   └── Repositories/   IUserRepository.cs
-│   │   │   ├── Infrastructure/
-│   │   │   │   ├── Persistence/     PostgresUserRepository.cs
-│   │   │   │   └── Messaging/       UserEventPublisher.cs
-│   │   │   ├── Application/
-│   │   │   │   ├── Commands/        RegisterUserCommand.cs
-│   │   │   │   └── Queries/         GetUserProfileQuery.cs
-│   │   │   ├── Consumers/           ByteReactedConsumer.cs
-│   │   │   └── Program.cs
-│   │   │
-│   │   ├── ByteAI.BytesService/     (same structure)
-│   │   ├── ByteAI.FeedService/      (same structure)
-│   │   ├── ByteAI.SearchService/    (same structure)
-│   │   ├── ByteAI.AIService/        (same structure + /Models/)
-│   │   └── ByteAI.NotificationService/
-│   │
-│   ├── Gateway/
-│   │   └── ByteAI.Gateway/
-│   │       ├── Program.cs           YARP config · JWT validation
-│   │       └── appsettings.json     Route mappings
-│   │
-│   └── Shared/
-│       ├── ByteAI.Shared.Contracts/ Shared event contracts · DTOs
-│       ├── ByteAI.Shared.Auth/      JWT helpers · ClaimsPrincipal extensions
-│       └── ByteAI.Shared.Messaging/ MassTransit setup · Base consumers
-│
-├── tests/
-│   ├── ByteAI.UserService.Tests/    Unit + integration tests
-│   ├── ByteAI.BytesService.Tests/
-│   └── ByteAI.Integration.Tests/   End-to-end API tests
-│
-├── infra/
-│   ├── docker-compose.yml           Local dev: all services + deps
-│   ├── docker-compose.infra.yml     Local dev: Redis · RabbitMQ · PG · Mongo
-│   └── bicep/                       Azure IaC
-│       ├── main.bicep
-│       ├── containerApps.bicep
-│       └── databases.bicep
-│
-└── .github/
-    └── workflows/
-        ├── ci.yml                   Build + test on PR
-        └── cd.yml                   Deploy to Azure on merge to main
-```
-
----
-
-## 11. Key Technology Decisions
+## 10. Technology Decisions
 
 | Concern | Choice | Why |
 |---|---|---|
-| **Auth** | Clerk (free 10k MAU) | Handles Magic Link · Google · Facebook · Phone OTP · issues JWT · zero infra |
-| **API Gateway** | YARP (ASP.NET Core) | .NET native · free · JWT validation · rate limiting · path routing |
-| **Relational DB** | PostgreSQL (Azure Flexible) | Free 12mo · pgvector built-in · ACID · great with .NET |
-| **Document DB** | MongoDB (Cosmos DB free) | Flexible schema for Bytes/comments · Azure-native · free tier |
-| **Cache** | Redis (ACI container) | Materialized feeds · sub-ms reads · session cache |
-| **Message Broker** | RabbitMQ (CloudAMQP) | Free 1M msg/month · pub/sub · dead letter queues · MassTransit |
-| **Vector Search** | pgvector in PostgreSQL | No extra service · free · HNSW index · hybrid with full-text |
-| **Embeddings** | all-MiniLM-L6-v2 (ONNX) | In-process · no API · no GPU · 384-dim · 80MB model |
-| **LLM + NLP** | Groq — Llama 3.3 70B | Free tier · fastest inference · handles both NLP and generative |
-| **Observability** | OpenTelemetry + Jaeger + Grafana | Free · distributed tracing · .NET native SDK |
-| **Container Runtime** | Azure Container Apps | Scales to zero · serverless · free tier · best for microservices |
-| **CI/CD** | GitHub Actions | Free · Azure integrations · builds Docker images · deploys to ACA |
-| **IaC** | Bicep | Azure-native · simpler than Terraform for pure Azure stacks |
+| **Auth** | Clerk (free 10k MAU) | Magic Link · Google · FB · Phone OTP · zero infra |
+| **API** | ASP.NET Core 8 Minimal APIs | Fast, clean, Primary Constructors, easy to test |
+| **In-process events** | MediatR | Replaces RabbitMQ; same handler interface — extractable later |
+| **ORM** | EF Core 9 + Npgsql (table-first) | PostgreSQL-native, LINQ queries; Fluent API configs map to existing tables; NO migrations |
+| **Database** | PostgreSQL (Azure Flexible) | ACID, pgvector, full-text search, free 12 months |
+| **Document storage** | PostgreSQL `jsonb` | Replaces MongoDB — flexible enough for bytes metadata |
+| **Vector search** | pgvector (HNSW index) | No extra service, built into PostgreSQL |
+| **Embeddings** | ONNX Runtime all-MiniLM-L6-v2 | In-process, no GPU, 80MB, 384-dim |
+| **LLM / NLP** | Groq — Llama 3.3 70B | Free tier, fastest inference |
+| **Cache** | Redis (ACI) | Feed materialisation — optional for MVP |
+| **Observability** | OpenTelemetry + Serilog + Grafana | Free, .NET-native |
+| **Container** | Azure Container Apps | Scale to zero, free tier, single container |
+| **IaC** | Bicep | Azure-native, simpler than Terraform |
+| **CI/CD** | GitHub Actions | Free, Docker build + push to ACR + deploy to ACA |
 
 ---
 
-## 12. Estimated Monthly Cost
+## 11. Estimated Monthly Cost
 
-| Service | Free Tier | Est. Cost After Free |
+| Service | Free Tier | Est. Cost |
 |---|---|---|
-| Azure Static Web Apps | ✅ Free forever | $0 |
-| Azure Container Apps | 180k vCPU-sec/month free | $5–15 |
-| Azure DB for PostgreSQL | ✅ Free 12 months | $15/mo after |
-| Azure Cosmos DB (MongoDB) | ✅ Free forever (25GB) | $0 |
+| Azure Static Web Apps | Free forever | $0 |
+| Azure Container Apps | 180k vCPU-sec/month free | $0–5 |
+| Azure DB for PostgreSQL | Free 12 months | $0 → $15/mo after |
 | Redis (ACI) | No free tier | $10–15 |
-| CloudAMQP RabbitMQ | ✅ Free 1M msg/month | $0 |
-| Clerk Auth | ✅ Free 10k MAU | $0 |
-| Groq API | ✅ Free tier | $0 |
-| Azure Container Registry | ✅ Free tier | $0 |
-| GitHub Actions | ✅ Free for public repos | $0 |
-| **Total** | | **$0–30/month** |
+| Clerk Auth | Free 10k MAU | $0 |
+| Groq API | Free tier | $0 |
+| Azure Container Registry | Free tier | $0 |
+| GitHub Actions | Free public repos | $0 |
+| **Total** | | **$0–20/month** |
+
+---
+
+## 12. Future Migration Path to Microservices
+
+When the time comes, each domain can be extracted without rewriting:
+
+1. Copy `Features/<Domain>/` → new `ByteAI.<Domain>Service` project
+2. Move DB tables for that domain to a separate Postgres schema or instance
+3. Replace `MediatR` events with RabbitMQ/MassTransit at the extracted boundary
+4. Add YARP Gateway to route between services
+
+The monolith acts as a living specification for what each future service needs to do.

@@ -1,0 +1,45 @@
+services:
+  api:
+    build:
+      context: ../Service/ByteAI.Api
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__Postgres=Host=postgres;Port=5432;Database=byteai;Username=byteai;Password=byteai
+      - ConnectionStrings__Redis=redis:6379
+      - Clerk__Authority=${CLERK_AUTHORITY}
+      - Groq__ApiKey=${GROQ_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: byteai
+      POSTGRES_USER: byteai
+      POSTGRES_PASSWORD: byteai
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U byteai -d byteai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  pg_data:
+  redis_data:

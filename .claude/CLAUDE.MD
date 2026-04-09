@@ -2,15 +2,19 @@
 
 ## 🚀 Project Vision & Stack
 **ByteAI** is a tech-focused short-content social media platform (Inshorts for Tech).
+
+> **Architecture phase: Monolith-first.** Single ASP.NET Core 8 API. Microservices extraction deferred.
+
 - **Frontend:** Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui — hosted on Azure Static Web Apps.
-- **Auth:** Clerk (Magic Link · Google · Facebook · Phone OTP) — issues JWTs.
-- **API Gateway:** YARP Reverse Proxy on ASP.NET Core 8 — JWT validation, rate limiting, routing.
-- **Microservices (Azure Container Apps, ASP.NET Core 8):** User Service · Bytes Service · Feed Service · Search Service · AI Service · Notification Service.
-- **Data:** PostgreSQL + pgvector (Azure Flexible) · MongoDB/Cosmos DB · Redis (ACI).
-- **Messaging:** RabbitMQ via CloudAMQP (MassTransit) — event-driven between services.
-- **AI:** ONNX Runtime (all-MiniLM-L6-v2, in-process, 384-dim embeddings) · Groq API (Llama 3.3 70B, NLP/RAG).
-- **Observability:** OpenTelemetry · Jaeger · Prometheus + Grafana.
-- **Infrastructure:** Azure Container Apps, Bicep IaC, GitHub Actions CI/CD.
+- **Auth:** Clerk (Magic Link · Google · Facebook · Phone OTP) — issues JWTs validated directly in the monolith.
+- **Backend:** Single ASP.NET Core 8 Web API (`Service/ByteAI.Api`) — Minimal APIs, vertical slice by feature.
+- **In-process events:** MediatR — replaces RabbitMQ for now (e.g. ByteCreated → embed → tag).
+- **Data:** PostgreSQL + pgvector (Azure Flexible Server) · Redis for feed cache (optional MVP).
+- **AI:** ONNX Runtime (all-MiniLM-L6-v2, 384-dim, in-process singleton) · Groq API (Llama 3.3 70B, NLP/RAG).
+- **Observability:** OpenTelemetry + Serilog (structured logs) · Prometheus + Grafana.
+- **Infrastructure:** Single Azure Container App, Bicep IaC, GitHub Actions CI/CD.
+
+> **Future migration path:** Features are vertical slices — each can be extracted to its own service by moving its `Features/<Domain>/` folder and its DB tables. No rewrite needed.
 
 ## 🧠 Core Philosophy (The "Soul")
 Always adhere to the 5 core principles defined in `.claude/guides/soul.md`:
@@ -89,9 +93,9 @@ Before starting any feature, trigger the planning sequence:
 ### Skills (`.claude/skills/`)
 | Domain | Files |
 |--------|-------|
-| Backend | `backend/dotnet-patterns.md`, `backend/postgres-patterns.md`, `backend/api-design.md`, `backend/database-migrations.md`, `backend/backend-patterns.md` |
-| Frontend | `frontend/frontend-patterns.md`, `frontend/design-system.md`, `frontend/frontend-design.md`, `frontend/nextjs-turbopack.md` |
-| Quality | `quality/coding-standards.md`, `quality/tdd-workflow.md`, `quality/verification-loop.md`, `quality/csharp-testing.md`, `quality/e2e-testing.md`, `quality/security-review.md`, `quality/benchmark.md` |
+| Backend | `backend/dotnet-patterns.md`, `backend/db/postgres.md`, `backend/testing.md`, `backend/security.md`, `backend/backend-todo.md` |
+| Frontend | `frontend/frontend-patterns.md`, `frontend/design.md`, `frontend/testing.md` |
+| Quality | `quality/coding-standards.md`, `quality/verification-loop.md`, `quality/benchmark.md`, `frontend/e2e-testing.md` |
 | Deployment | `deployment/docker-patterns.md`, `deployment/github-ops.md`, `deployment/git-workflow.md`, `deployment/deployment-patterns.md` |
 | Social/SEO | `social/social-graph-ranker.md`, `social/seo.md`, `social/x-api.md` |
 | Product | `product/product-lens.md`, `product/product-capability.md` |
