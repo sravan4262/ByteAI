@@ -11,17 +11,26 @@ namespace ByteAI.Api.Controllers;
 
 [ApiController]
 [Route("api/bytes/{byteId:guid}/reactions")]
+[Produces("application/json")]
+[Tags("Reactions")]
 public sealed class ReactionsController(IMediator mediator) : ControllerBase
 {
+    /// <summary>Get aggregated reaction counts for a byte.</summary>
     [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<ReactionsCountResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<ReactionsCountResponse>>> GetReactions(Guid byteId, CancellationToken ct)
     {
         var result = await mediator.Send(new GetByteReactionsQuery(byteId), ct);
         return Ok(ApiResponse<ReactionsCountResponse>.Success(result.ToResponse()));
     }
 
+    /// <summary>Add a reaction to a byte. <c>type</c> must be one of: <c>like</c>, <c>fire</c>, <c>mind_blown</c>, <c>bookmark</c>.</summary>
     [HttpPost]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ReactionResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ReactionResponse>>> CreateReaction(
         Guid byteId, [FromBody] CreateReactionRequest request, CancellationToken ct)
     {
@@ -37,8 +46,12 @@ public sealed class ReactionsController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
+    /// <summary>Remove the authenticated user's reaction from a byte.</summary>
     [HttpDelete]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteReaction(Guid byteId, CancellationToken ct)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();

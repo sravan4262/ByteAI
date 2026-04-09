@@ -13,10 +13,15 @@ namespace ByteAI.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[Produces("application/json")]
+[Tags("Notifications")]
 public sealed class NotificationsController(IMediator mediator) : ControllerBase
 {
-    /// <summary>GET /api/notifications?unreadOnly=true&amp;page=1&amp;pageSize=20</summary>
+    /// <summary>List the authenticated user's notifications.</summary>
+    /// <param name="unreadOnly">When <c>true</c>, returns only unread notifications.</param>
     [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<PagedResponse<NotificationResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<PagedResponse<NotificationResponse>>>> GetNotifications(
         [FromQuery] bool unreadOnly = false,
         [FromQuery] int page = 1,
@@ -35,8 +40,11 @@ public sealed class NotificationsController(IMediator mediator) : ControllerBase
                 result.Total, result.Page, result.PageSize)));
     }
 
-    /// <summary>PUT /api/notifications/{id}/read</summary>
+    /// <summary>Mark a notification as read.</summary>
     [HttpPut("{id:guid}/read")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> MarkRead(Guid id, CancellationToken ct)
     {
         var userId = GetUserId();

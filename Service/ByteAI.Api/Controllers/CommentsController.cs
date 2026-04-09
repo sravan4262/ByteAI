@@ -12,9 +12,13 @@ namespace ByteAI.Api.Controllers;
 
 [ApiController]
 [Route("api/bytes/{byteId:guid}/comments")]
+[Produces("application/json")]
+[Tags("Comments")]
 public sealed class CommentsController(IMediator mediator) : ControllerBase
 {
+    /// <summary>List comments on a byte.</summary>
     [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<PagedResponse<CommentResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<PagedResponse<CommentResponse>>>> GetComments(
         Guid byteId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default)
     {
@@ -23,8 +27,12 @@ public sealed class CommentsController(IMediator mediator) : ControllerBase
         return Ok(ApiResponse<PagedResponse<CommentResponse>>.Success(response));
     }
 
+    /// <summary>Add a comment to a byte. Supports threaded replies via <paramref name="request"/>.<c>ParentCommentId</c>.</summary>
     [HttpPost]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<CommentResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<CommentResponse>>> CreateComment(
         Guid byteId, [FromBody] CreateCommentRequest request, CancellationToken ct)
     {
@@ -35,8 +43,13 @@ public sealed class CommentsController(IMediator mediator) : ControllerBase
         return CreatedAtAction(nameof(GetComments), new { byteId }, ApiResponse<CommentResponse>.Success(result.ToResponse()));
     }
 
+    /// <summary>Update a comment's body. Only the comment author may update it.</summary>
     [HttpPut("~/api/comments/{commentId:guid}")]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<CommentResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<CommentResponse>>> UpdateComment(
         Guid commentId, [FromBody] UpdateCommentRequest request, CancellationToken ct)
     {
@@ -52,8 +65,13 @@ public sealed class CommentsController(IMediator mediator) : ControllerBase
         catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
+    /// <summary>Delete a comment. Only the comment author may delete it.</summary>
     [HttpDelete("~/api/comments/{commentId:guid}")]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteComment(Guid commentId, CancellationToken ct)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();

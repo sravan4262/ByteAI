@@ -10,9 +10,12 @@ using ByteAI.Core.Services.Search;
 using ByteAI.Core.Validators;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using Pgvector.EntityFrameworkCore;
+
 using Serilog;
 
 // ── Serilog bootstrap ────────────────────────────────────────────────────────
@@ -37,7 +40,7 @@ try
             npgsql => npgsql.UseVector()));
 
     // ── Auth (Clerk JWT) ──────────────────────────────────────────────────────
-    builder.Services.AddClerkJwt(builder.Configuration);
+    builder.Services.AddClerkJwt(builder.Configuration, builder.Environment);
 
     // ── Controllers ──────────────────────────────────────────────────────────
     builder.Services.AddControllers();
@@ -61,13 +64,15 @@ try
     builder.Services.AddScoped<ISearchService, SearchService>();
     builder.Services.AddScoped<INotificationService, NotificationService>();
 
-    // ── Redis (optional) — register cache + RedisFeedCache if configured ─────
+    // ── Redis (optional) ─────────────────────────────────────────────────────
+    // RedisFeedCache is always registered so MediatR handlers can inject it as nullable.
+    // When Redis is not configured we fall back to a no-op in-memory cache.
     var redisConn = builder.Configuration.GetConnectionString("Redis");
     if (!string.IsNullOrEmpty(redisConn))
-    {
         builder.Services.AddStackExchangeRedisCache(opt => opt.Configuration = redisConn);
-        builder.Services.AddScoped<RedisFeedCache>();
-    }
+    else
+        builder.Services.AddDistributedMemoryCache(); // no-op fallback — keeps IDistributedCache resolvable
+    builder.Services.AddScoped<RedisFeedCache>();
 
     // ── CORS ─────────────────────────────────────────────────────────────────
     builder.Services.AddCors(opt =>
@@ -78,8 +83,73 @@ try
                 .AllowAnyMethod()
                 .AllowCredentials()));
 
-    // ── OpenAPI ───────────────────────────────────────────────────────────────
-    builder.Services.AddOpenApi();
+    // ── OpenAPI + Scalar ─────────────────────────────────────────────────────
+    builder.Services.AddOpenApi(options =>
+    {
+        // Document metadata
+        options.AddDocumentTransformer((document, _, _) =>
+        {
+            document.Info = new OpenApiInfo
+            {
+                Title = "ByteAI API",
+                Version = "v1",
+                Description = """
+                    **ByteAI** — tech-focused short-content social platform.
+
+                    ## Authentication
+                    All protected endpoints require a Clerk JWT passed as:
+                    ```
+                    Authorization: Bearer <token>
+                    ```
+                    Obtain the token from your Clerk session (`getToken()` on the frontend).
+
+                    ## Rate Limiting
+                    - Global: 120 requests / minute
+                    - AI endpoints (`/api/ai/*`): stricter — see individual endpoints
+                    """,
+                Contact = new OpenApiContact { Name = "ByteAI", Email = "hello@byteai.dev" },
+            };
+
+            // Register Bearer security scheme
+            document.Components ??= new OpenApiComponents();
+            document.Components.SecuritySchemes ??= new Dictionary<string, OpenApiSecurityScheme>();
+            document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                Description = "Clerk-issued JWT. Format: `Bearer <token>`",
+            };
+
+            return Task.CompletedTask;
+        });
+
+        // Automatically attach Bearer requirement to any [Authorize] endpoint
+        options.AddOperationTransformer((operation, context, _) =>
+        {
+            var hasAuthorize = context.Description.ActionDescriptor.EndpointMetadata
+                .OfType<AuthorizeAttribute>()
+                .Any();
+
+            if (hasAuthorize)
+            {
+                operation.Security ??= [];
+                operation.Security.Add(new OpenApiSecurityRequirement
+                {
+                    [new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Id = "Bearer",
+                            Type = ReferenceType.SecurityScheme,
+                        },
+                    }] = [],
+                });
+            }
+
+            return Task.CompletedTask;
+        });
+    });
 
     // ── Rate limiting ─────────────────────────────────────────────────────────
     builder.Services.AddRateLimiter(opt =>
@@ -95,7 +165,14 @@ try
     app.UseSerilogRequestLogging();
 
     if (app.Environment.IsDevelopment())
+    {
         app.MapOpenApi();
+        app.UseSwaggerUI(options =>
+        {
+            options.SwaggerEndpoint("/openapi/v1.json", "ByteAI API v1");
+            options.RoutePrefix = "swagger";
+        });
+    }
 
     app.UseCors();
     app.UseRateLimiter();

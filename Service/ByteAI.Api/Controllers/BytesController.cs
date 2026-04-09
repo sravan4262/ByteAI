@@ -12,9 +12,18 @@ namespace ByteAI.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
+[Tags("Bytes")]
 public sealed class BytesController(IMediator mediator) : ControllerBase
 {
+    /// <summary>List bytes with optional filtering and pagination.</summary>
+    /// <param name="page">Page number (1-based).</param>
+    /// <param name="pageSize">Items per page (max 100).</param>
+    /// <param name="authorId">Filter by author GUID.</param>
+    /// <param name="tags">Comma-separated tag filter, e.g. <c>csharp,dotnet</c>.</param>
+    /// <param name="sort">Sort order: <c>recent</c> | <c>trending</c> | <c>top</c>.</param>
     [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<PagedResponse<ByteResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<PagedResponse<ByteResponse>>>> GetBytes(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -29,7 +38,10 @@ public sealed class BytesController(IMediator mediator) : ControllerBase
         return Ok(ApiResponse<PagedResponse<ByteResponse>>.Success(response));
     }
 
+    /// <summary>Get a single byte by ID.</summary>
     [HttpGet("{byteId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<ByteResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ByteResponse>>> GetByteById(Guid byteId, CancellationToken ct)
     {
         var result = await mediator.Send(new GetByteByIdQuery(byteId), ct);
@@ -37,8 +49,12 @@ public sealed class BytesController(IMediator mediator) : ControllerBase
         return Ok(ApiResponse<ByteResponse>.Success(result.ToResponse()));
     }
 
+    /// <summary>Create a new byte. Requires authentication.</summary>
     [HttpPost]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ByteResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<ByteResponse>>> CreateByte([FromBody] CreateByteRequest request, CancellationToken ct)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
@@ -48,8 +64,13 @@ public sealed class BytesController(IMediator mediator) : ControllerBase
         return CreatedAtAction(nameof(GetByteById), new { byteId = result.Id }, ApiResponse<ByteResponse>.Success(result.ToResponse()));
     }
 
+    /// <summary>Update a byte. Only the author may update their own bytes.</summary>
     [HttpPut("{byteId:guid}")]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<ByteResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ByteResponse>>> UpdateByte(Guid byteId, [FromBody] UpdateByteRequest request, CancellationToken ct)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
@@ -64,8 +85,13 @@ public sealed class BytesController(IMediator mediator) : ControllerBase
         catch (UnauthorizedAccessException) { return Forbid(); }
     }
 
+    /// <summary>Delete a byte. Only the author may delete their own bytes.</summary>
     [HttpDelete("{byteId:guid}")]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteByte(Guid byteId, CancellationToken ct)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();

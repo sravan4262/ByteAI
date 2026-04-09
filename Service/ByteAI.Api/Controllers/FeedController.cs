@@ -12,9 +12,20 @@ namespace ByteAI.Api.Controllers;
 
 [ApiController]
 [Route("api/feed")]
+[Produces("application/json")]
+[Tags("Feed")]
 public sealed class FeedController(IMediator mediator) : ControllerBase
 {
+    /// <summary>
+    /// Get the authenticated user's personalised feed.
+    /// Uses pgvector cosine similarity when the user has an interest embedding;
+    /// falls back to engagement-weighted recency scoring.
+    /// </summary>
+    /// <param name="sort">Feed algorithm: <c>trending</c> | <c>for_you</c> | <c>following</c>.</param>
+    /// <param name="tags">Comma-separated tag filter.</param>
     [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<PagedResponse<ByteResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     // [Authorize]
     public async Task<ActionResult<ApiResponse<PagedResponse<ByteResponse>>>> GetFeed(
         [FromQuery] int page = 1,

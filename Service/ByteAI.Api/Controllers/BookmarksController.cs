@@ -12,10 +12,16 @@ namespace ByteAI.Api.Controllers;
 
 [ApiController]
 [Route("api/bytes/{byteId:guid}/bookmarks")]
+[Produces("application/json")]
+[Tags("Bookmarks")]
 public sealed class BookmarksController(IMediator mediator) : ControllerBase
 {
+    /// <summary>Bookmark a byte.</summary>
     [HttpPost]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<BookmarkResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<BookmarkResponse>>> CreateBookmark(Guid byteId, CancellationToken ct)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
@@ -29,8 +35,12 @@ public sealed class BookmarksController(IMediator mediator) : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
+    /// <summary>Remove a bookmark.</summary>
     [HttpDelete]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteBookmark(Guid byteId, CancellationToken ct)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
@@ -41,8 +51,11 @@ public sealed class BookmarksController(IMediator mediator) : ControllerBase
         return Ok(ApiResponse<bool>.Success(true));
     }
 
+    /// <summary>List the authenticated user's bookmarked bytes.</summary>
     [HttpGet("~/api/me/bookmarks")]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<PagedResponse<ByteResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<PagedResponse<ByteResponse>>>> GetMyBookmarks(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {

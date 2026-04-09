@@ -12,11 +12,22 @@ namespace ByteAI.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("webhooks")]
+[Produces("application/json")]
+[Tags("Webhooks")]
 public sealed class WebhooksController(AppDbContext db) : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
+    /// <summary>
+    /// Clerk webhook receiver. Handles <c>user.created</c> and <c>user.updated</c> events
+    /// to keep the local users table in sync with Clerk.
+    /// </summary>
+    /// <remarks>
+    /// ⚠️ svix-signature validation is not yet implemented. Do not expose this endpoint publicly without it.
+    /// </remarks>
     [HttpPost("clerk")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ClerkWebhook(CancellationToken ct)
     {
         // TODO: Validate svix-id, svix-timestamp, svix-signature headers
