@@ -3,18 +3,16 @@ namespace ByteAI.Api.ViewModels;
 public sealed record CreateByteRequest(
     string Title,
     string Body,
-    string? CodeSnippet,
+    string? CodeSnippet,    // plain string — frontend must send as string, not object
     string? Language,
-    List<string> Tags,
-    string Type = "article"
+    string Type = "article" // article | tutorial | snippet | discussion
 );
 
 public sealed record UpdateByteRequest(
     string? Title,
     string? Body,
     string? CodeSnippet,
-    string? Language,
-    List<string>? Tags
+    string? Language
 );
 
 public sealed record ByteResponse(
@@ -24,12 +22,9 @@ public sealed record ByteResponse(
     string Body,
     string? CodeSnippet,
     string? Language,
-    List<string> Tags,
     string Type,
-    int ViewCount,
-    int LikeCount,
-    int CommentCount,
-    int BookmarkCount,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    int CommentCount,
+    int LikeCount
 );

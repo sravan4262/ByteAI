@@ -1,18 +1,26 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { X, Code2 } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { X, Code2, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
+import { ComposeInterviewScreen } from './compose-interview-screen'
 import { composeTags } from '@/lib/mock-data'
 import * as api from '@/lib/api'
 
 const LANGUAGES = ['JS', 'TS', 'PY', 'RS', 'GO', 'CS']
 
+type ComposeType = 'byte' | 'interview'
+
 export function ComposeScreen() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [composeType, setComposeType] = useState<ComposeType>(
+    searchParams.get('type') === 'interview' ? 'interview' : 'byte'
+  )
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false)
   const [content, setContent] = useState('')
   const [codeContent, setCodeContent] = useState('const insight = () => "ship it";')
   const [selectedLanguage, setSelectedLanguage] = useState('JS')
@@ -42,6 +50,10 @@ export function ComposeScreen() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
+
+  if (composeType === 'interview') {
+    return <ComposeInterviewScreen onBack={() => setComposeType('byte')} />
+  }
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -80,13 +92,42 @@ export function ComposeScreen() {
     <PhoneFrame>
       {/* Header */}
       <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.92)] backdrop-blur-md">
-        <ByteAILogo size="sm" showText />
-        <button
-          onClick={() => router.push('/feed')}
-          className="w-8 h-8 flex items-center justify-center text-[var(--t2)] transition-all hover:text-[var(--t1)]"
-        >
-          <X size={16} />
-        </button>
+        <ByteAILogo size="sm" showText={false} />
+        <div className="flex items-center gap-3">
+          {/* Type selector */}
+          <div className="relative">
+            <button
+              onClick={() => setShowTypeDropdown((o) => !o)}
+              className="flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-lg border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] hover:border-[var(--border-h)] hover:text-[var(--t1)] transition-all"
+            >
+              {composeType === 'byte' ? 'NEW BYTE' : 'NEW INTERVIEW'}
+              <ChevronDown size={10} className={`transition-transform ${showTypeDropdown ? 'rotate-180' : ''}`} />
+            </button>
+            {showTypeDropdown && (
+              <div className="absolute top-full right-0 mt-1 z-50 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
+                {(['byte', 'interview'] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => { setComposeType(type); setShowTypeDropdown(false) }}
+                    className={`w-full text-left font-mono text-[10px] px-4 py-2.5 transition-all ${
+                      composeType === type
+                        ? 'text-[var(--accent)] bg-[var(--accent-d)]'
+                        : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-white/5'
+                    }`}
+                  >
+                    {type === 'byte' ? '✦ NEW BYTE' : '🎯 NEW INTERVIEW'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => router.push('/feed')}
+            className="w-8 h-8 flex items-center justify-center text-[var(--t2)] transition-all hover:text-[var(--t1)]"
+          >
+            <X size={16} />
+          </button>
+        </div>
       </header>
 
       {/* Scrollable content */}

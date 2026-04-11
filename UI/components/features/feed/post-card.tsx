@@ -1,10 +1,11 @@
 "use client"
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Heart, MessageSquare, Bookmark, Share2, BadgeCheck } from 'lucide-react'
-import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
 import { CodeBlock } from '@/components/ui/code-block'
+import { LikersSheet } from '@/components/ui/likers-sheet'
 import type { Post } from '@/lib/api'
 
 interface PostCardProps {
@@ -18,6 +19,7 @@ interface PostCardProps {
 
 export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldTruncate }: PostCardProps) {
   const router = useRouter()
+  const [showLikers, setShowLikers] = useState(false)
 
   return (
     <article className="px-4 md:px-8 py-5 md:py-6 flex flex-col gap-4 border-b border-[var(--border)] relative">
@@ -73,7 +75,7 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
 
       {/* Tags */}
       <div className="flex gap-2 flex-wrap">
-        {post.tags.map((tag) => (
+        {(post.tags ?? []).map((tag) => (
           <span
             key={tag}
             className="font-mono text-[10px] md:text-xs py-1 px-2.5 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] transition-all cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(59,130,246,0.12)]"
@@ -85,17 +87,36 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
 
       {/* Interaction Buttons */}
       <div className="flex items-center gap-2 pt-4 border-t border-[var(--border)]">
-        <button
-          onClick={() => onLike(post.id)}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] transition-all ${
-            post.isLiked
-              ? 'text-[var(--accent)] bg-[var(--accent-d)] border border-[var(--accent)]'
-              : 'text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
-          }`}
-        >
-          <Heart size={14} fill={post.isLiked ? 'currentColor' : 'none'} />
-          <span className="hidden sm:inline">{post.likes || 0}</span>
-        </button>
+        <div className="flex items-center">
+          <button
+            onClick={() => onLike(post.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-l-lg font-mono text-[11px] md:text-xs tracking-[0.07em] transition-all ${
+              post.isLiked
+                ? 'text-[var(--accent)] bg-[var(--accent-d)] border border-[var(--accent)]'
+                : 'text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
+            }`}
+          >
+            <Heart size={14} fill={post.isLiked ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            onClick={() => setShowLikers(true)}
+            className={`flex items-center px-2.5 py-2 rounded-r-lg font-mono text-[11px] md:text-xs tracking-[0.07em] transition-all border-t border-b border-r ${
+              post.isLiked
+                ? 'text-[var(--accent)] bg-[var(--accent-d)] border-[var(--accent)]'
+                : 'text-[var(--t2)] bg-[var(--bg-el)] border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
+            }`}
+          >
+            {post.likes || 0}
+          </button>
+        </div>
+
+        {showLikers && (
+          <LikersSheet
+            byteId={post.id}
+            likeCount={post.likes || 0}
+            onClose={() => setShowLikers(false)}
+          />
+        )}
 
         <button
           onClick={() => router.push(`/post/${post.id}/comments`)}

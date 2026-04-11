@@ -1,6 +1,5 @@
 import { DetailScreen } from '@/components/features/detail/detail-screen'
-import { mockPosts, mockInterviewPosts } from '@/lib/mock-data'
-import type { Post } from '@/lib/api'
+import { getPost } from '@/lib/api'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -8,8 +7,7 @@ interface PostPageProps {
 
 export default async function PostDetailPage({ params }: PostPageProps) {
   const { id } = await params
-  const allPosts: Post[] = [...mockPosts, ...mockInterviewPosts]
-  const post = allPosts.find((item) => item.id === id)
+  const post = await getPost(id)
 
   if (!post) {
     return (

@@ -1,5 +1,14 @@
 namespace ByteAI.Api.ViewModels;
 
+public sealed record UserSearchResponse(
+    Guid Id,
+    string Username,
+    string DisplayName,
+    string? Bio,
+    string? AvatarUrl,
+    bool IsVerified
+);
+
 public sealed record SearchResponse(
     Guid Id,
     Guid AuthorId,
@@ -9,6 +18,7 @@ public sealed record SearchResponse(
     string? Language,
     List<string> Tags,
     string Type,
+    string ContentType,     // "byte" | "interview"
     int LikeCount,
     int CommentCount,
     DateTime CreatedAt

@@ -1,12 +1,23 @@
 using ByteAI.Api.Common.Auth;
+using ByteAI.Core.Business;
+using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Infrastructure.AI;
 using ByteAI.Core.Infrastructure.Cache;
 using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Infrastructure.Services;
 using ByteAI.Core.Services.AI;
+using ByteAI.Core.Services.Bookmarks;
 using ByteAI.Core.Services.Bytes;
+using ByteAI.Core.Services.Comments;
 using ByteAI.Core.Services.Feed;
+using ByteAI.Core.Services.Follow;
+using ByteAI.Core.Services.Interviews;
+using ByteAI.Core.Services.Lookup;
 using ByteAI.Core.Services.Notifications;
+using ByteAI.Core.Services.Reactions;
 using ByteAI.Core.Services.Search;
+using ByteAI.Core.Services.Trending;
+using ByteAI.Core.Services.Users;
 using ByteAI.Core.Validators;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -63,6 +74,29 @@ try
     builder.Services.AddScoped<IFeedService, FeedService>();
     builder.Services.AddScoped<ISearchService, SearchService>();
     builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+    builder.Services.AddScoped<IInterviewService, InterviewService>();
+    builder.Services.AddScoped<IBookmarkService, BookmarkService>();
+    builder.Services.AddScoped<ICommentService, CommentService>();
+    builder.Services.AddScoped<IFollowService, FollowService>();
+    builder.Services.AddScoped<IReactionService, ReactionService>();
+    builder.Services.AddScoped<ITrendingService, TrendingService>();
+    builder.Services.AddScoped<ILookupService, LookupService>();
+    builder.Services.AddScoped<IUserService, UserService>();
+
+    // ── Business layer ────────────────────────────────────────────────────────
+    builder.Services.AddScoped<IBytesBusiness, BytesBusiness>();
+    builder.Services.AddScoped<IFeedBusiness, FeedBusiness>();
+    builder.Services.AddScoped<IInterviewsBusiness, InterviewsBusiness>();
+    builder.Services.AddScoped<ISearchBusiness, SearchBusiness>();
+    builder.Services.AddScoped<IUsersBusiness, UsersBusiness>();
+    builder.Services.AddScoped<IBookmarksBusiness, BookmarksBusiness>();
+    builder.Services.AddScoped<ICommentsBusiness, CommentsBusiness>();
+    builder.Services.AddScoped<IFollowBusiness, FollowBusiness>();
+    builder.Services.AddScoped<ILookupBusiness, LookupBusiness>();
+    builder.Services.AddScoped<INotificationsBusiness, NotificationsBusiness>();
+    builder.Services.AddScoped<IReactionsBusiness, ReactionsBusiness>();
+    builder.Services.AddScoped<ITrendingBusiness, TrendingBusiness>();
 
     // ── Redis (optional) ─────────────────────────────────────────────────────
     // RedisFeedCache is always registered so MediatR handlers can inject it as nullable.

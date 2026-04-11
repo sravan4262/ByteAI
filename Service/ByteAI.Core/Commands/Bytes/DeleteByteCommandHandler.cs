@@ -15,7 +15,8 @@ public sealed class DeleteByteCommandHandler(AppDbContext db)
         if (entity.AuthorId != request.AuthorId)
             throw new UnauthorizedAccessException("Cannot delete another user's byte");
 
-        db.Bytes.Remove(entity);
+        entity.IsActive = false;
+        entity.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }

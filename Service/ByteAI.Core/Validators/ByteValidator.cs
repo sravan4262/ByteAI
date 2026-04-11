@@ -24,10 +24,6 @@ public sealed class ByteValidator : AbstractValidator<Byte>
             .MaximumLength(50).WithMessage("Language must not exceed 50 characters")
             .When(b => !string.IsNullOrEmpty(b.Language));
 
-        RuleFor(b => b.Tags)
-            .NotNull().WithMessage("Tags must not be null")
-            .Must(t => t.Count <= 20).WithMessage("Must not exceed 20 tags");
-
         RuleFor(b => b.Type)
             .NotEmpty().WithMessage("Type is required")
             .Must(t => AllowedTypes.Contains(t))

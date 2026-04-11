@@ -20,7 +20,6 @@ public sealed class UpdateByteCommandHandler(AppDbContext db)
         if (!string.IsNullOrWhiteSpace(request.Body)) entity.Body = request.Body;
         if (request.CodeSnippet is not null) entity.CodeSnippet = request.CodeSnippet;
         if (request.Language is not null) entity.Language = request.Language;
-        if (request.Tags is not null) entity.Tags = request.Tags;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);

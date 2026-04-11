@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -10,13 +10,7 @@ import { FeedHeader } from './feed-header'
 import { FeedFilters } from './feed-filters'
 import { FollowingList } from './following-list'
 import { PostCard } from './post-card'
-import {
-  mockPosts,
-  mockTrendingPosts,
-  mockFollowing,
-  mockCurrentUser,
-  getPostsByUser,
-} from '@/lib/mock-data'
+import { mockFollowing } from '@/lib/mock-data'
 import * as api from '@/lib/api'
 import type { Post, User } from '@/lib/api'
 
@@ -37,38 +31,24 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
   const [sortBy, setSortBy] = useState('relevant')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [activeStackFilter, setActiveStackFilter] = useState<string | null>(null)
-  const [posts, setPosts] = useState(mockPosts)
+  const [posts, setPosts] = useState<Post[]>([])
   const [selectedFollower, setSelectedFollower] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const isMobile = useIsMobile()
 
-  const userPreferences = mockCurrentUser.feedPreferences
+  useEffect(() => {
+    setIsLoading(true)
+    api.getFeed({ filter: activeTab as 'for_you' | 'following' | 'trending', stackFilter: activeStackFilter ?? undefined })
+      .then(({ posts }) => setPosts(posts))
+      .catch(() => toast.error('Failed to load feed'))
+      .finally(() => setIsLoading(false))
+  }, [activeTab, activeStackFilter])
 
+  // Client-side sort on top of server-fetched posts
   const filteredPosts = useMemo(() => {
-    let result = [...posts]
-
-    if (activeTab === 'trending') {
-      result = [...mockTrendingPosts]
-    } else if (activeTab === 'following' && selectedFollower) {
-      result = getPostsByUser(selectedFollower.id)
-    }
-
-    // FOR_YOU: if no specific stack filter chosen, default to user's onboarding preferences
-    if (activeTab === 'for_you' && !activeStackFilter && userPreferences.length > 0) {
-      const prefSet = userPreferences.map((p) => p.toUpperCase())
-      result = result.filter((p) =>
-        p.tags.some((t) => prefSet.some((pref) => t.toUpperCase().includes(pref))) ||
-        p.author.techStack?.some((s) => prefSet.some((pref) => s.toUpperCase().includes(pref)))
-      )
-    }
-
-    // Specific stack filter overrides preference filter
-    if (activeStackFilter) {
-      result = result.filter(
-        (p) =>
-          p.tags.some((t) => t.toUpperCase().includes(activeStackFilter.toUpperCase())) ||
-          p.author.techStack?.some((s) => s.toUpperCase().includes(activeStackFilter.toUpperCase()))
-      )
-    }
+    let result = activeTab === 'following' && selectedFollower
+      ? posts.filter((p) => p.author.id === selectedFollower.id)
+      : [...posts]
 
     if (activeTab === 'for_you') {
       if (sortBy === 'newest') {
@@ -79,27 +59,26 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
     }
 
     return result
-  }, [activeTab, activeStackFilter, sortBy, selectedFollower, posts, userPreferences])
+  }, [activeTab, sortBy, selectedFollower, posts])
 
   const handleLike = async (postId: string) => {
     const post = posts.find((p) => p.id === postId)
     if (!post) return
-    if (post.isLiked) {
-      await api.unlikePost(postId)
-    } else {
-      await api.likePost(postId)
-      toast.success('Liked!')
-    }
-    setPosts(posts.map((p) => (p.id === postId ? { ...p, isLiked: !p.isLiked, likes: (p.likes || 0) + (p.isLiked ? -1 : 1) } : p)))
+    const { isLiked } = await api.toggleLike(postId)
+    if (isLiked) toast.success('Liked!')
+    setPosts((prev) => prev.map((p) =>
+      p.id === postId
+        ? { ...p, isLiked, likes: Math.max(0, (p.likes || 0) + (isLiked ? 1 : -1)) }
+        : p
+    ))
   }
 
   const handleBookmark = async (postId: string) => {
     const post = posts.find((p) => p.id === postId)
     if (!post) return
-    await api.bookmarkPost(postId)
-    const nowBookmarked = !post.isBookmarked
-    setPosts(posts.map((p) => (p.id === postId ? { ...p, isBookmarked: nowBookmarked } : p)))
-    toast.success(nowBookmarked ? 'Saved to bookmarks' : 'Removed from bookmarks')
+    const { isSaved } = await api.toggleBookmark(postId, post.type === 'interview' ? 'interview' : 'byte')
+    setPosts(posts.map((p) => (p.id === postId ? { ...p, isBookmarked: isSaved } : p)))
+    toast.success(isSaved ? 'Saved to bookmarks' : 'Removed from bookmarks')
   }
 
   const handleShare = async (postId: string) => {
@@ -168,7 +147,11 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
       {(activeTab !== 'following' || selectedFollower) && (
         <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
           <div className="max-w-4xl mx-auto">
-            {filteredPosts.length === 0 ? (
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center min-h-[400px]">
+                <div className="font-mono text-xs text-[var(--t2)] animate-pulse">LOADING BYTES...</div>
+              </div>
+            ) : filteredPosts.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
                 <div className="font-mono text-base text-[var(--t1)] mb-2">NO BYTES FOUND</div>
                 <div className="font-mono text-xs text-[var(--t2)]">

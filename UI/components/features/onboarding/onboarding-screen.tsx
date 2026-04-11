@@ -1,30 +1,41 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { useAuth } from '@/hooks/use-auth'
-import { seniorityLevels, domains, techStacksByDomain } from '@/lib/mock-data'
 import * as api from '@/lib/api'
-
-type SeniorityLevel = { id: string; label: string; icon: string }
-type Domain = { id: string; label: string; icon: string }
+import type { SeniorityTypeResponse, DomainResponse, TechStackResponse } from '@/lib/api'
 
 export function OnboardingScreen() {
   const { completeOnboarding } = useAuth()
-  const [selectedSeniority, setSelectedSeniority] = useState<SeniorityLevel | null>(null)
-  const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null)
+  const [seniorityOptions, setSeniorityOptions] = useState<SeniorityTypeResponse[]>([])
+  const [domainOptions, setDomainOptions] = useState<DomainResponse[]>([])
+  const [techStackOptions, setTechStackOptions] = useState<TechStackResponse[]>([])
+  const [selectedSeniority, setSelectedSeniority] = useState<SeniorityTypeResponse | null>(null)
+  const [selectedDomain, setSelectedDomain] = useState<DomainResponse | null>(null)
   const [selectedTechStack, setSelectedTechStack] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  const techStackOptions = selectedDomain ? techStacksByDomain[selectedDomain.id] ?? [] : []
+  // Load seniority + domains on mount
+  useEffect(() => {
+    api.getSeniorityTypes().then(setSeniorityOptions)
+    api.getDomains().then(setDomainOptions)
+  }, [])
 
-  const toggleTechStack = (tech: string) => {
-    if (selectedTechStack.includes(tech)) {
-      setSelectedTechStack(selectedTechStack.filter((t) => t !== tech))
+  // Load tech stacks whenever domain changes
+  useEffect(() => {
+    if (!selectedDomain) { setTechStackOptions([]); return }
+    api.getTechStacks(selectedDomain.id).then(setTechStackOptions)
+    setSelectedTechStack([])
+  }, [selectedDomain])
+
+  const toggleTechStack = (name: string) => {
+    if (selectedTechStack.includes(name)) {
+      setSelectedTechStack(selectedTechStack.filter((t) => t !== name))
     } else if (selectedTechStack.length < 6) {
-      setSelectedTechStack([...selectedTechStack, tech])
+      setSelectedTechStack([...selectedTechStack, name])
     }
   }
 
@@ -32,8 +43,8 @@ export function OnboardingScreen() {
     if (!selectedSeniority || !selectedDomain) return
     setIsLoading(true)
     await api.saveOnboardingData({
-      seniority: selectedSeniority.id,
-      domain: selectedDomain.id,
+      seniority: selectedSeniority.name,
+      domain: selectedDomain.name,
       techStack: selectedTechStack,
     })
     setIsLoading(false)
@@ -71,7 +82,7 @@ export function OnboardingScreen() {
           <div>
             <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)] mb-3">// SELECT_SENIORITY</div>
             <div className="grid grid-cols-2 gap-2">
-              {seniorityLevels.map((level) => (
+              {seniorityOptions.map((level) => (
                 <button
                   key={level.id}
                   onClick={() => setSelectedSeniority(level)}
@@ -91,7 +102,7 @@ export function OnboardingScreen() {
           <div>
             <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)] mb-3">// SELECT_DOMAIN</div>
             <div className="grid grid-cols-2 gap-2">
-              {domains.map((domain) => (
+              {domainOptions.map((domain) => (
                 <button
                   key={domain.id}
                   onClick={() => setSelectedDomain(domain)}
@@ -107,7 +118,7 @@ export function OnboardingScreen() {
             </div>
           </div>
 
-          {/* Tech Stack */}
+          {/* Tech Stack — loaded from API when domain is selected */}
           {selectedDomain && techStackOptions.length > 0 && (
             <div>
               <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)] mb-1">// SELECT_TECH_STACK</div>
@@ -117,16 +128,16 @@ export function OnboardingScreen() {
               <div className="flex flex-wrap gap-2">
                 {techStackOptions.map((tech) => (
                   <button
-                    key={tech}
-                    onClick={() => toggleTechStack(tech)}
-                    disabled={!selectedTechStack.includes(tech) && selectedTechStack.length >= 6}
+                    key={tech.id}
+                    onClick={() => toggleTechStack(tech.name)}
+                    disabled={!selectedTechStack.includes(tech.name) && selectedTechStack.length >= 6}
                     className={`py-1.5 px-3 rounded-full border font-mono text-[11px] transition-all ${
-                      selectedTechStack.includes(tech)
+                      selectedTechStack.includes(tech.name)
                         ? 'border-[var(--green)] bg-[var(--green-d)] text-[var(--green)]'
                         : 'border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] hover:border-[var(--border-h)] disabled:opacity-40'
                     }`}
                   >
-                    {tech}
+                    {tech.label}
                   </button>
                 ))}
               </div>

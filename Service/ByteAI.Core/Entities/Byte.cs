@@ -11,19 +11,17 @@ public sealed class Byte
     public string Body { get; set; } = string.Empty;
     public string? CodeSnippet { get; set; }
     public string? Language { get; set; }
-    public List<string> Tags { get; set; } = [];
-    public int LikeCount { get; set; } = 0;
-    public int CommentCount { get; set; } = 0;
-    public int BookmarkCount { get; set; } = 0;
-    public int ViewCount { get; set; } = 0;
     public Vector? Embedding { get; set; }
     public NpgsqlTsVector? SearchVector { get; set; }
     public string Type { get; set; } = "article";
+    public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public User Author { get; set; } = null!;
     public ICollection<Comment> Comments { get; set; } = [];
-    public ICollection<Reaction> Reactions { get; set; } = [];
-    public ICollection<Bookmark> Bookmarks { get; set; } = [];
+    public ICollection<UserLike> UserLikes { get; set; } = [];
+    public ICollection<UserBookmark> UserBookmarks { get; set; } = [];
+    public ICollection<UserView> UserViews { get; set; } = [];
+    public ICollection<ByteTechStack> ByteTechStacks { get; set; } = [];
 }

@@ -10,7 +10,6 @@ namespace ByteAI.Core.Events;
 
 public sealed class ByteCreatedEventHandler(
     IEmbeddingService embedding,
-    IGroqService groq,
     IByteService byteService,
     AppDbContext db,
     RedisFeedCache? feedCache,
@@ -34,25 +33,7 @@ public sealed class ByteCreatedEventHandler(
             logger.LogError(ex, "Failed to generate embedding for byte {ByteId}", notification.ByteId);
         }
 
-        // ── 2. AI tag suggestions via Groq ────────────────────────────────────
-        try
-        {
-            var entity = await db.Bytes.FindAsync([notification.ByteId], cancellationToken);
-            if (entity is not null)
-            {
-                var tags = await groq.SuggestTagsAsync(entity.Title, entity.Body, entity.CodeSnippet, cancellationToken);
-                if (tags.Count > 0)
-                    await byteService.UpdateTagsAsync(notification.ByteId, tags, cancellationToken);
-
-                logger.LogInformation("Tags suggested for byte {ByteId}: {Tags}", notification.ByteId, string.Join(", ", tags));
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to suggest tags for byte {ByteId}", notification.ByteId);
-        }
-
-        // ── 3. Invalidate feed caches for author's followers ──────────────────
+        // ── 2. Invalidate feed caches for author's followers ──────────────────
         if (feedCache is not null)
         {
             try

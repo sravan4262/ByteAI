@@ -1,81 +1,257 @@
 "use client"
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Briefcase, Bell, Heart, Bookmark, Share2, Plus } from 'lucide-react'
+import { Briefcase, Bell, Bookmark, Share2, Plus, ChevronsUpDown, ChevronsDownUp, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
-import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
-import { CodeBlock } from '@/components/ui/code-block'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
-import { mockInterviewPosts, sortOptions } from '@/lib/mock-data'
+import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
 import * as api from '@/lib/api'
-import type { Post } from '@/lib/api'
+import type { InterviewWithQuestions, InterviewQuestion } from '@/lib/api'
 
-function parseTime(timeStr: string): number {
-  const num = parseInt(timeStr)
-  if (timeStr.includes('m')) return num
-  if (timeStr.includes('h')) return num * 60
-  if (timeStr.includes('d')) return num * 60 * 24
-  return 0
+const COMPANIES = ['Google', 'Meta', 'Amazon', 'Apple', 'Microsoft', 'Netflix', 'Stripe', 'Shopify', 'Airbnb', 'Uber']
+  .map((c) => ({ value: c, label: c }))
+
+const DIFFICULTY_OPTIONS = [
+  { value: 'easy', label: 'Easy' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'hard', label: 'Hard' },
+]
+
+const AVATAR_VARIANTS: Array<'cyan' | 'purple' | 'green' | 'orange'> = ['cyan', 'purple', 'green', 'orange']
+
+function difficultyColor(d: string) {
+  if (d === 'easy') return 'text-[var(--green)] border-[rgba(16,217,160,0.3)] bg-[rgba(16,217,160,0.06)]'
+  if (d === 'hard') return 'text-[var(--red)] border-[rgba(244,63,94,0.3)] bg-[rgba(244,63,94,0.06)]'
+  return 'text-[var(--orange)] border-[rgba(251,146,60,0.3)] bg-[rgba(251,146,60,0.06)]'
 }
 
-export function InterviewsScreen() {
-  const router = useRouter()
-  const [sortBy, setSortBy] = useState('relevant')
-  const [showSortDropdown, setShowSortDropdown] = useState(false)
-  const [companyFilter, setCompanyFilter] = useState<string | null>(null)
-  const [technologyFilter, setTechnologyFilter] = useState<string | null>(null)
-  const [posts, setPosts] = useState(mockInterviewPosts)
+// ── Question Card (fully controlled) ──────────────────────────────────────────
 
-  const companies = Array.from(new Set(posts.map((post) => post.author.company)))
-  const technologyOptions = Array.from(
-    new Set(posts.flatMap((post) => post.tags.map((tag) => tag.replace('#', ''))))
+function QuestionCard({
+  q,
+  index,
+  expanded,
+  onToggle,
+}: {
+  q: InterviewQuestion
+  index: number
+  expanded: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="border border-[var(--border-m)] rounded-lg overflow-hidden bg-[var(--bg-el)]">
+      {/* Question header */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-[rgba(255,255,255,0.02)] transition-all"
+      >
+        <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.12)] border border-[rgba(167,139,250,0.2)] rounded px-2 py-1 flex-shrink-0 mt-0.5">
+          Q{index + 1}
+        </span>
+        <p className="flex-1 text-sm md:text-base font-semibold text-[var(--t1)] leading-relaxed">{q.question}</p>
+        <span className="text-[var(--t3)] flex-shrink-0 mt-1">
+          {expanded
+            ? <ChevronsDownUp size={14} className="text-[var(--accent)]" />
+            : <ChevronsUpDown size={14} />}
+        </span>
+      </button>
+
+      {/* Answer */}
+      {expanded && (
+        <div className="px-4 py-3 border-t border-[var(--border)]">
+          <p className="text-sm md:text-[15px] text-[var(--t2)] leading-relaxed whitespace-pre-wrap">{q.answer}</p>
+        </div>
+      )}
+    </div>
   )
+}
 
-  const filteredPosts = useMemo(() => {
-    let result = [...posts]
-    if (companyFilter) result = result.filter((p) => p.author.company === companyFilter)
-    if (technologyFilter) {
-      result = result.filter(
-        (p) =>
-          p.tags.some((t) => t.toUpperCase().includes(technologyFilter.toUpperCase())) ||
-          p.author.techStack?.some((s) => s.toUpperCase().includes(technologyFilter.toUpperCase()))
-      )
-    }
-    if (sortBy === 'newest') result = result.sort((a, b) => parseTime(a.createdAt) - parseTime(b.createdAt))
-    else if (sortBy === 'oldest') result = result.sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt))
-    return result
-  }, [companyFilter, technologyFilter, sortBy, posts])
+// ── Interview Card ─────────────────────────────────────────────────────────────
 
-  const handleLike = async (postId: string) => {
-    const post = posts.find((p) => p.id === postId)
-    if (!post) return
-    if (post.isLiked) await api.unlikePost(postId)
-    else { await api.likePost(postId); toast.success('Liked!') }
-    setPosts(posts.map((p) => p.id === postId ? { ...p, isLiked: !p.isLiked, likes: (p.likes || 0) + (p.isLiked ? -1 : 1) } : p))
+function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQuestions; avatarVariant: typeof AVATAR_VARIANTS[number] }) {
+  const router = useRouter()
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  // Controlled expansion: set of expanded question IDs
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const allExpanded = interview.questions.length > 0 && expandedIds.size === interview.questions.length
+
+  const toggleQuestion = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
-  const handleBookmark = async (postId: string) => {
-    const post = posts.find((p) => p.id === postId)
-    if (!post) return
-    await api.bookmarkPost(postId)
-    const nowBookmarked = !post.isBookmarked
-    setPosts(posts.map((p) => p.id === postId ? { ...p, isBookmarked: nowBookmarked } : p))
-    toast.success(nowBookmarked ? 'Saved' : 'Removed from bookmarks')
+  const toggleAll = () => {
+    if (allExpanded) setExpandedIds(new Set())
+    else setExpandedIds(new Set(interview.questions.map((q) => q.id)))
   }
 
-  const handleShare = async (postId: string) => {
-    await api.sharePost(postId)
+  const handleBookmark = async () => {
+    const { isSaved } = await api.toggleBookmark(interview.id, 'interview')
+    setIsBookmarked(isSaved)
+    toast.success(isSaved ? 'Saved to bookmarks' : 'Removed from bookmarks')
+  }
+
+  const handleShare = async () => {
     if (navigator.clipboard) {
-      await navigator.clipboard.writeText(`${window.location.origin}/post/${postId}`)
+      await navigator.clipboard.writeText(`${window.location.origin}/interviews/${interview.id}`)
       toast.success('Link copied')
     }
   }
 
   return (
-    <PhoneFrame>
+    <article className="px-4 md:px-8 py-5 md:py-6 flex flex-col gap-4 border-b border-[var(--border)] relative">
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(167,139,250,0.08)] to-transparent" />
+
+      {/* Header — matches PostCard exactly */}
+      <div className="flex items-start gap-3 md:gap-4">
+        <Avatar
+          initials={interview.authorId.slice(0, 1).toUpperCase()}
+          size="md"
+          variant={avatarVariant}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="font-mono text-xs md:text-sm font-bold text-[var(--t1)] flex items-center gap-2">
+            @{interview.authorId.slice(0, 8)}
+          </div>
+          <div className="font-mono text-xs md:text-[13px] text-[var(--t2)] mt-0.5 tracking-[0.04em]">
+            {interview.role ?? ''}
+            {interview.role && interview.company ? ' @ ' : ''}
+            {interview.company ?? ''}
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <span className="font-mono text-[10px] md:text-xs text-[var(--t3)]">
+            {new Date(interview.createdAt).toLocaleDateString()}
+          </span>
+          <span className={`font-mono text-[9px] px-2 py-0.5 rounded border ${difficultyColor(interview.difficulty)}`}>
+            {interview.difficulty.toUpperCase()}
+          </span>
+        </div>
+      </div>
+
+      {/* Type badge */}
+      <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2.5 py-1 rounded flex items-center gap-1.5 w-fit">
+        <Briefcase size={10} /> INTERVIEW
+      </span>
+
+      {/* Title — matches PostCard h2 */}
+      <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold leading-tight tracking-tight -mt-2">{interview.title}</h2>
+
+      {/* Q&A list */}
+      {interview.questions.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="font-mono text-[9px] tracking-[0.1em] text-[var(--t3)]">
+              // {interview.questions.length} QUESTION{interview.questions.length !== 1 ? 'S' : ''}
+            </div>
+            <button
+              onClick={toggleAll}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[9px] tracking-[0.07em] border transition-all ${
+                allExpanded
+                  ? 'text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-d)]'
+                  : 'text-[var(--t3)] border-[var(--border-m)] hover:text-[var(--t1)] hover:border-[var(--border-h)]'
+              }`}
+            >
+              {allExpanded
+                ? <><ChevronsDownUp size={11} /> COLLAPSE ALL</>
+                : <><ChevronsUpDown size={11} /> EXPAND ALL</>}
+            </button>
+          </div>
+          {interview.questions.map((q, i) => (
+            <QuestionCard
+              key={q.id}
+              q={q}
+              index={i}
+              expanded={expandedIds.has(q.id)}
+              onToggle={() => toggleQuestion(q.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Actions — mirrors PostCard button strip */}
+      <div className="flex items-center gap-2 pt-4 border-t border-[var(--border)]">
+        {/* Questions count */}
+        <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)]">
+          <Briefcase size={14} />
+          <span className="hidden sm:inline">{interview.questions.length}Q</span>
+        </span>
+
+        {/* Comment count — navigates to detail screen discussion section */}
+        <button
+          onClick={() => router.push(`/interviews/${interview.id}`)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--purple)] hover:border-[rgba(167,139,250,0.5)]"
+        >
+          <MessageSquare size={14} />
+          <span>{interview.commentCount ?? 0}</span>
+        </button>
+
+        {/* Bookmark */}
+        <button
+          onClick={handleBookmark}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] transition-all ${
+            isBookmarked
+              ? 'text-[var(--accent)] bg-[var(--accent-d)] border border-[var(--accent)]'
+              : 'text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
+          }`}
+        >
+          <Bookmark size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
+          <span className="hidden sm:inline">SAVE</span>
+        </button>
+
+        {/* Share */}
+        <button
+          onClick={handleShare}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--green)] hover:border-[var(--green)]"
+        >
+          <Share2 size={14} />
+          <span className="hidden sm:inline">SHARE</span>
+        </button>
+
+        {/* View full */}
+        <button
+          onClick={() => router.push(`/interviews/${interview.id}`)}
+          className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-lg font-mono text-[9px] md:text-[10px] tracking-[0.1em] text-white bg-gradient-to-br from-[var(--purple)] to-[#5b21b6] border border-[rgba(167,139,250,0.5)] transition-all hover:shadow-[0_4px_12px_rgba(167,139,250,0.3)] hover:-translate-y-0.5"
+        >
+          VIEW_FULL_INTERVIEW
+          <span>→</span>
+        </button>
+      </div>
+    </article>
+  )
+}
+
+// ── Main Screen ────────────────────────────────────────────────────────────────
+
+export function InterviewsScreen() {
+  const [companyFilter, setCompanyFilter] = useState<string | null>(null)
+  const [techFilters, setTechFilters] = useState<string[]>([])
+  const [difficultyFilter, setDifficultyFilter] = useState<string | null>(null)
+  const [interviews, setInterviews] = useState<InterviewWithQuestions[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const loadInterviews = useCallback(async () => {
+    setIsLoading(true)
+    const { interviews: data } = await api.getInterviews({
+      company: companyFilter ?? undefined,
+      stack: techFilters.length > 0 ? techFilters.join(',') : undefined,
+      difficulty: difficultyFilter ?? undefined,
+    })
+    setInterviews(data)
+    setIsLoading(false)
+  }, [companyFilter, techFilters, difficultyFilter])
+
+  useEffect(() => { loadInterviews() }, [loadInterviews])
+
+  return (
+    <div className="flex flex-col h-full">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.95)] backdrop-blur-md">
         <div>
@@ -83,7 +259,7 @@ export function InterviewsScreen() {
             <Briefcase size={14} className="text-[var(--purple)]" /> INTERVIEWS
           </h1>
           <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t2)] mt-0.5">
-            PREP GUIDES & SYSTEM DESIGN
+            INTERVIEW Q&amp;A · PREP &amp; SYSTEM DESIGN
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -91,7 +267,9 @@ export function InterviewsScreen() {
             <Bell size={14} className="text-[var(--t2)]" />
             <span className="absolute top-[3px] right-[3px] w-[7px] h-[7px] bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)]" />
           </button>
-          <Avatar initials="AX" size="xs" />
+          <Link href="/profile">
+            <Avatar initials="AX" size="xs" />
+          </Link>
         </div>
       </header>
 
@@ -102,7 +280,7 @@ export function InterviewsScreen() {
           <div className="flex items-center gap-2">
             <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">COMPANY</span>
             <SearchableDropdown
-              options={companies.slice().sort((a, b) => a.localeCompare(b)).map((c) => ({ value: c, label: c }))}
+              options={COMPANIES}
               value={companyFilter}
               onChange={setCompanyFilter}
               placeholder="COMPANY"
@@ -111,173 +289,87 @@ export function InterviewsScreen() {
             />
           </div>
 
-          {/* Technology filter */}
+          {/* Tech filter — multi-select */}
           <div className="flex items-center gap-2">
             <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">TECH</span>
-            <SearchableDropdown
-              options={technologyOptions.slice().sort((a, b) => a.localeCompare(b)).map((t) => ({ value: t, label: t }))}
-              value={technologyFilter}
-              onChange={setTechnologyFilter}
+            <MultiSelectDropdown
+              options={[
+                { value: 'react', label: 'React' },
+                { value: 'typescript', label: 'TypeScript' },
+                { value: 'golang', label: 'Go' },
+                { value: 'python', label: 'Python' },
+                { value: 'dotnet', label: '.NET / C#' },
+                { value: 'rust', label: 'Rust' },
+                { value: 'kubernetes', label: 'Kubernetes' },
+                { value: 'aws', label: 'AWS' },
+                { value: 'postgres', label: 'PostgreSQL' },
+                { value: 'docker', label: 'Docker' },
+              ]}
+              values={techFilters}
+              onChange={setTechFilters}
               placeholder="TECHNOLOGY"
-              allLabel="ALL TECH"
               accentColor="cyan"
+            />
+          </div>
+
+          {/* Difficulty */}
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">LEVEL</span>
+            <SearchableDropdown
+              options={DIFFICULTY_OPTIONS}
+              value={difficultyFilter}
+              onChange={setDifficultyFilter}
+              placeholder="DIFFICULTY"
+              allLabel="ALL LEVELS"
+              accentColor="green"
             />
           </div>
 
           <div className="flex-1" />
 
           {/* Reset */}
-          {(companyFilter || technologyFilter) && (
+          {(companyFilter || techFilters.length > 0 || difficultyFilter) && (
             <button
-              onClick={() => { setCompanyFilter(null); setTechnologyFilter(null) }}
+              onClick={() => { setCompanyFilter(null); setTechFilters([]); setDifficultyFilter(null) }}
               className="font-mono text-[8px] lg:text-[9px] tracking-[0.08em] px-3 py-2 rounded-full border border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               RESET
             </button>
           )}
-
-          {/* Sort */}
-          <div className="relative">
-            <button
-              onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className="font-mono text-[8px] lg:text-[9px] tracking-[0.06em] text-[var(--t2)] hover:text-[var(--accent)] flex items-center gap-1 px-3 py-2 border border-[var(--border-m)] rounded-lg bg-[var(--bg-el)]"
-            >
-              SORT: {sortOptions.find((s) => s.id === sortBy)?.label} ↓
-            </button>
-            {showSortDropdown && (
-              <div className="absolute top-full right-0 mt-2 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg shadow-lg z-20 min-w-[160px]">
-                {sortOptions.map((option) => (
-                  <button
-                    key={option.id}
-                    onClick={() => { setSortBy(option.id); setShowSortDropdown(false) }}
-                    className={`w-full text-left font-mono text-[8px] lg:text-[9px] px-3 py-2 transition-all ${
-                      sortBy === option.id ? 'text-[var(--accent)] bg-[var(--accent-d)]' : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-white/5'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Posts feed */}
+      {/* Feed */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
-        {filteredPosts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="font-mono text-sm text-[var(--t1)] mb-2">NO POSTS FOUND</div>
-            <div className="font-mono text-[10px] text-[var(--t2)]">Try adjusting your filters.</div>
-          </div>
-        ) : (
-          filteredPosts.map((post) => (
-            <article key={post.id} className="px-4 lg:px-6 pt-4 lg:pt-5 pb-4 flex flex-col gap-3 border-b border-[var(--border)] relative">
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(167,139,250,0.08)] to-transparent" />
-
-              <div className="flex items-start gap-3">
-                <Avatar
-                  initials={post.author.initials}
-                  size="sm"
-                  variant={post.author.id === '1' ? 'cyan' : post.author.id === '4' ? 'purple' : 'green'}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="font-mono text-[10px] lg:text-xs font-bold text-[var(--t1)] flex items-center gap-1.5">
-                    @{post.author.username}
-                    {post.author.isVerified && <span className="text-[8px] text-[var(--accent)]">✦</span>}
-                  </div>
-                  <div className="font-mono text-[8px] lg:text-[9px] text-[var(--t2)] mt-0.5 tracking-[0.04em]">
-                    {post.author.role} @ {post.author.company}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className="font-mono text-[7px] lg:text-[8px] text-[var(--t3)]">{post.createdAt}</span>
-                  {post.views && (
-                    <span className="font-mono text-[7px] text-[var(--purple)]">{post.views.toLocaleString()} views</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[7px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2 py-1 rounded flex items-center gap-1">
-                  <Briefcase size={9} /> INTERVIEW PREP
-                </span>
-              </div>
-
-              <h2 className="text-base lg:text-lg font-extrabold leading-tight tracking-tight">{post.title}</h2>
-              <p className="text-xs lg:text-sm leading-relaxed text-[var(--t2)]">{post.body}</p>
-
-              {post.code && (
-                <CodeBlock
-                  code={post.code.content}
-                  language={post.code.language}
-                  filename={post.code.filename}
-                  showLineNumbers={false}
-                  maxHeight="200px"
-                />
-              )}
-
-              <div className="flex gap-[5px] flex-wrap">
-                {post.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="font-mono text-[8px] py-[3px] px-2 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] cursor-pointer hover:border-[var(--purple)] hover:text-[var(--purple)] hover:bg-[rgba(167,139,250,0.1)]"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-              <div className="border-t border-[var(--border)] -mx-4 lg:-mx-6">
-                <button
-                  onClick={() => router.push(`/post/${post.id}`)}
-                  className="w-full flex items-center justify-between px-4 lg:px-6 py-[11px] font-mono text-[9px] lg:text-[10px] font-bold tracking-[0.08em] text-[var(--purple)] bg-gradient-to-r from-[rgba(167,139,250,0.09)] to-[rgba(167,139,250,0.04)] border-b border-[var(--border)] transition-all hover:bg-[rgba(167,139,250,0.15)] group"
-                >
-                  VIEW_FULL_BYTE
-                  <span className="flex items-center gap-1.5 text-[11px] transition-all group-hover:gap-[10px]">
-                    <span className="font-mono text-[8px] text-[var(--t2)]">💬 {post.comments}</span>
-                    →
-                  </span>
-                </button>
-
-                <div className="flex">
-                  <button
-                    onClick={() => handleLike(post.id)}
-                    className={`flex-1 flex items-center justify-center gap-[5px] font-mono text-[8px] tracking-[0.05em] py-[9px] px-1 transition-all hover:-translate-y-px ${
-                      post.isLiked ? 'text-[var(--red)]' : 'text-[var(--t2)] hover:text-[var(--purple)]'
-                    }`}
-                  >
-                    <Heart size={12} fill={post.isLiked ? 'currentColor' : 'none'} />
-                    <span className="font-bold text-[9px] text-[var(--t1)]">{post.likes || 0}</span>
-                  </button>
-                  <button
-                    onClick={() => handleBookmark(post.id)}
-                    className={`flex-1 flex items-center justify-center gap-[5px] font-mono text-[8px] tracking-[0.05em] py-[9px] px-1 transition-all hover:-translate-y-px ${
-                      post.isBookmarked ? 'text-[var(--accent)]' : 'text-[var(--t2)] hover:text-[var(--purple)]'
-                    }`}
-                  >
-                    <Bookmark size={12} fill={post.isBookmarked ? 'currentColor' : 'none'} /> SAVE
-                  </button>
-                  <button
-                    onClick={() => handleShare(post.id)}
-                    className="flex-1 flex items-center justify-center gap-[5px] font-mono text-[8px] tracking-[0.05em] text-[var(--t2)] py-[9px] px-1 transition-all hover:text-[var(--purple)] hover:-translate-y-px"
-                  >
-                    <Share2 size={12} /> SHARE
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))
-        )}
+        <div className="max-w-4xl mx-auto">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center min-h-[400px]">
+              <div className="font-mono text-xs text-[var(--t2)] animate-pulse">LOADING INTERVIEWS...</div>
+            </div>
+          ) : interviews.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
+              <div className="font-mono text-base text-[var(--t1)] mb-2">NO INTERVIEWS FOUND</div>
+              <div className="font-mono text-xs text-[var(--t2)]">Try adjusting your filters or post the first one.</div>
+            </div>
+          ) : (
+            interviews.map((interview, i) => (
+              <InterviewCard
+                key={interview.id}
+                interview={interview}
+                avatarVariant={AVATAR_VARIANTS[i % AVATAR_VARIANTS.length]}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       {/* FAB */}
       <Link
-        href="/compose"
+        href="/compose?type=interview"
         className="fixed bottom-6 right-6 lg:right-12 z-10 w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-[var(--purple)] to-[#5b21b6] flex items-center justify-center text-white shadow-[0_4px_20px_rgba(167,139,250,0.4)] transition-all hover:scale-110 hover:shadow-[0_8px_36px_rgba(167,139,250,0.5)]"
       >
         <Plus size={22} />
       </Link>
-    </PhoneFrame>
+    </div>
   )
 }

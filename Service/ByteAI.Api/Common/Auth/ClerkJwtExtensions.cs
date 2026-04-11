@@ -18,34 +18,45 @@ public static class ClerkJwtExtensions
         if (!isDev && string.IsNullOrEmpty(authority))
             throw new InvalidOperationException("Clerk:Authority is required in non-development environments");
 
-        services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.Authority = authority;
-                options.TokenValidationParameters = new TokenValidationParameters
+        if (isDev)
+        {
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, DevAuthHandler>(JwtBearerDefaults.AuthenticationScheme, _ => { });
+        }
+        else
+        {
+            services
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
                 {
-                    ValidateIssuer = !isDev,
-                    ValidateAudience = false,
-                    ValidateLifetime = !isDev,
-                    ValidateIssuerSigningKey = !isDev,
-                    NameClaimType = "sub",
-                };
-
-                // Development bypass — accept any well-formed JWT without signature check.
-                // Create a test token at https://jwt.io with payload: { "sub": "your-test-user-id" }
-                if (isDev)
-                {
-                    options.TokenValidationParameters.SignatureValidator =
-                        (token, _) => new JwtSecurityTokenHandler().ReadJwtToken(token);
-                }
-            });
+                    options.Authority = authority;
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = false,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        NameClaimType = "sub",
+                    };
+                });
+        }
 
         services.AddAuthorization();
         return services;
     }
 
-    /// <summary>Extracts the Clerk userId (sub claim) from the current HTTP context.</summary>
     public static string? GetClerkUserId(this HttpContext ctx) =>
         ctx.User.FindFirst("sub")?.Value;
+}
+
+public class DevAuthHandler : Microsoft.AspNetCore.Authentication.AuthenticationHandler<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions>
+{
+    public DevAuthHandler(Microsoft.Extensions.Options.IOptionsMonitor<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions> o, Microsoft.Extensions.Logging.ILoggerFactory l, System.Text.Encodings.Web.UrlEncoder e) : base(o, l, e) { }
+    protected override Task<Microsoft.AspNetCore.Authentication.AuthenticateResult> HandleAuthenticateAsync()
+    {
+        var claims = new[] { new System.Security.Claims.Claim("sub", "seed_alex") };
+        var id = new System.Security.Claims.ClaimsIdentity(claims, "DevBypass");
+        var ticket = new Microsoft.AspNetCore.Authentication.AuthenticationTicket(new System.Security.Claims.ClaimsPrincipal(id), "DevBypass");
+        return Task.FromResult(Microsoft.AspNetCore.Authentication.AuthenticateResult.Success(ticket));
+    }
 }

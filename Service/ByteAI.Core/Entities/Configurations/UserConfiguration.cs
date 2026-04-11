@@ -8,7 +8,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("users");
+        builder.ToTable("users", "users");
 
         builder.HasKey(u => u.Id);
         builder.Property(u => u.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
@@ -24,12 +24,22 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Streak).HasColumnName("streak").HasDefaultValue(0);
         builder.Property(u => u.Domain).HasColumnName("domain");
         builder.Property(u => u.Seniority).HasColumnName("seniority");
-        builder.Property(u => u.TechStack).HasColumnName("tech_stack").HasColumnType("text[]");
-        builder.Property(u => u.FeedPreferences).HasColumnName("feed_preferences").HasColumnType("text[]");
         builder.Property(u => u.InterestEmbedding).HasColumnName("interest_embedding").HasColumnType("vector(384)");
         builder.Property(u => u.IsVerified).HasColumnName("is_verified").HasDefaultValue(false);
         builder.Property(u => u.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
         builder.Property(u => u.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
+
+        // FK columns added via migration 001
+        builder.Property(u => u.SeniorityId).HasColumnName("seniority_id");
+        builder.Property(u => u.DomainId).HasColumnName("domain_id");
+        builder.Property(u => u.LevelTypeId).HasColumnName("level_type_id");
+
+        builder.HasOne(u => u.SeniorityType).WithMany(s => s.Users)
+            .HasForeignKey(u => u.SeniorityId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(u => u.DomainNav).WithMany(d => d.Users)
+            .HasForeignKey(u => u.DomainId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(u => u.LevelType).WithMany(l => l.Users)
+            .HasForeignKey(u => u.LevelTypeId).OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(u => u.ClerkId).IsUnique().HasDatabaseName("uq_users_clerk_id");
         builder.HasIndex(u => u.Username).IsUnique().HasDatabaseName("uq_users_username");

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from 'next/link'
 import { Bell } from 'lucide-react'
 import { Avatar } from '@/components/layout/avatar'
 
@@ -25,7 +26,9 @@ export function FeedHeader({ contentType }: FeedHeaderProps) {
             <Bell size={16} className="text-[var(--t2)]" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)] shadow-[0_0_5px_var(--accent)]" />
           </button>
-          <Avatar initials="AX" size="sm" />
+          <Link href="/profile">
+            <Avatar initials="AX" size="sm" />
+          </Link>
         </div>
       </div>
     </header>

@@ -1,20 +1,102 @@
 "use client"
 
-import { useState } from 'react'
-import { LogOut, Pencil, Globe, Lock, Github } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { LogOut, Pencil, Globe, Lock, Github, Plus, Bookmark } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
 import { useAuth } from '@/hooks/use-auth'
-import { mockCurrentUser, mockUsers, themes, feedPreferenceOptions } from '@/lib/mock-data'
+import { mockCurrentUser, mockUsers, themes } from '@/lib/mock-data'
 import * as api from '@/lib/api'
+import type { TechStackResponse, DomainResponse, SeniorityTypeResponse, Post, InterviewWithQuestions } from '@/lib/api'
 
 export function ProfileScreen() {
   const { logout } = useAuth()
+  const router = useRouter()
   const [activeFollowTab, setActiveFollowTab] = useState<'followers' | 'following'>('followers')
   const [activeTheme, setActiveTheme] = useState('darker')
   const [feedPreferences, setFeedPreferences] = useState(mockCurrentUser.feedPreferences)
   const [techStack, setTechStack] = useState(mockCurrentUser.techStack)
+
+  // Lookup data from APIs
+  const [allTechStacks, setAllTechStacks] = useState<TechStackResponse[]>([])
+  const [allDomains, setAllDomains] = useState<DomainResponse[]>([])
+  const [seniorityTypes, setSeniorityTypes] = useState<SeniorityTypeResponse[]>([])
+  const [addingTech, setAddingTech] = useState(false)
+  const [selectedTechToAdd, setSelectedTechToAdd] = useState<string | null>(null)
+
+  // Content tabs: POSTED vs SAVED, each with bytes/interviews sub-tabs
+  type ContentMode = 'posted' | 'saved'
+  type ContentKind = 'bytes' | 'interviews'
+  const [contentMode, setContentMode] = useState<ContentMode>('posted')
+  const [contentKind, setContentKind] = useState<ContentKind>('bytes')
+
+  const [myBytes, setMyBytes] = useState<Post[]>([])
+  const [myInterviews, setMyInterviews] = useState<InterviewWithQuestions[]>([])
+  const [savedBytes, setSavedBytes] = useState<Post[]>([])
+  const [savedInterviews, setSavedInterviews] = useState<InterviewWithQuestions[]>([])
+  const [loadingContent, setLoadingContent] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+
+  useEffect(() => {
+    Promise.all([
+      api.getTechStacks(),
+      api.getDomains(),
+      api.getSeniorityTypes(),
+    ]).then(([stacks, domains, seniority]) => {
+      setAllTechStacks(stacks)
+      setAllDomains(domains)
+      setSeniorityTypes(seniority)
+    })
+  }, [])
+
+  useEffect(() => {
+    setLoadingContent(true)
+    Promise.all([
+      api.getMyBytes(),
+      api.getMyInterviews(),
+      api.getMyBookmarks(),
+      api.getMyInterviewBookmarks(),
+    ]).then(([myB, myI, savedB, savedI]) => {
+      setMyBytes(myB.posts)
+      setMyInterviews(myI.interviews)
+      setSavedBytes(savedB.posts)
+      setSavedInterviews(savedI.interviews)
+      setLoadingContent(false)
+    })
+  }, [])
+
+  const handleDeleteByte = async (id: string) => {
+    await api.deleteMyByte(id)
+    setMyBytes((prev) => prev.filter((p) => p.id !== id))
+    setConfirmDelete(null)
+    toast.success('Byte removed')
+  }
+
+  const handleDeleteInterview = async (id: string) => {
+    await api.deleteMyInterview(id)
+    setMyInterviews((prev) => prev.filter((i) => i.id !== id))
+    setConfirmDelete(null)
+    toast.success('Interview removed')
+  }
+
+  const handleUnsave = async (id: string, kind: ContentKind) => {
+    const type = kind === 'interviews' ? 'interview' : 'byte'
+    await api.toggleBookmark(id, type)
+    if (kind === 'bytes') setSavedBytes((prev) => prev.filter((p) => p.id !== id))
+    else setSavedInterviews((prev) => prev.filter((i) => i.id !== id))
+    toast.success('Removed from saved')
+  }
+
+  const feedPreferenceOptions = allDomains.length > 0
+    ? allDomains.map((d) => d.label)
+    : ['RUST', 'AI / ML', 'ARCHITECTURE', 'DEVOPS', 'SECURITY', 'WASM']
+
+  const techStackOptions = allTechStacks
+    .filter((t) => !techStack.includes(t.name))
+    .map((t) => ({ value: t.name, label: t.label || t.name }))
   const [notifications, setNotifications] = useState({
     reactions: true,
     comments: true,
@@ -35,6 +117,15 @@ export function ProfileScreen() {
   const handleRemoveTech = async (tech: string) => {
     const newStack = techStack.filter((t) => t !== tech)
     setTechStack(newStack)
+    await api.updateTechStack(newStack)
+  }
+
+  const handleAddTech = async (tech: string | null) => {
+    if (!tech || techStack.includes(tech)) { setAddingTech(false); setSelectedTechToAdd(null); return }
+    const newStack = [...techStack, tech]
+    setTechStack(newStack)
+    setAddingTech(false)
+    setSelectedTechToAdd(null)
     await api.updateTechStack(newStack)
   }
 
@@ -187,6 +278,180 @@ export function ProfileScreen() {
           ))}
         </div>
 
+        {/* Content Explorer */}
+        <div className="mt-5 px-5">
+          {/* Mode toggle — POSTED / SAVED */}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="font-mono text-[9px] text-[var(--t3)] tracking-[0.1em]">~/</span>
+            {(['posted', 'saved'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setContentMode(mode)}
+                className={`font-mono text-[10px] px-3 py-1 rounded-full border transition-all tracking-[0.07em] ${
+                  contentMode === mode
+                    ? mode === 'posted'
+                      ? 'border-[var(--cyan)] text-[var(--cyan)] bg-[rgba(34,211,238,0.08)]'
+                      : 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
+                    : 'border-[var(--border-m)] text-[var(--t3)] hover:border-[var(--border-h)] hover:text-[var(--t2)]'
+                }`}
+              >
+                {mode === 'posted' ? '📝 POSTED' : '🔖 SAVED'}
+              </button>
+            ))}
+          </div>
+
+          {/* Kind sub-tabs */}
+          <div className="flex items-center gap-1 mb-3 bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg p-1">
+            {(['bytes', 'interviews'] as const).map((kind) => {
+              const count = contentMode === 'posted'
+                ? (kind === 'bytes' ? myBytes.length : myInterviews.length)
+                : (kind === 'bytes' ? savedBytes.length : savedInterviews.length)
+              return (
+                <button
+                  key={kind}
+                  onClick={() => setContentKind(kind)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md font-mono text-[10px] transition-all ${
+                    contentKind === kind
+                      ? 'bg-[var(--bg-el)] text-[var(--t1)] shadow-sm border border-[var(--border-m)]'
+                      : 'text-[var(--t3)] hover:text-[var(--t2)]'
+                  }`}
+                >
+                  <span>{kind === 'bytes' ? '⬡' : '◈'}</span>
+                  {kind.toUpperCase()}
+                  <span className={`text-[8px] px-1 py-px rounded ${contentKind === kind ? 'bg-[var(--accent-d)] text-[var(--accent)]' : 'bg-[var(--border)] text-[var(--t3)]'}`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* File listing */}
+          <div className="bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg overflow-hidden">
+            {/* Terminal header */}
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#ff5f57]" />
+                <span className="w-2 h-2 rounded-full bg-[#febc2e]" />
+                <span className="w-2 h-2 rounded-full bg-[#28c840]" />
+              </div>
+              <span className="font-mono text-[9px] text-[var(--t3)] tracking-[0.1em] ml-1">
+                ~/{contentMode}/{contentKind}
+              </span>
+            </div>
+
+            {loadingContent ? (
+              <div className="py-8 text-center font-mono text-[10px] text-[var(--t3)] animate-pulse">
+                <span className="text-[var(--green)]">$</span> loading...
+              </div>
+            ) : (() => {
+              const items = contentMode === 'posted'
+                ? (contentKind === 'bytes' ? myBytes : myInterviews)
+                : (contentKind === 'bytes' ? savedBytes : savedInterviews)
+
+              if (items.length === 0) return (
+                <div className="py-8 px-4 text-center">
+                  <div className="font-mono text-[10px] text-[var(--t3)]">
+                    <span className="text-[var(--green)]">$</span> ls — <span className="text-[var(--t2)]">no files found</span>
+                  </div>
+                  <div className="font-mono text-[9px] text-[var(--t3)] mt-1">
+                    {contentMode === 'posted' ? 'Nothing posted yet.' : 'Nothing saved yet.'}
+                  </div>
+                </div>
+              )
+
+              return (
+                <div className="divide-y divide-[var(--border)]">
+                  {items.map((item, idx) => {
+                    const isPost = 'title' in item && 'body' in item && !('questions' in item)
+                    const id = item.id
+                    const title = item.title
+                    const isConfirming = confirmDelete === id
+                    const dateStr = isPost
+                      ? (item as Post).createdAt
+                      : new Date((item as InterviewWithQuestions).createdAt).toLocaleDateString()
+
+                    return (
+                      <div
+                        key={id}
+                        className={`flex items-center gap-2 px-3 py-2.5 group transition-all ${
+                          isConfirming ? 'bg-[rgba(244,63,94,0.06)]' : 'hover:bg-[rgba(255,255,255,0.02)]'
+                        }`}
+                      >
+                        {/* Index */}
+                        <span className="font-mono text-[8px] text-[var(--t3)] w-4 flex-shrink-0 select-none">
+                          {String(idx + 1).padStart(2, '0')}
+                        </span>
+
+                        {/* Icon */}
+                        <span className="text-[10px] flex-shrink-0">
+                          {contentKind === 'bytes' ? '⬡' : '◈'}
+                        </span>
+
+                        {/* Title — clickable */}
+                        <button
+                          onClick={() => router.push(contentKind === 'bytes' ? `/post/${id}` : `/interviews/${id}`)}
+                          className="flex-1 min-w-0 text-left"
+                        >
+                          <span className="font-mono text-[10px] text-[var(--t1)] truncate block hover:text-[var(--accent)] transition-colors">
+                            {title}
+                          </span>
+                          {contentKind === 'interviews' && (
+                            <span className="font-mono text-[8px] text-[var(--t3)]">
+                              {(item as InterviewWithQuestions).company && `${(item as InterviewWithQuestions).company} · `}
+                              {(item as InterviewWithQuestions).difficulty?.toUpperCase()} · {(item as InterviewWithQuestions).questions?.length ?? 0}Q
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Date */}
+                        <span className="font-mono text-[8px] text-[var(--t3)] flex-shrink-0 hidden sm:block">{dateStr}</span>
+
+                        {/* Action — delete for posted, unsave for saved */}
+                        {contentMode === 'posted' ? (
+                          isConfirming ? (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <span className="font-mono text-[8px] text-[var(--red)]">rm?</span>
+                              <button
+                                onClick={() => contentKind === 'bytes' ? handleDeleteByte(id) : handleDeleteInterview(id)}
+                                className="font-mono text-[8px] px-2 py-0.5 rounded bg-[var(--red)] text-white"
+                              >
+                                YES
+                              </button>
+                              <button
+                                onClick={() => setConfirmDelete(null)}
+                                className="font-mono text-[8px] px-2 py-0.5 rounded border border-[var(--border-m)] text-[var(--t2)]"
+                              >
+                                NO
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDelete(id)}
+                              className="font-mono text-[8px] px-2 py-0.5 rounded border border-[var(--border-m)] text-[var(--t3)] opacity-0 group-hover:opacity-100 transition-all hover:border-[var(--red)] hover:text-[var(--red)] flex-shrink-0"
+                            >
+                              rm
+                            </button>
+                          )
+                        ) : (
+                          <button
+                            onClick={() => handleUnsave(id, contentKind)}
+                            className="flex items-center gap-1 font-mono text-[8px] px-2 py-0.5 rounded border border-[var(--border-m)] text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-d)] flex-shrink-0"
+                            title="Remove from saved"
+                          >
+                            <Bookmark size={9} fill="currentColor" />
+                            unsave
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+
         {/* Network */}
         <div className="mt-5 px-5">
           <div className="font-mono text-[11px] font-bold tracking-[0.12em] text-[var(--t3)] mb-3">// NETWORK</div>
@@ -238,14 +503,33 @@ export function ProfileScreen() {
                   <span className="opacity-50 text-[10px] group-hover:opacity-100 group-hover:text-[var(--red)]">×</span>
                 </button>
               ))}
-              <button className="flex items-center gap-[5px] px-[10px] py-[5px] border border-dashed border-[var(--border-m)] rounded-full font-mono text-[10px] text-[var(--t2)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                + ADD
-              </button>
+              {addingTech ? (
+                <SearchableDropdown
+                  options={techStackOptions}
+                  value={selectedTechToAdd}
+                  onChange={handleAddTech}
+                  placeholder="TECH STACK"
+                  allLabel="CANCEL"
+                  accentColor="accent"
+                />
+              ) : (
+                <button
+                  onClick={() => setAddingTech(true)}
+                  className="flex items-center gap-[5px] px-[10px] py-[5px] border border-dashed border-[var(--border-m)] rounded-full font-mono text-[10px] text-[var(--t2)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  <Plus size={10} /> ADD
+                </button>
+              )}
             </div>
           </div>
 
           <div className="mb-4">
-            <div className="font-mono text-[11px] text-[var(--t3)] tracking-[0.08em] mb-2">// SHOW_ME_MORE_OF</div>
+            <div className="font-mono text-[11px] text-[var(--t3)] tracking-[0.08em] mb-2">
+              // SHOW_ME_MORE_OF
+              {allDomains.length > 0 && (
+                <span className="ml-2 text-[var(--green)] text-[9px]">✓ API</span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {feedPreferenceOptions.map((pref) => (
                 <button

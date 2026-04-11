@@ -1,15 +1,15 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bookmark, Share2, Heart, MessageSquare, Lightbulb, ChevronLeft } from 'lucide-react'
+import { Bookmark, Share2, Heart, MessageSquare, Lightbulb, ChevronLeft, Send, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
 import { CodeBlock } from '@/components/ui/code-block'
-import { mockComments } from '@/lib/mock-data'
+import { LikersSheet } from '@/components/ui/likers-sheet'
 import * as api from '@/lib/api'
-import type { Post } from '@/lib/api'
+import type { Post, Comment } from '@/lib/api'
 
 interface DetailScreenProps {
   post: Post
@@ -17,10 +17,24 @@ interface DetailScreenProps {
 
 export function DetailScreen({ post }: DetailScreenProps) {
   const router = useRouter()
+  const [comments, setComments] = useState<Comment[]>([])
+  const [commentCount, setCommentCount] = useState(post.comments ?? 0)
+  const [likeCount, setLikeCount] = useState(post.likes ?? 0)
+  const [isLiked, setIsLiked] = useState(false)
+  const [showLikers, setShowLikers] = useState(false)
   const [comment, setComment] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeReactions, setActiveReactions] = useState<string[]>([])
   const [isBookmarked, setIsBookmarked] = useState(false)
-  const postComments = mockComments.filter((c) => c.postId === post.id)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.getCurrentUser().then((u) => { if (u) setCurrentUserId(u.id) })
+    api.getPostComments(post.id, {}).then(({ comments: loaded }) => {
+      setComments(loaded)
+      setCommentCount(loaded.length)
+    })
+  }, [post.id])
 
   const handleReaction = async (emoji: string) => {
     await api.reactToPost(post.id, emoji)
@@ -30,21 +44,72 @@ export function DetailScreen({ post }: DetailScreenProps) {
   }
 
   const handleAddComment = async () => {
-    if (!comment.trim()) return
-    await api.addComment(post.id, comment)
-    toast.success('Comment added!')
-    setComment('')
+    const trimmed = comment.trim()
+    if (!trimmed || isSubmitting) return
+
+    setIsSubmitting(true)
+    try {
+      await api.addComment(post.id, trimmed)
+      const optimistic: Comment = {
+        id: crypto.randomUUID(),
+        postId: post.id,
+        author: {
+          id: 'me',
+          username: 'you',
+          displayName: 'You',
+          initials: 'Y',
+          role: '',
+          company: '',
+          bio: '',
+          level: 1,
+          xp: 0,
+          xpToNextLevel: 1000,
+          followers: 0,
+          following: 0,
+          bytes: 0,
+          reactions: 0,
+          streak: 0,
+          techStack: [],
+          feedPreferences: [],
+          links: [],
+          badges: [],
+          isVerified: false,
+          isOnline: false,
+        },
+        content: trimmed,
+        votes: 0,
+        createdAt: 'just now',
+      }
+      setComments((prev) => [...prev, optimistic])
+      setCommentCount((c) => c + 1)
+      setComment('')
+      toast.success('Comment posted!')
+    } catch {
+      toast.error('Failed to post comment')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleVoteComment = async (commentId: string, direction: 'up' | 'down') => {
     await api.voteComment(commentId, direction)
   }
 
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await api.deleteComment(commentId)
+      setComments((prev) => prev.filter((c) => c.id !== commentId))
+      setCommentCount((n) => n - 1)
+      toast.success('Comment deleted')
+    } catch {
+      toast.error('Failed to delete comment')
+    }
+  }
+
   const handleBookmark = async () => {
-    await api.bookmarkPost(post.id)
-    const next = !isBookmarked
-    setIsBookmarked(next)
-    toast.success(next ? 'Saved to bookmarks' : 'Removed from bookmarks')
+    const { isSaved } = await api.toggleBookmark(post.id, post.type === 'interview' ? 'interview' : 'byte')
+    setIsBookmarked(isSaved)
+    toast.success(isSaved ? 'Saved to bookmarks' : 'Removed from bookmarks')
   }
 
   const handleShare = async () => {
@@ -124,6 +189,35 @@ export function DetailScreen({ post }: DetailScreenProps) {
 
           {/* Reactions */}
           <div className="flex gap-2 lg:gap-3 flex-wrap py-3 lg:py-4 border-t border-b border-[var(--border)]">
+            {/* Like button + count */}
+            <div className="flex items-center">
+              <button
+                onClick={async () => {
+                  const { isLiked: nowLiked } = await api.toggleLike(post.id)
+                  setIsLiked(nowLiked)
+                  setLikeCount((c) => Math.max(0, c + (nowLiked ? 1 : -1)))
+                }}
+                className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-l-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+                  isLiked
+                    ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
+                    : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]'
+                }`}
+              >
+                <Heart size={12} fill={isLiked ? 'currentColor' : 'none'} />
+                LIKE
+              </button>
+              <button
+                onClick={() => likeCount > 0 && setShowLikers(true)}
+                className={`flex items-center px-2.5 py-1.5 lg:py-2 border-t border-b border-r rounded-r-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+                  isLiked
+                    ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
+                    : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]'
+                } ${likeCount === 0 ? 'cursor-default' : 'cursor-pointer'}`}
+              >
+                <span className="font-bold text-[10px] lg:text-xs text-[var(--t1)]">{likeCount}</span>
+              </button>
+            </div>
+
             <button
               onClick={() => handleReaction('💡')}
               className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
@@ -134,24 +228,6 @@ export function DetailScreen({ post }: DetailScreenProps) {
             >
               <Lightbulb size={12} fill={activeReactions.includes('💡') ? 'currentColor' : 'none'} />
               INSIGHTFUL
-              <span className="font-bold text-[10px] lg:text-xs text-[var(--t1)]">
-                {(post.reactions.find((r) => r.emoji === '💡')?.count || 0) + (activeReactions.includes('💡') ? 1 : 0)}
-              </span>
-            </button>
-
-            <button
-              onClick={() => handleReaction('❤️')}
-              className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
-                activeReactions.includes('❤️')
-                  ? 'border-[var(--red)] text-[var(--red)] bg-[rgba(244,63,94,0.1)]'
-                  : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--red)] hover:text-[var(--red)] hover:bg-[rgba(244,63,94,0.1)]'
-              }`}
-            >
-              <Heart size={12} fill={activeReactions.includes('❤️') ? 'currentColor' : 'none'} />
-              LOVE
-              <span className="font-bold text-[10px] lg:text-xs text-[var(--t1)]">
-                {(post.reactions.find((r) => r.emoji === '❤️')?.count || 0) + (activeReactions.includes('❤️') ? 1 : 0)}
-              </span>
             </button>
 
             <button
@@ -174,13 +250,21 @@ export function DetailScreen({ post }: DetailScreenProps) {
             </button>
           </div>
 
+          {showLikers && (
+            <LikersSheet
+              byteId={post.id}
+              likeCount={likeCount}
+              onClose={() => setShowLikers(false)}
+            />
+          )}
+
           {/* Discussion */}
           <div>
             <div className="flex justify-between items-center mb-4">
               <div className="font-mono text-[8px] lg:text-[10px] font-bold tracking-[0.12em] text-[var(--t2)] flex items-center gap-1.5">
                 <MessageSquare size={12} /> DISCUSSION
                 <span className="bg-[var(--bg-el)] border border-[var(--border-m)] rounded-full px-[7px] py-px text-[7px] lg:text-[8px] text-[var(--t1)]">
-                  {postComments.length || post.comments}
+                  {commentCount}
                 </span>
               </div>
               <button className="font-mono text-[8px] lg:text-[9px] text-[var(--accent)]">
@@ -189,16 +273,10 @@ export function DetailScreen({ post }: DetailScreenProps) {
             </div>
 
             <div className="flex flex-col gap-4">
-              {postComments.length > 0 ? (
-                postComments.map((c) => (
+              {comments.length > 0 ? (
+                comments.map((c) => (
                   <div key={c.id} className="flex gap-[10px] lg:gap-4">
-                    <div
-                      className={`w-[30px] h-[30px] lg:w-10 lg:h-10 rounded-full border border-[var(--border-m)] flex-shrink-0 flex items-center justify-center font-mono text-[8px] lg:text-[10px] font-bold ${
-                        c.author.id === '2'
-                          ? 'bg-gradient-to-br from-[#1e1040] to-[#3a1a90] text-[var(--purple)]'
-                          : 'bg-gradient-to-br from-[#0a1e14] to-[#145840] text-[var(--green)]'
-                      }`}
-                    >
+                    <div className="w-[30px] h-[30px] lg:w-10 lg:h-10 rounded-full border border-[var(--border-m)] flex-shrink-0 flex items-center justify-center font-mono text-[8px] lg:text-[10px] font-bold bg-gradient-to-br from-[#1a1f2f] to-[#16243f] text-[var(--accent)]">
                       {c.author.initials}
                     </div>
                     <div className="flex-1 min-w-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-3 py-[10px] lg:px-4 lg:py-3">
@@ -209,20 +287,20 @@ export function DetailScreen({ post }: DetailScreenProps) {
                             {c.badge}
                           </span>
                         )}
-                        <span className="font-mono text-[9px] font-bold text-[var(--t3)] ml-auto">+{c.votes}</span>
+                        {c.votes > 0 && (
+                          <span className="font-mono text-[9px] font-bold text-[var(--green)]">+{c.votes}</span>
+                        )}
+                        {(c.author.id === 'me' || (currentUserId && c.author.id === currentUserId)) && (
+                          <button
+                            onClick={() => handleDeleteComment(c.id)}
+                            className="ml-auto p-1 rounded text-[var(--t3)] hover:text-[var(--red)] hover:bg-[rgba(244,63,94,0.08)] transition-all"
+                            title="Delete comment"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
                       </div>
-                      <p className="text-[11px] lg:text-sm leading-relaxed text-[var(--t2)] mb-1.5">{c.content}</p>
-                      <div className="flex gap-[10px] lg:gap-4">
-                        <button
-                          onClick={() => handleVoteComment(c.id, 'up')}
-                          className="font-mono text-[8px] lg:text-[9px] text-[var(--t3)] opacity-70 transition-all hover:opacity-100 hover:text-[var(--accent)]"
-                        >
-                          ▲ UPVOTE
-                        </button>
-                        <button className="font-mono text-[8px] lg:text-[9px] text-[var(--t3)] opacity-70 transition-all hover:opacity-100 hover:text-[var(--accent)]">
-                          ↩ REPLY
-                        </button>
-                      </div>
+                      <p className="text-[11px] lg:text-sm leading-relaxed text-[var(--t2)]">{c.content}</p>
                     </div>
                   </div>
                 ))
@@ -260,14 +338,15 @@ export function DetailScreen({ post }: DetailScreenProps) {
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-          placeholder="ADD_YOUR_INSIGHT..."
+          placeholder="Write a comment..."
           className="flex-1 bg-transparent font-mono text-[10px] lg:text-sm text-[var(--t1)] outline-none placeholder:text-[var(--t3)]"
         />
         <button
           onClick={handleAddComment}
-          className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-mono text-sm lg:text-base transition-all hover:bg-[var(--accent)]/80"
+          disabled={!comment.trim() || isSubmitting}
+          className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-mono text-sm lg:text-base transition-all hover:bg-[var(--accent)]/80 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          →
+          <Send size={14} />
         </button>
       </div>
     </PhoneFrame>

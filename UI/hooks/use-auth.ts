@@ -21,8 +21,8 @@ function deleteCookie(name: string) {
 
 export function useAuth() {
   const [auth, setAuth] = useLocalStorage<AuthState>('byteai_auth_state', {
-    isAuthenticated: false,
-    isOnboarded: false,
+    isAuthenticated: process.env.NODE_ENV === 'development',
+    isOnboarded: process.env.NODE_ENV === 'development',
   })
   const router = useRouter()
 

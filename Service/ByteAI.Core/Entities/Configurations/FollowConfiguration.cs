@@ -8,7 +8,7 @@ public sealed class FollowConfiguration : IEntityTypeConfiguration<Follow>
 {
     public void Configure(EntityTypeBuilder<Follow> builder)
     {
-        builder.ToTable("follows");
+        builder.ToTable("follows", "users");
 
         builder.HasKey(f => new { f.FollowerId, f.FollowingId });
         builder.Property(f => f.FollowerId).HasColumnName("follower_id");

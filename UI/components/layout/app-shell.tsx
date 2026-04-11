@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Briefcase, Search, SquarePen, User } from 'lucide-react'
+import { Home, Briefcase, Search, SquarePen } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import type { ReactNode } from 'react'
@@ -11,7 +11,6 @@ const pathToActiveTab = (pathname: string) => {
   if (pathname.startsWith('/interviews')) return 'interviews'
   if (pathname.startsWith('/search')) return 'search'
   if (pathname.startsWith('/compose')) return 'post'
-  if (pathname.startsWith('/profile')) return 'profile'
   return 'feed'
 }
 
@@ -20,7 +19,6 @@ const tabs = [
   { id: 'interviews', icon: Briefcase, label: 'INTERVIEWS', href: '/interviews' },
   { id: 'search', icon: Search, label: 'SEARCH', href: '/search' },
   { id: 'post', icon: SquarePen, label: 'POST', href: '/compose' },
-  { id: 'profile', icon: User, label: 'PROFILE', href: '/profile' },
 ]
 
 export function AppShell({ children }: { children: ReactNode }) {

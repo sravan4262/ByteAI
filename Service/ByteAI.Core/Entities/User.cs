@@ -17,20 +17,31 @@ public sealed class User
     public int Streak { get; set; } = 0;
     public string? Domain { get; set; }
     public string? Seniority { get; set; }
-    public List<string> TechStack { get; set; } = [];
-    public List<string> FeedPreferences { get; set; } = [];
     public Vector? InterestEmbedding { get; set; }
     public bool IsVerified { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    // FK to lookup tables (added via migration 001)
+    public Guid? SeniorityId { get; set; }
+    public Guid? DomainId { get; set; }
+    public Guid? LevelTypeId { get; set; }
+
+    // Navigation
+    public SeniorityType? SeniorityType { get; set; }
+    public Domain? DomainNav { get; set; }
+    public LevelType? LevelType { get; set; }
     public ICollection<Byte> Bytes { get; set; } = [];
     public ICollection<Comment> Comments { get; set; } = [];
-    public ICollection<Reaction> Reactions { get; set; } = [];
-    public ICollection<Bookmark> Bookmarks { get; set; } = [];
+    public ICollection<UserLike> UserLikes { get; set; } = [];
+    public ICollection<UserBookmark> UserBookmarks { get; set; } = [];
     public ICollection<Follow> Following { get; set; } = [];
     public ICollection<Follow> Followers { get; set; } = [];
     public ICollection<Notification> Notifications { get; set; } = [];
-    public ICollection<Badge> Badges { get; set; } = [];
+    public ICollection<UserBadge> UserBadges { get; set; } = [];
     public ICollection<Draft> Drafts { get; set; } = [];
+    public ICollection<UserTechStack> UserTechStacks { get; set; } = [];
+    public ICollection<UserFeedPreference> UserFeedPreferences { get; set; } = [];
+    public ICollection<Social> Socials { get; set; } = [];
+    public ICollection<Interview> Interviews { get; set; } = [];
 }

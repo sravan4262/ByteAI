@@ -2,16 +2,18 @@
 
 ---
 
-## Current State (2026-04-09)
+## Current State (2026-04-10)
 
 | Layer | Status |
 |-------|--------|
 | UI Shell | Complete — all screens running, module errors fixed |
 | Backend Structure | Complete — 3-project solution, 0 build errors |
-| Database Schema | Complete — 9 SQL tables in `supabase/tables/` |
+| Database Schema | Complete — 9 SQL tables applied to local Supabase DB |
+| Seed Data | Complete — 5 users + 23 bytes via `scripts/seed.sql` |
 | Backend API | Complete — all controllers with Swagger docs, Clerk JWT dev bypass |
 | AI Endpoints | Complete — `/api/ai/suggest-tags`, `/api/ai/ask` (Groq) exist; no UI yet |
-| Frontend ↔ Backend | Not wired — all `client.ts` functions are stubs |
+| Frontend ↔ Backend | Wired — `http.ts` base client, `client.ts` calls real endpoints, feed uses `api.getFeed()` |
+| Clerk Auth | Not started — frontend uses localStorage token stub |
 | CI/CD / IaC | Not started |
 
 ---
@@ -165,6 +167,35 @@ UI/
 - Avatar initials hardcoded as `AX` (Clerk identity not wired)
 - Onboarding preferences not persisted to backend
 - Notification bell has no real data
+
+---
+
+## Milestone 6 — Local Dev Setup + Frontend Wiring ✅ (2026-04-10)
+
+### Local Dev Environment
+- Supabase local dev running — DB at `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+- pgvector extension enabled (`CREATE EXTENSION IF NOT EXISTS vector`)
+- All 9 tables applied via psql in dependency order
+- Fixed `bytes.sql` generated column: removed non-immutable `array_to_string(tags)` from `search_vector` expression
+- Seed data loaded from `scripts/seed.sql`: 5 users + 23 bytes across 14 tech stacks
+- Fixed `bytes_type_check` constraint — seed uses `'article'` not `'byte'`
+
+### Frontend Wiring
+- Created `UI/lib/api/http.ts` — base fetch client with auth header, reads token from `localStorage('byteai_auth_token')`
+- Rewrote `UI/lib/api/client.ts` — all data-fetching functions call real backend endpoints, fall back to mock data on error
+- `byteToPost()` mapper converts `ByteResponse` (backend) → `Post` (frontend shape)
+- `feed-screen.tsx` replaced mock state with `useEffect` → `api.getFeed()` with loading state
+- Created `UI/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:5239`
+- Created `Service/ByteAI.Api/appsettings.Development.json` (gitignored)
+- Updated `.gitignore` — excludes `appsettings.Development.json` and `.env.local`
+- Renamed `backend-todo.md` → `todo.md`, updated to reflect completed phases
+
+### Next Up
+1. Run backend: `cd Service && dotnet run --project ByteAI.Api`
+2. Get dev JWT from jwt.io (payload: `{"sub": "seed_alex"}`)
+3. Set in browser localStorage: `localStorage.setItem('byteai_auth_token', '<jwt>')`
+4. Feed screen should load real bytes from DB
+5. Install Clerk — replace localStorage token with `useAuth().getToken()`
 
 ---
 

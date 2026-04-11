@@ -17,8 +17,6 @@ public static class UserMappers
             Xp: entity.Xp,
             Streak: entity.Streak,
             IsVerified: entity.IsVerified,
-            TechStack: entity.TechStack ?? [],
-            FeedPreferences: entity.FeedPreferences ?? [],
             CreatedAt: entity.CreatedAt,
             UpdatedAt: entity.UpdatedAt
         );

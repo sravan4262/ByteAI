@@ -2,9 +2,7 @@ using ByteAI.Api.Common.Auth;
 using ByteAI.Api.Mappers;
 using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
-using ByteAI.Core.Commands.Bookmarks;
-using ByteAI.Core.Infrastructure;
-using MediatR;
+using ByteAI.Core.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,41 +12,23 @@ namespace ByteAI.Api.Controllers;
 [Route("api/bytes/{byteId:guid}/bookmarks")]
 [Produces("application/json")]
 [Tags("Bookmarks")]
-public sealed class BookmarksController(IMediator mediator) : ControllerBase
+public sealed class BookmarksController(IBookmarksBusiness bookmarksBusiness) : ControllerBase
 {
-    /// <summary>Bookmark a byte.</summary>
+    /// <summary>Toggle bookmark on a byte. Returns isSaved=true if now bookmarked, false if removed.</summary>
     [HttpPost]
     [Authorize]
-    [ProducesResponseType(typeof(ApiResponse<BookmarkResponse>), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<ApiResponse<BookmarkResponse>>> CreateBookmark(Guid byteId, CancellationToken ct)
+    public async Task<ActionResult<ApiResponse<object>>> ToggleBookmark(Guid byteId, CancellationToken ct)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
-        if (!Guid.TryParse(clerkId, out var userId)) return Unauthorized();
 
         try
         {
-            var result = await mediator.Send(new CreateBookmarkCommand(byteId, userId), ct);
-            return CreatedAtAction(nameof(GetMyBookmarks), null, ApiResponse<BookmarkResponse>.Success(result.ToResponse()));
+            var isSaved = await bookmarksBusiness.ToggleBookmarkAsync(clerkId, byteId, ct);
+            return Ok(ApiResponse<object>.Success(new { isSaved }));
         }
-        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
-    }
-
-    /// <summary>Remove a bookmark.</summary>
-    [HttpDelete]
-    [Authorize]
-    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<bool>>> DeleteBookmark(Guid byteId, CancellationToken ct)
-    {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
-        if (!Guid.TryParse(clerkId, out var userId)) return Unauthorized();
-
-        var ok = await mediator.Send(new DeleteBookmarkCommand(byteId, userId), ct);
-        if (!ok) return NotFound(new { message = "Bookmark not found" });
-        return Ok(ApiResponse<bool>.Success(true));
+        catch (UnauthorizedAccessException) { return Unauthorized(); }
     }
 
     /// <summary>List the authenticated user's bookmarked bytes.</summary>
@@ -60,10 +40,15 @@ public sealed class BookmarksController(IMediator mediator) : ControllerBase
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
-        if (!Guid.TryParse(clerkId, out var userId)) return Unauthorized();
 
-        var result = await mediator.Send(new GetUserBookmarksQuery(userId, new PaginationParams(page, Math.Min(pageSize, 100))), ct);
-        var response = new PagedResponse<ByteResponse>(result.Items.Select(b => b.ToResponse()).ToList(), result.Total, result.Page, result.PageSize);
-        return Ok(ApiResponse<PagedResponse<ByteResponse>>.Success(response));
+        try
+        {
+            var result = await bookmarksBusiness.GetMyBookmarksAsync(clerkId, page, pageSize, ct);
+            var response = new PagedResponse<ByteResponse>(
+                result.Items.Select(b => b.ToResponse()).ToList(),
+                result.Total, result.Page, result.PageSize);
+            return Ok(ApiResponse<PagedResponse<ByteResponse>>.Success(response));
+        }
+        catch (UnauthorizedAccessException) { return Unauthorized(); }
     }
 }

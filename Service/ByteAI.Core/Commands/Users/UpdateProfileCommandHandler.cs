@@ -15,8 +15,6 @@ public sealed class UpdateProfileCommandHandler(AppDbContext db)
 
         if (!string.IsNullOrWhiteSpace(request.DisplayName)) user.DisplayName = request.DisplayName;
         if (!string.IsNullOrWhiteSpace(request.Bio)) user.Bio = request.Bio;
-        if (request.TechStack is not null) user.TechStack = request.TechStack;
-        if (request.FeedPreferences is not null) user.FeedPreferences = request.FeedPreferences;
         user.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);

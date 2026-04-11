@@ -18,7 +18,6 @@ public sealed class CreateByteCommandHandler(AppDbContext db, IPublisher publish
             Body = request.Body,
             CodeSnippet = request.CodeSnippet,
             Language = request.Language,
-            Tags = request.Tags,
             Type = request.Type,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

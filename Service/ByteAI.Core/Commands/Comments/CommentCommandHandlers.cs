@@ -21,13 +21,6 @@ public sealed class CreateCommentCommandHandler(AppDbContext db)
             CreatedAt = DateTime.UtcNow
         };
 
-        var byteEntity = await db.Bytes.FindAsync([request.ByteId], cancellationToken);
-        if (byteEntity is not null)
-        {
-            byteEntity.CommentCount++;
-            db.Bytes.Update(byteEntity);
-        }
-
         db.Comments.Add(comment);
         await db.SaveChangesAsync(cancellationToken);
         return comment;
@@ -80,13 +73,6 @@ public sealed class DeleteCommentCommandHandler(AppDbContext db)
 
         if (comment.AuthorId != request.AuthorId)
             throw new UnauthorizedAccessException("Cannot delete another user's comment");
-
-        var byteEntity = await db.Bytes.FindAsync([comment.ByteId], cancellationToken);
-        if (byteEntity is not null)
-        {
-            byteEntity.CommentCount = Math.Max(0, byteEntity.CommentCount - 1);
-            db.Bytes.Update(byteEntity);
-        }
 
         db.Comments.Remove(comment);
         await db.SaveChangesAsync(cancellationToken);

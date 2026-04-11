@@ -29,6 +29,7 @@ dist/
 # ASP.NET / .NET
 bin/
 obj/
+appsettings.Development.json
 *.user
 *.suo
 *.userosscache

@@ -9,6 +9,5 @@ public sealed record CreateByteCommand(
     string Body,
     string? CodeSnippet,
     string? Language,
-    List<string> Tags,
     string Type = "article"
 ) : IRequest<Byte>;

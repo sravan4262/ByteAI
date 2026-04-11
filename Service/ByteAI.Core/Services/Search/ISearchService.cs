@@ -9,4 +9,14 @@ public interface ISearchService
     /// merged via Reciprocal Rank Fusion. Returns top <paramref name="limit"/> bytes.
     /// </summary>
     Task<List<Entities.Byte>> SearchBytesAsync(string query, Vector? queryEmbedding, int limit, CancellationToken ct = default);
+
+    /// <summary>
+    /// Same hybrid RRF search but against the interviews table.
+    /// </summary>
+    Task<List<Entities.Interview>> SearchInterviewsAsync(string query, Vector? queryEmbedding, int limit, CancellationToken ct = default);
+
+    /// <summary>
+    /// Simple username/display-name LIKE search against users table.
+    /// </summary>
+    Task<List<Entities.User>> SearchPeopleAsync(string query, int limit, CancellationToken ct = default);
 }

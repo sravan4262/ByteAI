@@ -1,4 +1,5 @@
 using ByteAI.Api.ViewModels;
+using ByteAI.Core.Commands.Search;
 
 namespace ByteAI.Api.Mappers;
 
@@ -12,27 +13,23 @@ public static class FeedMappers
             Body: entity.Body,
             CodeSnippet: entity.CodeSnippet,
             Language: entity.Language,
-            Tags: entity.Tags ?? [],
             Type: entity.Type,
-            LikeCount: entity.LikeCount,
-            CommentCount: entity.CommentCount,
-            BookmarkCount: entity.BookmarkCount,
-            ViewCount: entity.ViewCount,
             CreatedAt: entity.CreatedAt
         );
 
-    public static SearchResponse ToSearchResponse(this Byte entity) =>
+    public static SearchResponse ToSearchResponse(this SearchResultDto dto) =>
         new(
-            Id: entity.Id,
-            AuthorId: entity.AuthorId,
-            Title: entity.Title,
-            Body: entity.Body,
-            CodeSnippet: entity.CodeSnippet,
-            Language: entity.Language,
-            Tags: entity.Tags ?? [],
-            Type: entity.Type,
-            LikeCount: entity.LikeCount,
-            CommentCount: entity.CommentCount,
-            CreatedAt: entity.CreatedAt
+            Id: dto.Id,
+            AuthorId: dto.AuthorId,
+            Title: dto.Title,
+            Body: dto.Body,
+            CodeSnippet: dto.CodeSnippet,
+            Language: dto.Language,
+            Tags: [.. dto.Tags],
+            Type: dto.Type,
+            ContentType: dto.ContentType,
+            LikeCount: dto.LikeCount,
+            CommentCount: dto.CommentCount,
+            CreatedAt: dto.CreatedAt
         );
 }

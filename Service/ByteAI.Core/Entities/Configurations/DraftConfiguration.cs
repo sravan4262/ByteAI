@@ -8,7 +8,7 @@ public sealed class DraftConfiguration : IEntityTypeConfiguration<Draft>
 {
     public void Configure(EntityTypeBuilder<Draft> builder)
     {
-        builder.ToTable("drafts");
+        builder.ToTable("drafts", "bytes");
 
         builder.HasKey(d => d.Id);
         builder.Property(d => d.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");

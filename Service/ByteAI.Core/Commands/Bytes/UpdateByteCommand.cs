@@ -9,6 +9,5 @@ public sealed record UpdateByteCommand(
     string? Title,
     string? Body,
     string? CodeSnippet,
-    string? Language,
-    List<string>? Tags
+    string? Language
 ) : IRequest<Byte>;

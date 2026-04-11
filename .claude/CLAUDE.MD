@@ -93,7 +93,7 @@ Before starting any feature, trigger the planning sequence:
 ### Skills (`.claude/skills/`)
 | Domain | Files |
 |--------|-------|
-| Backend | `backend/dotnet-patterns.md`, `backend/db/postgres.md`, `backend/testing.md`, `backend/security.md`, `backend/backend-todo.md` |
+| Backend | `backend/dotnet-patterns.md`, `backend/db/postgres.md`, `backend/testing.md`, `backend/security.md`, `backend/todo.md` |
 | Frontend | `frontend/frontend-patterns.md`, `frontend/design.md`, `frontend/testing.md` |
 | Quality | `quality/coding-standards.md`, `quality/verification-loop.md`, `quality/benchmark.md`, `frontend/e2e-testing.md` |
 | Deployment | `deployment/docker-patterns.md`, `deployment/github-ops.md`, `deployment/git-workflow.md`, `deployment/deployment-patterns.md` |

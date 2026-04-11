@@ -8,7 +8,7 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
 {
     public void Configure(EntityTypeBuilder<Notification> builder)
     {
-        builder.ToTable("notifications");
+        builder.ToTable("notifications", "users");
 
         builder.HasKey(n => n.Id);
         builder.Property(n => n.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");

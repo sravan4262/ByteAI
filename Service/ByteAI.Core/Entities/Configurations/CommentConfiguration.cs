@@ -8,7 +8,7 @@ public sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
 {
     public void Configure(EntityTypeBuilder<Comment> builder)
     {
-        builder.ToTable("comments");
+        builder.ToTable("comments", "bytes");
 
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");

@@ -1,12 +1,12 @@
-using ByteAI.Core.Entities;
+using ByteAI.Core.Commands.Bytes;
 using ByteAI.Core.Infrastructure;
 using MediatR;
 
 namespace ByteAI.Core.Commands.Feed;
 
 public sealed record GetFeedQuery(
-    Guid UserId,
+    Guid? UserId,
     PaginationParams Pagination,
     List<string>? Tags = null,
-    string Sort = "trending"
-) : IRequest<PagedResult<Byte>>;
+    string Sort = "for_you"
+) : IRequest<PagedResult<ByteResult>>;

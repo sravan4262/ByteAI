@@ -2,9 +2,7 @@ namespace ByteAI.Api.ViewModels;
 
 public sealed record UpdateProfileRequest(
     string? DisplayName,
-    string? Bio,
-    List<string>? TechStack,
-    List<string>? FeedPreferences
+    string? Bio
 );
 
 public sealed record UserResponse(
@@ -18,8 +16,6 @@ public sealed record UserResponse(
     int Xp,
     int Streak,
     bool IsVerified,
-    List<string> TechStack,
-    List<string> FeedPreferences,
     DateTime CreatedAt,
     DateTime UpdatedAt
 );

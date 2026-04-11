@@ -8,31 +8,33 @@ using Microsoft.EntityFrameworkCore;
 namespace ByteAI.Core.Commands.Reactions;
 
 public sealed class CreateReactionCommandHandler(AppDbContext db, IPublisher publisher)
-    : IRequestHandler<CreateReactionCommand, Reaction>
+    : IRequestHandler<CreateReactionCommand, ToggleLikeResult>
 {
-    public async Task<Reaction> Handle(CreateReactionCommand request, CancellationToken cancellationToken)
+    public async Task<ToggleLikeResult> Handle(CreateReactionCommand request, CancellationToken cancellationToken)
     {
+        var existing = await db.UserLikes
+            .FirstOrDefaultAsync(r => r.ByteId == request.ByteId && r.UserId == request.UserId, cancellationToken);
+
+        // Toggle: if already liked, unlike
+        if (existing is not null)
+        {
+            db.UserLikes.Remove(existing);
+            await db.SaveChangesAsync(cancellationToken);
+            return new ToggleLikeResult(request.ByteId, request.UserId, IsLiked: false);
+        }
+
         var byteEntity = await db.Bytes.FindAsync([request.ByteId], cancellationToken)
             ?? throw new KeyNotFoundException($"Byte {request.ByteId} not found");
 
-        var existing = await db.Reactions
-            .FirstOrDefaultAsync(r => r.ByteId == request.ByteId && r.UserId == request.UserId, cancellationToken);
-
-        if (existing is not null)
-            throw new InvalidOperationException("User already reacted to this byte");
-
-        var reaction = new Reaction { ByteId = request.ByteId, UserId = request.UserId, Type = request.Type, CreatedAt = DateTime.UtcNow };
-        byteEntity.LikeCount++;
-
-        db.Reactions.Add(reaction);
-        db.Bytes.Update(byteEntity);
+        var like = new UserLike { ByteId = request.ByteId, UserId = request.UserId, CreatedAt = DateTime.UtcNow };
+        db.UserLikes.Add(like);
         await db.SaveChangesAsync(cancellationToken);
 
         var author = await db.Users.FindAsync([byteEntity.AuthorId], cancellationToken);
         if (author is not null)
             await publisher.Publish(new ByteReactedEvent(request.ByteId, request.UserId, author.Id, request.Type), cancellationToken);
 
-        return reaction;
+        return new ToggleLikeResult(request.ByteId, request.UserId, IsLiked: true);
     }
 }
 
@@ -41,19 +43,12 @@ public sealed class DeleteReactionCommandHandler(AppDbContext db)
 {
     public async Task<bool> Handle(DeleteReactionCommand request, CancellationToken cancellationToken)
     {
-        var reaction = await db.Reactions
+        var like = await db.UserLikes
             .FirstOrDefaultAsync(r => r.ByteId == request.ByteId && r.UserId == request.UserId, cancellationToken);
 
-        if (reaction is null) return false;
+        if (like is null) return false;
 
-        var byteEntity = await db.Bytes.FindAsync([request.ByteId], cancellationToken);
-        if (byteEntity is not null)
-        {
-            byteEntity.LikeCount = Math.Max(0, byteEntity.LikeCount - 1);
-            db.Bytes.Update(byteEntity);
-        }
-
-        db.Reactions.Remove(reaction);
+        db.UserLikes.Remove(like);
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -64,13 +59,20 @@ public sealed class GetByteReactionsQueryHandler(AppDbContext db)
 {
     public async Task<ReactionsCount> Handle(GetByteReactionsQuery request, CancellationToken cancellationToken)
     {
-        var reactions = await db.Reactions
-            .Where(r => r.ByteId == request.ByteId)
-            .GroupBy(r => r.Type)
-            .Select(g => new { Type = g.Key, Count = g.Count() })
-            .ToListAsync(cancellationToken);
+        var likeCount = await db.UserLikes
+            .CountAsync(r => r.ByteId == request.ByteId, cancellationToken);
 
-        var likeCount = reactions.FirstOrDefault(r => r.Type == "like")?.Count ?? 0;
-        return new ReactionsCount(request.ByteId, likeCount, reactions.Sum(r => r.Count));
+        return new ReactionsCount(request.ByteId, likeCount, likeCount);
     }
+}
+
+public sealed class GetByteLikersQueryHandler(AppDbContext db)
+    : IRequestHandler<GetByteLikersQuery, List<LikerInfo>>
+{
+    public async Task<List<LikerInfo>> Handle(GetByteLikersQuery request, CancellationToken ct) =>
+        await db.UserLikes
+            .Where(l => l.ByteId == request.ByteId)
+            .OrderByDescending(l => l.CreatedAt)
+            .Select(l => new LikerInfo(l.UserId, l.User.Username, l.User.DisplayName, l.User.IsVerified))
+            .ToListAsync(ct);
 }

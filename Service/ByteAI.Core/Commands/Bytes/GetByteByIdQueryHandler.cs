@@ -1,4 +1,3 @@
-using ByteAI.Core.Entities;
 using ByteAI.Core.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -6,15 +5,15 @@ using Microsoft.EntityFrameworkCore;
 namespace ByteAI.Core.Commands.Bytes;
 
 public sealed class GetByteByIdQueryHandler(AppDbContext db)
-    : IRequestHandler<GetByteByIdQuery, Byte?>
+    : IRequestHandler<GetByteByIdQuery, ByteResult?>
 {
-    public async Task<Byte?> Handle(GetByteByIdQuery request, CancellationToken cancellationToken)
+    public async Task<ByteResult?> Handle(GetByteByIdQuery request, CancellationToken cancellationToken)
     {
-        var entity = await db.Bytes.FirstOrDefaultAsync(b => b.Id == request.ByteId, cancellationToken);
-        if (entity is null) return null;
-
-        entity.ViewCount++;
-        await db.SaveChangesAsync(cancellationToken);
-        return entity;
+        return await db.Bytes
+            .Where(b => b.Id == request.ByteId && b.IsActive)
+            .Select(b => new ByteResult(
+                b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

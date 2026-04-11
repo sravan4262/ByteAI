@@ -6,51 +6,39 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ByteAI.Core.Commands.Bookmarks;
 
-public sealed class CreateBookmarkCommandHandler(AppDbContext db)
-    : IRequestHandler<CreateBookmarkCommand, Bookmark>
+public sealed class ToggleBookmarkCommandHandler(AppDbContext db)
+    : IRequestHandler<ToggleBookmarkCommand, bool>
 {
-    public async Task<Bookmark> Handle(CreateBookmarkCommand request, CancellationToken cancellationToken)
+    public async Task<bool> Handle(ToggleBookmarkCommand request, CancellationToken ct)
     {
-        var existing = await db.Bookmarks
-            .FirstOrDefaultAsync(b => b.ByteId == request.ByteId && b.UserId == request.UserId, cancellationToken);
+        var existing = await db.UserBookmarks
+            .FirstOrDefaultAsync(b => b.ByteId == request.ByteId && b.UserId == request.UserId, ct);
 
         if (existing is not null)
-            throw new InvalidOperationException("Byte already bookmarked");
-
-        var bookmark = new Bookmark { ByteId = request.ByteId, UserId = request.UserId, CreatedAt = DateTime.UtcNow };
-
-        var byteEntity = await db.Bytes.FindAsync([request.ByteId], cancellationToken);
-        if (byteEntity is not null)
         {
-            byteEntity.BookmarkCount++;
-            db.Bytes.Update(byteEntity);
+            db.UserBookmarks.Remove(existing);
+            await db.SaveChangesAsync(ct);
+            return false; // un-saved
         }
 
-        db.Bookmarks.Add(bookmark);
-        await db.SaveChangesAsync(cancellationToken);
-        return bookmark;
+        db.UserBookmarks.Add(new UserBookmark { ByteId = request.ByteId, UserId = request.UserId, CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync(ct);
+        return true; // saved
     }
 }
 
 public sealed class DeleteBookmarkCommandHandler(AppDbContext db)
     : IRequestHandler<DeleteBookmarkCommand, bool>
 {
-    public async Task<bool> Handle(DeleteBookmarkCommand request, CancellationToken cancellationToken)
+    public async Task<bool> Handle(DeleteBookmarkCommand request, CancellationToken ct)
     {
-        var bookmark = await db.Bookmarks
-            .FirstOrDefaultAsync(b => b.ByteId == request.ByteId && b.UserId == request.UserId, cancellationToken);
+        var bookmark = await db.UserBookmarks
+            .FirstOrDefaultAsync(b => b.ByteId == request.ByteId && b.UserId == request.UserId, ct);
 
         if (bookmark is null) return false;
 
-        var byteEntity = await db.Bytes.FindAsync([request.ByteId], cancellationToken);
-        if (byteEntity is not null)
-        {
-            byteEntity.BookmarkCount = Math.Max(0, byteEntity.BookmarkCount - 1);
-            db.Bytes.Update(byteEntity);
-        }
-
-        db.Bookmarks.Remove(bookmark);
-        await db.SaveChangesAsync(cancellationToken);
+        db.UserBookmarks.Remove(bookmark);
+        await db.SaveChangesAsync(ct);
         return true;
     }
 }
@@ -60,7 +48,7 @@ public sealed class GetUserBookmarksQueryHandler(AppDbContext db)
 {
     public async Task<PagedResult<Byte>> Handle(GetUserBookmarksQuery request, CancellationToken cancellationToken)
     {
-        var query = db.Bookmarks
+        var query = db.UserBookmarks
             .Where(b => b.UserId == request.UserId)
             .OrderByDescending(b => b.CreatedAt)
             .Include(b => b.Byte);

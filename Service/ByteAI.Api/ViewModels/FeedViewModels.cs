@@ -7,11 +7,6 @@ public sealed record FeedResponse(
     string Body,
     string? CodeSnippet,
     string? Language,
-    List<string> Tags,
     string Type,
-    int LikeCount,
-    int CommentCount,
-    int BookmarkCount,
-    int ViewCount,
     DateTime CreatedAt
 );
