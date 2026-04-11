@@ -83,3 +83,6 @@ Service/ByteAI.Api/obj/
 UI/.next/
 UI/node_modules/
 
+# AI model files — too large for git, download separately
+Service/ByteAI.Api/models/
+
