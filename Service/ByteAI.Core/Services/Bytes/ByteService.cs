@@ -7,12 +7,13 @@ using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.AI;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Bytes;
 
-public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddingService embedding, TechDomainAnchors anchors, IGroqService groq) : IByteService
+public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddingService embedding, TechDomainAnchors anchors, IGroqService groq, ILogger<ByteService> logger) : IByteService
 {
     public async Task UpdateEmbeddingAsync(Guid byteId, float[] embedding, CancellationToken ct = default)
     {
@@ -71,19 +72,30 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
         var topicVec = await embedding.EmbedQueryAsync(topicText, ct);
         var maxSim = anchors.MaxSimilarity(topicVec);
 
-        if (maxSim < 0.20f)
+        logger.LogInformation("Content validation similarity score: {Score:F4} for title: {Title}", maxSim, title);
+
+        if (maxSim < 0.15f)
             throw new InvalidContentException("ByteAI is for tech content only. This doesn't appear to be tech-related.");
 
-        // ── Stage 3: Borderline — escalate to Groq for binary classification ──
-        if (maxSim < 0.30f)
+        // ── Stage 3: Groq is the real content gate ────────────────────────────
+        // nomic scores general English too high against tech anchors (0.55+),
+        // so embedding is only used as a cheap hard-reject at very low scores.
+        // Groq decides for everything else.
         {
             var validation = await groq.ValidateTechContentAsync(title, body, ct);
+            logger.LogInformation("Groq validation result: {Result}", validation);
             if (validation is not null)
             {
                 if (!validation.IsCoherent)
                     throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");
                 if (!validation.IsTechRelated)
                     throw new InvalidContentException($"ByteAI is for tech content only. {validation.Reason}");
+            }
+            else
+            {
+                // Groq unavailable and content isn't clearly tech — reject to be safe
+                logger.LogWarning("Groq validation returned null (API down or key missing) — failing closed for: {Title}", title);
+                throw new InvalidContentException("ByteAI is for tech content only. Could not verify content relevance.");
             }
         }
 
@@ -134,6 +146,38 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
 
         if (entity.AuthorId != authorId)
             throw new UnauthorizedAccessException("Cannot update another user's byte");
+
+        // Only validate when title or body actually changes
+        var newTitle = !string.IsNullOrWhiteSpace(title) ? title : entity.Title;
+        var newBody  = !string.IsNullOrWhiteSpace(body)  ? body  : entity.Body;
+        bool contentChanged = (!string.IsNullOrWhiteSpace(title) && title != entity.Title)
+                           || (!string.IsNullOrWhiteSpace(body)  && body  != entity.Body);
+
+        if (contentChanged)
+        {
+            // Stage 1: entropy / gibberish check
+            if (IsGibberish(newTitle, newBody))
+                throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");
+
+            // Stage 2: hard-reject very low similarity
+            var topicVec = await embedding.EmbedQueryAsync($"{newTitle} {newBody}", ct);
+            var maxSim = anchors.MaxSimilarity(topicVec);
+            logger.LogInformation("Update validation similarity: {Score:F4} for byte {ByteId}", maxSim, byteId);
+            if (maxSim < 0.15f)
+                throw new InvalidContentException("ByteAI is for tech content only. This doesn't appear to be tech-related.");
+
+            // Stage 3: Groq is the authoritative gate
+            var validation = await groq.ValidateTechContentAsync(newTitle, newBody, ct);
+            if (validation is null)
+            {
+                logger.LogWarning("Groq validation returned null during update for byte {ByteId}", byteId);
+                throw new InvalidContentException("ByteAI is for tech content only. Could not verify content relevance.");
+            }
+            if (!validation.IsCoherent)
+                throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");
+            if (!validation.IsTechRelated)
+                throw new InvalidContentException($"ByteAI is for tech content only. {validation.Reason}");
+        }
 
         if (!string.IsNullOrWhiteSpace(title)) entity.Title = title;
         if (!string.IsNullOrWhiteSpace(body)) entity.Body = body;
@@ -189,6 +233,9 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
         var combined = $"{title} {body}";
         if (combined.TrimEnd().Length < 15) return true;
 
+        var letters = combined.Where(char.IsLetter).ToList();
+        if (letters.Count == 0) return true;
+
         // Shannon entropy of the character distribution
         var freq = combined.GroupBy(c => c).Select(g => (double)g.Count() / combined.Length);
         var entropy = -freq.Sum(p => p * Math.Log2(p));
@@ -196,6 +243,13 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
         var words = combined.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var avgWordLen = words.Length > 0 ? words.Average(w => (double)w.Length) : 0;
 
-        return entropy < 3.0 || avgWordLen < 2.5;
+        // Vowel ratio — normal English is ~38%, gibberish is typically <15%
+        var vowels = new HashSet<char> { 'a', 'e', 'i', 'o', 'u' };
+        var vowelRatio = (double)letters.Count(c => vowels.Contains(char.ToLower(c))) / letters.Count;
+
+        // Non-alpha ratio — high punctuation/symbol density signals keyboard mashing
+        var nonAlphaRatio = (double)combined.Count(c => !char.IsLetterOrDigit(c) && c != ' ') / combined.Length;
+
+        return entropy < 3.0 || avgWordLen < 2.5 || vowelRatio < 0.15 || nonAlphaRatio > 0.25;
     }
 }

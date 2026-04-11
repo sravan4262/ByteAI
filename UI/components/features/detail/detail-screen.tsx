@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bookmark, Share2, Heart, MessageSquare, Lightbulb, ChevronLeft, ChevronRight, Send, Trash2, Bot, X } from 'lucide-react'
+import { Bookmark, Share2, Heart, MessageSquare, Lightbulb, ChevronLeft, ChevronRight, Send, Trash2, Bot, X, Pencil } from 'lucide-react'
+import { CodeEditor } from '@/components/ui/code-editor'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
@@ -31,6 +32,14 @@ export function DetailScreen({ post }: DetailScreenProps) {
   type FeedItem = { id: string; title: string; username: string; role: string; company: string }
   const [prevPost, setPrevPost] = useState<FeedItem | null>(null)
   const [nextPost, setNextPost] = useState<FeedItem | null>(null)
+
+  // EDIT
+  const [showEdit, setShowEdit] = useState(false)
+  const [editTitle, setEditTitle] = useState(post.title)
+  const [editBody, setEditBody] = useState(post.body)
+  const [editCode, setEditCode] = useState(post.code?.content ?? '')
+  const [editLanguage, setEditLanguage] = useState(post.code?.language ?? 'JS')
+  const [isSaving, setIsSaving] = useState(false)
 
   // ASK AI
   const [showAsk, setShowAsk] = useState(false)
@@ -137,6 +146,27 @@ export function DetailScreen({ post }: DetailScreenProps) {
     if (navigator.clipboard) {
       await navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`)
       toast.success('Link copied')
+    }
+  }
+
+  const handleSaveEdit = async () => {
+    const t = editTitle.trim()
+    const b = editBody.trim()
+    if (!t || !b || isSaving) return
+    setIsSaving(true)
+    try {
+      const res = await api.updatePost(post.id, { title: t, body: b, codeSnippet: editCode || undefined, language: editLanguage })
+      if (res.error === 'INVALID_CONTENT') {
+        toast.error(res.reason ?? 'Content rejected')
+        return
+      }
+      toast.success('Byte updated!')
+      setShowEdit(false)
+      router.refresh()
+    } catch {
+      toast.error('Failed to save changes')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -294,6 +324,19 @@ export function DetailScreen({ post }: DetailScreenProps) {
             >
               <Bot size={12} /> ASK AI
             </button>
+
+            {currentUserId && post.author.id === currentUserId && (
+              <button
+                onClick={() => { setShowEdit((v) => !v); setEditTitle(post.title); setEditBody(post.body); setEditCode(post.code?.content ?? ''); setEditLanguage(post.code?.language ?? 'JS') }}
+                className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+                  showEdit
+                    ? 'border-[var(--green)] text-[var(--green)] bg-[rgba(16,217,160,0.1)]'
+                    : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--green)] hover:text-[var(--green)] hover:bg-[rgba(16,217,160,0.1)]'
+                }`}
+              >
+                <Pencil size={12} /> EDIT
+              </button>
+            )}
           </div>
 
           {/* ASK AI panel */}
@@ -332,6 +375,50 @@ export function DetailScreen({ post }: DetailScreenProps) {
                   {askAnswer}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* EDIT panel */}
+          {showEdit && (
+            <div className="rounded-xl border border-[var(--green)] bg-[rgba(16,217,160,0.05)] p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="font-mono text-[9px] lg:text-[10px] font-bold tracking-[0.1em] text-[var(--green)] flex items-center gap-1.5">
+                  <Pencil size={11} /> EDIT BYTE
+                </div>
+                <button onClick={() => setShowEdit(false)} className="text-[var(--t3)] hover:text-[var(--t1)]">
+                  <X size={13} />
+                </button>
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value.slice(0, 120))}
+                  placeholder="Title"
+                  className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-2 px-3 font-mono text-[11px] text-[var(--t1)] outline-none placeholder:text-[var(--t3)] focus:border-[var(--green)]"
+                />
+                <textarea
+                  value={editBody}
+                  onChange={(e) => setEditBody(e.target.value.slice(0, 1000))}
+                  placeholder="Body"
+                  rows={5}
+                  className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-2 px-3 font-mono text-[11px] text-[var(--t1)] outline-none resize-none placeholder:text-[var(--t3)] focus:border-[var(--green)]"
+                />
+                {/* Code snippet */}
+                <CodeEditor
+                  value={editCode}
+                  language={editLanguage}
+                  onChange={setEditCode}
+                  onLanguageChange={setEditLanguage}
+                />
+              </div>
+              <button
+                onClick={handleSaveEdit}
+                disabled={!editTitle.trim() || !editBody.trim() || isSaving}
+                className="self-end px-5 py-2 rounded-lg bg-[var(--green)] text-black font-mono text-[10px] font-bold tracking-[0.08em] transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isSaving ? 'SAVING...' : 'SAVE CHANGES'}
+              </button>
             </div>
           )}
 

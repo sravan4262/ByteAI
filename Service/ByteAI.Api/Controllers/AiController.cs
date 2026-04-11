@@ -32,7 +32,8 @@ public sealed class AiController(
         [FromBody] SuggestTagsRequest request,
         CancellationToken ct)
     {
-        var tags = await groq.SuggestTagsAsync(request.Title, request.Body, request.CodeSnippet, ct);
+        var allowedTags = await db.TechStacks.Select(t => t.Name).ToListAsync(ct);
+        var tags = await groq.SuggestTagsAsync(request.Title, request.Body, request.CodeSnippet, allowedTags, ct);
         return Ok(ApiResponse<SuggestTagsResponse>.Success(new SuggestTagsResponse(tags)));
     }
 
@@ -113,8 +114,26 @@ public sealed class AiController(
             }
         }
 
+        if (passages.Count == 0)
+            return Ok(ApiResponse<SearchAskResponse>.Success(
+                new SearchAskResponse("No relevant content found in ByteAI for that question. Try posting bytes on this topic first!", [])));
+
         var answer = await groq.RagAnswerAsync(request.Question, passages, ct);
 
         return Ok(ApiResponse<SearchAskResponse>.Success(new SearchAskResponse(answer, sources)));
+    }
+
+    /// <summary>
+    /// Format code using Groq. Used for languages not supported by Prettier (C#, Go, Java, Python, etc.).
+    /// </summary>
+    [HttpPost("format-code")]
+    [ProducesResponseType(typeof(ApiResponse<FormatCodeResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<FormatCodeResponse>>> FormatCode(
+        [FromBody] FormatCodeRequest request,
+        CancellationToken ct)
+    {
+        var formatted = await groq.FormatCodeAsync(request.Code, request.Language, ct);
+        return Ok(ApiResponse<FormatCodeResponse>.Success(new FormatCodeResponse(formatted)));
     }
 }

@@ -2,15 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { X, Code2, ChevronDown } from 'lucide-react'
+import { X, ChevronDown } from 'lucide-react'
+import { CodeEditor } from '@/components/ui/code-editor'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { ComposeInterviewScreen } from './compose-interview-screen'
 import { composeTags } from '@/lib/mock-data'
 import * as api from '@/lib/api'
-
-const LANGUAGES = ['JS', 'TS', 'PY', 'RS', 'GO', 'CS']
 
 type ComposeType = 'byte' | 'interview'
 
@@ -21,9 +20,10 @@ export function ComposeScreen() {
     searchParams.get('type') === 'interview' ? 'interview' : 'byte'
   )
   const [showTypeDropdown, setShowTypeDropdown] = useState(false)
+  const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [codeContent, setCodeContent] = useState('const insight = () => "ship it";')
-  const [selectedLanguage, setSelectedLanguage] = useState('JS')
+  const [codeContent, setCodeContent] = useState('')
+  const [selectedLanguage, setSelectedLanguage] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [reachEstimate, setReachEstimate] = useState(1200)
   const [isLoading, setIsLoading] = useState(false)
@@ -41,6 +41,7 @@ export function ComposeScreen() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        setTitle('')
         setContent('')
         setCodeContent('')
         setSelectedTags([])
@@ -75,6 +76,7 @@ export function ComposeScreen() {
     setIsLoading(true)
     try {
       await api.createPost({
+        title: title.trim() || undefined,
         content,
         code: codeContent ? { language: selectedLanguage, content: codeContent } : undefined,
         tags: selectedTags,
@@ -138,6 +140,18 @@ export function ComposeScreen() {
             <p className="font-mono text-[9px] text-[var(--t2)] mt-1">// Share your insight to 8,400+ AI devs</p>
           </div>
 
+          {/* Title input */}
+          <div>
+            <span className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)]">// TITLE</span>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value.slice(0, 120))}
+              placeholder="Give your byte a clear title..."
+              className="w-full mt-2 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-4 py-3 font-mono text-[11px] text-[var(--t1)] outline-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)]"
+            />
+          </div>
+
           {/* Content textarea */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -155,49 +169,12 @@ export function ComposeScreen() {
           </div>
 
           {/* Code snippet */}
-          <div className="bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <Code2 size={14} className="text-[var(--cyan)]" />
-                <span className="font-mono text-[9px] tracking-[0.08em] text-[var(--t2)]">CODE_SNIPPET</span>
-              </div>
-            </div>
-
-            {/* Language tabs */}
-            <div className="flex px-4 py-2 gap-2 border-b border-[var(--border)] overflow-x-auto scrollbar-none">
-              {LANGUAGES.map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => setSelectedLanguage(lang)}
-                  className={`font-mono text-[8px] px-3 py-1 rounded flex-shrink-0 transition-all ${
-                    selectedLanguage === lang ? 'bg-[var(--accent)] text-white' : 'text-[var(--t2)] hover:text-[var(--t1)]'
-                  }`}
-                >
-                  {lang}
-                </button>
-              ))}
-            </div>
-
-            {/* Code editor — multiline textarea */}
-            <div className="px-4 py-3">
-              <div className="flex gap-3">
-                <div className="flex flex-col gap-1 select-none">
-                  {codeContent.split('\n').map((_, i) => (
-                    <span key={i} className="font-mono text-[10px] text-[var(--t3)] leading-relaxed w-5 text-right">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                  ))}
-                </div>
-                <textarea
-                  value={codeContent}
-                  onChange={(e) => setCodeContent(e.target.value)}
-                  placeholder="// your code here"
-                  rows={Math.max(3, codeContent.split('\n').length)}
-                  className="flex-1 bg-transparent font-mono text-[10px] text-[var(--t2)] outline-none resize-none leading-relaxed"
-                />
-              </div>
-            </div>
-          </div>
+          <CodeEditor
+            value={codeContent}
+            language={selectedLanguage}
+            onChange={setCodeContent}
+            onLanguageChange={setSelectedLanguage}
+          />
 
           {/* Tags */}
           <div>
@@ -258,7 +235,7 @@ export function ComposeScreen() {
         </button>
         <button
           onClick={handlePost}
-          disabled={!content.trim() || isLoading}
+          disabled={!title.trim() || !content.trim() || isLoading}
           className="flex-1 py-[13px] bg-gradient-to-br from-[var(--accent)] to-[#1d4ed8] rounded-lg font-mono text-[10px] font-bold tracking-[0.1em] text-white shadow-[0_4px_24px_var(--accent-glow)] transition-all hover:shadow-[0_8px_36px_var(--accent-glow)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? 'POSTING...' : 'POST BYTE →'}

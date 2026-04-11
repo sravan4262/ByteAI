@@ -16,7 +16,7 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
         // ── Full-text results ─────────────────────────────────────────────────
         var ftResults = await db.Bytes
             .AsNoTracking()
-            .Where(b => EF.Functions.ToTsVector("english", b.Title + " " + b.Body)
+            .Where(b => b.IsActive && EF.Functions.ToTsVector("english", b.Title + " " + b.Body)
                          .Matches(EF.Functions.PlainToTsQuery("english", query)))
             .OrderByDescending(b => EF.Functions.ToTsVector("english", b.Title + " " + b.Body)
                                      .Rank(EF.Functions.PlainToTsQuery("english", query)))
@@ -30,7 +30,7 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
         {
             vecResults = await db.Bytes
                 .AsNoTracking()
-                .Where(b => b.Embedding != null && b.Embedding.CosineDistance(queryEmbedding) < 0.5)
+                .Where(b => b.Embedding != null && b.IsActive && b.Embedding.CosineDistance(queryEmbedding) < 0.3)
                 .OrderBy(b => b.Embedding!.CosineDistance(queryEmbedding))
                 .Take(limit * 2)
                 .Select(b => b.Id)
@@ -83,7 +83,7 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
         {
             vecResults = await db.Interviews
                 .AsNoTracking()
-                .Where(i => i.Embedding != null && i.Embedding.CosineDistance(queryEmbedding) < 0.5)
+                .Where(i => i.Embedding != null && i.Embedding.CosineDistance(queryEmbedding) < 0.3)
                 .OrderBy(i => i.Embedding!.CosineDistance(queryEmbedding))
                 .Take(limit * 2)
                 .Select(i => i.Id)

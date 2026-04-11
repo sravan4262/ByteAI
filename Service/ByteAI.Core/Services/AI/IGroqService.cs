@@ -13,8 +13,8 @@ public sealed record RagPassage(string Title, string Body, string? SourceId = nu
 
 public interface IGroqService
 {
-    /// <summary>Returns up to 5 tag suggestions for a byte's content.</summary>
-    Task<List<string>> SuggestTagsAsync(string title, string body, string? codeSnippet, CancellationToken ct = default);
+    /// <summary>Returns up to 5 tag suggestions for a byte's content, constrained to the provided allowed tag names.</summary>
+    Task<List<string>> SuggestTagsAsync(string title, string body, string? codeSnippet, IReadOnlyList<string> allowedTags, CancellationToken ct = default);
 
     /// <summary>Scores a byte's quality on clarity, specificity and relevance (1–10 each).</summary>
     Task<QualityScore?> ScoreQualityAsync(string title, string body, CancellationToken ct = default);
@@ -34,4 +34,7 @@ public interface IGroqService
     /// Only called for borderline content (embedding similarity 0.20–0.30).
     /// </summary>
     Task<ContentValidationResult?> ValidateTechContentAsync(string title, string body, CancellationToken ct = default);
+
+    /// <summary>Formats code in the given language. Returns the original code if Groq is unavailable.</summary>
+    Task<string> FormatCodeAsync(string code, string language, CancellationToken ct = default);
 }

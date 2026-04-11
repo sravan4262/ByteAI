@@ -11,15 +11,19 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
     private const string Model = "llama-3.3-70b-versatile";
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-    public async Task<List<string>> SuggestTagsAsync(string title, string body, string? codeSnippet, CancellationToken ct = default)
+    public async Task<List<string>> SuggestTagsAsync(string title, string body, string? codeSnippet, IReadOnlyList<string> allowedTags, CancellationToken ct = default)
     {
         var content = string.IsNullOrEmpty(codeSnippet)
             ? $"Title: {title}\n\n{body}"
             : $"Title: {title}\n\n{body}\n\nCode:\n{codeSnippet}";
 
+        var allowedList = string.Join(", ", allowedTags);
+
         var prompt = $"""
-            You are a tech content tagger. Given the following content, return ONLY a JSON array of 3-5 lowercase
-            hyphenated tags (e.g. ["react","performance","web-vitals"]). No explanation.
+            You are a tech content tagger. Pick 1-5 tags from the ALLOWED LIST below that best match the content.
+            Return ONLY a JSON array of the exact tag names from the list. No explanation. No tags outside the list.
+
+            ALLOWED LIST: {allowedList}
 
             Content:
             {content}
@@ -153,6 +157,18 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
             logger.LogWarning(ex, "Failed to parse tech content validation from Groq: {Raw}", raw);
             return null; // fail open
         }
+    }
+
+    public async Task<string> FormatCodeAsync(string code, string language, CancellationToken ct = default)
+    {
+        var prompt = $"""
+            Format the following {language} code according to standard style conventions.
+            Return ONLY the formatted code — no explanation, no markdown fences, no extra text.
+
+            {code}
+            """;
+
+        return await ChatAsync(prompt, maxTokens: 2000, ct) ?? code;
     }
 
     // ── Private ──────────────────────────────────────────────────────────────

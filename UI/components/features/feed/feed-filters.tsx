@@ -1,7 +1,9 @@
 "use client"
 
+import { useEffect, useState } from 'react'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
-import { sortOptions, allTechStacks } from '@/lib/mock-data'
+import { sortOptions } from '@/lib/mock-data'
+import { getTechStacks, type TechStackResponse } from '@/lib/api/client'
 
 interface FeedFiltersProps {
   activeTab: string
@@ -20,10 +22,6 @@ const TABS = [
   { id: 'trending', label: 'TRENDING' },
 ]
 
-const techOptions = allTechStacks
-  .sort((a, b) => a.localeCompare(b))
-  .map((t) => ({ value: t, label: t }))
-
 export function FeedFilters({
   activeTab,
   sortBy,
@@ -34,6 +32,17 @@ export function FeedFilters({
   onToggleSortDropdown,
   onStackFilter,
 }: FeedFiltersProps) {
+  const [techOptions, setTechOptions] = useState<{ value: string; label: string }[]>([])
+
+  useEffect(() => {
+    getTechStacks().then((stacks: TechStackResponse[]) => {
+      const options = stacks
+        .map((s) => ({ value: s.name, label: s.label }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+      setTechOptions(options)
+    })
+  }, [])
+
   return (
     <div className="flex-shrink-0 bg-[rgba(5,5,14,0.8)] backdrop-blur-sm border-b border-[var(--border)] relative z-20">
       <div className="max-w-7xl mx-auto">

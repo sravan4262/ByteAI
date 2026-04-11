@@ -91,6 +91,7 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
             var result = await bytesBusiness.UpdateByteAsync(clerkId, byteId, request.Title, request.Body, request.CodeSnippet, request.Language, ct);
             return Ok(ApiResponse<ByteResponse>.Success(result.ToResponse()));
         }
+        catch (InvalidContentException ex) { return BadRequest(new { error = "INVALID_CONTENT", reason = ex.Reason }); }
         catch (UnauthorizedAccessException) { return Forbid(); }
         catch (KeyNotFoundException) { return NotFound(new { message = $"Byte {byteId} not found" }); }
     }

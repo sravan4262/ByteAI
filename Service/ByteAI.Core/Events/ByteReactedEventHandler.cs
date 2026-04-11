@@ -32,7 +32,7 @@ public sealed class ByteReactedEventHandler(
                 // ── 2. Create notification for author ─────────────────────────
                 await notifications.CreateAsync(
                     userId: notification.AuthorUserId,
-                    type: "reaction",
+                    type: "like",
                     payload: new
                     {
                         byteId = notification.ByteId,

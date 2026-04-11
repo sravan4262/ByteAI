@@ -1,6 +1,7 @@
 using ByteAI.Core.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Pgvector;
 
@@ -12,9 +13,10 @@ namespace ByteAI.Core.Events;
 ///
 /// This gradually steers the user's interest vector toward content they engage with.
 /// Fire-and-forget — failures are logged but never surface to the caller.
+/// Uses IServiceScopeFactory to avoid ObjectDisposedException when called from fire-and-forget contexts.
 /// </summary>
 public sealed class UserEngagedWithByteEventHandler(
-    AppDbContext db,
+    IServiceScopeFactory scopeFactory,
     ILogger<UserEngagedWithByteEventHandler> logger)
     : INotificationHandler<UserEngagedWithByteEvent>
 {
@@ -25,15 +27,18 @@ public sealed class UserEngagedWithByteEventHandler(
     {
         try
         {
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
             var byteEmbedding = await db.Bytes
                 .AsNoTracking()
                 .Where(b => b.Id == notification.ByteId && b.Embedding != null)
                 .Select(b => b.Embedding)
-                .FirstOrDefaultAsync(cancellationToken);
+                .FirstOrDefaultAsync(CancellationToken.None);
 
             if (byteEmbedding is null) return;
 
-            var user = await db.Users.FindAsync([notification.UserId], cancellationToken);
+            var user = await db.Users.FindAsync([notification.UserId], CancellationToken.None);
             if (user is null) return;
 
             var contentVec = byteEmbedding.ToArray();
@@ -52,7 +57,7 @@ public sealed class UserEngagedWithByteEventHandler(
             }
 
             user.InterestEmbedding = new Vector(NormalizeL2(updated));
-            await db.SaveChangesAsync(cancellationToken);
+            await db.SaveChangesAsync(CancellationToken.None);
 
             logger.LogDebug("Updated interest embedding for user {UserId} after engaging with byte {ByteId}",
                 notification.UserId, notification.ByteId);

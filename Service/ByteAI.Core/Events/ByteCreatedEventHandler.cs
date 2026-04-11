@@ -5,6 +5,7 @@ using ByteAI.Core.Services.AI;
 using ByteAI.Core.Services.Bytes;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace ByteAI.Core.Events;
@@ -13,7 +14,7 @@ public sealed class ByteCreatedEventHandler(
     IEmbeddingService embedding,
     IGroqService groq,
     IByteService byteService,
-    AppDbContext db,
+    IServiceScopeFactory scopeFactory,
     RedisFeedCache? feedCache,
     ILogger<ByteCreatedEventHandler> logger)
     : INotificationHandler<ByteCreatedEvent>
@@ -36,27 +37,33 @@ public sealed class ByteCreatedEventHandler(
         }
 
         // ── 2. Auto-tag extraction (Groq) ─────────────────────────────────────
+        // Task.Run gets its own DI scope — the request scope is disposed by the time this runs.
         _ = Task.Run(async () =>
         {
             try
             {
+                using var scope = scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                var allowedTags = await db.TechStacks
+                    .Select(t => t.Name)
+                    .ToListAsync(CancellationToken.None);
+
                 var suggestedTags = await groq.SuggestTagsAsync(
-                    notification.Title, notification.Body, notification.CodeSnippet, cancellationToken);
+                    notification.Title, notification.Body, notification.CodeSnippet, allowedTags, CancellationToken.None);
 
                 if (suggestedTags.Count == 0) return;
 
-                // Match suggested tag names against TechStack records (case-insensitive)
                 var techStacks = await db.TechStacks
-                    .Where(t => suggestedTags.Contains(t.Name.ToLower()))
-                    .ToListAsync(cancellationToken);
+                    .Where(t => suggestedTags.Contains(t.Name))
+                    .ToListAsync(CancellationToken.None);
 
                 if (techStacks.Count == 0) return;
 
-                // Avoid duplicates if handler re-runs
                 var existing = await db.ByteTechStacks
                     .Where(bt => bt.ByteId == notification.ByteId)
                     .Select(bt => bt.TechStackId)
-                    .ToListAsync(cancellationToken);
+                    .ToListAsync(CancellationToken.None);
 
                 var toInsert = techStacks
                     .Where(t => !existing.Contains(t.Id))
@@ -66,7 +73,7 @@ public sealed class ByteCreatedEventHandler(
                 if (toInsert.Count > 0)
                 {
                     db.ByteTechStacks.AddRange(toInsert);
-                    await db.SaveChangesAsync(cancellationToken);
+                    await db.SaveChangesAsync(CancellationToken.None);
                     logger.LogInformation("Auto-tagged byte {ByteId} with {Count} tags: {Tags}",
                         notification.ByteId, toInsert.Count, string.Join(", ", suggestedTags));
                 }
@@ -75,17 +82,20 @@ public sealed class ByteCreatedEventHandler(
             {
                 logger.LogWarning(ex, "Auto-tagging failed for byte {ByteId}", notification.ByteId);
             }
-        }, cancellationToken);
+        });
 
         // ── 3. Quality scoring (Groq) ─────────────────────────────────────────
         _ = Task.Run(async () =>
         {
             try
             {
-                var score = await groq.ScoreQualityAsync(notification.Title, notification.Body, cancellationToken);
+                var score = await groq.ScoreQualityAsync(notification.Title, notification.Body, CancellationToken.None);
                 if (score is null) return;
 
-                var existing = await db.ByteQualityScores.FindAsync([notification.ByteId], cancellationToken);
+                using var scope = scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                var existing = await db.ByteQualityScores.FindAsync([notification.ByteId]);
                 if (existing is not null)
                 {
                     existing.Clarity = score.Clarity;
@@ -107,7 +117,7 @@ public sealed class ByteCreatedEventHandler(
                     });
                 }
 
-                await db.SaveChangesAsync(cancellationToken);
+                await db.SaveChangesAsync(CancellationToken.None);
                 logger.LogInformation("Quality score stored for byte {ByteId}: C={C} S={S} R={R} Overall={O}",
                     notification.ByteId, score.Clarity, score.Specificity, score.Relevance, score.Overall);
             }
@@ -115,13 +125,16 @@ public sealed class ByteCreatedEventHandler(
             {
                 logger.LogWarning(ex, "Quality scoring failed for byte {ByteId}", notification.ByteId);
             }
-        }, cancellationToken);
+        });
 
         // ── 4. Invalidate feed caches for author's followers ──────────────────
         if (feedCache is not null)
         {
             try
             {
+                using var scope = scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
                 var followerIds = await db.Follows
                     .Where(f => f.FollowingId == notification.AuthorId)
                     .Select(f => f.FollowerId)

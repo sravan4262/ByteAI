@@ -105,6 +105,22 @@
 
 ---
 
+## Phase 1.6 — AI Code Formatter (No New Infrastructure) ✅ COMPLETE (1/1)
+
+### 7b. AI Code Formatter ✅
+**What:** Dual-strategy code formatter inside a reusable `CodeEditor` component. Instantly formats web languages locally via Prettier; sends compiled/scripting languages to Groq for LLM-based formatting. Language must be selected before the textarea unlocks (language-first gate).
+**How it works:**
+- **Prettier (local, ~instant):** JS, TS, JSX, TSX, HTML, CSS, SCSS, JSON, YAML, Markdown, GraphQL — uses Prettier v3 standalone with dynamic plugin imports. Plugins passed as whole module objects (not `.default`) per Prettier v3 ESM API.
+- **Groq (LLM, ~1-2s):** All other languages (C#, Java, Python, Go, Rust, Swift, Kotlin, Scala, Ruby, PHP, Dart, C, C++, Bash, etc.) — calls `POST /api/ai/format-code` which invokes `IGroqService.FormatCodeAsync`.
+- Language picker shows 35+ languages, each tagged `✦ Prettier` (green) or `AI` (accent) so users know which formatter will run.
+- Textarea + FORMAT button disabled until a language is selected (overlay with hint text).
+- `FormatCodeAsync` prompt: `"Format the following {language} code according to standard style conventions. Return ONLY the formatted code — no explanation, no markdown fences, no extra text."`
+- Component is used in the compose screen (create) and the byte edit panel (detail screen).
+**Endpoint:** `POST /api/ai/format-code` → `{ formatted: string }`
+**Files:** `code-editor.tsx` (UI component), `IGroqService.cs`, `GroqService.cs`, `AiController.cs`, `AiViewModels.cs`, `client.ts`
+
+---
+
 ## Phase 2 — Async Worker Container (Gemma 4 E4B, CPU-only)
 
 Deploy a **second ACA container** running Gemma 4 E4B via llama.cpp or Ollama. Scales to zero when idle.

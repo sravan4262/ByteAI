@@ -732,6 +732,15 @@ export async function askAboutByte(byteId: string, question: string): Promise<As
   return res.data
 }
 
+/** Format code via Groq — used for languages Prettier doesn't support (C#, Go, Java, Python, etc.) */
+export async function formatCode(code: string, language: string): Promise<string> {
+  const res = await apiFetch<ApiResponse<{ formatted: string }>>('/api/ai/format-code', {
+    method: 'POST',
+    body: JSON.stringify({ code, language }),
+  })
+  return res.data.formatted
+}
+
 /** Option B/C — semantic search + RAG answer; type=bytes|interviews|undefined for both */
 export async function searchAsk(question: string, type?: 'bytes' | 'interviews'): Promise<SearchAskResult> {
   const res = await apiFetch<ApiResponse<SearchAskResult>>('/api/ai/search-ask', {
@@ -739,6 +748,15 @@ export async function searchAsk(question: string, type?: 'bytes' | 'interviews')
     body: JSON.stringify({ question, type: type ?? null }),
   })
   return res.data
+}
+
+export async function updatePost(byteId: string, data: { title?: string; body?: string; codeSnippet?: string; language?: string }): Promise<{ error?: string; reason?: string }> {
+  const res = await apiFetch<ApiResponse<ByteResponse> | { error: string; reason: string }>(`/api/bytes/${byteId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+  if ('error' in res) return res
+  return {}
 }
 
 export async function createPost(data: Record<string, unknown>): Promise<{ id: string }> {

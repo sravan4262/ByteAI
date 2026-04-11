@@ -50,6 +50,7 @@ try
             builder.Configuration.GetConnectionString("Postgres"),
             npgsql => npgsql.UseVector()));
 
+
     // ── Auth (Clerk JWT) ──────────────────────────────────────────────────────
     builder.Services.AddClerkJwt(builder.Configuration, builder.Environment);
 
