@@ -47,6 +47,16 @@ export function SearchScreen() {
     }
   }
 
+  const handleQueryChange = (value: string) => {
+    setQuery(value)
+    // Clear stale results so old highlights don't render against the new partial query
+    if (hasSearched) {
+      setContentResults([])
+      setPeopleResults([])
+      setHasSearched(false)
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSearch()
   }
@@ -71,7 +81,7 @@ export function SearchScreen() {
               <input
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => handleQueryChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={
                   !selectedType
@@ -196,15 +206,19 @@ export function SearchScreen() {
 
                     <h3 className="font-bold text-sm mb-2">{post.title}</h3>
                     <p className="text-[11px] text-[var(--t2)] leading-relaxed mb-3 line-clamp-3">
-                      {post.body.split(new RegExp(`(${query})`, 'gi')).map((part, i) =>
-                        part.toLowerCase() === query.toLowerCase() ? (
-                          <mark key={i} className="bg-[var(--accent-d)] text-[var(--accent)] px-0.5 rounded">
-                            {part}
-                          </mark>
-                        ) : (
-                          part
-                        )
-                      )}
+                      {query.length >= 3
+                        ? post.body
+                            .split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+                            .map((part, i) =>
+                              part.toLowerCase() === query.toLowerCase() ? (
+                                <mark key={i} className="bg-[var(--accent-d)] text-[var(--accent)] px-0.5 rounded">
+                                  {part}
+                                </mark>
+                              ) : (
+                                part
+                              )
+                            )
+                        : post.body}
                     </p>
 
                     {post.tags.length > 0 && (

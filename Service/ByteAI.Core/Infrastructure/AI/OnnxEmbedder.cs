@@ -57,7 +57,7 @@ public sealed class OnnxEmbedder : IDisposable
 
         if (!string.IsNullOrEmpty(vocabPath) && File.Exists(vocabPath))
         {
-            _tokenizer = BertTokenizer.Create(vocabPath, doLowerCase: true);
+            _tokenizer = BertTokenizer.Create(vocabPath, new BertOptions { LowerCaseBeforeTokenization = true });
             _logger.LogInformation("BertTokenizer loaded from {Path}", vocabPath);
         }
         else
@@ -111,7 +111,7 @@ public sealed class OnnxEmbedder : IDisposable
         if (_tokenizer is not null)
         {
             // Real BertTokenizer — uses BERT WordPiece vocab, adds [CLS] and [SEP]
-            var ids = _tokenizer.EncodeToIds(text, maxTokenCount: MaxTokenLength);
+            var ids = _tokenizer.EncodeToIds(text, MaxTokenLength, out _, out _);
             return ids.Select(id => (long)id).ToList();
         }
 

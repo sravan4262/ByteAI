@@ -58,6 +58,20 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
       }
     }
 
+    // Persist feed order so the detail page can show real prev/next navigation
+    if (result.length > 0) {
+      sessionStorage.setItem(
+        'byteai_feed_context',
+        JSON.stringify(result.map((p) => ({
+          id: p.id,
+          title: p.title,
+          username: p.author.username,
+          role: p.author.role,
+          company: p.author.company,
+        })))
+      )
+    }
+
     return result
   }, [activeTab, sortBy, selectedFollower, posts])
 

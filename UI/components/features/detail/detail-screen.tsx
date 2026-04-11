@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bookmark, Share2, Heart, MessageSquare, Lightbulb, ChevronLeft, Send, Trash2 } from 'lucide-react'
+import { Bookmark, Share2, Heart, MessageSquare, Lightbulb, ChevronLeft, ChevronRight, Send, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
@@ -28,8 +28,22 @@ export function DetailScreen({ post }: DetailScreenProps) {
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
+  type FeedItem = { id: string; title: string; username: string; role: string; company: string }
+  const [prevPost, setPrevPost] = useState<FeedItem | null>(null)
+  const [nextPost, setNextPost] = useState<FeedItem | null>(null)
+
   useEffect(() => {
     api.getCurrentUser().then((u) => { if (u) setCurrentUserId(u.id) })
+
+    try {
+      const raw = sessionStorage.getItem('byteai_feed_context')
+      if (raw) {
+        const feed: FeedItem[] = JSON.parse(raw)
+        const idx = feed.findIndex((p) => p.id === post.id)
+        if (idx > 0) setPrevPost(feed[idx - 1])
+        if (idx !== -1 && idx < feed.length - 1) setNextPost(feed[idx + 1])
+      }
+    } catch { /* sessionStorage unavailable */ }
     api.getPostComments(post.id, {}).then(({ comments: loaded }) => {
       setComments(loaded)
       setCommentCount(loaded.length)
@@ -311,21 +325,43 @@ export function DetailScreen({ post }: DetailScreenProps) {
               )}
             </div>
 
-            {/* Next post suggestion */}
-            <button
-              onClick={() => router.push('/feed')}
-              className="flex items-center gap-[14px] px-[17px] py-[15px] lg:px-6 lg:py-5 mt-4 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg transition-all hover:border-[var(--accent)] hover:shadow-[0_0_20px_rgba(59,130,246,0.1)] hover:-translate-y-0.5 group w-full"
-            >
-              <span className="text-2xl lg:text-3xl">🚀</span>
-              <div className="flex-1 min-w-0 text-left">
-                <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t3)] mb-1">UP_NEXT</div>
-                <div className="font-mono text-[10px] lg:text-sm font-bold text-[var(--t1)] truncate">
-                  React Server Components: What Nobody Tells You.
-                </div>
-                <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">@kl_builds · STAFF ENG @ SHOPIFY</div>
+            {/* Prev / Next navigation */}
+            {(prevPost || nextPost) && (
+              <div className="flex flex-col gap-2 mt-4">
+                {prevPost && (
+                  <button
+                    onClick={() => router.push(`/post/${prevPost.id}`)}
+                    className="flex items-center gap-[14px] px-[17px] py-[15px] lg:px-6 lg:py-5 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg transition-all hover:border-[var(--border)] hover:shadow-[0_0_20px_rgba(59,130,246,0.08)] hover:-translate-y-0.5 group w-full text-left"
+                  >
+                    <span className="font-mono text-[18px] lg:text-2xl text-[var(--t3)] transition-all group-hover:-translate-x-1">←</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t3)] mb-1">PREV</div>
+                      <div className="font-mono text-[10px] lg:text-sm font-bold text-[var(--t1)] truncate">{prevPost.title}</div>
+                      <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">
+                        @{prevPost.username}{prevPost.role ? ` · ${prevPost.role}` : ''}{prevPost.company ? ` @ ${prevPost.company}` : ''}
+                      </div>
+                    </div>
+                    <ChevronLeft size={16} className="text-[var(--t3)] flex-shrink-0" />
+                  </button>
+                )}
+                {nextPost && (
+                  <button
+                    onClick={() => router.push(`/post/${nextPost.id}`)}
+                    className="flex items-center gap-[14px] px-[17px] py-[15px] lg:px-6 lg:py-5 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg transition-all hover:border-[var(--accent)] hover:shadow-[0_0_20px_rgba(59,130,246,0.1)] hover:-translate-y-0.5 group w-full text-left"
+                  >
+                    <span className="text-2xl lg:text-3xl">🚀</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t3)] mb-1">UP_NEXT</div>
+                      <div className="font-mono text-[10px] lg:text-sm font-bold text-[var(--t1)] truncate">{nextPost.title}</div>
+                      <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">
+                        @{nextPost.username}{nextPost.role ? ` · ${nextPost.role}` : ''}{nextPost.company ? ` @ ${nextPost.company}` : ''}
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-[var(--accent)] flex-shrink-0 transition-all group-hover:translate-x-1" />
+                  </button>
+                )}
               </div>
-              <span className="font-mono text-[18px] lg:text-2xl text-[var(--accent)] transition-all group-hover:translate-x-1">→</span>
-            </button>
+            )}
           </div>
         </div>
       </div>
