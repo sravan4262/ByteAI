@@ -27,7 +27,7 @@ public sealed class CreateByteCommandHandler(AppDbContext db, IPublisher publish
         await db.SaveChangesAsync(cancellationToken);
 
         await publisher.Publish(
-            new ByteCreatedEvent(entity.Id, entity.Body, entity.CodeSnippet),
+            new ByteCreatedEvent(entity.Id, entity.AuthorId, entity.Title, entity.Body, entity.CodeSnippet),
             cancellationToken);
 
         return entity;

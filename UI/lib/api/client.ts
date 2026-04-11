@@ -702,6 +702,45 @@ export async function saveDraft(data: Record<string, unknown>): Promise<void> {
   console.log('[API] saveDraft — no backend endpoint yet', data)
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// RAG / AI ASK API
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface AskByteResult {
+  answer: string
+  sourceId: string
+  sourceTitle: string
+}
+
+export interface SearchAskSource {
+  id: string
+  title: string
+  contentType: string
+}
+
+export interface SearchAskResult {
+  answer: string
+  sources: SearchAskSource[]
+}
+
+/** Option A — ask a question grounded in a specific byte */
+export async function askAboutByte(byteId: string, question: string): Promise<AskByteResult> {
+  const res = await apiFetch<ApiResponse<AskByteResult>>(`/api/bytes/${byteId}/ask`, {
+    method: 'POST',
+    body: JSON.stringify({ question }),
+  })
+  return res.data
+}
+
+/** Option B/C — semantic search + RAG answer; type=bytes|interviews|undefined for both */
+export async function searchAsk(question: string, type?: 'bytes' | 'interviews'): Promise<SearchAskResult> {
+  const res = await apiFetch<ApiResponse<SearchAskResult>>('/api/ai/search-ask', {
+    method: 'POST',
+    body: JSON.stringify({ question, type: type ?? null }),
+  })
+  return res.data
+}
+
 export async function createPost(data: Record<string, unknown>): Promise<{ id: string }> {
   const codeObj = data.code as { language?: string; content?: string } | null | undefined
   const bodyText = String(data.content ?? data.body ?? '')

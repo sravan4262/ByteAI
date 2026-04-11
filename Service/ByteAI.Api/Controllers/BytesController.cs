@@ -3,6 +3,7 @@ using ByteAI.Api.Mappers;
 using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
+using ByteAI.Core.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -50,15 +51,29 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<ByteResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> CreateByte([FromBody] CreateByteRequest request, CancellationToken ct)
+    public async Task<IActionResult> CreateByte([FromBody] CreateByteRequest request, [FromQuery] bool force = false, CancellationToken ct = default)
     {
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await bytesBusiness.CreateByteAsync(clerkId, request.Title, request.Body, request.CodeSnippet, request.Language, request.Type, ct);
+            var result = await bytesBusiness.CreateByteAsync(clerkId, request.Title, request.Body, request.CodeSnippet, request.Language, request.Type, ct, force);
             return CreatedAtAction(nameof(GetByteById), new { byteId = result.Id },
                 ApiResponse<object>.Success(new { result.Id, result.AuthorId, result.Title, result.Body, result.Type, result.CreatedAt }));
+        }
+        catch (InvalidContentException ex)
+        {
+            return BadRequest(new { error = "INVALID_CONTENT", reason = ex.Reason });
+        }
+        catch (DuplicateContentException ex)
+        {
+            return Conflict(new
+            {
+                error = "DUPLICATE_CONTENT",
+                existingId = ex.ExistingId,
+                existingTitle = ex.ExistingTitle,
+                similarity = Math.Round(ex.Similarity * 100, 1)
+            });
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
     }

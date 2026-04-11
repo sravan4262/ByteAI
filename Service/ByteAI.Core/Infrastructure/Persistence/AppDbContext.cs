@@ -19,6 +19,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UserBookmark> UserBookmarks => Set<UserBookmark>();
     public DbSet<UserView> UserViews => Set<UserView>();
     public DbSet<ByteTechStack> ByteTechStacks => Set<ByteTechStack>();
+    public DbSet<ByteQualityScore> ByteQualityScores => Set<ByteQualityScore>();
 
     // Engagement — interviews schema
     public DbSet<InterviewLike> InterviewLikes => Set<InterviewLike>();

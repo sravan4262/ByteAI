@@ -45,6 +45,66 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
         }
     }
 
+    public async Task<QualityScore?> ScoreQualityAsync(string title, string body, CancellationToken ct = default)
+    {
+        var prompt = $$"""
+            Rate this tech post on three dimensions. Return ONLY valid JSON, no explanation.
+
+            Title: {{title}}
+            Body: {{body}}
+
+            Return JSON in this exact shape (replace angle brackets with integers 1-10):
+            clarity: how readable and well-structured it is.
+            specificity: how concrete and actionable it is.
+            relevance: how well the title matches the body.
+            Example output: {"clarity":8,"specificity":7,"relevance":9}
+            """;
+
+        var raw = await ChatAsync(prompt, maxTokens: 60, ct);
+        if (string.IsNullOrEmpty(raw)) return null;
+
+        try
+        {
+            var start = raw.IndexOf('{');
+            var end = raw.LastIndexOf('}');
+            if (start < 0 || end < 0) return null;
+
+            using var doc = JsonDocument.Parse(raw[start..(end + 1)]);
+            var root = doc.RootElement;
+            return new QualityScore(
+                root.GetProperty("clarity").GetInt32(),
+                root.GetProperty("specificity").GetInt32(),
+                root.GetProperty("relevance").GetInt32());
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to parse quality score from Groq response: {Raw}", raw);
+            return null;
+        }
+    }
+
+    public async Task<string> RagAnswerAsync(string question, IReadOnlyList<RagPassage> passages, CancellationToken ct = default)
+    {
+        if (passages.Count == 0)
+            return await AskAsync(question, null, ct);
+
+        var contextBlock = string.Join("\n\n---\n\n", passages.Select((p, i) =>
+            $"[{i + 1}] {p.Title}\n{p.Body}"));
+
+        var prompt = $"""
+            You are a technical assistant. Answer the question using ONLY the provided context passages.
+            Be concise, accurate, and cite passage numbers like [1] or [2] when referencing them.
+            If the context doesn't contain enough information, say so briefly.
+
+            Context:
+            {contextBlock}
+
+            Question: {question}
+            """;
+
+        return await ChatAsync(prompt, maxTokens: 600, ct) ?? "Sorry, I couldn't generate a response.";
+    }
+
     public async Task<string> AskAsync(string question, string? context, CancellationToken ct = default)
     {
         var prompt = string.IsNullOrEmpty(context)
@@ -59,6 +119,40 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
                """;
 
         return await ChatAsync(prompt, maxTokens: 500, ct) ?? "Sorry, I couldn't generate a response.";
+    }
+
+    public async Task<ContentValidationResult?> ValidateTechContentAsync(string title, string body, CancellationToken ct = default)
+    {
+        var schema = """{"isTechRelated": true|false, "isCoherent": true|false, "reason": "max 20 words"}""";
+        var prompt = $"""
+            Is the following content tech-related? Respond ONLY with valid JSON, no explanation.
+            Return exactly: {schema}
+
+            Title: {title}
+            Body: {body}
+            """;
+
+        var raw = await ChatAsync(prompt, maxTokens: 80, ct);
+        if (string.IsNullOrEmpty(raw)) return null; // fail open — don't block if Groq is down
+
+        try
+        {
+            var start = raw.IndexOf('{');
+            var end = raw.LastIndexOf('}');
+            if (start < 0 || end < 0) return null;
+
+            using var doc = JsonDocument.Parse(raw[start..(end + 1)]);
+            var root = doc.RootElement;
+            return new ContentValidationResult(
+                root.GetProperty("isTechRelated").GetBoolean(),
+                root.GetProperty("isCoherent").GetBoolean(),
+                root.GetProperty("reason").GetString() ?? "");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to parse tech content validation from Groq: {Raw}", raw);
+            return null; // fail open
+        }
     }
 
     // ── Private ──────────────────────────────────────────────────────────────

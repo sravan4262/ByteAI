@@ -34,6 +34,9 @@ public sealed class CreateReactionCommandHandler(AppDbContext db, IPublisher pub
         if (author is not null)
             await publisher.Publish(new ByteReactedEvent(request.ByteId, request.UserId, author.Id, request.Type), cancellationToken);
 
+        // Update user's interest embedding toward this byte's content (fire-and-forget)
+        _ = publisher.Publish(new UserEngagedWithByteEvent(request.UserId, request.ByteId), cancellationToken);
+
         return new ToggleLikeResult(request.ByteId, request.UserId, IsLiked: true);
     }
 }

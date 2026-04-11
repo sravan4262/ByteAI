@@ -1,11 +1,13 @@
 using ByteAI.Core.Entities;
+using ByteAI.Core.Events;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Bookmarks;
 
-public sealed class BookmarkService(AppDbContext db) : IBookmarkService
+public sealed class BookmarkService(AppDbContext db, IPublisher publisher) : IBookmarkService
 {
     public async Task<bool> ToggleBookmarkAsync(Guid byteId, Guid userId, CancellationToken ct)
     {
@@ -21,6 +23,10 @@ public sealed class BookmarkService(AppDbContext db) : IBookmarkService
 
         db.UserBookmarks.Add(new UserBookmark { ByteId = byteId, UserId = userId, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync(ct);
+
+        // Update user's interest embedding toward this byte's content (fire-and-forget)
+        _ = publisher.Publish(new UserEngagedWithByteEvent(userId, byteId), ct);
+
         return true;
     }
 

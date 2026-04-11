@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search } from 'lucide-react'
+import { Search, Bot, X } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
 import * as api from '@/lib/api'
-import type { Post, PersonResult } from '@/lib/api'
+import type { Post, PersonResult, SearchAskSource } from '@/lib/api'
 
 const SEARCH_TYPES = [
   { id: 'bytes', label: 'BYTES' },
@@ -25,11 +25,39 @@ export function SearchScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
 
+  // RAG / ASK mode
+  const [askMode, setAskMode] = useState(false)
+  const [ragAnswer, setRagAnswer] = useState<string | null>(null)
+  const [ragSources, setRagSources] = useState<SearchAskSource[]>([])
+
+  const resetResults = () => {
+    setContentResults([])
+    setPeopleResults([])
+    setRagAnswer(null)
+    setRagSources([])
+    setHasSearched(false)
+  }
+
   const handleSearch = async () => {
-    if (!query.trim() || !selectedType) return
+    if (!query.trim()) return
+
     setIsLoading(true)
     setHasSearched(true)
+
     try {
+      // Option B: no type selected → NLP RAG over both bytes + interviews
+      if (!selectedType || askMode) {
+        const type = selectedType === 'bytes' ? 'bytes'
+                   : selectedType === 'interviews' ? 'interviews'
+                   : undefined
+        const result = await api.searchAsk(query.trim(), type)
+        setRagAnswer(result.answer)
+        setRagSources(result.sources)
+        setContentResults([])
+        setPeopleResults([])
+        return
+      }
+
       if (selectedType === 'people') {
         const results = await api.searchPeople(query.trim())
         setPeopleResults(results)
@@ -40,8 +68,8 @@ export function SearchScreen() {
         setPeopleResults([])
       }
     } catch {
-      setContentResults([])
-      setPeopleResults([])
+      resetResults()
+      setHasSearched(true)
     } finally {
       setIsLoading(false)
     }
@@ -49,12 +77,7 @@ export function SearchScreen() {
 
   const handleQueryChange = (value: string) => {
     setQuery(value)
-    // Clear stale results so old highlights don't render against the new partial query
-    if (hasSearched) {
-      setContentResults([])
-      setPeopleResults([])
-      setHasSearched(false)
-    }
+    if (hasSearched) resetResults()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -63,13 +86,17 @@ export function SearchScreen() {
 
   const handleTypeSelect = (type: SearchType) => {
     setSelectedType(type)
-    // Reset results when switching type
-    setContentResults([])
-    setPeopleResults([])
-    setHasSearched(false)
+    setAskMode(false)
+    resetResults()
   }
 
-  const totalResults = selectedType === 'people' ? peopleResults.length : contentResults.length
+  const toggleAskMode = () => {
+    setAskMode((v) => !v)
+    resetResults()
+  }
+
+  const isRagMode = !selectedType || askMode
+  const totalResults = selectedType === 'people' && !askMode ? peopleResults.length : contentResults.length
 
   return (
     <PhoneFrame>
@@ -84,21 +111,22 @@ export function SearchScreen() {
                 onChange={(e) => handleQueryChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={
-                  !selectedType
-                    ? 'Select a category first...'
+                  isRagMode && selectedType
+                    ? `Ask AI about ${selectedType}...`
+                    : isRagMode
+                    ? 'Ask anything about tech...'
                     : selectedType === 'people'
                     ? 'Search by username or name...'
                     : `Search ${selectedType}...`
                 }
-                disabled={!selectedType}
-                className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-[11px] pl-4 pr-10 font-mono text-[11px] text-[var(--t1)] outline-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-[11px] pl-4 pr-10 font-mono text-[11px] text-[var(--t1)] outline-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)]"
               />
               <button
                 onClick={handleSearch}
-                disabled={!query.trim() || !selectedType}
+                disabled={!query.trim()}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--t3)] hover:text-[var(--accent)] disabled:opacity-30 transition-all"
               >
-                <Search size={14} />
+                {isRagMode ? <Bot size={14} className="text-[var(--accent)]" /> : <Search size={14} />}
               </button>
             </div>
             <button
@@ -109,14 +137,14 @@ export function SearchScreen() {
             </button>
           </div>
 
-          {/* Type selector */}
-          <div className="flex gap-2 mt-[10px]">
+          {/* Type selector + ASK AI toggle */}
+          <div className="flex gap-2 mt-[10px] items-center">
             {SEARCH_TYPES.map((t) => (
               <button
                 key={t.id}
                 onClick={() => handleTypeSelect(t.id)}
                 className={`font-mono text-[10px] px-4 py-2 rounded-full transition-all border ${
-                  selectedType === t.id
+                  selectedType === t.id && !askMode
                     ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-[0_2px_12px_var(--accent-glow)]'
                     : 'text-[var(--t2)] border-[var(--border-m)] hover:text-[var(--t1)] hover:border-[var(--border-h)]'
                 }`}
@@ -124,40 +152,59 @@ export function SearchScreen() {
                 {t.label}
               </button>
             ))}
+
+            {/* ASK AI toggle — only for bytes/interviews, not people */}
+            {selectedType && selectedType !== 'people' && (
+              <button
+                onClick={toggleAskMode}
+                className={`ml-auto flex items-center gap-1 font-mono text-[9px] px-3 py-2 rounded-full transition-all border ${
+                  askMode
+                    ? 'bg-[var(--accent-d)] text-[var(--accent)] border-[var(--accent)]'
+                    : 'text-[var(--t3)] border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
+                }`}
+              >
+                <Bot size={10} /> ASK
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
-        {/* Initial state — nothing selected */}
-        {!selectedType && (
-          <div className="flex flex-col items-center justify-center h-full text-center px-8 gap-4">
-            <div className="w-12 h-12 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center">
-              <Search size={20} className="text-[var(--t3)]" />
-            </div>
-            <div>
-              <div className="font-mono text-xs font-bold text-[var(--t1)] mb-1">SELECT A CATEGORY</div>
-              <div className="font-mono text-[10px] text-[var(--t3)]">
-                Choose Bytes, Interviews, or People to start searching
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Category selected, not yet searched */}
-        {selectedType && !hasSearched && (
+        {/* Initial state — show ASK ANYTHING prompt */}
+        {!hasSearched && !isLoading && (
           <div className="flex flex-col items-center justify-center h-full text-center px-8 gap-4">
-            <div className="w-12 h-12 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center">
-              <Search size={20} className="text-[var(--accent)]" />
+            <div className={`w-12 h-12 rounded-full border flex items-center justify-center ${
+              isRagMode
+                ? 'bg-[var(--accent-d)] border-[var(--accent)]'
+                : 'bg-[var(--bg-el)] border-[var(--border-m)]'
+            }`}>
+              {isRagMode ? <Bot size={20} className="text-[var(--accent)]" /> : <Search size={20} className="text-[var(--t3)]" />}
             </div>
             <div>
-              <div className="font-mono text-xs font-bold text-[var(--t1)] mb-1">
-                SEARCH {selectedType.toUpperCase()}
-              </div>
-              <div className="font-mono text-[10px] text-[var(--t3)]">
-                Type a query and press Enter or tap the search icon
-              </div>
+              {isRagMode ? (
+                <>
+                  <div className="font-mono text-xs font-bold text-[var(--accent)] mb-1">ASK AI</div>
+                  <div className="font-mono text-[10px] text-[var(--t3)]">
+                    {selectedType
+                      ? `Ask a question — AI will search ${selectedType} and synthesise an answer`
+                      : 'Ask any tech question — AI searches bytes + interviews and synthesises an answer'}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="font-mono text-xs font-bold text-[var(--t1)] mb-1">
+                    {selectedType ? `SEARCH ${selectedType.toUpperCase()}` : 'SELECT A CATEGORY'}
+                  </div>
+                  <div className="font-mono text-[10px] text-[var(--t3)]">
+                    {selectedType
+                      ? 'Type a query and press Enter, or tap ASK for AI answers'
+                      : 'Choose Bytes, Interviews, or People — or type to ask AI directly'}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -165,12 +212,60 @@ export function SearchScreen() {
         {/* Loading */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center h-full">
-            <div className="font-mono text-xs text-[var(--t2)] animate-pulse">SEARCHING...</div>
+            <div className={`font-mono text-xs animate-pulse ${isRagMode ? 'text-[var(--accent)]' : 'text-[var(--t2)]'}`}>
+              {isRagMode ? 'THINKING...' : 'SEARCHING...'}
+            </div>
           </div>
         )}
 
-        {/* Results */}
-        {!isLoading && hasSearched && (
+        {/* RAG answer panel */}
+        {!isLoading && hasSearched && ragAnswer && (
+          <div className="px-5 py-4 flex flex-col gap-4">
+            <div className="rounded-xl border border-[var(--accent)] bg-[var(--accent-d)] p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="font-mono text-[9px] font-bold tracking-[0.1em] text-[var(--accent)] flex items-center gap-1.5">
+                  <Bot size={11} /> AI ANSWER
+                </div>
+                <button
+                  onClick={() => { setRagAnswer(null); setHasSearched(false) }}
+                  className="text-[var(--t3)] hover:text-[var(--t1)]"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+              <p className="font-mono text-[10px] lg:text-xs leading-relaxed text-[var(--t1)] whitespace-pre-wrap">
+                {ragAnswer}
+              </p>
+            </div>
+
+            {/* Sources */}
+            {ragSources.length > 0 && (
+              <div>
+                <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">
+                  SOURCES ({ragSources.length})
+                </div>
+                <div className="flex flex-col gap-2">
+                  {ragSources.map((src, i) => (
+                    <button
+                      key={src.id}
+                      onClick={() => router.push(`/post/${src.id}`)}
+                      className="flex items-center gap-3 text-left bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg px-3 py-2.5 transition-all hover:border-[var(--border-h)] hover:-translate-y-0.5"
+                    >
+                      <span className="font-mono text-[8px] text-[var(--t3)] flex-shrink-0 w-4">[{i + 1}]</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-[10px] font-bold text-[var(--t1)] truncate">{src.title}</div>
+                        <div className="font-mono text-[8px] text-[var(--t3)] mt-0.5 uppercase">{src.contentType}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Regular search results */}
+        {!isLoading && hasSearched && !ragAnswer && (
           <div className="px-5 py-4">
             <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t2)] mb-4">
               {totalResults === 0
@@ -276,7 +371,7 @@ export function SearchScreen() {
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="font-mono text-sm text-[var(--t1)] mb-2">NOTHING FOUND</div>
                 <div className="font-mono text-[10px] text-[var(--t2)]">
-                  Try a different search term
+                  Try a different search term or tap ASK for AI answers
                 </div>
               </div>
             )}

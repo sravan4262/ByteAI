@@ -4,79 +4,110 @@
 
 | Component | Tech | Status |
 |---|---|---|
-| Semantic embeddings | all-MiniLM-L6-v2 (ONNX, in-process, 384-dim) | Done |
-| Vector search | pgvector + RRF (full-text + cosine fusion) | Done |
-| Feed personalization | User `InterestEmbedding` → cosine distance ranking | Done |
-| Auto-embed on byte create | `ByteCreatedEvent` → embed → store | Done |
-| LLM gateway | Groq API — Llama 3.3 70B | Done |
+| Semantic embeddings | nomic-embed-text-v1.5 (ONNX, in-process, 768-dim, 8192-token) | ✅ Done |
+| BertTokenizer | Microsoft.ML.Tokenizers — real WordPiece, replaces stub hash tokenizer | ✅ Done |
+| Task prefixes | `search_document:` for stored content, `search_query:` for queries | ✅ Done |
+| Vector search | pgvector + RRF (full-text PlainToTsQuery + cosine fusion, threshold 0.5) | ✅ Done |
+| Feed personalization | User `InterestEmbedding` → cosine distance ranking | ✅ Done |
+| Auto-embed on byte create | `ByteCreatedEvent` → embed → store | ✅ Done |
+| LLM gateway | Groq API — Llama 3.3 70B (free tier: 1,000 req/day, 30 RPM) | ✅ Done |
 
 ---
 
-## Phase 1 — No New Infrastructure (Use Existing Container + Groq API)
+## Phase 1 — No New Infrastructure ✅ COMPLETE (6/6)
 
-### 1. Auto-Tag Extraction
-**What:** After a byte or interview is saved, run NLP to detect tech stack mentions (`React`, `PostgreSQL`, `Kubernetes`, `Docker`, etc.) and auto-populate `ByteTechStacks` / `InterviewTechStacks`. Currently this is entirely manual at post time.
-
-**Why it matters:** Tags drive feed filtering, personalization, and search. Poor tagging = poor discovery. Removing the manual step means every piece of content gets tagged.
-
-**How:**
-- Trigger from `ByteCreatedEvent` (MediatR notification, same pipeline as embedding)
-- Send title + body to Groq with a structured JSON prompt: `{ "tags": ["react", "typescript"] }`
-- Insert matched tags into `ByteTechStacks` / `InterviewTechStacks`
-- Cap at 5 tags per item
-
-**Model:** Groq Llama 3.3 70B (already available) — structured output, JSON mode
+### 1. Auto-Tag Extraction ✅
+**What:** After a byte is saved, Groq extracts tech stack tags and populates `ByteTechStacks`.
+**How it works:**
+- `ByteCreatedEvent` now carries `Title`, `AuthorId`, `Body`, `CodeSnippet`
+- `ByteCreatedEventHandler` calls `IGroqService.SuggestTagsAsync` (fire-and-forget `Task.Run`)
+- Matches returned tag names against `TechStack.Name` (case-insensitive) in DB
+- Inserts matched `ByteTechStack` records (up to 5, duplicate-safe)
+**Files:** `ByteCreatedEvent.cs`, `ByteCreatedEventHandler.cs`, `IGroqService.cs`, `GroqService.cs`
 
 ---
 
-### 2. Dynamic Interest Embedding Updates
-**What:** Right now `User.InterestEmbedding` is set once at registration and never updated. It should drift toward content the user actively engages with — reads, likes, bookmarks.
-
-**Why it matters:** A static embedding means personalization never improves. Users who evolve their interests (e.g., from frontend to systems) never see that reflected in their feed.
-
-**How:**
-- On `UserLikedEvent` / `UserBookmarkedEvent` / `UserViewedEvent`, fetch the byte's embedding
-- Compute new interest = `0.85 * current_embedding + 0.15 * content_embedding` (exponential moving average)
-- Update `User.InterestEmbedding` in the background (fire-and-forget, low priority)
-
-**Model:** all-MiniLM-L6-v2 (already running in-process) — no new model needed
+### 2. Near-Duplicate Detection ✅
+**What:** Before saving a new byte, checks cosine similarity against existing bytes. If similarity > 92%, returns a 409 with the duplicate's info. User can bypass with `?force=true`.
+**How it works:**
+- `ByteService.CreateByteAsync` embeds `title + body + code` with `EmbedQueryAsync`
+- Queries pgvector: `WHERE CosineDistance(embedding, queryVec) < 0.08`
+- Throws `DuplicateContentException(existingId, existingTitle, similarity)`
+- `BytesController` catches it and returns `409 Conflict` with `{ error, existingId, existingTitle, similarity% }`
+- `POST /api/bytes?force=true` bypasses the check
+**Files:** `DuplicateContentException.cs`, `ByteService.cs`, `IByteService.cs`, `IBytesBusiness.cs`, `BytesBusiness.cs`, `BytesController.cs`
 
 ---
 
-### 3. Near-Duplicate Detection at Post Time
-**What:** Before saving a new byte, run a cosine similarity check against the 50 most recent bytes from the same author and the 100 most recent bytes across the platform. If similarity > 0.92, warn the user.
-
-**Why it matters:** Prevents spam, duplicate posts, and content recycling that degrades feed quality.
-
-**How:**
-- Triggered in `CreateByteCommandHandler` before `SaveChangesAsync`
-- Embed the new byte's title + body (in-process, <10ms)
-- Query pgvector: `ORDER BY embedding <=> $newVec LIMIT 10`
-- If top result has cosine distance < 0.08, return a warning payload to the frontend
-- Frontend shows a modal: "A very similar byte already exists — [view it] or [post anyway]"
-
-**Model:** all-MiniLM-L6-v2 (already running in-process)
+### 3. Byte Quality Score ✅
+**What:** Groq scores each published byte on Clarity, Specificity, and Relevance (1–10 each). Stored in `bytes.byte_quality_scores`.
+**How it works:**
+- `ByteCreatedEventHandler` calls `IGroqService.ScoreQualityAsync` (fire-and-forget `Task.Run`)
+- Groq returns `{ clarity, specificity, relevance }` JSON; Overall = average of three
+- Upserts into `ByteQualityScore` entity
+- Future use: feed ranking multiplier, moderation dashboard
+**Files:** `ByteQualityScore.cs`, `ByteQualityScoreConfiguration.cs`, `IGroqService.cs`, `GroqService.cs`, `ByteCreatedEventHandler.cs`, `AppDbContext.cs`
+**Migration:** `supabase/migrations/003_byte_quality_scores.sql`
 
 ---
 
-### 4. Byte Quality Score
-**What:** Score each published byte on three dimensions: Clarity (is it readable?), Specificity (is it about something concrete?), Relevance (does it match its claimed tags?). Expose the score as a feed ranking signal and in a future moderation dashboard.
+### 4. Dynamic Interest Embedding ✅
+**What:** User's `InterestEmbedding` drifts toward content they engage with via exponential moving average (EMA).
+**How it works:**
+- On like (`CreateReactionCommandHandler`) or bookmark (`BookmarkService`) → publishes `UserEngagedWithByteEvent`
+- `UserEngagedWithByteEventHandler` fetches the byte's embedding, runs EMA:
+  `new = L2Normalize(0.85 × current + 0.15 × byte_embedding)`
+- If user has no `InterestEmbedding` yet, sets it directly to the byte's embedding
+- Feed personalization uses `InterestEmbedding` for cosine ranking automatically
+**Files:** `UserEngagedWithByteEvent.cs`, `UserEngagedWithByteEventHandler.cs`, `ReactionCommandHandlers.cs`, `BookmarkService.cs`
 
-**Why it matters:** Low-quality bytes hurt the platform. Feed ranking that incorporates quality gives better content more reach without manual curation.
+---
 
-**How:**
-- Background job triggered by `ByteCreatedEvent`
-- Prompt Groq: `Rate this byte 1-10 on clarity, specificity, relevance. Return JSON.`
-- Store result in a new `ByteQualityScore` table: `(ByteId, Clarity, Specificity, Relevance, ComputedAt)`
-- Feed ranking multiplies recency score by `(quality / 10)`
+### 5. Semantic Search ✅
+**What:** Hybrid search combining full-text (PostgreSQL `plainto_tsquery`) and vector similarity (pgvector cosine distance) via Reciprocal Rank Fusion (RRF). Returns the best blend of exact keyword matches and semantically similar results.
+**How it works:**
+- Query is embedded with `EmbedQueryAsync` (uses `search_query:` prefix for nomic)
+- Two parallel queries run: FTS with `plainto_tsquery` + pgvector `ORDER BY embedding <=> queryVec`
+- Results are merged using RRF scoring (`1 / (k + rank)`) — a result appearing in both lists scores highest
+- Vector results filtered to cosine distance < 0.5 to prevent unrelated content from leaking in
+- Applies to bytes, interviews, and people (people uses username/displayName LIKE match)
+**Endpoints:** `GET /api/search?q=...&type=bytes|interviews|all`, `GET /api/search/people?q=...`
+**Files:** `SearchService.cs`, `SearchBusiness.cs`, `SearchQueryHandler.cs`, `SearchController.cs`
 
-**Model:** Groq Llama 3.3 70B (already available)
+---
+
+### 6. RAG — Retrieval-Augmented Generation ✅
+**What:** Three RAG modes letting users ask natural language questions, answered by Groq LLM grounded in retrieved content.
+- **Option A** — Ask about a specific byte: one-tap "ASK AI" button on the detail page surfaces an answer scoped to that byte's content.
+- **Option B** — Freeform ask: on the search screen with no type selected, the search bar becomes an NLP question box. Groq searches bytes + interviews, picks the top passages, and synthesises a blended answer.
+- **Option C** — Type-scoped ask: in Bytes or Interviews mode, users can tap the ASK toggle; the search+RAG is scoped to that content type. Answers include clickable source cards linking back to the original posts.
+**How it works:**
+- `RagPassage(Title, Body, SourceId)` record carries each retrieved passage to the LLM.
+- `IGroqService.RagAnswerAsync` builds a numbered context block from up to 10 passages, asks Groq Llama 3.3 70B to synthesise an answer, instructs the model to cite passage numbers.
+- `POST /api/bytes/{id}/ask` (Option A): fetches byte from DB, wraps it in a single `RagPassage`, returns `{ answer, sourceId, sourceTitle }`.
+- `POST /api/ai/search-ask` (Options B+C): embeds the question with `EmbedQueryAsync`, calls `SearchBytesAsync` + `SearchInterviewsAsync` (top 5 each), builds passages list, returns `{ answer, sources[] }`.
+- Frontend: detail-screen shows an expandable ASK AI panel with Q&A input; search-screen detects RAG mode (no tab or ASK toggle) and renders the answer block with numbered source cards.
+**Files:** `IGroqService.cs`, `GroqService.cs`, `AiController.cs`, `AiViewModels.cs`, `client.ts`, `detail-screen.tsx`, `search-screen.tsx`
+
+---
+
+## Phase 1.5 — Content Validation Gates (No New Infrastructure) ✅ COMPLETE (1/1)
+
+### 7. Tech-Relevance & Anti-Gibberish Validation ✅
+**What:** Three-stage pre-save pipeline that rejects non-tech content and gibberish before a byte is persisted. Cheapest gate runs first; Groq is only hit for borderline cases.
+**How it works:**
+- **Stage 1 — Entropy check (~1ms, free):** Computes Shannon entropy + average word length on `title + body`. Rejects if `entropy < 3.0` or avg word length < 2.5 — catches random-character spam before any embedding call. Throws `InvalidContentException`.
+- **Stage 2 — Embedding cosine vs tech corpus (~50ms, free):** `TechDomainAnchors` singleton pre-computes nomic embeddings for 10 tech anchor phrases at startup (`"software development and programming"`, `"machine learning and AI"`, `"system design and architecture"`, etc.). Content is embedded with `EmbedQueryAsync`; max cosine similarity is taken across all anchors. `< 0.20` → hard reject; `> 0.30` → pass; `0.20–0.30` → escalates to Stage 3.
+- **Stage 3 — Groq binary classification (~500ms, 1 req):** Only reached for borderline content. Groq returns `{ isTechRelated, isCoherent, reason }`. `isTechRelated: false` → `400` with `reason` shown to the user. Fails open (passes) if Groq is unavailable, so the pipeline never blocks on API downtime.
+- `BytesController` catches `InvalidContentException` → `400 { error: "INVALID_CONTENT", reason: "..." }`.
+- Pipeline runs before the existing dedup check inside `ByteService.CreateByteAsync`.
+**Files:** `InvalidContentException.cs`, `TechDomainAnchors.cs`, `IGroqService.cs`, `GroqService.cs`, `ByteService.cs`, `BytesController.cs`, `Program.cs`
 
 ---
 
 ## Phase 2 — Async Worker Container (Gemma 4 E4B, CPU-only)
 
-Deploy a **second ACA container** running Gemma 4 E4B via llama.cpp or Ollama. Scales to zero when idle. No GPU required — runs on CPU at 2–5 tokens/sec, which is fine for all async/background tasks.
+Deploy a **second ACA container** running Gemma 4 E4B via llama.cpp or Ollama. Scales to zero when idle.
 
 **Gemma 4 E4B specs:**
 - ~9B total params, 4B effective active params
@@ -85,106 +116,70 @@ Deploy a **second ACA container** running Gemma 4 E4B via llama.cpp or Ollama. S
 - 128K context window
 - CPU: 2-5 tok/s (async fine), T4 GPU: ~60 tok/s (real-time capable)
 
-### 5. Byte-from-URL Generation
-**What:** User pastes a URL (blog post, GitHub PR, paper) in the compose screen. The system fetches the page, strips HTML, and uses an LLM to generate a ByteAI-formatted post (title + 3-sentence body + suggested tags) for the user to review and edit before publishing.
-
-**Why it matters:** Dramatically lowers the barrier to posting. Most engineers read interesting content but don't have time to write about it.
-
+### 8. Byte-from-URL Generation ⏳
+**What:** User pastes a URL → system fetches + strips HTML → Gemma generates a ByteAI post draft for review.
 **How:**
-- New endpoint: `POST /api/compose/from-url { url }`
+- `POST /api/compose/from-url { url }`
 - Backend fetches + strips HTML (HtmlAgilityPack), truncates to 4K chars
-- Sends to Gemma 4 E4B with prompt: `Write a ByteAI post from this article. Return JSON: { title, body, tags }`
-- Returns draft to frontend — user reviews, edits, then posts normally
-
+- Sends to Gemma 4 E4B: `Write a ByteAI post from this article. Return JSON: { title, body, tags }`
+- Returns draft to frontend — user reviews, edits, posts normally
 **Model:** Gemma 4 E4B (async worker container, ~3-8 sec latency acceptable)
 
 ---
 
-### 6. Comments Insight Summary
-**What:** When a byte or interview accumulates 20+ comments, asynchronously generate a "Discussion summary: 3 main perspectives" pinned above the comment thread.
-
-**Why it matters:** Long threads are overwhelming. A summary encourages more users to engage without reading 50 comments.
-
+### 9. Comments Insight Summary ⏳
+**What:** When a byte accumulates 20+ comments, generate a "3 main perspectives" summary pinned above the thread.
 **How:**
-- Background job triggered when `comment_count` crosses 20 (check in `CreateCommentCommandHandler`)
+- Triggered when `comment_count` crosses 20
 - Fetch top 30 comments by vote count
-- Prompt Gemma 4 E4B: `Summarize these comments into 3 distinct perspectives. Be concise and neutral.`
+- Prompt Gemma 4 E4B: `Summarize into 3 distinct perspectives`
 - Store in `ByteCommentSummary (ByteId, Summary, GeneratedAt)` — regenerate every 50 new comments
-
 **Model:** Gemma 4 E4B (async worker container)
 
 ---
 
-### 7. Toxicity / Spam Filter
-**What:** Run a lightweight binary classifier on comment and byte body at write time. Auto-reject anything above a toxicity threshold; flag borderline content for review.
-
-**Why it matters:** As the platform grows, manual moderation doesn't scale. A classifier gate prevents the worst content from ever reaching the feed.
-
+### 10. Toxicity / Spam Filter ⏳
+**What:** Lightweight ONNX classifier on comment/byte body at write time. Auto-reject above threshold; flag borderline content.
 **How:**
-- ONNX model loaded in-process alongside all-MiniLM (same `OnnxRuntimeService` wrapper)
-- Model: `unitary/toxic-bert` or `martin-ha/toxic-comment-model` — both ONNX-exportable, ~500MB
-- Check runs in `CreateCommentCommandHandler` and `CreateByteCommandHandler` before save
-- If score > 0.85 → reject with `400 + message`; if 0.65-0.85 → save but flag `IsFlagged = true`
-
+- ONNX model loaded in-process: `toxic-bert` or `martin-ha/toxic-comment-model` (~500MB)
+- Runs in `CreateCommentCommandHandler` and `CreateByteCommandHandler` before save
+- Score > 0.85 → reject 400; score 0.65-0.85 → save but flag `IsFlagged = true`
 **Model:** Lightweight ONNX classifier (in-process, <50ms, no API cost)
 
 ---
 
 ## Phase 3 — T4 Serverless GPU Container (Gemma 4 26B MoE)
 
-Add a **dedicated GPU workload profile** in ACA (Consumption-GPU-NC8as-T4) with **scale-to-zero**. Only billed per-second when a GPU request is active.
-
-**Gemma 4 26B MoE specs:**
-- 26B total params, **only 4B active per inference** (MoE routing)
-- ~18GB VRAM at Q4 → fits comfortably on T4 (16GB with quantization tricks) or A100 (40GB)
-- 256K context window
-- #6 open model on Arena AI leaderboard
-- Apache 2.0 license
-
-### 8. Interview Prep Coach
-**What:** User selects a company + role. The system RAGs over the stored interviews for that company/role, assembles a context window of real Q&A examples, and generates a custom mock interview session with follow-up questions and model answers.
-
-**Why it matters:** This is ByteAI's highest-value feature — directly differentiated from LinkedIn and Glassdoor. Directly monetizable as a premium feature.
-
+### 11. Interview Prep Coach ⏳
+**What:** User selects company + role → system RAGs over stored interviews → generates a custom mock interview session with follow-up questions and model answers.
 **How:**
-- Endpoint: `POST /api/interviews/prep { company, role, difficulty }`
-- pgvector semantic search: find top-20 interviews matching company + role embedding
-- Assemble RAG context: real Q&A pairs from the platform
-- Prompt Gemma 4 26B MoE: `You are an interviewer at {company}. Generate 5 interview questions with model answers based on these real examples: {context}`
-- Stream response back to frontend via SSE
-
-**Model:** Gemma 4 26B MoE on T4 GPU (real-time streaming, ~60 tok/s)
+- `POST /api/interviews/prep { company, role, difficulty }`
+- pgvector semantic search: top-20 interviews matching company + role embedding
+- RAG context assembled from real Q&A pairs
+- Gemma 4 26B MoE streams response via SSE
+**Model:** Gemma 4 26B MoE on T4 GPU (~60 tok/s)
 
 ---
 
-### 9. "Explain This Byte" (Real-Time)
-**What:** One-tap button on any byte to get a plain-English explanation of the code snippet or technical concept, pitched at the user's inferred seniority level.
-
-**Why it matters:** Makes ByteAI accessible to mid-level engineers trying to level up. Turns passive reading into active learning.
-
+### 12. "Explain This Byte" (Real-Time) ⏳
+**What:** One-tap explanation of any byte's code/concept, pitched at the user's seniority level.
 **How:**
-- Endpoint: `POST /api/bytes/{id}/explain`
+- `POST /api/bytes/{id}/explain`
 - Fetch byte content + user's `SeniorityType`
-- Prompt: `Explain this to a {seniority} engineer in 3 sentences. Then provide one concrete example.`
-- Stream response via SSE
-
-**Model:** Gemma 4 26B MoE on T4 GPU (real-time, streaming required)
+- Prompt: `Explain this to a {seniority} engineer in 3 sentences. Provide one concrete example.`
+- Stream via SSE
+**Model:** Gemma 4 26B MoE on T4 GPU (streaming required)
 
 ---
 
-### 10. "People You Might Know" Recommendations
-**What:** Recommend users to follow based on overlapping tech stacks and reading behavior, not just mutual follows.
-
-**Why it matters:** Cold-start users have no following feed. This bootstraps the social graph with signal-based connections.
-
+### 13. "People You Might Know" Recommendations ⏳
+**What:** Recommend users to follow based on overlapping tech stacks and reading behavior.
 **How:**
-- Embed each user's `TechStack[]` as a concatenated string using all-MiniLM
-- Store as `User.TechStackEmbedding` (separate from `InterestEmbedding`)
-- Weekly background job: for each user, pgvector query top-10 nearest users by tech stack embedding
-- Exclude already-followed users
-- Surface in a new `GET /api/users/recommendations` endpoint
-
-**Model:** all-MiniLM-L6-v2 (already running) for embedding; no LLM needed
+- Embed each user's `TechStack[]` as a concatenated string
+- Store as `User.TechStackEmbedding`
+- Weekly background job: pgvector top-10 nearest users by tech stack embedding
+- `GET /api/users/recommendations`
+**Model:** nomic-embed-text-v1.5 (already running) — no LLM needed
 
 ---
 
@@ -192,7 +187,7 @@ Add a **dedicated GPU workload profile** in ACA (Consumption-GPU-NC8as-T4) with 
 
 | Phase | Infra | Models | Cost Profile |
 |---|---|---|---|
-| 1 | Existing single container | all-MiniLM (in-process) + Groq API | Pay-per-token on Groq only |
+| 1 ✅ | Existing single container | nomic-embed-text-v1.5 (in-process) + Groq API | Free (Groq free tier: 1k req/day) |
 | 2 | + Async worker ACA container (CPU) | Gemma 4 E4B via Ollama | Fixed container cost, scales to zero |
 | 3 | + Serverless GPU ACA profile (T4) | Gemma 4 26B MoE | Per-second GPU billing, scales to zero |
 
@@ -200,8 +195,8 @@ Add a **dedicated GPU workload profile** in ACA (Consumption-GPU-NC8as-T4) with 
 
 | Model | Size (Q4) | Runs On | Tok/s | License | Use In ByteAI |
 |---|---|---|---|---|---|
-| all-MiniLM-L6-v2 | 22MB | CPU in-process | N/A (encoder) | Apache 2.0 | Embeddings, dedup, interest vectors |
-| toxic-bert (ONNX) | ~500MB | CPU in-process | N/A (classifier) | Apache 2.0 | Toxicity / spam filter |
-| Gemma 4 E4B | ~10GB RAM | CPU container | 2-5 tok/s | Apache 2.0 | Byte-from-URL, comment summaries |
-| Gemma 4 26B MoE | ~18GB VRAM | T4 GPU (ACA) | ~60 tok/s | Apache 2.0 | Interview coach, explain-byte, streaming |
-| Groq Llama 3.3 70B | External API | Groq infra | ~300 tok/s | Meta Llama 3.3 | Complex RAG, quality scoring, tagging |
+| nomic-embed-text-v1.5 | ~550MB (137MB quantized) | CPU in-process | N/A (encoder) | Apache 2.0 | Embeddings, dedup, interest vectors, search |
+| toxic-bert (ONNX) | ~500MB | CPU in-process | N/A (classifier) | Apache 2.0 | Toxicity / spam filter (Phase 2) |
+| Gemma 4 E4B | ~10GB RAM | CPU container | 2-5 tok/s | Apache 2.0 | Byte-from-URL, comment summaries (Phase 2) |
+| Gemma 4 26B MoE | ~18GB VRAM | T4 GPU (ACA) | ~60 tok/s | Apache 2.0 | Interview coach, explain-byte, streaming (Phase 3) |
+| Groq Llama 3.3 70B | External API | Groq infra | ~300 tok/s | Meta Llama 3.3 | Auto-tagging, quality scoring, RAG answers (Phase 1) |

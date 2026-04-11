@@ -15,10 +15,10 @@ public sealed class BytesBusiness(IByteService byteService, ICurrentUserService 
     public async Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct) =>
         await byteService.GetByteByIdAsync(byteId, ct);
 
-    public async Task<CreateByteResult> CreateByteAsync(string clerkId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct)
+    public async Task<CreateByteResult> CreateByteAsync(string clerkId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false)
     {
         var authorId = await ResolveUserIdAsync(clerkId, ct);
-        var result = await byteService.CreateByteAsync(authorId, title, body, codeSnippet, language, type, ct);
+        var result = await byteService.CreateByteAsync(authorId, title, body, codeSnippet, language, type, ct, force);
         return new CreateByteResult(result.Id, result.AuthorId, result.Title, result.Body, result.Type, result.CreatedAt);
     }
 

@@ -1,15 +1,18 @@
 using ByteAI.Core.Commands.Bytes;
 using ByteAI.Core.Entities;
 using ByteAI.Core.Events;
+using ByteAI.Core.Exceptions;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Services.AI;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pgvector;
+using Pgvector.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Bytes;
 
-public sealed class ByteService(AppDbContext db, IPublisher publisher) : IByteService
+public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddingService embedding, TechDomainAnchors anchors, IGroqService groq) : IByteService
 {
     public async Task UpdateEmbeddingAsync(Guid byteId, float[] embedding, CancellationToken ct = default)
     {
@@ -53,11 +56,53 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher) : IByteSe
                 b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
             .FirstOrDefaultAsync(ct);
 
-    public async Task<ByteResult> CreateByteAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct)
+    public async Task<ByteResult> CreateByteAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false)
     {
         var validTypes = new[] { "article", "tutorial", "snippet", "discussion" };
         var normalised = type == "byte" ? "article" : type;
         if (!validTypes.Contains(normalised)) normalised = "article";
+
+        // ── Stage 1: Anti-gibberish entropy check ─────────────────────────────
+        if (IsGibberish(title, body))
+            throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");
+
+        // ── Stage 2: Tech-relevance embedding check ───────────────────────────
+        var topicText = $"{title} {body}";
+        var topicVec = await embedding.EmbedQueryAsync(topicText, ct);
+        var maxSim = anchors.MaxSimilarity(topicVec);
+
+        if (maxSim < 0.20f)
+            throw new InvalidContentException("ByteAI is for tech content only. This doesn't appear to be tech-related.");
+
+        // ── Stage 3: Borderline — escalate to Groq for binary classification ──
+        if (maxSim < 0.30f)
+        {
+            var validation = await groq.ValidateTechContentAsync(title, body, ct);
+            if (validation is not null)
+            {
+                if (!validation.IsCoherent)
+                    throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");
+                if (!validation.IsTechRelated)
+                    throw new InvalidContentException($"ByteAI is for tech content only. {validation.Reason}");
+            }
+        }
+
+        // ── Near-duplicate detection (skip if force=true) ─────────────────────
+        if (!force)
+        {
+            var content = title + " " + body + (codeSnippet ?? "");
+            var queryVec = new Vector(await embedding.EmbedQueryAsync(content, ct));
+
+            var nearest = await db.Bytes
+                .AsNoTracking()
+                .Where(b => b.Embedding != null && b.Embedding.CosineDistance(queryVec) < 0.08)
+                .OrderBy(b => b.Embedding!.CosineDistance(queryVec))
+                .Select(b => new { b.Id, b.Title, Distance = b.Embedding!.CosineDistance(queryVec) })
+                .FirstOrDefaultAsync(ct);
+
+            if (nearest is not null)
+                throw new DuplicateContentException(nearest.Id, nearest.Title, 1.0 - nearest.Distance);
+        }
 
         var entity = new Byte
         {
@@ -76,7 +121,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher) : IByteSe
         await db.SaveChangesAsync(ct);
 
         await publisher.Publish(
-            new ByteCreatedEvent(entity.Id, entity.Body, entity.CodeSnippet),
+            new ByteCreatedEvent(entity.Id, entity.AuthorId, entity.Title, entity.Body, entity.CodeSnippet),
             ct);
 
         return new ByteResult(entity.Id, entity.AuthorId, entity.Title, entity.Body, entity.CodeSnippet, entity.Language, entity.Type, entity.CreatedAt, entity.UpdatedAt, 0, 0);
@@ -130,5 +175,27 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher) : IByteSe
             .ToListAsync(ct);
 
         return new PagedResult<ByteResult>(items, total, pagination.Page, pagination.PageSize);
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns true if the combined title+body looks like gibberish:
+    /// too short, very low character entropy, or suspiciously short average word length.
+    /// This is a cheap pre-filter — runs before any embedding or Groq call.
+    /// </summary>
+    private static bool IsGibberish(string title, string body)
+    {
+        var combined = $"{title} {body}";
+        if (combined.TrimEnd().Length < 15) return true;
+
+        // Shannon entropy of the character distribution
+        var freq = combined.GroupBy(c => c).Select(g => (double)g.Count() / combined.Length);
+        var entropy = -freq.Sum(p => p * Math.Log2(p));
+
+        var words = combined.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var avgWordLen = words.Length > 0 ? words.Average(w => (double)w.Length) : 0;
+
+        return entropy < 3.0 || avgWordLen < 2.5;
     }
 }
