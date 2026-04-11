@@ -1,13 +1,12 @@
-using ByteAI.Core.Commands.Notifications;
 using ByteAI.Core.Entities;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
-using MediatR;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace ByteAI.Core.Services.Notifications;
 
-public sealed class NotificationService(AppDbContext db, IMediator mediator) : INotificationService
+public sealed class NotificationService(AppDbContext db) : INotificationService
 {
     public async Task CreateAsync(Guid userId, string type, object payload, CancellationToken ct = default)
     {
@@ -25,9 +24,32 @@ public sealed class NotificationService(AppDbContext db, IMediator mediator) : I
         await db.SaveChangesAsync(ct);
     }
 
-    public Task<PagedResult<Notification>> GetNotificationsAsync(Guid userId, PaginationParams pagination, bool unreadOnly, CancellationToken ct)
-        => mediator.Send(new GetNotificationsQuery(userId, pagination, unreadOnly), ct);
+    public async Task<PagedResult<Notification>> GetNotificationsAsync(Guid userId, PaginationParams pagination, bool unreadOnly, CancellationToken ct)
+    {
+        var query = db.Notifications
+            .AsNoTracking()
+            .Where(n => n.UserId == userId);
 
-    public Task<bool> MarkReadAsync(Guid notificationId, Guid userId, CancellationToken ct)
-        => mediator.Send(new MarkNotificationReadCommand(notificationId, userId), ct);
+        if (unreadOnly)
+            query = query.Where(n => !n.Read);
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderByDescending(n => n.CreatedAt)
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
+            .ToListAsync(ct);
+
+        return new PagedResult<Notification>(items, total, pagination.Page, pagination.PageSize);
+    }
+
+    public async Task<bool> MarkReadAsync(Guid notificationId, Guid userId, CancellationToken ct)
+    {
+        var notification = await db.Notifications.FindAsync([notificationId], ct);
+        if (notification is null || notification.UserId != userId) return false;
+
+        notification.Read = true;
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
 }

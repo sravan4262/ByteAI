@@ -1,20 +1,13 @@
 using ByteAI.Core.Commands.Bytes;
-using ByteAI.Core.Commands.Feed;
+using ByteAI.Core.Entities;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
-using ByteAI.Core.Services.AI;
-using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Pgvector.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Feed;
 
-public sealed class FeedService(
-    AppDbContext db,
-    IEmbeddingService embedding,
-    ILogger<FeedService> logger,
-    IMediator mediator) : IFeedService
+public sealed class FeedService(AppDbContext db) : IFeedService
 {
     public async Task<PagedResult<Entities.Byte>> GetForYouAsync(
         Guid userId, PaginationParams pagination, CancellationToken ct = default)
@@ -91,8 +84,129 @@ public sealed class FeedService(
         return new PagedResult<Entities.Byte>(items, total, pagination.Page, pagination.PageSize);
     }
 
-    public Task<PagedResult<ByteResult>> GetFeedAsync(Guid? userId, PaginationParams pagination, List<string>? tags, string filter, CancellationToken ct)
-        => mediator.Send(new GetFeedQuery(userId, pagination, tags, filter), ct);
+    public async Task<PagedResult<ByteResult>> GetFeedAsync(Guid? userId, PaginationParams pagination, List<string>? tags, string filter, CancellationToken ct)
+    {
+        List<ByteResult> items;
+        int total;
+
+        switch (filter)
+        {
+            case "following":
+                (items, total) = await GetFollowingFeed(userId, pagination, tags, ct);
+                break;
+
+            case "trending":
+                (items, total) = await GetTrendingFeed(pagination, tags, ct);
+                break;
+
+            default: // for_you
+                (items, total) = await GetForYouFeed(pagination, tags, ct);
+                break;
+        }
+
+        return new PagedResult<ByteResult>(items, total, pagination.Page, pagination.PageSize);
+    }
+
+    private IQueryable<Byte> ApplyTagFilter(IQueryable<Byte> query, List<string>? tags)
+    {
+        if (tags is null || tags.Count == 0) return query;
+
+        var tagNamesLower = tags.Select(t => t.ToLower()).ToList();
+        var matchingByteIds = db.ByteTechStacks
+            .Where(bts => tagNamesLower.Contains(bts.TechStack.Name.ToLower()))
+            .Select(bts => bts.ByteId);
+
+        return query.Where(b => matchingByteIds.Contains(b.Id));
+    }
+
+    private async Task<(List<ByteResult>, int)> GetForYouFeed(PaginationParams pagination, List<string>? tags, CancellationToken ct)
+    {
+        var query = ApplyTagFilter(
+            db.Bytes.AsNoTracking().Where(b => b.IsActive).OrderByDescending(b => b.CreatedAt),
+            tags);
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
+            .Select(b => new ByteResult(
+                b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+            .ToListAsync(ct);
+
+        return (items, total);
+    }
+
+    private async Task<(List<ByteResult>, int)> GetFollowingFeed(Guid? userId, PaginationParams pagination, List<string>? tags, CancellationToken ct)
+    {
+        if (!userId.HasValue)
+            return ([], 0);
+
+        var followedIds = await db.Follows
+            .Where(f => f.FollowerId == userId.Value)
+            .Select(f => f.FollowingId)
+            .ToListAsync(ct);
+
+        if (followedIds.Count == 0)
+            return ([], 0);
+
+        var query = ApplyTagFilter(
+            db.Bytes.AsNoTracking()
+                .Where(b => b.IsActive && followedIds.Contains(b.AuthorId))
+                .OrderByDescending(b => b.CreatedAt),
+            tags);
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
+            .Select(b => new ByteResult(
+                b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+            .ToListAsync(ct);
+
+        return (items, total);
+    }
+
+    private async Task<(List<ByteResult>, int)> GetTrendingFeed(PaginationParams pagination, List<string>? tags, CancellationToken ct)
+    {
+        var since = DateTime.UtcNow.AddHours(-24);
+
+        var trendingIds = await db.TrendingEvents
+            .Where(t => t.ContentType == "byte" && t.ClickedAt >= since)
+            .GroupBy(t => t.ContentId)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .Take(200)
+            .ToListAsync(ct);
+
+        IQueryable<Byte> query;
+
+        if (trendingIds.Count == 0)
+        {
+            query = ApplyTagFilter(db.Bytes.AsNoTracking().Where(b => b.IsActive).OrderByDescending(b => b.CreatedAt), tags);
+        }
+        else
+        {
+            query = ApplyTagFilter(
+                db.Bytes.AsNoTracking().Where(b => b.IsActive && trendingIds.Contains(b.Id)),
+                tags);
+        }
+
+        var candidates = await query
+            .Select(b => new ByteResult(
+                b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+            .ToListAsync(ct);
+
+        var sorted = trendingIds.Count > 0
+            ? candidates.OrderBy(b => trendingIds.IndexOf(b.Id)).ToList()
+            : candidates;
+
+        var total = sorted.Count;
+        var items = sorted.Skip(pagination.Skip).Take(pagination.PageSize).ToList();
+        return (items, total);
+    }
 
     private static PagedResult<Entities.Byte> Empty(PaginationParams p) =>
         new([], 0, p.Page, p.PageSize);

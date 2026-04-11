@@ -1,21 +1,67 @@
-using ByteAI.Core.Commands.Comments;
 using ByteAI.Core.Entities;
 using ByteAI.Core.Infrastructure;
-using MediatR;
+using ByteAI.Core.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Comments;
 
-public sealed class CommentService(IMediator mediator) : ICommentService
+public sealed class CommentService(AppDbContext db) : ICommentService
 {
-    public Task<PagedResult<Comment>> GetCommentsByByteAsync(Guid byteId, PaginationParams pagination, CancellationToken ct)
-        => mediator.Send(new GetCommentsByByteQuery(byteId, pagination), ct);
+    public async Task<PagedResult<Comment>> GetCommentsByByteAsync(Guid byteId, PaginationParams pagination, CancellationToken ct)
+    {
+        var query = db.Comments
+            .Where(c => c.ByteId == byteId && c.ParentId == null)
+            .OrderByDescending(c => c.CreatedAt);
 
-    public Task<Comment> CreateCommentAsync(Guid byteId, Guid authorId, string body, Guid? parentCommentId, CancellationToken ct)
-        => mediator.Send(new CreateCommentCommand(byteId, authorId, body, parentCommentId), ct);
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
+            .ToListAsync(ct);
 
-    public Task<Comment> UpdateCommentAsync(Guid commentId, Guid authorId, string body, CancellationToken ct)
-        => mediator.Send(new UpdateCommentCommand(commentId, authorId, body), ct);
+        return new PagedResult<Comment>(items, total, pagination.Page, pagination.PageSize);
+    }
 
-    public Task<bool> DeleteCommentAsync(Guid commentId, Guid authorId, CancellationToken ct)
-        => mediator.Send(new DeleteCommentCommand(commentId, authorId), ct);
+    public async Task<Comment> CreateCommentAsync(Guid byteId, Guid authorId, string body, Guid? parentCommentId, CancellationToken ct)
+    {
+        var comment = new Comment
+        {
+            Id = Guid.NewGuid(),
+            ByteId = byteId,
+            AuthorId = authorId,
+            Body = body,
+            ParentId = parentCommentId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        db.Comments.Add(comment);
+        await db.SaveChangesAsync(ct);
+        return comment;
+    }
+
+    public async Task<Comment> UpdateCommentAsync(Guid commentId, Guid authorId, string body, CancellationToken ct)
+    {
+        var comment = await db.Comments.FirstOrDefaultAsync(c => c.Id == commentId, ct)
+            ?? throw new KeyNotFoundException($"Comment {commentId} not found");
+
+        if (comment.AuthorId != authorId)
+            throw new UnauthorizedAccessException("Cannot update another user's comment");
+
+        comment.Body = body;
+        await db.SaveChangesAsync(ct);
+        return comment;
+    }
+
+    public async Task<bool> DeleteCommentAsync(Guid commentId, Guid authorId, CancellationToken ct)
+    {
+        var comment = await db.Comments.FirstOrDefaultAsync(c => c.Id == commentId, ct);
+        if (comment is null) return false;
+
+        if (comment.AuthorId != authorId)
+            throw new UnauthorizedAccessException("Cannot delete another user's comment");
+
+        db.Comments.Remove(comment);
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
 }

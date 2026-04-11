@@ -1,14 +1,35 @@
-using ByteAI.Core.Commands.Trending;
+using ByteAI.Core.Entities;
 using ByteAI.Core.Infrastructure;
-using MediatR;
+using ByteAI.Core.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Trending;
 
-public sealed class TrendingService(IMediator mediator) : ITrendingService
+public sealed class TrendingService(AppDbContext db) : ITrendingService
 {
     public async Task RecordClickAsync(Guid contentId, string contentType, Guid? userId, CancellationToken ct)
-        => await mediator.Send(new RecordClickCommand(contentId, contentType, userId), ct);
+    {
+        db.TrendingEvents.Add(new TrendingEvent
+        {
+            Id = Guid.NewGuid(),
+            ContentId = contentId,
+            ContentType = contentType,
+            UserId = userId,
+            ClickedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct);
+    }
 
     public Task<List<Guid>> GetTrendingIdsAsync(PaginationParams pagination, string contentType, CancellationToken ct)
-        => mediator.Send(new GetTrendingQuery(pagination, contentType), ct);
+    {
+        var since = DateTime.UtcNow.AddHours(-24);
+        return db.TrendingEvents
+            .Where(t => t.ContentType == contentType && t.ClickedAt >= since)
+            .GroupBy(t => t.ContentId)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
+            .ToListAsync(ct);
+    }
 }
