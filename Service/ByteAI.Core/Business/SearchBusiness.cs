@@ -14,7 +14,7 @@ public sealed class SearchBusiness(ISearchService searchService, IEmbeddingServi
         Pgvector.Vector? queryEmbedding = null;
         if (!string.IsNullOrWhiteSpace(q))
         {
-            var floats = await embeddingService.EmbedAsync(q, ct);
+            var floats = await embeddingService.EmbedQueryAsync(q, ct);
             queryEmbedding = new Pgvector.Vector(floats);
         }
 

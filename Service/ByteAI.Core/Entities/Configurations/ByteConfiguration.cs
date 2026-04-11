@@ -17,7 +17,7 @@ public sealed class ByteConfiguration : IEntityTypeConfiguration<Byte>
         builder.Property(b => b.Body).HasColumnName("body").IsRequired();
         builder.Property(b => b.CodeSnippet).HasColumnName("code_snippet");
         builder.Property(b => b.Language).HasColumnName("language");
-        builder.Property(b => b.Embedding).HasColumnName("embedding").HasColumnType("vector(384)");
+        builder.Property(b => b.Embedding).HasColumnName("embedding").HasColumnType("vector(768)");
         builder.Property(b => b.SearchVector).HasColumnName("search_vector").HasColumnType("tsvector");
         builder.Property(b => b.Type).HasColumnName("type").HasDefaultValue("article");
         builder.Property(b => b.IsActive).HasColumnName("is_active").HasDefaultValue(true);

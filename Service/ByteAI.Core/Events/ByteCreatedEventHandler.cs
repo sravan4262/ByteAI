@@ -24,7 +24,7 @@ public sealed class ByteCreatedEventHandler(
         // ── 1. Generate and store embedding ───────────────────────────────────
         try
         {
-            var floats = await embedding.EmbedAsync(content, cancellationToken);
+            var floats = await embedding.EmbedDocumentAsync(content, cancellationToken);
             await byteService.UpdateEmbeddingAsync(notification.ByteId, floats, cancellationToken);
             logger.LogInformation("Embedding stored for byte {ByteId}", notification.ByteId);
         }

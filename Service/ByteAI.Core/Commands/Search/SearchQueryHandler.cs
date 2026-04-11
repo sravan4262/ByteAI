@@ -32,7 +32,7 @@ public sealed class SearchQueryHandler(
         // Embed the search query for vector search
         if (queryEmbedding is null && !string.IsNullOrWhiteSpace(request.Q))
         {
-            var floats = await embedding.EmbedAsync(request.Q, cancellationToken);
+            var floats = await embedding.EmbedQueryAsync(request.Q, cancellationToken);
             queryEmbedding = new Vector(floats);
         }
 
