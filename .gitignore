@@ -24,7 +24,14 @@ pnpm-lock.yaml
 .next/
 out/
 .build/
+build/
 dist/
+
+# Certificates / keys
+*.pem
+
+# pnpm
+.pnpm
 
 # ASP.NET / .NET
 bin/
