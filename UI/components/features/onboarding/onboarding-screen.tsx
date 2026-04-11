@@ -1,30 +1,42 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
-import { Avatar } from '@/components/layout/avatar'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { useAuth } from '@/hooks/use-auth'
+import { useAuth as useClerkAuth, useUser } from '@clerk/nextjs'
+import { setTokenProvider } from '@/lib/api/http'
 import * as api from '@/lib/api'
 import type { SeniorityTypeResponse, DomainResponse, TechStackResponse } from '@/lib/api'
 
 export function OnboardingScreen() {
   const { completeOnboarding } = useAuth()
+  const { getToken } = useClerkAuth()
+  const { user: clerkUser } = useUser()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Onboarding lives outside AuthGuard, so wire the token provider here
+  useEffect(() => {
+    setTokenProvider(getToken)
+  }, [getToken])
+
   const [seniorityOptions, setSeniorityOptions] = useState<SeniorityTypeResponse[]>([])
   const [domainOptions, setDomainOptions] = useState<DomainResponse[]>([])
   const [techStackOptions, setTechStackOptions] = useState<TechStackResponse[]>([])
   const [selectedSeniority, setSelectedSeniority] = useState<SeniorityTypeResponse | null>(null)
   const [selectedDomain, setSelectedDomain] = useState<DomainResponse | null>(null)
   const [selectedTechStack, setSelectedTechStack] = useState<string[]>([])
+  const [bio, setBio] = useState('')
+  const [company, setCompany] = useState('')
+  const [roleTitle, setRoleTitle] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [bioFocused, setBioFocused] = useState(false)
 
-  // Load seniority + domains on mount
   useEffect(() => {
     api.getSeniorityTypes().then(setSeniorityOptions)
     api.getDomains().then(setDomainOptions)
   }, [])
 
-  // Load tech stacks whenever domain changes
   useEffect(() => {
     if (!selectedDomain) { setTechStackOptions([]); return }
     api.getTechStacks(selectedDomain.id).then(setTechStackOptions)
@@ -46,6 +58,9 @@ export function OnboardingScreen() {
       seniority: selectedSeniority.name,
       domain: selectedDomain.name,
       techStack: selectedTechStack,
+      bio: bio.trim() || null,
+      company: company.trim() || null,
+      roleTitle: roleTitle.trim() || null,
     })
     setIsLoading(false)
     completeOnboarding()
@@ -54,16 +69,22 @@ export function OnboardingScreen() {
   const progressPercent =
     ([selectedSeniority, selectedDomain, selectedTechStack.length > 0].filter(Boolean).length / 3) * 100
 
+  const wordCount = bio.trim() ? bio.trim().split(/\s+/).length : 0
+  const initials = ((clerkUser?.firstName?.[0] ?? '') + (clerkUser?.lastName?.[0] ?? '')).toUpperCase() || '?'
+
   return (
     <PhoneFrame>
       {/* Header */}
       <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.92)] backdrop-blur-md">
         <ByteAILogo size="sm" showText />
-        <Avatar initials="AX" size="xs" />
+        {clerkUser?.imageUrl
+          ? <img src={clerkUser.imageUrl} alt="avatar" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full object-cover ring-1 ring-[var(--border-h)]" />
+          : <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--purple)] flex items-center justify-center font-mono text-[10px] font-bold text-white">{initials}</div>
+        }
       </header>
 
       {/* Progress bar */}
-      <div className="px-5 py-[13px] pb-[9px] flex-shrink-0">
+      <div className="px-5 pt-[13px] pb-[9px] flex-shrink-0">
         <div className="flex justify-between mb-2">
           <span className="font-mono text-[10px] tracking-[0.08em] text-[var(--t2)]">SETUP_PROFILE</span>
           <span className="font-mono text-[10px] tracking-[0.08em] text-[var(--t2)]">STEP_02 / 03</span>
@@ -78,7 +99,118 @@ export function OnboardingScreen() {
 
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
         <div className="px-5 pb-8 flex flex-col gap-6">
-          {/* Seniority */}
+
+          {/* ── IDENTITY CARD ── */}
+          <div className="rounded-xl border border-[var(--border-m)] overflow-hidden shadow-[0_0_40px_rgba(59,130,246,0.04)]">
+
+            {/* Titlebar */}
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-[rgba(255,255,255,0.02)] border-b border-[var(--border)]">
+              <div className="flex gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+              </div>
+              <span className="font-mono text-[10px] text-[var(--t3)] tracking-[0.08em] ml-1">~/user.profile.init</span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-pulse" />
+                <span className="font-mono text-[9px] text-[var(--green)] tracking-[0.06em]">EDITING</span>
+              </div>
+            </div>
+
+            {/* Author line — avatar + name + company */}
+            <div className="px-4 py-4 flex items-center gap-3 border-b border-[var(--border)] bg-[rgba(59,130,246,0.03)]">
+              {/* Avatar */}
+              <div className="relative flex-shrink-0">
+                <div className="absolute -inset-[2px] rounded-full bg-[conic-gradient(from_0deg,var(--accent),var(--cyan),var(--purple),var(--accent))] animate-spin-ring opacity-60 blur-[1px]" />
+                {clerkUser?.imageUrl
+                  ? <img src={clerkUser.imageUrl} referrerPolicy="no-referrer" className="relative w-11 h-11 rounded-full object-cover ring-2 ring-[var(--bg)]" />
+                  : <div className="relative w-11 h-11 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--purple)] flex items-center justify-center font-mono text-sm font-bold text-white ring-2 ring-[var(--bg)]">{initials}</div>
+                }
+              </div>
+
+              <div className="flex-1 min-w-0">
+                {/* Name */}
+                <div className="font-mono text-[12px] font-bold text-[var(--t1)] truncate">
+                  {clerkUser?.fullName ?? 'Developer'}
+                </div>
+
+                {/* Role title + company inline inputs */}
+                <div className="flex items-center gap-1 mt-1 min-w-0 overflow-hidden">
+                  <input
+                    value={roleTitle}
+                    onChange={(e) => setRoleTitle(e.target.value)}
+                    placeholder="Sr. Engineer"
+                    maxLength={40}
+                    style={{ width: `${Math.max(roleTitle.length, 'Sr. Engineer'.length) + 1}ch` }}
+                    className="font-mono text-[11px] text-[var(--purple)] bg-transparent outline-none placeholder:text-[var(--border-h)] border-b border-dashed border-[var(--border-m)] focus:border-[var(--purple)] transition-[width,border-color] min-w-0 flex-shrink-0"
+                  />
+                  <span className="font-mono text-[11px] text-[var(--t3)] flex-shrink-0">@</span>
+                  <input
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    placeholder="your-company.io"
+                    maxLength={50}
+                    style={{ width: `${Math.max(company.length, 'your-company.io'.length) + 1}ch` }}
+                    className="font-mono text-[11px] text-[var(--cyan)] bg-transparent outline-none placeholder:text-[var(--border-h)] border-b border-dashed border-[var(--border-m)] focus:border-[var(--cyan)] transition-[width,border-color] min-w-0 flex-shrink-0"
+                  />
+                </div>
+              </div>
+
+              {/* git commit badge */}
+              <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+                <span className="font-mono text-[8px] text-[var(--t3)] bg-[var(--bg-el)] border border-[var(--border-m)] rounded px-1.5 py-0.5 tracking-[0.05em]">git commit</span>
+                <span className="font-mono text-[8px] text-[var(--t3)]">--author</span>
+              </div>
+            </div>
+
+            {/* Bio — commit message zone */}
+            <div className="flex">
+              {/* Line gutter */}
+              <div className="flex flex-col pt-3 pb-3 pl-3 pr-2 border-r border-[var(--border)] bg-[rgba(255,255,255,0.01)] select-none gap-0">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <span key={i} className="font-mono text-[9px] text-[var(--border-h)] leading-[18px]">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                ))}
+              </div>
+
+              {/* Textarea */}
+              <div className="flex-1 relative">
+                <textarea
+                  ref={textareaRef}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  onFocus={() => setBioFocused(true)}
+                  onBlur={() => setBioFocused(false)}
+                  maxLength={280}
+                  rows={5}
+                  placeholder={`Building things that matter.\nOpen source contributor.\nCoffee → code → repeat.`}
+                  className={`w-full bg-transparent px-3 pt-3 pb-3 font-mono text-[11px] text-[var(--t1)] placeholder:text-[var(--border-h)] resize-none outline-none leading-[18px] transition-colors`}
+                />
+                {/* Active line highlight */}
+                {bioFocused && (
+                  <div className="absolute inset-x-0 top-3 h-[18px] bg-[rgba(59,130,246,0.04)] pointer-events-none" />
+                )}
+              </div>
+            </div>
+
+            {/* Status bar */}
+            <div className={`flex items-center justify-between px-4 py-2 border-t border-[var(--border)] bg-[rgba(255,255,255,0.01)] transition-colors ${bioFocused ? 'border-[rgba(59,130,246,0.3)]' : ''}`}>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[9px] text-[var(--t3)]">
+                  {bio.length === 0
+                    ? <span className="text-[var(--t3)]">// commit message</span>
+                    : <span className="text-[var(--green)]">✓ {wordCount} word{wordCount !== 1 ? 's' : ''}</span>
+                  }
+                </span>
+              </div>
+              <span className={`font-mono text-[9px] ${bio.length > 250 ? 'text-[var(--red)]' : 'text-[var(--t3)]'}`}>
+                {bio.length}/280
+              </span>
+            </div>
+          </div>
+
+          {/* ── SENIORITY ── */}
           <div>
             <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)] mb-3">// SELECT_SENIORITY</div>
             <div className="grid grid-cols-2 gap-2">
@@ -88,7 +220,7 @@ export function OnboardingScreen() {
                   onClick={() => setSelectedSeniority(level)}
                   className={`py-3 px-4 rounded-lg border font-mono text-[11px] tracking-[0.05em] transition-all flex items-center gap-2 ${
                     selectedSeniority?.id === level.id
-                      ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)]'
+                      ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.15)]'
                       : 'border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] hover:border-[var(--border-h)]'
                   }`}
                 >
@@ -98,7 +230,7 @@ export function OnboardingScreen() {
             </div>
           </div>
 
-          {/* Domain */}
+          {/* ── DOMAIN ── */}
           <div>
             <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)] mb-3">// SELECT_DOMAIN</div>
             <div className="grid grid-cols-2 gap-2">
@@ -108,7 +240,7 @@ export function OnboardingScreen() {
                   onClick={() => setSelectedDomain(domain)}
                   className={`py-3 px-4 rounded-lg border font-mono text-[11px] tracking-[0.05em] transition-all flex items-center gap-2 ${
                     selectedDomain?.id === domain.id
-                      ? 'border-[var(--cyan)] bg-[rgba(34,211,238,0.08)] text-[var(--cyan)]'
+                      ? 'border-[var(--cyan)] bg-[rgba(34,211,238,0.08)] text-[var(--cyan)] shadow-[0_0_16px_rgba(34,211,238,0.12)]'
                       : 'border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] hover:border-[var(--border-h)]'
                   }`}
                 >
@@ -118,13 +250,11 @@ export function OnboardingScreen() {
             </div>
           </div>
 
-          {/* Tech Stack — loaded from API when domain is selected */}
+          {/* ── TECH STACK ── */}
           {selectedDomain && techStackOptions.length > 0 && (
             <div>
               <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)] mb-1">// SELECT_TECH_STACK</div>
-              <div className="font-mono text-[10px] text-[var(--t3)] mb-3">
-                {selectedTechStack.length}/6 selected
-              </div>
+              <div className="font-mono text-[10px] text-[var(--t3)] mb-3">{selectedTechStack.length}/6 selected</div>
               <div className="flex flex-wrap gap-2">
                 {techStackOptions.map((tech) => (
                   <button
@@ -144,7 +274,7 @@ export function OnboardingScreen() {
             </div>
           )}
 
-          {/* CTA */}
+          {/* ── CTA ── */}
           <button
             onClick={handleComplete}
             disabled={!selectedSeniority || !selectedDomain || isLoading}

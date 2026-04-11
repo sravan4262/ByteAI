@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 
 const bricolage = Bricolage_Grotesque({ 
@@ -30,11 +31,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark h-full">
-      <body className={`${bricolage.variable} ${jetbrains.variable} font-sans antialiased h-full w-full`}>
-        {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className="dark h-full">
+        <body className={`${bricolage.variable} ${jetbrains.variable} font-sans antialiased h-full w-full`}>
+          {children}
+          {process.env.NODE_ENV === 'production' && <Analytics />}
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }

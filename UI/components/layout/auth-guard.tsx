@@ -2,26 +2,31 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@clerk/nextjs'
+import { setTokenProvider } from '@/lib/api/http'
 import type { ReactNode } from 'react'
 
 /**
- * Client-side auth guard — catches stale cookies that let the proxy through.
- * If localStorage says the user is not authenticated, clears cookies and
- * redirects to the auth page.
+ * Client-side auth guard — double-checks Clerk session state after middleware.
+ * Also wires the Clerk getToken() function into the API http client so every
+ * apiFetch() call automatically includes the Authorization: Bearer header.
  */
 export function AuthGuard({ children }: { children: ReactNode }) {
-  const { auth } = useAuth()
+  const { isSignedIn, isLoaded, getToken } = useAuth()
   const router = useRouter()
 
+  // Wire Clerk's getToken into the http client for all API calls
   useEffect(() => {
-    if (!auth.isAuthenticated) {
+    setTokenProvider(getToken)
+  }, [getToken])
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
       router.replace('/')
     }
-  }, [auth.isAuthenticated, router])
+  }, [isLoaded, isSignedIn, router])
 
-  // Render nothing while redirecting to avoid a flash of protected content
-  if (!auth.isAuthenticated) return null
+  if (!isLoaded || !isSignedIn) return null
 
   return <>{children}</>
 }

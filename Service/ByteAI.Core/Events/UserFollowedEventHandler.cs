@@ -1,3 +1,4 @@
+using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Notifications;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,7 @@ namespace ByteAI.Core.Events;
 
 public sealed class UserFollowedEventHandler(
     INotificationService notifications,
+    IBadgeService badgeService,
     ILogger<UserFollowedEventHandler> logger)
     : INotificationHandler<UserFollowedEvent>
 {
@@ -14,7 +16,7 @@ public sealed class UserFollowedEventHandler(
         try
         {
             await notifications.CreateAsync(
-                userId: notification.FollowingId, // the user who got followed receives the notification
+                userId: notification.FollowingId,
                 type: "follow",
                 payload: new { followerId = notification.FollowerId },
                 ct: cancellationToken);
@@ -22,6 +24,15 @@ public sealed class UserFollowedEventHandler(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create follow notification for user {UserId}", notification.FollowingId);
+        }
+
+        try
+        {
+            await badgeService.CheckAndAwardAsync(notification.FollowingId, BadgeTrigger.FollowReceived, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Badge check failed after follow for user {UserId}", notification.FollowingId);
         }
     }
 }

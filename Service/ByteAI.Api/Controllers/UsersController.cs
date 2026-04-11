@@ -72,6 +72,24 @@ public sealed class UsersController(IUsersBusiness usersBusiness) : ControllerBa
         return Ok(ApiResponse<PagedResponse<UserResponse>>.Success(response));
     }
 
+    /// <summary>Update the current authenticated user's profile (seniority, domain, tech stack, bio).</summary>
+    [HttpPut("me/profile")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UserResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<UserResponse>>> UpdateMyProfile([FromBody] UpdateProfileRequest request, CancellationToken ct)
+    {
+        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+
+        try
+        {
+            var result = await usersBusiness.UpdateMyProfileAsync(
+                clerkId, request.DisplayName, request.Bio, request.Company, request.RoleTitle, request.Seniority, request.Domain, request.TechStack, ct);
+            return Ok(ApiResponse<UserResponse>.Success(result.ToResponse()));
+        }
+        catch (UnauthorizedAccessException) { return Unauthorized(); }
+    }
+
     /// <summary>Update the authenticated user's profile. Users may only update their own profile.</summary>
     [HttpPut("{userId:guid}/profile")]
     [Authorize]
@@ -88,5 +106,30 @@ public sealed class UsersController(IUsersBusiness usersBusiness) : ControllerBa
             return Ok(ApiResponse<UserResponse>.Success(result.ToResponse()));
         }
         catch (UnauthorizedAccessException) { return Forbid(); }
+    }
+
+    /// <summary>Get the current user's social links.</summary>
+    [HttpGet("me/socials")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<List<SocialResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<SocialResponse>>>> GetMySocials(CancellationToken ct)
+    {
+        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var socials = await usersBusiness.GetMySocialsAsync(clerkId, ct);
+        var response = socials.Select(s => new SocialResponse(s.Platform, s.Url, s.Label)).ToList();
+        return Ok(ApiResponse<List<SocialResponse>>.Success(response));
+    }
+
+    /// <summary>Replace the current user's social links.</summary>
+    [HttpPut("me/socials")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpsertMySocials([FromBody] UpsertSocialsRequest request, CancellationToken ct)
+    {
+        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var socials = request.Socials.Select(s => (s.Platform, s.Url, s.Label)).ToList();
+        await usersBusiness.UpsertMySocialsAsync(clerkId, socials, ct);
+        return NoContent();
     }
 }

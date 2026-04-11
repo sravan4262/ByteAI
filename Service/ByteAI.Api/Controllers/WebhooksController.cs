@@ -1,40 +1,56 @@
-using ByteAI.Core.Entities;
-using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Business.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Svix;
+using System.Net;
 using System.Text.Json;
 
 namespace ByteAI.Api.Controllers;
 
 /// <summary>
-/// Receives Clerk webhooks (user.created / user.updated) and upserts the user record.
-/// TODO: Validate svix-signature header using the Clerk webhook secret before processing.
+/// Receives Clerk webhooks and keeps the local users table in sync.
+/// All requests are verified via svix-signature before processing.
 /// </summary>
-[ApiController]
-[Route("webhooks")]
+[ApiController] 
+[Route("api/webhooks")]
+[AllowAnonymous]
 [Produces("application/json")]
 [Tags("Webhooks")]
-public sealed class WebhooksController(AppDbContext db) : ControllerBase
+public sealed class WebhooksController(
+    IUsersBusiness usersBusiness,
+    IConfiguration config,
+    ILogger<WebhooksController> logger) : ControllerBase
 {
-    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
-
-    /// <summary>
-    /// Clerk webhook receiver. Handles <c>user.created</c> and <c>user.updated</c> events
-    /// to keep the local users table in sync with Clerk.
-    /// </summary>
-    /// <remarks>
-    /// ⚠️ svix-signature validation is not yet implemented. Do not expose this endpoint publicly without it.
-    /// </remarks>
     [HttpPost("clerk")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ClerkWebhook(CancellationToken ct)
     {
-        // TODO: Validate svix-id, svix-timestamp, svix-signature headers
-        // using HMAC-SHA256 of "{timestamp}.{body}" with Clerk:WebhookSecret
+        var secret = config["Clerk:WebhookSecret"];
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            logger.LogWarning("Clerk:WebhookSecret is not configured — rejecting webhook");
+            return Unauthorized();
+        }
 
-        using var reader = new StreamReader(Request.Body);
-        var body = await reader.ReadToEndAsync(ct);
+        string body;
+        using (var reader = new StreamReader(Request.Body))
+            body = await reader.ReadToEndAsync(ct);
+
+        var headers = new WebHeaderCollection();
+        foreach (var (key, values) in Request.Headers)
+            headers[key] = values.ToString();
+
+        try
+        {
+            new Webhook(secret).Verify(body, headers);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Clerk webhook signature verification failed");
+            return Unauthorized();
+        }
 
         ClerkEvent? evt;
         try { evt = JsonSerializer.Deserialize<ClerkEvent>(body, JsonOpts); }
@@ -46,83 +62,54 @@ public sealed class WebhooksController(AppDbContext db) : ControllerBase
         {
             case "user.created":
             case "user.updated":
-                await UpsertUserAsync(evt.Data, ct);
+                var (clerkId, displayName, avatarUrl) = ParseUserData(evt.Data);
+                if (string.IsNullOrEmpty(clerkId)) return BadRequest();
+                await usersBusiness.SyncClerkUserAsync(clerkId, displayName, avatarUrl, ct);
+                logger.LogInformation("Clerk {EventType} — synced user {ClerkId}", evt.Type, clerkId);
                 break;
+
+            case "user.deleted":
+                var deletedClerkId = evt.Data.TryGetProperty("id", out var idProp)
+                    ? idProp.GetString()
+                    : null;
+                if (string.IsNullOrEmpty(deletedClerkId)) return BadRequest();
+                var deleted = await usersBusiness.DeleteClerkUserAsync(deletedClerkId, ct);
+                logger.LogInformation("Clerk user.deleted — {Result} for {ClerkId}",
+                    deleted ? "removed user" : "user not found", deletedClerkId);
+                break;
+
             default:
-                // Acknowledge unhandled events silently
+                logger.LogDebug("Clerk webhook: unhandled event type {EventType}", evt.Type);
                 break;
         }
 
         return Ok();
     }
 
-    private async Task UpsertUserAsync(JsonElement data, CancellationToken ct)
+    private static (string clerkId, string displayName, string? avatarUrl) ParseUserData(JsonElement data)
     {
-        var clerkId = data.GetProperty("id").GetString() ?? string.Empty;
-        if (string.IsNullOrEmpty(clerkId)) return;
-
-        var email = data.TryGetProperty("email_addresses", out var emails) &&
-                    emails.GetArrayLength() > 0
-            ? emails[0].GetProperty("email_address").GetString()
-            : null;
+        var clerkId = data.TryGetProperty("id", out var id) ? id.GetString() ?? string.Empty : string.Empty;
 
         var firstName = data.TryGetProperty("first_name", out var fn) ? fn.GetString() : null;
         var lastName = data.TryGetProperty("last_name", out var ln) ? ln.GetString() : null;
-        var imageUrl = data.TryGetProperty("image_url", out var img) ? img.GetString() : null;
+        var avatarUrl = data.TryGetProperty("image_url", out var img) ? img.GetString() : null;
 
         var displayName = string.Join(" ", new[] { firstName, lastName }
             .Where(s => !string.IsNullOrEmpty(s))).Trim();
 
-        if (string.IsNullOrEmpty(displayName) && email is not null)
-            displayName = email.Split('@')[0];
-
-        var existing = await db.Users.FirstOrDefaultAsync(u => u.ClerkId == clerkId, ct);
-
-        if (existing is null)
+        if (string.IsNullOrEmpty(displayName))
         {
-            var username = await GenerateUniqueUsernameAsync(displayName, ct);
-            db.Users.Add(new User
-            {
-                Id = Guid.NewGuid(),
-                ClerkId = clerkId,
-                Username = username,
-                DisplayName = displayName,
-                AvatarUrl = imageUrl,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            });
-        }
-        else
-        {
-            existing.DisplayName = displayName;
-            if (imageUrl is not null) existing.AvatarUrl = imageUrl;
-            existing.UpdatedAt = DateTime.UtcNow;
+            var email = data.TryGetProperty("email_addresses", out var emails) && emails.GetArrayLength() > 0
+                ? emails[0].GetProperty("email_address").GetString()
+                : null;
+            displayName = email?.Split('@')[0] ?? clerkId;
         }
 
-        await db.SaveChangesAsync(ct);
+        return (clerkId, displayName, avatarUrl);
     }
 
-    private async Task<string> GenerateUniqueUsernameAsync(string displayName, CancellationToken ct)
-    {
-        var base_ = string.IsNullOrEmpty(displayName)
-            ? "user"
-            : new string(displayName.ToLower().Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
-        if (string.IsNullOrEmpty(base_)) base_ = "user";
-
-        var candidate = base_[..Math.Min(base_.Length, 20)];
-        var suffix = 0;
-
-        while (await db.Users.AnyAsync(u => u.Username == candidate, ct))
-        {
-            suffix++;
-            candidate = $"{base_[..Math.Min(base_.Length, 16)]}_{suffix}";
-        }
-
-        return candidate;
-    }
-
-    // ── Internal DTOs ──────────────────────────────────────────────────────────
     private sealed class ClerkEvent
     {
         public string Type { get; set; } = string.Empty;

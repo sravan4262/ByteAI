@@ -2,6 +2,7 @@ using ByteAI.Core.Entities;
 using ByteAI.Core.Infrastructure.Cache;
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.AI;
+using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Bytes;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ public sealed class ByteCreatedEventHandler(
     IEmbeddingService embedding,
     IGroqService groq,
     IByteService byteService,
+    IBadgeService badgeService,
     IServiceScopeFactory scopeFactory,
     RedisFeedCache? feedCache,
     ILogger<ByteCreatedEventHandler> logger)
@@ -127,7 +129,17 @@ public sealed class ByteCreatedEventHandler(
             }
         });
 
-        // ── 4. Invalidate feed caches for author's followers ──────────────────
+        // ── 4. Badge checks for the author ───────────────────────────────────
+        try
+        {
+            await badgeService.CheckAndAwardAsync(notification.AuthorId, BadgeTrigger.BytePosted, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Badge check failed after byte {ByteId} created", notification.ByteId);
+        }
+
+        // ── 5. Invalidate feed caches for author's followers ──────────────────
         if (feedCache is not null)
         {
             try

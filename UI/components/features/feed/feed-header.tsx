@@ -3,12 +3,17 @@
 import Link from 'next/link'
 import { Bell } from 'lucide-react'
 import { Avatar } from '@/components/layout/avatar'
+import { useUser } from '@clerk/nextjs'
 
 interface FeedHeaderProps {
   contentType: 'bytes' | 'interviews'
 }
 
 export function FeedHeader({ contentType }: FeedHeaderProps) {
+  const { user } = useUser()
+
+  const initials = ((user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')).toUpperCase() || '?'
+
   return (
     <header className="flex items-center justify-between px-4 md:px-8 lg:px-12 xl:px-16 py-3 md:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.95)] backdrop-blur-md">
       <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
@@ -27,7 +32,10 @@ export function FeedHeader({ contentType }: FeedHeaderProps) {
             <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)] shadow-[0_0_5px_var(--accent)]" />
           </button>
           <Link href="/profile">
-            <Avatar initials="AX" size="sm" />
+            {user?.imageUrl
+              ? <img src={user.imageUrl} referrerPolicy="no-referrer" alt="profile" className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover ring-1 ring-[var(--border-h)] hover:ring-[var(--accent)] transition-all" />
+              : <Avatar initials={initials} size="sm" />
+            }
           </Link>
         </div>
       </div>

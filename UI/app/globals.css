@@ -181,6 +181,38 @@
   animation: badge-float 4s ease-in-out infinite;
 }
 
+@keyframes badge-shine {
+  0% { background: linear-gradient(105deg, transparent 40%, rgba(251,191,36,0.18) 50%, transparent 60%); background-size: 200% 100%; background-position: 200% 0; }
+  50% { background-position: -200% 0; }
+  100% { background: linear-gradient(105deg, transparent 40%, rgba(251,191,36,0.18) 50%, transparent 60%); background-size: 200% 100%; background-position: 200% 0; }
+}
+
+@keyframes badge-shine-sweep {
+  0%, 100% { transform: translateX(-150%) rotate(12deg); opacity: 0; }
+  10% { opacity: 1; }
+  45% { transform: translateX(150%) rotate(12deg); opacity: 0; }
+}
+
+@keyframes badge-icon-bounce {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.15) rotate(-5deg); }
+  75% { transform: scale(1.15) rotate(5deg); }
+}
+
+.animate-badge-shine::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(251,191,36,0.22) 50%, transparent 65%);
+  transform: translateX(-150%) rotate(12deg);
+  animation: badge-shine-sweep 3.5s ease-in-out infinite;
+}
+
+.animate-badge-icon {
+  animation: badge-icon-bounce 5s ease-in-out infinite;
+  animation-delay: 0.8s;
+}
+
 .animate-orb-drift {
   animation: orb-drift 18s ease-in-out infinite alternate;
 }

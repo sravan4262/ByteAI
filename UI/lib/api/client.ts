@@ -29,18 +29,31 @@ interface ByteResponse {
   likeCount: number
 }
 
-interface UserResponse {
+export interface BadgeResponse {
+  name: string
+  label: string
+  icon: string
+  description?: string
+  earnedAt: string
+}
+
+export interface UserResponse {
   id: string
   clerkId: string
   username: string
   displayName: string
   bio?: string
   avatarUrl?: string
+  company?: string
+  roleTitle?: string
+  seniority?: string
+  domain?: string
   level: number
   xp: number
   streak: number
   isVerified: boolean
   createdAt: string
+  badges: BadgeResponse[]
 }
 
 export interface SeniorityTypeResponse {
@@ -347,6 +360,33 @@ export async function getProfile(username: string): Promise<UserResponse | null>
 export async function updateProfile(data: Record<string, unknown>): Promise<{ success: boolean }> {
   try {
     await apiFetch('/api/users/me/profile', { method: 'PUT', body: JSON.stringify(data) })
+    return { success: true }
+  } catch {
+    return { success: false }
+  }
+}
+
+export interface SocialLinkResponse {
+  platform: string
+  url: string
+  label?: string
+}
+
+export async function getMySocials(): Promise<SocialLinkResponse[]> {
+  try {
+    const res = await apiFetch<ApiResponse<SocialLinkResponse[]>>('/api/users/me/socials')
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function updateMySocials(socials: SocialLinkResponse[]): Promise<{ success: boolean }> {
+  try {
+    await apiFetch('/api/users/me/socials', {
+      method: 'PUT',
+      body: JSON.stringify({ socials }),
+    })
     return { success: true }
   } catch {
     return { success: false }
@@ -757,6 +797,87 @@ export async function updatePost(byteId: string, data: { title?: string; body?: 
   })
   if ('error' in res) return res
   return {}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS API
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface NotificationPayloadLike {
+  byteId: string
+  actorId: string
+  actorUsername: string
+  actorDisplayName: string
+  actorAvatarUrl?: string
+  reactionType: string
+}
+
+export interface NotificationPayloadComment {
+  byteId: string
+  commentId: string
+  actorId: string
+  actorUsername: string
+  actorDisplayName: string
+  actorAvatarUrl?: string
+  preview: string
+}
+
+export interface NotificationPayloadBadge {
+  badgeName: string
+  badgeLabel: string
+  badgeIcon: string
+}
+
+export interface NotificationResponse {
+  id: string
+  userId: string
+  type: 'like' | 'comment' | 'follow' | 'badge' | 'system'
+  payload: NotificationPayloadLike | NotificationPayloadComment | NotificationPayloadBadge | Record<string, unknown> | null
+  read: boolean
+  createdAt: string
+}
+
+export async function getNotifications(params: {
+  page?: number
+  pageSize?: number
+  unreadOnly?: boolean
+} = {}): Promise<{ notifications: NotificationResponse[]; total: number; hasMore: boolean }> {
+  try {
+    const qs = new URLSearchParams()
+    if (params.page) qs.set('page', String(params.page))
+    if (params.pageSize) qs.set('pageSize', String(params.pageSize))
+    if (params.unreadOnly) qs.set('unreadOnly', 'true')
+    const res = await apiFetch<ApiResponse<PagedResponse<NotificationResponse>>>(`/api/notifications?${qs}`)
+    const hasMore = res.data.page * res.data.pageSize < res.data.total
+    return { notifications: res.data.items, total: res.data.total, hasMore }
+  } catch {
+    return { notifications: [], total: 0, hasMore: false }
+  }
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  try {
+    await apiFetch(`/api/notifications/${id}/read`, { method: 'PUT' })
+  } catch {
+    // fire-and-forget
+  }
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  try {
+    await apiFetch('/api/notifications/read-all', { method: 'PUT' })
+  } catch {
+    // fire-and-forget
+  }
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  try {
+    const res = await apiFetch<ApiResponse<number>>('/api/notifications/unread-count')
+    return res.data
+  } catch {
+    return 0
+  }
 }
 
 export async function createPost(data: Record<string, unknown>): Promise<{ id: string }> {

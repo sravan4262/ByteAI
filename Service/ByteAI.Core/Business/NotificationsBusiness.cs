@@ -20,6 +20,18 @@ public sealed class NotificationsBusiness(INotificationService notificationServi
         return await notificationService.MarkReadAsync(notificationId, userId, ct);
     }
 
+    public async Task MarkAllReadAsync(string clerkId, CancellationToken ct)
+    {
+        var userId = await ResolveUserIdAsync(clerkId, ct);
+        await notificationService.MarkAllReadAsync(userId, ct);
+    }
+
+    public async Task<int> GetUnreadCountAsync(string clerkId, CancellationToken ct)
+    {
+        var userId = await ResolveUserIdAsync(clerkId, ct);
+        return await notificationService.GetUnreadCountAsync(userId, ct);
+    }
+
     private async Task<Guid> ResolveUserIdAsync(string clerkId, CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);

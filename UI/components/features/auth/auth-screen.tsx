@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
-import { useAuth } from '@/hooks/use-auth'
 import { LoginForm } from './login-form'
 import { SignupForm } from './signup-form'
 
@@ -11,7 +10,6 @@ type AuthTab = 'login' | 'signup'
 
 export function AuthScreen() {
   const [activeTab, setActiveTab] = useState<AuthTab>('login')
-  const { login } = useAuth()
 
   return (
     <PhoneFrame>
@@ -61,11 +59,10 @@ export function AuthScreen() {
             ))}
           </div>
 
-          {activeTab === 'login' ? (
-            <LoginForm onComplete={login} />
-          ) : (
-            <SignupForm onComplete={login} />
-          )}
+          {activeTab === 'login'
+            ? <LoginForm />
+            : <SignupForm onSwitchToLogin={() => setActiveTab('login')} />
+          }
         </div>
       </div>
     </PhoneFrame>

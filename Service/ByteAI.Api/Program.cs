@@ -17,6 +17,7 @@ using ByteAI.Core.Services.Notifications;
 using ByteAI.Core.Services.Reactions;
 using ByteAI.Core.Services.Search;
 using ByteAI.Core.Services.Trending;
+using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Users;
 using ByteAI.Core.Validators;
 using FluentValidation;
@@ -52,7 +53,7 @@ try
 
 
     // ── Auth (Clerk JWT) ──────────────────────────────────────────────────────
-    builder.Services.AddClerkJwt(builder.Configuration, builder.Environment);
+    builder.Services.AddClerkJwt(builder.Configuration);
 
     // ── Controllers ──────────────────────────────────────────────────────────
     builder.Services.AddControllers();
@@ -85,6 +86,7 @@ try
     builder.Services.AddScoped<ITrendingService, TrendingService>();
     builder.Services.AddScoped<ILookupService, LookupService>();
     builder.Services.AddScoped<IUserService, UserService>();
+    builder.Services.AddScoped<IBadgeService, BadgeService>();
 
     // ── Business layer ────────────────────────────────────────────────────────
     builder.Services.AddScoped<IBytesBusiness, BytesBusiness>();

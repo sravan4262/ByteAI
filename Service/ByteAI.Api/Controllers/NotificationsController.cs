@@ -56,4 +56,36 @@ public sealed class NotificationsController(INotificationsBusiness notifications
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
     }
+
+    /// <summary>Mark all notifications as read for the current user.</summary>
+    [HttpPut("read-all")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<bool>>> MarkAllRead(CancellationToken ct)
+    {
+        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+
+        try
+        {
+            await notificationsBusiness.MarkAllReadAsync(clerkId, ct);
+            return Ok(ApiResponse<bool>.Success(true));
+        }
+        catch (UnauthorizedAccessException) { return Unauthorized(); }
+    }
+
+    /// <summary>Get unread notification count for the current user.</summary>
+    [HttpGet("unread-count")]
+    [ProducesResponseType(typeof(ApiResponse<int>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<int>>> GetUnreadCount(CancellationToken ct)
+    {
+        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+
+        try
+        {
+            var count = await notificationsBusiness.GetUnreadCountAsync(clerkId, ct);
+            return Ok(ApiResponse<int>.Success(count));
+        }
+        catch (UnauthorizedAccessException) { return Unauthorized(); }
+    }
 }

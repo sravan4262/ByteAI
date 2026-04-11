@@ -8,6 +8,8 @@ public sealed class CurrentUserService(AppDbContext db) : ICurrentUserService
 {
     public async Task<User?> GetCurrentUserAsync(string clerkId, CancellationToken ct = default) =>
         await db.Users.AsNoTracking()
+            .Include(u => u.UserBadges)
+                .ThenInclude(ub => ub.BadgeTypeNav)
             .FirstOrDefaultAsync(u => u.ClerkId == clerkId, ct);
 
     public async Task<Guid?> GetCurrentUserIdAsync(string clerkId, CancellationToken ct = default)

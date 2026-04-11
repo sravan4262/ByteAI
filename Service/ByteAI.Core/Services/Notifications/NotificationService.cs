@@ -52,4 +52,14 @@ public sealed class NotificationService(AppDbContext db) : INotificationService
         await db.SaveChangesAsync(ct);
         return true;
     }
+
+    public async Task MarkAllReadAsync(Guid userId, CancellationToken ct)
+    {
+        await db.Notifications
+            .Where(n => n.UserId == userId && !n.Read)
+            .ExecuteUpdateAsync(s => s.SetProperty(n => n.Read, true), ct);
+    }
+
+    public async Task<int> GetUnreadCountAsync(Guid userId, CancellationToken ct) =>
+        await db.Notifications.CountAsync(n => n.UserId == userId && !n.Read, ct);
 }
