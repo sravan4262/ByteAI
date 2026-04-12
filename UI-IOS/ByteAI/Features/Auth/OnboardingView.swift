@@ -119,6 +119,7 @@ struct OnboardingView: View {
                 .padding(20)
             }
         }
+        .task { await vm.loadLookups() }
     }
 }
 
@@ -210,25 +211,30 @@ final class OnboardingViewModel: ObservableObject {
     @Published var company    = ""
     @Published var isLoading  = false
 
-    let seniorityOptions = ["Intern", "Junior", "Mid-Level", "Senior", "Staff", "Principal"]
-    let domainOptions    = ["Frontend", "Backend", "Full Stack", "Mobile", "DevOps / Platform", "ML / AI"]
-    let techOptions: [TechStack] = [
-        TechStack(id: "react",      name: "React",      domainId: nil),
-        TechStack(id: "typescript", name: "TypeScript",  domainId: nil),
-        TechStack(id: "go",         name: "Go",          domainId: nil),
-        TechStack(id: "rust",       name: "Rust",        domainId: nil),
-        TechStack(id: "python",     name: "Python",      domainId: nil),
-        TechStack(id: "swift",      name: "Swift",       domainId: nil),
-        TechStack(id: "postgresql", name: "PostgreSQL",  domainId: nil),
-        TechStack(id: "kubernetes", name: "Kubernetes",  domainId: nil),
-        TechStack(id: "next",       name: "Next.js",     domainId: nil),
-        TechStack(id: "k8s",        name: "K8s",         domainId: nil),
-    ]
+    @Published var seniorityOptions: [String] = ["Intern", "Junior", "Mid-Level", "Senior", "Staff", "Principal"]
+    @Published var domainOptions: [String]    = ["Frontend", "Backend", "Full Stack", "Mobile", "DevOps / Platform", "ML / AI"]
+    @Published var techOptions: [TechStack]   = []
 
     var completionPercent: Int {
         let filled = [!seniority.isEmpty, !domain.isEmpty, !selectedTech.isEmpty,
                       !bio.isEmpty, !role.isEmpty, !company.isEmpty]
         return Int(Double(filled.filter { $0 }.count) / Double(filled.count) * 100)
+    }
+
+    func loadLookups() async {
+        async let seniorities = try? APIClient.shared.getSeniorityTypes()
+        async let domains     = try? APIClient.shared.getDomains()
+        async let stacks      = try? APIClient.shared.getTechStacks()
+
+        if let s = await seniorities, !s.isEmpty {
+            seniorityOptions = s.map { $0.label }
+        }
+        if let d = await domains, !d.isEmpty {
+            domainOptions = d.map { $0.name }
+        }
+        if let t = await stacks {
+            techOptions = t
+        }
     }
 
     func toggleTech(_ name: String) {
@@ -242,9 +248,20 @@ final class OnboardingViewModel: ObservableObject {
     func complete(auth: AuthManager) async {
         isLoading = true
         defer { isLoading = false }
-        // TODO: Call API to save profile
-        try? await Task.sleep(nanoseconds: 800_000_000)
-        auth.completeOnboarding()
+        do {
+            try await APIClient.shared.saveOnboardingData(
+                seniority: seniority,
+                domain: domain,
+                techStack: Array(selectedTech),
+                bio: bio.isEmpty ? nil : bio,
+                company: company.isEmpty ? nil : company,
+                roleTitle: role.isEmpty ? nil : role
+            )
+            auth.completeOnboarding()
+        } catch {
+            // Non-blocking — proceed to app even if save fails
+            auth.completeOnboarding()
+        }
     }
 }
 

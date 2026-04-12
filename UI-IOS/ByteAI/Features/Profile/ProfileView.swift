@@ -478,14 +478,17 @@ final class ProfileViewModel: ObservableObject {
         }
 
         if isOwnProfile {
-            bytes = (try? await APIClient.shared.getMyBytes()) ?? []
-            bookmarks = (try? await APIClient.shared.getMyBookmarks()) ?? []
+            async let b = APIClient.shared.getMyBytes()
+            async let iv = APIClient.shared.getMyInterviews()
+            async let bk = APIClient.shared.getMyBookmarks()
+            bytes     = (try? await b)  ?? []
+            interviews = (try? await iv) ?? []
+            bookmarks  = (try? await bk) ?? []
         } else if let uid = user?.id {
-            // For other users, filter feed by their authorId — fallback to empty
             bytes = (try? await APIClient.shared.getFeed()) ?? []
+            interviews = (try? await APIClient.shared.getInterviews()) ?? []
             _ = uid
         }
-        interviews = (try? await APIClient.shared.getInterviews()) ?? []
     }
 
     func toggleFollow() async {

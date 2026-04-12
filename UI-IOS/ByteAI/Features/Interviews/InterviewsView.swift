@@ -319,6 +319,18 @@ struct InterviewPageCard: View {
                         .foregroundColor(.byteText3)
                 }
 
+                // View Full
+                VStack(spacing: 5) {
+                    NavigationLink(destination: InterviewDetailView(interviewId: interview.id)) {
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.system(size: 26))
+                            .foregroundColor(.byteText1)
+                    }
+                    Text("View")
+                        .font(.byteSans(11, weight: .medium))
+                        .foregroundColor(.byteText3)
+                }
+
                 // Role tag (vertical, compact)
                 if let role = interview.role {
                     VStack(spacing: 4) {

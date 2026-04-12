@@ -29,9 +29,9 @@ struct User: Identifiable, Codable, Hashable {
 }
 
 struct SocialLink: Codable, Hashable {
-    let type: String   // "github" | "linkedin" | "twitter" | "website"
+    let platform: String   // "github" | "linkedin" | "twitter" | "website"
     let url: String
-    let label: String
+    let label: String?
 }
 
 // MARK: - Post / BytePost
@@ -184,6 +184,34 @@ struct TechStack: Identifiable, Codable {
     let id: String
     let name: String
     let domainId: String?
+}
+
+// MARK: - Interview / Question Comments
+
+struct InterviewComment: Identifiable, Codable {
+    let id: String
+    let body: String
+    let authorId: String
+    var voteCount: Int
+    let createdAt: String
+    let parentId: String?
+}
+
+struct QuestionComment: Identifiable, Codable {
+    let id: String
+    let question: String
+    let answer: String
+    let authorId: String
+    let authorUsername: String
+    var voteCount: Int
+    let createdAt: String
+    let parentId: String?
+}
+
+struct AskByteResult: Codable {
+    let answer: String
+    let sourceId: String
+    let sourceTitle: String
 }
 
 // MARK: - Feed Filter

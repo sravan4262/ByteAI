@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "ByteAI",
+    "slug": "byteai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "byteai",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#05050e"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.byteai.app",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "ByteAI uses the local network to connect to the development server.",
+        "NSBonjourServices": ["_http._tcp"],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-font",
+        {
+          "fonts": []
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "clerkPublishableKey": "pk_test_REPLACE_WITH_YOUR_KEY",
+      "apiUrl": "http://192.168.5.200:5239"
+    }
+  }
+}

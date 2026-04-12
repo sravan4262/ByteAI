@@ -239,6 +239,73 @@ actor APIClient {
         return r.reach
     }
 
+    func updatePost(id: String, title: String? = nil, body: String? = nil, codeSnippet: String? = nil, language: String? = nil) async throws -> Post {
+        struct B: Encodable { let title: String?; let body: String?; let codeSnippet: String?; let language: String? }
+        let r: ByteResponse = try await fetch("/api/bytes/\(id)", method: "PUT", body: B(title: title, body: body, codeSnippet: codeSnippet, language: language))
+        return Post(from: r)
+    }
+
+    func deleteComment(commentId: String) async throws {
+        let _: EmptyResponse = try await fetch("/api/comments/\(commentId)", method: "DELETE")
+    }
+
+    func voteComment(commentId: String, direction: String) async throws {
+        struct B: Encodable { let direction: String }
+        let _: EmptyResponse = try await fetch("/api/comments/\(commentId)/vote", method: "POST", body: B(direction: direction))
+    }
+
+    func getInterviewComments(interviewId: String) async throws -> [InterviewComment] {
+        struct R: Decodable { let items: [InterviewComment] }
+        let r: R = try await fetch("/api/interviews/\(interviewId)/comments")
+        return r.items
+    }
+
+    func addInterviewComment(interviewId: String, body: String) async throws {
+        struct B: Encodable { let body: String }
+        let _: EmptyResponse = try await fetch("/api/interviews/\(interviewId)/comments", method: "POST", body: B(body: body))
+    }
+
+    func deleteInterviewComment(interviewId: String, commentId: String) async throws {
+        let _: EmptyResponse = try await fetch("/api/interviews/\(interviewId)/comments/\(commentId)", method: "DELETE")
+    }
+
+    func getQuestionComments(questionId: String) async throws -> [QuestionComment] {
+        struct R: Decodable { let items: [QuestionComment] }
+        let r: R = try await fetch("/api/interviews/questions/\(questionId)/comments")
+        return r.items
+    }
+
+    func addQuestionComment(questionId: String, body: String) async throws {
+        struct B: Encodable { let body: String }
+        let _: EmptyResponse = try await fetch("/api/interviews/questions/\(questionId)/comments", method: "POST", body: B(body: body))
+    }
+
+    func askAboutByte(byteId: String, question: String) async throws -> AskByteResult {
+        struct B: Encodable { let question: String }
+        return try await fetch("/api/bytes/\(byteId)/ask", method: "POST", body: B(question: question))
+    }
+
+    func formatCode(code: String, language: String) async throws -> String {
+        struct B: Encodable { let code: String; let language: String }
+        struct R: Decodable { let formatted: String }
+        let r: R = try await fetch("/api/ai/format-code", method: "POST", body: B(code: code, language: language))
+        return r.formatted
+    }
+
+    func getMySocials() async throws -> [SocialLink] {
+        return try await fetch("/api/users/me/socials")
+    }
+
+    func updateMySocials(_ socials: [SocialLink]) async throws {
+        struct B: Encodable { let socials: [SocialLink] }
+        let _: EmptyResponse = try await fetch("/api/users/me/socials", method: "PUT", body: B(socials: socials))
+    }
+
+    func saveOnboardingData(seniority: String, domain: String, techStack: [String], bio: String?, company: String?, roleTitle: String?) async throws {
+        struct B: Encodable { let seniority: String; let domain: String; let techStack: [String]; let bio: String?; let company: String?; let roleTitle: String? }
+        let _: EmptyResponse = try await fetch("/api/users/me/profile", method: "PUT", body: B(seniority: seniority, domain: domain, techStack: techStack, bio: bio, company: company, roleTitle: roleTitle))
+    }
+
     func getMyBookmarks() async throws -> [Post] {
         let paged: PagedResponse<ByteResponse> = try await fetch("/api/me/bookmarks")
         return paged.items.map { Post(from: $0) }
@@ -247,6 +314,20 @@ actor APIClient {
     func getMyBytes(page: Int = 1) async throws -> [Post] {
         let paged: PagedResponse<ByteResponse> = try await fetch("/api/me/bytes?page=\(page)&pageSize=20")
         return paged.items.map { Post(from: $0) }
+    }
+
+    func getMyInterviews(page: Int = 1) async throws -> [Interview] {
+        let paged: PagedResponse<InterviewResponse> = try await fetch("/api/me/interviews?page=\(page)&pageSize=20")
+        return paged.items.map { Interview(from: $0) }
+    }
+
+    func deleteMyInterview(interviewId: String) async throws {
+        let _: EmptyResponse = try await fetch("/api/interviews/\(interviewId)", method: "DELETE")
+    }
+
+    func getMyInterviewBookmarks() async throws -> [Interview] {
+        let paged: PagedResponse<InterviewResponse> = try await fetch("/api/me/interview-bookmarks")
+        return paged.items.map { Interview(from: $0) }
     }
 
     func deletePost(postId: String) async throws {
