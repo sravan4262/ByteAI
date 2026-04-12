@@ -77,5 +77,5 @@ public sealed class GetByteLikersQueryHandler(AppDbContext db)
             .Where(l => l.ByteId == request.ByteId)
             .OrderByDescending(l => l.CreatedAt)
             .Select(l => new LikerInfo(l.UserId, l.User.Username, l.User.DisplayName, l.User.IsVerified))
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 }

@@ -20,12 +20,12 @@ public sealed class UserService(AppDbContext db) : IUserService
             .Include(f => f.Follower)
             .OrderByDescending(f => f.CreatedAt);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
             .Select(f => f.Follower)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<User>(items, total, pagination.Page, pagination.PageSize);
     }
@@ -37,12 +37,12 @@ public sealed class UserService(AppDbContext db) : IUserService
             .Include(f => f.Following)
             .OrderByDescending(f => f.CreatedAt);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
             .Select(f => f.Following)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<User>(items, total, pagination.Page, pagination.PageSize);
     }
@@ -93,7 +93,7 @@ public sealed class UserService(AppDbContext db) : IUserService
                 var matched = await db.TechStacks
                     .Where(t => techStack.Contains(t.Name))
                     .Select(t => t.Id)
-                    .ToListAsync(ct);
+                    .ToListAsync(CancellationToken.None);
 
                 db.UserTechStacks.AddRange(matched.Select(tsId => new UserTechStack
                 {
@@ -145,11 +145,11 @@ public sealed class UserService(AppDbContext db) : IUserService
     }
 
     public Task<List<Social>> GetUserSocialsAsync(Guid userId, CancellationToken ct) =>
-        db.Socials.Where(s => s.UserId == userId).ToListAsync(ct);
+        db.Socials.Where(s => s.UserId == userId).ToListAsync(CancellationToken.None);
 
     public async Task UpsertUserSocialsAsync(Guid userId, List<(string Platform, string Url, string? Label)> socials, CancellationToken ct)
     {
-        var existing = await db.Socials.Where(s => s.UserId == userId).ToListAsync(ct);
+        var existing = await db.Socials.Where(s => s.UserId == userId).ToListAsync(CancellationToken.None);
         db.Socials.RemoveRange(existing);
 
         db.Socials.AddRange(socials

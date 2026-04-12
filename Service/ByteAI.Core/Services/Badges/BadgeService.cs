@@ -9,11 +9,11 @@ public sealed class BadgeService(AppDbContext db, ILogger<BadgeService> logger) 
 {
     public async Task<List<BadgeType>> CheckAndAwardAsync(Guid userId, BadgeTrigger trigger, CancellationToken ct)
     {
-        var allBadges = await db.BadgeTypes.AsNoTracking().ToListAsync(ct);
+        var allBadges = await db.BadgeTypes.AsNoTracking().ToListAsync(CancellationToken.None);
         var earnedIds = await db.UserBadges
             .Where(ub => ub.UserId == userId && ub.BadgeTypeId.HasValue)
             .Select(ub => ub.BadgeTypeId!.Value)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         // Compute streak once — needed for streak-based badge checks
         int? streak = null;
@@ -56,9 +56,9 @@ public sealed class BadgeService(AppDbContext db, ILogger<BadgeService> logger) 
             .OrderByDescending(b => b.CreatedAt)
             .Select(b => b.CreatedAt)
             .Take(2)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
-        var user = await db.Users.FindAsync([userId], ct);
+        var user = await db.Users.FindAsync([userId], CancellationToken.None);
         if (user is null) return 0;
 
         var today = DateTime.UtcNow.Date;
@@ -108,7 +108,7 @@ public sealed class BadgeService(AppDbContext db, ILogger<BadgeService> logger) 
                         .Where(b => b.AuthorId == userId)
                         .Select(b => b.Id)
                         .Contains(l.ByteId))
-                    .CountAsync(ct) >= 100,
+                    .CountAsync(CancellationToken.None) >= 100,
 
             // ── FollowReceived trigger ───────────────────────────────────────
             "followers_100" when trigger == BadgeTrigger.FollowReceived =>

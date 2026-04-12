@@ -17,7 +17,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
 {
     public async Task UpdateEmbeddingAsync(Guid byteId, float[] embedding, CancellationToken ct = default)
     {
-        var entity = await db.Bytes.FindAsync([byteId], ct);
+        var entity = await db.Bytes.FindAsync([byteId], CancellationToken.None);
         if (entity is null) return;
 
         entity.Embedding = new Vector(embedding);
@@ -37,14 +37,14 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
             _          => query.OrderByDescending(b => b.CreatedAt)
         };
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
                 b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<ByteResult>(items, total, pagination.Page, pagination.PageSize);
     }
@@ -55,7 +55,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
                 b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(CancellationToken.None);
 
     public async Task<ByteResult> CreateByteAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false)
     {
@@ -110,7 +110,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
                 .Where(b => b.Embedding != null && b.Embedding.CosineDistance(queryVec) < 0.08)
                 .OrderBy(b => b.Embedding!.CosineDistance(queryVec))
                 .Select(b => new { b.Id, b.Title, Distance = b.Embedding!.CosineDistance(queryVec) })
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(CancellationToken.None);
 
             if (nearest is not null)
                 throw new DuplicateContentException(nearest.Id, nearest.Title, 1.0 - nearest.Distance);
@@ -209,14 +209,14 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
             .Where(b => b.AuthorId == authorId && b.IsActive)
             .OrderByDescending(b => b.CreatedAt);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
                 b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<ByteResult>(items, total, pagination.Page, pagination.PageSize);
     }

@@ -22,7 +22,7 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
                                      .Rank(EF.Functions.PlainToTsQuery("english", query)))
             .Take(limit * 2)
             .Select(b => b.Id)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         // ── Vector results (when embedding available) ─────────────────────────
         List<Guid> vecResults = [];
@@ -34,7 +34,7 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
                 .OrderBy(b => b.Embedding!.CosineDistance(queryEmbedding))
                 .Take(limit * 2)
                 .Select(b => b.Id)
-                .ToListAsync(ct);
+                .ToListAsync(CancellationToken.None);
         }
 
         // ── Reciprocal Rank Fusion ────────────────────────────────────────────
@@ -58,7 +58,7 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
         var entities = await db.Bytes
             .AsNoTracking()
             .Where(b => topIds.Contains(b.Id))
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return entities.OrderBy(b => topIds.IndexOf(b.Id)).ToList();
     }
@@ -75,7 +75,7 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
                                      .Rank(EF.Functions.PlainToTsQuery("english", query)))
             .Take(limit * 2)
             .Select(i => i.Id)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         // ── Vector results (when embedding available) ─────────────────────────
         List<Guid> vecResults = [];
@@ -87,7 +87,7 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
                 .OrderBy(i => i.Embedding!.CosineDistance(queryEmbedding))
                 .Take(limit * 2)
                 .Select(i => i.Id)
-                .ToListAsync(ct);
+                .ToListAsync(CancellationToken.None);
         }
 
         // ── RRF ───────────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
         var entities = await db.Interviews
             .AsNoTracking()
             .Where(i => topIds.Contains(i.Id))
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return entities.OrderBy(i => topIds.IndexOf(i.Id)).ToList();
     }
@@ -121,6 +121,6 @@ public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger
             .Where(u => u.Username.ToLower().Contains(q)
                      || (u.DisplayName != null && u.DisplayName.ToLower().Contains(q)))
             .Take(Math.Min(limit, 50))
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
     }
 }

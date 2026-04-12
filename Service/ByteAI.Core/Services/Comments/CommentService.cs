@@ -15,11 +15,11 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
             .Where(c => c.ByteId == byteId && c.ParentId == null)
             .OrderByDescending(c => c.CreatedAt);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Comment>(items, total, pagination.Page, pagination.PageSize);
     }
@@ -45,7 +45,7 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
         var byteAuthorId = await db.Bytes
             .Where(b => b.Id == byteId)
             .Select(b => b.AuthorId)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(CancellationToken.None);
 
         if (byteAuthorId != Guid.Empty && byteAuthorId != authorId)
         {
@@ -53,7 +53,7 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
                 .AsNoTracking()
                 .Where(u => u.Id == authorId)
                 .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
-                .FirstOrDefaultAsync(ct);
+                .FirstOrDefaultAsync(CancellationToken.None);
 
             await notifications.CreateAsync(
                 userId: byteAuthorId,

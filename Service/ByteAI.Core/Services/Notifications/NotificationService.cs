@@ -33,19 +33,19 @@ public sealed class NotificationService(AppDbContext db) : INotificationService
         if (unreadOnly)
             query = query.Where(n => !n.Read);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .OrderByDescending(n => n.CreatedAt)
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Notification>(items, total, pagination.Page, pagination.PageSize);
     }
 
     public async Task<bool> MarkReadAsync(Guid notificationId, Guid userId, CancellationToken ct)
     {
-        var notification = await db.Notifications.FindAsync([notificationId], ct);
+        var notification = await db.Notifications.FindAsync([notificationId], CancellationToken.None);
         if (notification is null || notification.UserId != userId) return false;
 
         notification.Read = true;

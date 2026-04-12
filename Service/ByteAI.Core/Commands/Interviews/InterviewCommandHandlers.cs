@@ -60,8 +60,8 @@ public sealed class GetInterviewsQueryHandler(AppDbContext db)
             _ => query.OrderByDescending(i => i.CreatedAt)
         };
 
-        var total = await query.CountAsync(ct);
-        var items = await query.Skip(request.Pagination.Skip).Take(request.Pagination.PageSize).ToListAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
+        var items = await query.Skip(request.Pagination.Skip).Take(request.Pagination.PageSize).ToListAsync(CancellationToken.None);
         return new PagedResult<Interview>(items, total, request.Pagination.Page, request.Pagination.PageSize);
     }
 }
@@ -193,8 +193,8 @@ public sealed class GetInterviewCommentsQueryHandler(AppDbContext db)
             .Where(c => c.InterviewId == request.InterviewId && c.ParentId == null)
             .OrderByDescending(c => c.VoteCount).ThenBy(c => c.CreatedAt);
 
-        var total = await query.CountAsync(ct);
-        var items = await query.Skip(request.Pagination.Skip).Take(request.Pagination.PageSize).ToListAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
+        var items = await query.Skip(request.Pagination.Skip).Take(request.Pagination.PageSize).ToListAsync(CancellationToken.None);
         return new PagedResult<InterviewComment>(items, total, request.Pagination.Page, request.Pagination.PageSize);
     }
 }
@@ -311,11 +311,11 @@ public sealed class GetInterviewsWithQuestionsQueryHandler(AppDbContext db)
             ? query.OrderByDescending(i => i.CreatedAt)
             : query.OrderByDescending(i => i.CreatedAt);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Interview>(items, total, request.Pagination.Page, request.Pagination.PageSize);
     }
@@ -337,11 +337,11 @@ public sealed class GetMyInterviewsQueryHandler(AppDbContext db)
                 .ThenInclude(q => q.Comments)
             .OrderByDescending(i => i.CreatedAt);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Interview>(items, total, request.Pagination.Page, request.Pagination.PageSize);
     }
@@ -367,11 +367,11 @@ public sealed class GetUserInterviewBookmarksQueryHandler(AppDbContext db)
                     .ThenInclude(q => q.Comments)
             .Select(b => b.Interview);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Interview>(items, total, request.Pagination.Page, request.Pagination.PageSize);
     }
@@ -409,8 +409,8 @@ public sealed class GetQuestionCommentsQueryHandler(AppDbContext db)
             .Where(c => c.QuestionId == request.QuestionId && c.ParentId == null)
             .OrderByDescending(c => c.VoteCount).ThenBy(c => c.CreatedAt);
 
-        var total = await query.CountAsync(ct);
-        var items = await query.Skip(request.Pagination.Skip).Take(request.Pagination.PageSize).ToListAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
+        var items = await query.Skip(request.Pagination.Skip).Take(request.Pagination.PageSize).ToListAsync(CancellationToken.None);
         return new PagedResult<InterviewQuestionComment>(items, total, request.Pagination.Page, request.Pagination.PageSize);
     }
 }

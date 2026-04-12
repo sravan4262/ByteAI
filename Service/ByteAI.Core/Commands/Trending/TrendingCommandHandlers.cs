@@ -35,6 +35,6 @@ public sealed class GetTrendingQueryHandler(AppDbContext db)
             .Select(g => g.Key)
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
     }
 }

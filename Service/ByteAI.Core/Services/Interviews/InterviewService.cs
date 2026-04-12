@@ -39,11 +39,11 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
             ? query.OrderByDescending(i => i.CreatedAt)
             : query.OrderByDescending(i => i.CreatedAt);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Interview>(items, total, pagination.Page, pagination.PageSize);
     }
@@ -216,8 +216,8 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
             .Where(c => c.QuestionId == questionId && c.ParentId == null)
             .OrderByDescending(c => c.VoteCount).ThenBy(c => c.CreatedAt);
 
-        var total = await query.CountAsync(ct);
-        var items = await query.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
+        var items = await query.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync(CancellationToken.None);
         return new PagedResult<InterviewQuestionComment>(items, total, pagination.Page, pagination.PageSize);
     }
 
@@ -243,8 +243,8 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
             .Where(c => c.InterviewId == interviewId && c.ParentId == null)
             .OrderByDescending(c => c.VoteCount).ThenBy(c => c.CreatedAt);
 
-        var total = await query.CountAsync(ct);
-        var items = await query.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
+        var items = await query.Skip(pagination.Skip).Take(pagination.PageSize).ToListAsync(CancellationToken.None);
         return new PagedResult<InterviewComment>(items, total, pagination.Page, pagination.PageSize);
     }
 
@@ -296,11 +296,11 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
                     .ThenInclude(q => q.Comments)
             .Select(b => b.Interview);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Interview>(items, total, pagination.Page, pagination.PageSize);
     }
@@ -316,11 +316,11 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
                 .ThenInclude(q => q.Comments)
             .OrderByDescending(i => i.CreatedAt);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Interview>(items, total, pagination.Page, pagination.PageSize);
     }

@@ -10,14 +10,14 @@ public sealed class CurrentUserService(AppDbContext db) : ICurrentUserService
         await db.Users.AsNoTracking()
             .Include(u => u.UserBadges)
                 .ThenInclude(ub => ub.BadgeTypeNav)
-            .FirstOrDefaultAsync(u => u.ClerkId == clerkId, ct);
+            .FirstOrDefaultAsync(u => u.ClerkId == clerkId, CancellationToken.None);
 
     public async Task<Guid?> GetCurrentUserIdAsync(string clerkId, CancellationToken ct = default)
     {
         var user = await db.Users.AsNoTracking()
             .Where(u => u.ClerkId == clerkId)
             .Select(u => (Guid?)u.Id)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(CancellationToken.None);
         return user;
     }
 }

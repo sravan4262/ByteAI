@@ -57,14 +57,14 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
             db.Bytes.AsNoTracking().Where(b => b.IsActive).OrderByDescending(b => b.CreatedAt),
             request.Tags, db);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
                 b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return (items, total);
     }
@@ -77,7 +77,7 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
         var followedIds = await db.Follows
             .Where(f => f.FollowerId == request.UserId.Value)
             .Select(f => f.FollowingId)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         if (followedIds.Count == 0)
             return ([], 0);
@@ -88,14 +88,14 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
                 .OrderByDescending(b => b.CreatedAt),
             request.Tags, db);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
                 b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return (items, total);
     }
@@ -110,7 +110,7 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
             .OrderByDescending(g => g.Count())
             .Select(g => g.Key)
             .Take(200)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         IQueryable<Byte> query;
 
@@ -130,7 +130,7 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
                 b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         var sorted = trendingIds.Count > 0
             ? candidates.OrderBy(b => trendingIds.IndexOf(b.Id)).ToList()

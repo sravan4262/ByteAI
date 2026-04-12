@@ -37,12 +37,12 @@ public sealed class BookmarkService(AppDbContext db, IPublisher publisher) : IBo
             .OrderByDescending(b => b.CreatedAt)
             .Include(b => b.Byte);
 
-        var total = await query.CountAsync(ct);
+        var total = await query.CountAsync(CancellationToken.None);
         var items = await query
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
             .Select(b => b.Byte)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Byte>(items, total, pagination.Page, pagination.PageSize);
     }

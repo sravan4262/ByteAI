@@ -30,6 +30,6 @@ public sealed class TrendingService(AppDbContext db) : ITrendingService
             .Select(g => g.Key)
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
-            .ToListAsync(ct);
+            .ToListAsync(CancellationToken.None);
     }
 }
