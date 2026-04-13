@@ -15,8 +15,8 @@ public sealed class FeedService(AppDbContext db) : IFeedService
         var user = await db.Users.FindAsync([userId], CancellationToken.None);
         if (user is null) return Empty(pagination);
 
-        var followingIds = await db.Follows
-            .Where(f => f.FollowerId == userId)
+        var followingIds = await db.UserFollowings
+            .Where(f => f.UserId == userId)
             .Select(f => f.FollowingId)
             .ToListAsync(CancellationToken.None);
 
@@ -51,8 +51,8 @@ public sealed class FeedService(AppDbContext db) : IFeedService
     public async Task<PagedResult<Entities.Byte>> GetFollowingAsync(
         Guid userId, PaginationParams pagination, CancellationToken ct = default)
     {
-        var followingIds = await db.Follows
-            .Where(f => f.FollowerId == userId)
+        var followingIds = await db.UserFollowings
+            .Where(f => f.UserId == userId)
             .Select(f => f.FollowingId)
             .ToListAsync(CancellationToken.None);
 
@@ -142,8 +142,8 @@ public sealed class FeedService(AppDbContext db) : IFeedService
         if (!userId.HasValue)
             return ([], 0);
 
-        var followedIds = await db.Follows
-            .Where(f => f.FollowerId == userId.Value)
+        var followedIds = await db.UserFollowings
+            .Where(f => f.UserId == userId.Value)
             .Select(f => f.FollowingId)
             .ToListAsync(CancellationToken.None);
 

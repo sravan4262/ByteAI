@@ -74,8 +74,8 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
         if (!request.UserId.HasValue)
             return ([], 0);
 
-        var followedIds = await db.Follows
-            .Where(f => f.FollowerId == request.UserId.Value)
+        var followedIds = await db.UserFollowings
+            .Where(f => f.UserId == request.UserId.Value)
             .Select(f => f.FollowingId)
             .ToListAsync(CancellationToken.None);
 

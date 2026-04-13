@@ -21,6 +21,12 @@ public sealed class UsersBusiness(
     public async Task<User?> GetCurrentUserAsync(string clerkId, CancellationToken ct) =>
         await currentUserService.GetCurrentUserAsync(clerkId, ct);
 
+    public Task<(int BytesCount, int FollowersCount, int FollowingCount)> GetUserStatsAsync(Guid userId, CancellationToken ct) =>
+        userService.GetUserStatsAsync(userId, ct);
+
+    public Task<bool> IsFollowingAsync(Guid followerId, Guid targetUserId, CancellationToken ct) =>
+        userService.IsFollowingAsync(followerId, targetUserId, ct);
+
     public async Task<PagedResult<User>> GetFollowersAsync(Guid userId, int page, int pageSize, CancellationToken ct) =>
         await userService.GetFollowersAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
 

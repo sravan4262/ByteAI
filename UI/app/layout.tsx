@@ -39,6 +39,7 @@ export default function RootLayout({
             try {
               var t = localStorage.getItem('byteai_theme');
               if (t && t !== 'dark') document.documentElement.classList.add('theme-' + t);
+              if (t === 'light') document.documentElement.classList.remove('dark');
             } catch(e) {}
           `}} />
         </head>

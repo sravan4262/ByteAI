@@ -64,6 +64,7 @@ export interface UserResponse {
   bytesCount?: number
   followersCount?: number
   followingCount?: number
+  isFollowedByMe?: boolean
 }
 
 export interface SeniorityTypeResponse {
@@ -242,6 +243,7 @@ export async function getInterviews(params: {
   difficulty?: string
   page?: number
   pageSize?: number
+  authorId?: string
 } = {}): Promise<{ interviews: InterviewWithQuestions[]; total: number; hasMore: boolean }> {
   try {
     const qs = new URLSearchParams()
@@ -250,6 +252,7 @@ export async function getInterviews(params: {
     if (params.difficulty) qs.set('difficulty', params.difficulty)
     if (params.page) qs.set('page', String(params.page))
     if (params.pageSize) qs.set('pageSize', String(params.pageSize))
+    if (params.authorId) qs.set('authorId', params.authorId)
     const res = await apiFetch<ApiResponse<InterviewPagedResponse>>(`/api/interviews?${qs}`)
     const hasMore = res.data.page * res.data.pageSize < res.data.total
     return { interviews: res.data.items, total: res.data.total, hasMore }
@@ -385,7 +388,8 @@ export async function getUserBytes(userId: string, params: { page?: number; page
     const qs = new URLSearchParams()
     if (params.page) qs.set('page', String(params.page))
     if (params.pageSize) qs.set('pageSize', String(params.pageSize))
-    const res = await apiFetch<ApiResponse<PagedResponse<ByteResponse>>>(`/api/users/${encodeURIComponent(userId)}/bytes?${qs}`)
+    qs.set('authorId', userId)
+    const res = await apiFetch<ApiResponse<PagedResponse<ByteResponse>>>(`/api/bytes?${qs}`)
     return { posts: res.data.items.map(byteToPost), total: res.data.total }
   } catch {
     return { posts: [], total: 0 }
@@ -446,21 +450,15 @@ export async function getFollowing(userId: string): Promise<PersonResult[]> {
   }
 }
 
-export async function followUser(userId: string): Promise<{ success: boolean }> {
-  try {
-    await apiFetch(`/api/users/${userId}/follow`, { method: 'POST' })
-    return { success: true }
-  } catch {
-    return { success: false }
-  }
+export async function followUser(userId: string): Promise<void> {
+  await apiFetch(`/api/users/${userId}/follow`, { method: 'POST' })
 }
 
-export async function unfollowUser(userId: string): Promise<{ success: boolean }> {
+export async function unfollowUser(userId: string): Promise<void> {
   try {
     await apiFetch(`/api/users/${userId}/follow`, { method: 'DELETE' })
-    return { success: true }
   } catch {
-    return { success: false }
+    // ignore 404 (already unfollowed)
   }
 }
 
@@ -685,17 +683,48 @@ export async function updateTechStack(stack: string[]): Promise<void> {
   await apiFetch('/api/users/me/profile', { method: 'PUT', body: JSON.stringify({ techStack: stack }) })
 }
 
-export async function updateTheme(theme: 'dark' | 'darker' | 'oled'): Promise<void> {
-  // Theme is client-side only — no backend endpoint
-  console.log('[API] updateTheme (client-side only)', { theme })
+// ── User Preferences ──────────────────────────────────────────────────────────
+
+export interface UserPreferences {
+  theme: string
+  visibility: string
+  notifReactions: boolean
+  notifComments: boolean
+  notifFollowers: boolean
+  notifUnfollows: boolean
 }
 
-export async function updateNotificationSettings(settings: Record<string, boolean>): Promise<void> {
-  console.log('[API] updateNotificationSettings — no backend endpoint yet', settings)
+export async function getMyPreferences(): Promise<UserPreferences | null> {
+  try {
+    const res = await apiFetch<ApiResponse<UserPreferences>>('/api/users/me/preferences')
+    return res.data
+  } catch {
+    return null
+  }
+}
+
+export async function updatePreferences(patch: Partial<UserPreferences>): Promise<UserPreferences | null> {
+  try {
+    const res = await apiFetch<ApiResponse<UserPreferences>>('/api/users/me/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(patch),
+    })
+    return res.data
+  } catch {
+    return null
+  }
+}
+
+export async function updateTheme(theme: string): Promise<void> {
+  await updatePreferences({ theme })
+}
+
+export async function updateNotificationSettings(settings: Partial<Pick<UserPreferences, 'notifReactions' | 'notifComments' | 'notifFollowers' | 'notifUnfollows'>>): Promise<void> {
+  await updatePreferences(settings)
 }
 
 export async function updatePrivacy(value: string): Promise<void> {
-  console.log('[API] updatePrivacy — no backend endpoint yet', { value })
+  await updatePreferences({ visibility: value })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

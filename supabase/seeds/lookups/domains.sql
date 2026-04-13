@@ -1,4 +1,4 @@
--- Seed: domains
+-- Seed: lookups.domains
 INSERT INTO lookups.domains (name, label, icon, sort_order) VALUES
   ('frontend',        'Frontend',             '🖥️',  1),
   ('backend',         'Backend',              '⚙️',  2),

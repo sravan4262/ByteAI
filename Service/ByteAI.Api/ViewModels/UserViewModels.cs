@@ -35,10 +35,32 @@ public sealed record UserResponse(
     bool IsVerified,
     DateTime CreatedAt,
     DateTime UpdatedAt,
-    IReadOnlyList<BadgeResponse> Badges
+    IReadOnlyList<BadgeResponse> Badges,
+    int? BytesCount = null,
+    int? FollowersCount = null,
+    int? FollowingCount = null,
+    bool? IsFollowedByMe = null
 );
 
 public sealed record SocialResponse(string Platform, string Url, string? Label);
+
+public sealed record UserPreferencesResponse(
+    string Theme,
+    string Visibility,
+    bool NotifReactions,
+    bool NotifComments,
+    bool NotifFollowers,
+    bool NotifUnfollows
+);
+
+public sealed record UpdatePreferencesRequest(
+    string? Theme,
+    string? Visibility,
+    bool? NotifReactions,
+    bool? NotifComments,
+    bool? NotifFollowers,
+    bool? NotifUnfollows
+);
 
 public sealed record UpsertSocialsRequest(List<UpsertSocialItem> Socials);
 

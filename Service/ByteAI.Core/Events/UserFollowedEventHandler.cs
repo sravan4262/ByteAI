@@ -1,11 +1,14 @@
+using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Notifications;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ByteAI.Core.Events;
 
 public sealed class UserFollowedEventHandler(
+    AppDbContext db,
     INotificationService notifications,
     IBadgeService badgeService,
     ILogger<UserFollowedEventHandler> logger)
@@ -15,10 +18,26 @@ public sealed class UserFollowedEventHandler(
     {
         try
         {
+            // Respect notification preference
+            var prefs = await db.UserPreferences.FindAsync([notification.FollowingId], cancellationToken);
+            if (prefs is not null && !prefs.NotifFollowers) return;
+
+            var actor = await db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == notification.FollowerId)
+                .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
+                .FirstOrDefaultAsync(cancellationToken);
+
             await notifications.CreateAsync(
                 userId: notification.FollowingId,
                 type: "follow",
-                payload: new { followerId = notification.FollowerId },
+                payload: new
+                {
+                    followerId = notification.FollowerId,
+                    actorUsername = actor?.Username ?? string.Empty,
+                    actorDisplayName = actor?.DisplayName ?? string.Empty,
+                    actorAvatarUrl = actor?.AvatarUrl,
+                },
                 ct: cancellationToken);
         }
         catch (Exception ex)

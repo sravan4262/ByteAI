@@ -3,8 +3,6 @@
 -- Interview experience posts — separate from bytes
 -- Schema: interviews
 -- Depends on: users.users
--- NOTE: tags removed — use interviews.interview_tech_stacks junction table
---       like_count, comment_count, view_count, bookmark_count removed — derived from junction tables
 -- ============================================================
 CREATE TABLE IF NOT EXISTS interviews.interviews (
     id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -17,7 +15,7 @@ CREATE TABLE IF NOT EXISTS interviews.interviews (
     role          text        CHECK (char_length(role) <= 100),
     difficulty    text        NOT NULL DEFAULT 'medium'
                               CHECK (difficulty IN ('easy', 'medium', 'hard')),
-    embedding     vector(384),
+    embedding     vector(768),
     search_vector tsvector    GENERATED ALWAYS AS (
                       to_tsvector('english'::regconfig,
                           coalesce(title, '') || ' ' || coalesce(body, '') || ' ' ||
@@ -25,6 +23,7 @@ CREATE TABLE IF NOT EXISTS interviews.interviews (
                   ) STORED,
     type          text        NOT NULL DEFAULT 'interview'
                               CHECK (type IN ('interview', 'system_design', 'behavioral', 'coding')),
+    is_active     boolean     NOT NULL DEFAULT true,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now()
 );
@@ -35,5 +34,7 @@ CREATE INDEX IF NOT EXISTS ix_interviews_search_vector ON interviews.interviews 
 CREATE INDEX IF NOT EXISTS ix_interviews_embedding     ON interviews.interviews USING hnsw (embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64);
 CREATE INDEX IF NOT EXISTS ix_interviews_company       ON interviews.interviews (company) WHERE company IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_interviews_is_active     ON interviews.interviews (is_active) WHERE is_active = true;
 
 COMMENT ON TABLE interviews.interviews IS 'Interview experience posts — separate content type from bytes';
+COMMENT ON COLUMN interviews.interviews.is_active IS 'Soft-delete flag — false hides the interview from all feeds';

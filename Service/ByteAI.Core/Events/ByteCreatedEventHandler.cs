@@ -147,8 +147,8 @@ public sealed class ByteCreatedEventHandler(
                 using var scope = scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                var followerIds = await db.Follows
-                    .Where(f => f.FollowingId == notification.AuthorId)
+                var followerIds = await db.UserFollowers
+                    .Where(f => f.UserId == notification.AuthorId)
                     .Select(f => f.FollowerId)
                     .ToListAsync(cancellationToken);
 

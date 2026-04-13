@@ -5,7 +5,12 @@ namespace ByteAI.Api.Mappers;
 
 public static class UserMappers
 {
-    public static UserResponse ToResponse(this User entity) =>
+    public static UserResponse ToResponse(
+        this User entity,
+        int? bytesCount = null,
+        int? followersCount = null,
+        int? followingCount = null,
+        bool? isFollowedByMe = null) =>
         new(
             Id: entity.Id,
             ClerkId: entity.ClerkId,
@@ -31,6 +36,10 @@ public static class UserMappers
                     Icon: ub.BadgeTypeNav!.Icon,
                     Description: ub.BadgeTypeNav!.Description,
                     EarnedAt: ub.EarnedAt))
-                .ToList()
+                .ToList(),
+            BytesCount: bytesCount,
+            FollowersCount: followersCount,
+            FollowingCount: followingCount,
+            IsFollowedByMe: isFollowedByMe
         );
 }

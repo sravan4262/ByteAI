@@ -8,8 +8,16 @@ namespace ByteAI.Core.Services.Interviews;
 
 public sealed class InterviewService(AppDbContext db) : IInterviewService
 {
-    public async Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? difficulty, List<string>? techStacks, string sort, CancellationToken ct)
+    public async Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? difficulty, List<string>? techStacks, string sort, CancellationToken ct, Guid? requesterId = null)
     {
+        // Privacy: block private author's interviews from non-owners
+        if (authorId.HasValue && requesterId != authorId.Value)
+        {
+            var prefs = await db.UserPreferences.FindAsync([authorId.Value], ct);
+            if (prefs?.Visibility == "private")
+                return new PagedResult<Interview>([], 0, pagination.Page, pagination.PageSize);
+        }
+
         var query = db.Interviews.AsNoTracking()
             .Where(i => i.IsActive)
             .Include(i => i.Author)

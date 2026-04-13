@@ -43,7 +43,7 @@ export function FeedFilters({
   }, [])
 
   return (
-    <div className="flex-shrink-0 bg-[rgba(5,5,14,0.8)] backdrop-blur-sm border-b border-[var(--border)] relative z-20">
+    <div className="flex-shrink-0 bg-[var(--bg-o80)] backdrop-blur-sm border-b border-[var(--border)] relative z-20">
       <div className="max-w-7xl mx-auto">
         {/* Tabs row */}
         <div className="flex items-center px-4 md:px-8 lg:px-12 xl:px-16">

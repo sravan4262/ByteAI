@@ -75,7 +75,7 @@ export function OnboardingScreen() {
   return (
     <PhoneFrame>
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.92)] backdrop-blur-md">
+      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
         <ByteAILogo size="sm" showText />
         {clerkUser?.imageUrl
           ? <img src={clerkUser.imageUrl} alt="avatar" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full object-cover ring-1 ring-[var(--border-h)]" />

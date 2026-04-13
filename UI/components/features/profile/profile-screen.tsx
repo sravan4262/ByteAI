@@ -134,9 +134,9 @@ function BadgeCard({ badge, index, forceOpen, onClose }: { badge: Badge; index: 
           >
             {/* Backdrop */}
             <motion.div
-              initial={{ backdropFilter: 'blur(0px)', backgroundColor: 'rgba(5,5,14,0)' }}
-              animate={{ backdropFilter: 'blur(12px)', backgroundColor: 'rgba(5,5,14,0.75)' }}
-              exit={{ backdropFilter: 'blur(0px)', backgroundColor: 'rgba(5,5,14,0)' }}
+              initial={{ backdropFilter: 'blur(0px)', backgroundColor: 'transparent' }}
+              animate={{ backdropFilter: 'blur(12px)', backgroundColor: 'var(--bg-o75)' }}
+              exit={{ backdropFilter: 'blur(0px)', backgroundColor: 'transparent' }}
               className="absolute inset-0"
             />
 
@@ -287,7 +287,7 @@ export function ProfileScreen() {
   // Edit profile
   const [editMode, setEditMode] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
-  const [editForm, setEditForm] = useState({ displayName: '', bio: '', company: '', roleTitle: '', github: '', linkedin: '', website: '' })
+  const [editForm, setEditForm] = useState({ displayName: '', bio: '', company: '', roleTitle: '', github: '', linkedin: '', websites: [''] })
 
   // Social links from API
   const [socialLinks, setSocialLinks] = useState<SocialLinkResponse[]>([])
@@ -301,6 +301,26 @@ export function ProfileScreen() {
       setUserLoading(false)
     })
     api.getMySocials().then(setSocialLinks)
+    api.getMyPreferences().then((prefs) => {
+      if (!prefs) return
+      setActiveTheme(prefs.theme)
+      setPrivacy(prefs.visibility as 'public' | 'private')
+      setNotifications({
+        reactions: prefs.notifReactions,
+        comments: prefs.notifComments,
+        newFollowers: prefs.notifFollowers,
+        unfollows: prefs.notifUnfollows,
+      })
+    })
+
+    // Refresh stats when the tab regains focus (e.g. after following from mini-profile)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        api.getCurrentUser().then((user) => { if (user) setCurrentUser(user) })
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
 
   // Merge API badges with the canonical ALL_BADGES list
@@ -385,7 +405,8 @@ export function ProfileScreen() {
   const [notifications, setNotifications] = useState({
     reactions: true,
     comments: true,
-    newFollowers: false,
+    newFollowers: true,
+    unfollows: true,
   })
   const [privacy, setPrivacy] = useState<'public' | 'private'>('public')
 
@@ -426,14 +447,27 @@ export function ProfileScreen() {
     const html = document.documentElement
     html.classList.remove('theme-light', 'theme-hacker', 'theme-nord')
     if (theme !== 'dark') html.classList.add(`theme-${theme}`)
+    // Light theme must remove the 'dark' class so Tailwind dark: variants don't override it
+    if (theme === 'light') {
+      html.classList.remove('dark')
+    } else {
+      html.classList.add('dark')
+    }
     localStorage.setItem('byteai_theme', theme)
-    await api.updateTheme(theme as 'dark' | 'darker' | 'oled')
+    await api.updateTheme(theme)
   }
 
   const handleNotificationChange = async (key: keyof typeof notifications) => {
     const newSettings = { ...notifications, [key]: !notifications[key] }
     setNotifications(newSettings)
-    await api.updateNotificationSettings({ [key]: newSettings[key] })
+    // Map local keys to API keys
+    const apiMap: Record<string, string> = {
+      reactions: 'notifReactions',
+      comments: 'notifComments',
+      newFollowers: 'notifFollowers',
+      unfollows: 'notifUnfollows',
+    }
+    await api.updateNotificationSettings({ [apiMap[key]]: newSettings[key] } as Parameters<typeof api.updateNotificationSettings>[0])
   }
 
   const handlePrivacyChange = async (value: 'public' | 'private') => {
@@ -450,7 +484,7 @@ export function ProfileScreen() {
   const openEditProfile = () => {
     const github = socialLinks.find((s) => s.platform === 'github')?.url ?? ''
     const linkedin = socialLinks.find((s) => s.platform === 'linkedin')?.url ?? ''
-    const website = socialLinks.find((s) => s.platform === 'website')?.url ?? ''
+    const websiteUrls = socialLinks.filter((s) => s.platform === 'website').map((s) => s.url)
     setEditForm({
       displayName: currentUser?.displayName ?? '',
       bio: currentUser?.bio ?? '',
@@ -458,7 +492,7 @@ export function ProfileScreen() {
       roleTitle: currentUser?.roleTitle ?? '',
       github,
       linkedin,
-      website,
+      websites: websiteUrls.length > 0 ? websiteUrls : [''],
     })
     setEditMode(true)
   }
@@ -475,7 +509,10 @@ export function ProfileScreen() {
       api.updateMySocials([
         { platform: 'github', url: editForm.github.trim(), label: editForm.github.trim() ? editForm.github.replace(/^https?:\/\/(www\.)?github\.com\//, 'github/') : '' },
         { platform: 'linkedin', url: editForm.linkedin.trim(), label: 'linkedin' },
-        { platform: 'website', url: editForm.website.trim(), label: editForm.website.replace(/^https?:\/\//, '') },
+        ...editForm.websites
+          .map((w) => w.trim())
+          .filter(Boolean)
+          .map((url) => ({ platform: 'website', url, label: url.replace(/^https?:\/\//, '') })),
       ].filter((s) => s.url)),
     ])
 
@@ -518,7 +555,7 @@ export function ProfileScreen() {
       {editMode && (
         <div className="absolute inset-0 z-50 flex flex-col">
           {/* Backdrop */}
-          <div className="flex-1 bg-[rgba(5,5,14,0.7)] backdrop-blur-sm" onClick={() => setEditMode(false)} />
+          <div className="flex-1 bg-[var(--bg-o70)] backdrop-blur-sm" onClick={() => setEditMode(false)} />
 
           {/* Panel */}
           <div className="bg-[var(--bg-card)] border-t border-[var(--border-m)] rounded-t-2xl flex flex-col max-h-[90%] overflow-hidden shadow-[0_-16px_64px_rgba(0,0,0,0.6)]">
@@ -600,23 +637,64 @@ export function ProfileScreen() {
               <div>
                 <label className="font-mono text-[10px] text-[var(--t3)] tracking-[0.08em] mb-2 block">// SOCIAL_LINKS</label>
                 <div className="flex flex-col gap-2">
-                  {[
-                    { key: 'github' as const, icon: <Github size={12} />, placeholder: 'https://github.com/username', label: 'GitHub' },
-                    { key: 'linkedin' as const, icon: <span className="font-bold text-[11px]">in</span>, placeholder: 'https://linkedin.com/in/username', label: 'LinkedIn' },
-                    { key: 'website' as const, icon: <Globe size={12} />, placeholder: 'https://yoursite.dev', label: 'Website' },
-                  ].map(({ key, icon, placeholder, label }) => (
-                    <div key={key} className="flex items-center gap-2">
+                  {/* GitHub */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-[var(--bg)] border border-[var(--border-m)] flex items-center justify-center text-[var(--t3)]">
+                      <Github size={12} />
+                    </div>
+                    <input
+                      value={editForm.github}
+                      onChange={(e) => setEditForm((f) => ({ ...f, github: e.target.value }))}
+                      placeholder="https://github.com/username"
+                      className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--cyan)] rounded-lg px-3 py-2 font-mono text-[11px] text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors"
+                    />
+                  </div>
+                  {/* LinkedIn */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-[var(--bg)] border border-[var(--border-m)] flex items-center justify-center text-[var(--t3)]">
+                      <span className="font-bold text-[11px]">in</span>
+                    </div>
+                    <input
+                      value={editForm.linkedin}
+                      onChange={(e) => setEditForm((f) => ({ ...f, linkedin: e.target.value }))}
+                      placeholder="https://linkedin.com/in/username"
+                      className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--cyan)] rounded-lg px-3 py-2 font-mono text-[11px] text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors"
+                    />
+                  </div>
+                  {/* Websites (multiple) */}
+                  {editForm.websites.map((url, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
                       <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-[var(--bg)] border border-[var(--border-m)] flex items-center justify-center text-[var(--t3)]">
-                        {icon}
+                        <Globe size={12} />
                       </div>
                       <input
-                        value={editForm[key]}
-                        onChange={(e) => setEditForm((f) => ({ ...f, [key]: e.target.value }))}
-                        placeholder={placeholder}
+                        value={url}
+                        onChange={(e) => {
+                          const next = [...editForm.websites]
+                          next[idx] = e.target.value
+                          setEditForm((f) => ({ ...f, websites: next }))
+                        }}
+                        placeholder="https://yoursite.dev"
                         className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--cyan)] rounded-lg px-3 py-2 font-mono text-[11px] text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors"
                       />
+                      {editForm.websites.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setEditForm((f) => ({ ...f, websites: f.websites.filter((_, i) => i !== idx) }))}
+                          className="text-[var(--t3)] hover:text-red-400 transition-colors flex-shrink-0"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
                     </div>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => setEditForm((f) => ({ ...f, websites: [...f.websites, ''] }))}
+                    className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--accent)] hover:underline mt-1 w-fit"
+                  >
+                    <Plus size={10} /> ADD WEBSITE
+                  </button>
                 </div>
               </div>
             </div>
@@ -625,7 +703,7 @@ export function ProfileScreen() {
       )}
 
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.92)] backdrop-blur-md">
+      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
         <div className="flex items-center gap-[9px]">
           <span className="font-mono text-[8px] text-[var(--cyan)] border-[1.5px] border-[var(--cyan)] rounded px-[5px] py-[2px] tracking-[0.05em] shadow-[0_0_10px_var(--cyan)]">
             {'</>'}
@@ -706,27 +784,60 @@ export function ProfileScreen() {
           </div>
 
           <div className="flex gap-2 flex-wrap mt-3">
-            {socialLinks.length > 0 ? socialLinks.map((link) => (
+            {/* GitHub */}
+            {socialLinks.find(s => s.platform === 'github') ? (
               <a
-                key={link.platform}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={socialLinks.find(s => s.platform === 'github')!.url}
+                target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-[5px] px-[10px] py-[5px] bg-[var(--bg-el)] border border-[var(--border-m)] rounded-full font-mono text-[10px] text-[var(--t2)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
-                {link.platform === 'github' && <Github size={10} />}
-                {link.platform === 'linkedin' && <span className="text-[10px] font-bold">in</span>}
-                {link.platform === 'website' && <Globe size={10} />}
-                {link.label || link.url.replace(/^https?:\/\//, '')}
+                <Github size={10} />
+                {socialLinks.find(s => s.platform === 'github')!.label || 'github'}
               </a>
-            )) : (
+            ) : (
               <button
                 onClick={openEditProfile}
                 className="flex items-center gap-[5px] px-[10px] py-[5px] border border-dashed border-[var(--border-m)] rounded-full font-mono text-[10px] text-[var(--t3)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
-                <Plus size={10} /> ADD LINKS
+                <Github size={10} /> + GITHUB
               </button>
             )}
+            {/* LinkedIn */}
+            {socialLinks.find(s => s.platform === 'linkedin') ? (
+              <a
+                href={socialLinks.find(s => s.platform === 'linkedin')!.url}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-[5px] px-[10px] py-[5px] bg-[var(--bg-el)] border border-[var(--border-m)] rounded-full font-mono text-[10px] text-[var(--t2)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <span className="text-[10px] font-bold">in</span>
+                linkedin
+              </a>
+            ) : (
+              <button
+                onClick={openEditProfile}
+                className="flex items-center gap-[5px] px-[10px] py-[5px] border border-dashed border-[var(--border-m)] rounded-full font-mono text-[10px] text-[var(--t3)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <span className="text-[10px] font-bold">in</span> + LINKEDIN
+              </button>
+            )}
+            {/* Websites */}
+            {socialLinks.filter(s => s.platform === 'website').map((link, i) => (
+              <a
+                key={i}
+                href={link.url}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-[5px] px-[10px] py-[5px] bg-[var(--bg-el)] border border-[var(--border-m)] rounded-full font-mono text-[10px] text-[var(--t2)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <Globe size={10} />
+                {link.label || link.url.replace(/^https?:\/\//, '')}
+              </a>
+            ))}
+            <button
+              onClick={openEditProfile}
+              className="flex items-center gap-[5px] px-[10px] py-[5px] border border-dashed border-[var(--border-m)] rounded-full font-mono text-[10px] text-[var(--t3)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Globe size={10} /> + WEBSITE
+            </button>
           </div>
         </div>
 
@@ -1134,6 +1245,7 @@ export function ProfileScreen() {
               { key: 'reactions', icon: '💡', label: 'Reactions', sub: 'When someone reacts to your Bytes' },
               { key: 'comments', icon: '💬', label: 'Comments', sub: 'When someone replies to your Byte' },
               { key: 'newFollowers', icon: '👤', label: 'New Followers', sub: 'When someone follows you' },
+              { key: 'unfollows', icon: '👻', label: 'Unfollows', sub: 'When someone unfollows you' },
             ].map((item) => (
               <div key={item.key} className="flex items-center justify-between py-[13px] border-b border-[var(--border)] last:border-b-0">
                 <div className="flex items-center gap-[10px]">
@@ -1182,28 +1294,6 @@ export function ProfileScreen() {
             </div>
           </div>
 
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between py-[13px] border-b border-[var(--border)]">
-              <div className="flex items-center gap-[10px]">
-                <Github size={15} className="text-[var(--t2)] w-5" />
-                <div>
-                  <div className="font-mono text-xs text-[var(--t1)]">GitHub</div>
-                  <div className="font-mono text-[10px] text-[var(--t3)] mt-0.5">Connected as @alex_xu</div>
-                </div>
-              </div>
-              <span className="font-mono text-[11px] text-[var(--green)]">✓ LINKED</span>
-            </div>
-            <div className="flex items-center justify-between py-[13px]">
-              <div className="flex items-center gap-[10px]">
-                <span className="text-[15px] w-5 text-center font-bold">G</span>
-                <div>
-                  <div className="font-mono text-xs text-[var(--t1)]">Google</div>
-                  <div className="font-mono text-[10px] text-[var(--t3)] mt-0.5">Not connected</div>
-                </div>
-              </div>
-              <button className="font-mono text-[11px] text-[var(--accent)]">CONNECT →</button>
-            </div>
-          </div>
         </div>
 
         {/* Sign out */}
@@ -1342,7 +1432,11 @@ export function ProfileScreen() {
           displayName={miniProfilePerson.displayName}
           initials={miniProfilePerson.displayName?.[0]?.toUpperCase() ?? miniProfilePerson.username[0].toUpperCase()}
           avatarUrl={miniProfilePerson.avatarUrl}
-          onClose={() => setMiniProfilePerson(null)}
+          onClose={() => {
+            setMiniProfilePerson(null)
+            // Refresh stats in case user followed/unfollowed someone
+            api.getCurrentUser().then((user) => { if (user) setCurrentUser(user) })
+          }}
         />
       )}
     </PhoneFrame>

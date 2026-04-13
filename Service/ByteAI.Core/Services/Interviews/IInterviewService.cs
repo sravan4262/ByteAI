@@ -6,7 +6,7 @@ namespace ByteAI.Core.Services.Interviews;
 
 public interface IInterviewService
 {
-    Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? difficulty, List<string>? techStacks, string sort, CancellationToken ct);
+    Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? difficulty, List<string>? techStacks, string sort, CancellationToken ct, Guid? requesterId = null);
     Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct);
     Task<Interview> CreateInterviewAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string? company, string? role, string difficulty, string type, CancellationToken ct);
     Task<Interview> CreateInterviewWithQuestionsAsync(Guid authorId, string title, string? company, string? role, string difficulty, List<InterviewQuestionInput> questions, CancellationToken ct);

@@ -33,4 +33,10 @@ public interface IUserService
 
     Task<List<Social>> GetUserSocialsAsync(Guid userId, CancellationToken ct);
     Task UpsertUserSocialsAsync(Guid userId, List<(string Platform, string Url, string? Label)> socials, CancellationToken ct);
+
+    /// <summary>Get bytes, followers, and following counts for a user in a single query.</summary>
+    Task<(int BytesCount, int FollowersCount, int FollowingCount)> GetUserStatsAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>Check whether followerId is currently following targetUserId.</summary>
+    Task<bool> IsFollowingAsync(Guid followerId, Guid targetUserId, CancellationToken ct);
 }

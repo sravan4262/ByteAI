@@ -3,6 +3,7 @@ using ByteAI.Api.Mappers;
 using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
+using ByteAI.Core.Services.Preferences;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +13,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [Tags("Users")]
-public sealed class UsersController(IUsersBusiness usersBusiness) : ControllerBase
+public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferencesService prefsService) : ControllerBase
 {
     /// <summary>Get a user's public profile by ID.</summary>
     [HttpGet("{userId:guid}")]
@@ -22,7 +23,15 @@ public sealed class UsersController(IUsersBusiness usersBusiness) : ControllerBa
     {
         var user = await usersBusiness.GetUserByIdAsync(userId, ct);
         if (user is null) return NotFound(new { message = $"User {userId} not found" });
-        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse()));
+        var (bytesCount, followersCount, followingCount) = await usersBusiness.GetUserStatsAsync(userId, ct);
+        bool? isFollowedByMe = null;
+        var clerkId = HttpContext.GetClerkUserId();
+        if (clerkId is not null)
+        {
+            var me = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
+            if (me is not null) isFollowedByMe = await usersBusiness.IsFollowingAsync(me.Id, userId, ct);
+        }
+        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount, isFollowedByMe)));
     }
 
     /// <summary>Get a user's public profile by username.</summary>
@@ -33,7 +42,8 @@ public sealed class UsersController(IUsersBusiness usersBusiness) : ControllerBa
     {
         var user = await usersBusiness.GetUserByUsernameAsync(username, ct);
         if (user is null) return NotFound(new { message = $"User '{username}' not found" });
-        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse()));
+        var (bytesCount, followersCount, followingCount) = await usersBusiness.GetUserStatsAsync(user.Id, ct);
+        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount)));
     }
 
     /// <summary>Get the currently authenticated user's profile.</summary>
@@ -47,7 +57,8 @@ public sealed class UsersController(IUsersBusiness usersBusiness) : ControllerBa
         var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
         var user = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
         if (user is null) return NotFound(new { message = "User not found" });
-        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse()));
+        var (bytesCount, followersCount, followingCount) = await usersBusiness.GetUserStatsAsync(user.Id, ct);
+        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount)));
     }
 
     /// <summary>List a user's followers.</summary>
@@ -131,5 +142,41 @@ public sealed class UsersController(IUsersBusiness usersBusiness) : ControllerBa
         var socials = request.Socials.Select(s => (s.Platform, s.Url, s.Label)).ToList();
         await usersBusiness.UpsertMySocialsAsync(clerkId, socials, ct);
         return NoContent();
+    }
+
+    /// <summary>Get the current user's preferences (theme, visibility, notification toggles).</summary>
+    [HttpGet("me/preferences")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UserPreferencesResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<UserPreferencesResponse>>> GetMyPreferences(CancellationToken ct)
+    {
+        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var me = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
+        if (me is null) return NotFound();
+        var prefs = await prefsService.GetOrDefaultAsync(me.Id, ct);
+        return Ok(ApiResponse<UserPreferencesResponse>.Success(new UserPreferencesResponse(
+            prefs.Theme, prefs.Visibility,
+            prefs.NotifReactions, prefs.NotifComments,
+            prefs.NotifFollowers, prefs.NotifUnfollows)));
+    }
+
+    /// <summary>Update the current user's preferences (partial — only supplied fields are changed).</summary>
+    [HttpPut("me/preferences")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UserPreferencesResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<UserPreferencesResponse>>> UpdateMyPreferences(
+        [FromBody] UpdatePreferencesRequest request, CancellationToken ct)
+    {
+        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var me = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
+        if (me is null) return NotFound();
+        var prefs = await prefsService.UpsertAsync(
+            me.Id, request.Theme, request.Visibility,
+            request.NotifReactions, request.NotifComments,
+            request.NotifFollowers, request.NotifUnfollows, ct);
+        return Ok(ApiResponse<UserPreferencesResponse>.Success(new UserPreferencesResponse(
+            prefs.Theme, prefs.Visibility,
+            prefs.NotifReactions, prefs.NotifComments,
+            prefs.NotifFollowers, prefs.NotifUnfollows)));
     }
 }

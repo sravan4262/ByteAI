@@ -26,6 +26,12 @@
   --red: #f43f5e;
   --code-bg: #030310;
   --radius: 8px;
+  /* Themed overlay backgrounds for sticky/blur headers */
+  --bg-o70: rgba(5,5,14,0.7);
+  --bg-o75: rgba(5,5,14,0.75);
+  --bg-o80: rgba(5,5,14,0.8);
+  --bg-o92: rgba(5,5,14,0.92);
+  --bg-o95: rgba(5,5,14,0.95);
   
   /* shadcn tokens mapped to ByteAI theme */
   --background: #05050e;
@@ -76,6 +82,9 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
+
+/* Hide Next.js dev overlay indicators */
+nextjs-portal { display: none !important; }
 
 @layer base {
   * {
@@ -274,6 +283,11 @@ html.theme-light {
   --muted-foreground: #4a5280;
   --border-color: #c4cade;
   --input: #c4cade;
+  --bg-o70: rgba(244,245,251,0.7);
+  --bg-o75: rgba(244,245,251,0.75);
+  --bg-o80: rgba(244,245,251,0.8);
+  --bg-o92: rgba(244,245,251,0.92);
+  --bg-o95: rgba(244,245,251,0.95);
 }
 
 /* Hacker — green-on-black terminal */
@@ -305,6 +319,11 @@ html.theme-hacker {
   --card-foreground: #00ff41;
   --border-color: #005500;
   --input: #005500;
+  --bg-o70: rgba(0,8,0,0.7);
+  --bg-o75: rgba(0,8,0,0.75);
+  --bg-o80: rgba(0,8,0,0.8);
+  --bg-o92: rgba(0,8,0,0.92);
+  --bg-o95: rgba(0,8,0,0.95);
 }
 
 /* Nord — cool blue-gray */
@@ -336,4 +355,9 @@ html.theme-nord {
   --card-foreground: #c0caf5;
   --border-color: #3b4261;
   --input: #3b4261;
+  --bg-o70: rgba(26,30,46,0.7);
+  --bg-o75: rgba(26,30,46,0.75);
+  --bg-o80: rgba(26,30,46,0.8);
+  --bg-o92: rgba(26,30,46,0.92);
+  --bg-o95: rgba(26,30,46,0.95);
 }

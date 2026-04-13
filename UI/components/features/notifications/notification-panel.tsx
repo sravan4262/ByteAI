@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Heart, MessageCircle, UserPlus, Award, X, CheckCheck, Trash2 } from 'lucide-react'
+import { Bell, Heart, MessageCircle, UserPlus, UserMinus, Award, X, CheckCheck, Trash2 } from 'lucide-react'
 import {
   getNotifications,
   markNotificationRead,
@@ -61,6 +61,14 @@ function notificationMeta(n: NotificationResponse): {
         text: (p?.actorDisplayName as string) || (p?.actorUsername as string)
           ? `${p?.actorDisplayName || p?.actorUsername} started following you`
           : 'Someone followed you',
+      }
+    case 'unfollow':
+      return {
+        icon: <UserMinus size={14} />,
+        color: 'text-orange-400',
+        text: (p?.actorDisplayName as string) || (p?.actorUsername as string)
+          ? `${p?.actorDisplayName || p?.actorUsername} unfollowed you`
+          : 'Someone unfollowed you',
       }
     case 'badge':
       return {

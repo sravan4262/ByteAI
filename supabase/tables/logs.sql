@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users.logs (
     source       text        CHECK (char_length(source) <= 200),
     user_id      uuid,
     request_path text        CHECK (char_length(request_path) <= 500),
-    properties   jsonb,
+    properties   text,
     created_at   timestamptz NOT NULL DEFAULT now()
 );
 

@@ -103,7 +103,7 @@ export function SearchScreen() {
   return (
     <PhoneFrame>
       {/* Header with search */}
-      <div className="flex-shrink-0 border-b border-[var(--border)] bg-[rgba(5,5,14,0.95)] backdrop-blur-md">
+      <div className="flex-shrink-0 border-b border-[var(--border)] bg-[var(--bg-o95)] backdrop-blur-md">
         <div className="px-5 py-[13px] pb-[11px]">
           <div className="flex items-center gap-3">
             <div className="flex-1 relative">

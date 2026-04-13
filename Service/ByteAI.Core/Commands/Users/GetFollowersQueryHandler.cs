@@ -11,8 +11,9 @@ public sealed class GetFollowersQueryHandler(AppDbContext db)
 {
     public async Task<PagedResult<User>> Handle(GetFollowersQuery request, CancellationToken cancellationToken)
     {
-        var query = db.Follows
-            .Where(f => f.FollowingId == request.UserId)
+        // users.followers: user_id = request.UserId → people who follow this user
+        var query = db.UserFollowers
+            .Where(f => f.UserId == request.UserId)
             .Include(f => f.Follower)
             .OrderByDescending(f => f.CreatedAt);
 
@@ -32,8 +33,9 @@ public sealed class GetFollowingQueryHandler(AppDbContext db)
 {
     public async Task<PagedResult<User>> Handle(GetFollowingQuery request, CancellationToken cancellationToken)
     {
-        var query = db.Follows
-            .Where(f => f.FollowerId == request.UserId)
+        // users.following: user_id = request.UserId → people this user follows
+        var query = db.UserFollowings
+            .Where(f => f.UserId == request.UserId)
             .Include(f => f.Following)
             .OrderByDescending(f => f.CreatedAt);
 

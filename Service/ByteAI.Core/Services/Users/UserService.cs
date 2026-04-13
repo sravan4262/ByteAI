@@ -15,8 +15,9 @@ public sealed class UserService(AppDbContext db) : IUserService
 
     public async Task<PagedResult<User>> GetFollowersAsync(Guid userId, PaginationParams pagination, CancellationToken ct)
     {
-        var query = db.Follows
-            .Where(f => f.FollowingId == userId)
+        // users.followers: user_id = userId → follower_id are the users who follow me
+        var query = db.UserFollowers
+            .Where(f => f.UserId == userId)
             .Include(f => f.Follower)
             .OrderByDescending(f => f.CreatedAt);
 
@@ -32,8 +33,9 @@ public sealed class UserService(AppDbContext db) : IUserService
 
     public async Task<PagedResult<User>> GetFollowingAsync(Guid userId, PaginationParams pagination, CancellationToken ct)
     {
-        var query = db.Follows
-            .Where(f => f.FollowerId == userId)
+        // users.following: user_id = userId → following_id are the users I follow
+        var query = db.UserFollowings
+            .Where(f => f.UserId == userId)
             .Include(f => f.Following)
             .OrderByDescending(f => f.CreatedAt);
 
@@ -165,6 +167,17 @@ public sealed class UserService(AppDbContext db) : IUserService
             }));
 
         await db.SaveChangesAsync(ct);
+    }
+
+    public Task<bool> IsFollowingAsync(Guid followerId, Guid targetUserId, CancellationToken ct) =>
+        db.UserFollowings.AnyAsync(f => f.UserId == followerId && f.FollowingId == targetUserId, ct);
+
+    public async Task<(int BytesCount, int FollowersCount, int FollowingCount)> GetUserStatsAsync(Guid userId, CancellationToken ct)
+    {
+        var bytesCount = await db.Bytes.CountAsync(b => b.AuthorId == userId && b.IsActive, ct);
+        var followersCount = await db.UserFollowers.CountAsync(f => f.UserId == userId, ct);
+        var followingCount = await db.UserFollowings.CountAsync(f => f.UserId == userId, ct);
+        return (bytesCount, followersCount, followingCount);
     }
 
     private async Task<string> GenerateUniqueUsernameAsync(string displayName, CancellationToken ct)

@@ -180,7 +180,7 @@ export function DetailScreen({ post }: DetailScreenProps) {
   return (
     <PhoneFrame>
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.92)] backdrop-blur-md">
+      <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
         <button
           onClick={() => router.back()}
           className="flex items-center gap-1.5 font-mono text-[9px] lg:text-[10px] text-[var(--t2)] px-[10px] py-[5px] rounded-md border border-[var(--border-m)] bg-[var(--bg-el)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] hover:-translate-x-px"

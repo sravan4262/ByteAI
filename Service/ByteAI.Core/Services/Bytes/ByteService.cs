@@ -24,8 +24,16 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<PagedResult<ByteResult>> GetBytesAsync(PaginationParams pagination, Guid? authorId, string sort, CancellationToken ct)
+    public async Task<PagedResult<ByteResult>> GetBytesAsync(PaginationParams pagination, Guid? authorId, string sort, CancellationToken ct, Guid? requesterId = null)
     {
+        // Privacy: if fetching a specific author's bytes, block if their profile is private and requester isn't them
+        if (authorId.HasValue && requesterId != authorId.Value)
+        {
+            var prefs = await db.UserPreferences.FindAsync([authorId.Value], ct);
+            if (prefs?.Visibility == "private")
+                return new PagedResult<ByteResult>([], 0, pagination.Page, pagination.PageSize);
+        }
+
         var query = db.Bytes.Where(b => b.IsActive).AsQueryable();
 
         if (authorId.HasValue)

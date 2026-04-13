@@ -32,4 +32,7 @@ public interface IUsersBusiness
 
     Task<List<Social>> GetMySocialsAsync(string clerkId, CancellationToken ct);
     Task UpsertMySocialsAsync(string clerkId, List<(string Platform, string Url, string? Label)> socials, CancellationToken ct);
+
+    Task<(int BytesCount, int FollowersCount, int FollowingCount)> GetUserStatsAsync(Guid userId, CancellationToken ct);
+    Task<bool> IsFollowingAsync(Guid followerId, Guid targetUserId, CancellationToken ct);
 }

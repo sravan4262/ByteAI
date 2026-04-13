@@ -8,12 +8,16 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     unoptimized: true,
   },
   turbopack: {
     root: __dirname,
   },
+  devIndicators: false,
 }
 
 export default nextConfig

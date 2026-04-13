@@ -29,26 +29,30 @@ public sealed class ByteReactedEventHandler(
                 logger.LogDebug("Awarded {Xp} XP to user {UserId}", XpPerLike, author.Id);
             }
 
-            // ── 2. Create notification for author ─────────────────────────────
-            var actor = await db.Users
-                .AsNoTracking()
-                .Where(u => u.Id == notification.ReactorUserId)
-                .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
-                .FirstOrDefaultAsync(cancellationToken);
+            // ── 2. Create notification for author (if reactions enabled) ──────
+            var prefs = await db.UserPreferences.FindAsync([notification.AuthorUserId], cancellationToken);
+            if (prefs is null || prefs.NotifReactions)
+            {
+                var actor = await db.Users
+                    .AsNoTracking()
+                    .Where(u => u.Id == notification.ReactorUserId)
+                    .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
+                    .FirstOrDefaultAsync(cancellationToken);
 
-            await notifications.CreateAsync(
-                userId: notification.AuthorUserId,
-                type: "like",
-                payload: new
-                {
-                    byteId = notification.ByteId,
-                    actorId = notification.ReactorUserId,
-                    actorUsername = actor?.Username ?? string.Empty,
-                    actorDisplayName = actor?.DisplayName ?? string.Empty,
-                    actorAvatarUrl = actor?.AvatarUrl,
-                    reactionType = notification.ReactionType
-                },
-                ct: cancellationToken);
+                await notifications.CreateAsync(
+                    userId: notification.AuthorUserId,
+                    type: "like",
+                    payload: new
+                    {
+                        byteId = notification.ByteId,
+                        actorId = notification.ReactorUserId,
+                        actorUsername = actor?.Username ?? string.Empty,
+                        actorDisplayName = actor?.DisplayName ?? string.Empty,
+                        actorAvatarUrl = actor?.AvatarUrl,
+                        reactionType = notification.ReactionType
+                    },
+                    ct: cancellationToken);
+            }
         }
         catch (Exception ex)
         {

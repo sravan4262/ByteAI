@@ -1,8 +1,8 @@
+using ByteAI.Core.Entities;
 using ByteAI.Core.Events;
 using ByteAI.Core.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using FollowEntity = ByteAI.Core.Entities.Follow;
 
 namespace ByteAI.Core.Services.Follow;
 
@@ -10,30 +10,48 @@ public sealed class FollowService(AppDbContext db, IPublisher publisher) : IFoll
 {
     public async Task<bool> FollowUserAsync(Guid followerId, Guid targetUserId, CancellationToken ct)
     {
-        if (followerId == targetUserId)
-            throw new InvalidOperationException("Cannot follow yourself");
+        // Idempotent — already following
+        var alreadyFollowing = await db.UserFollowings
+            .AnyAsync(f => f.UserId == followerId && f.FollowingId == targetUserId, ct);
 
-        var existing = await db.Follows
-            .FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FollowingId == targetUserId, ct);
+        if (alreadyFollowing) return true;
 
-        if (existing is not null) return true;
+        // Insert into users.following — "followerId follows targetUserId"
+        db.UserFollowings.Add(new UserFollowing
+        {
+            UserId = followerId,
+            FollowingId = targetUserId,
+            CreatedAt = DateTime.UtcNow,
+        });
 
-        db.Follows.Add(new FollowEntity { FollowerId = followerId, FollowingId = targetUserId, CreatedAt = DateTime.UtcNow });
+        // Insert into users.followers — "targetUserId gains follower followerId"
+        db.UserFollowers.Add(new UserFollower
+        {
+            UserId = targetUserId,
+            FollowerId = followerId,
+            CreatedAt = DateTime.UtcNow,
+        });
+
         await db.SaveChangesAsync(ct);
-
         await publisher.Publish(new UserFollowedEvent(followerId, targetUserId), ct);
         return true;
     }
 
     public async Task<bool> UnfollowUserAsync(Guid followerId, Guid targetUserId, CancellationToken ct)
     {
-        var follow = await db.Follows
-            .FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FollowingId == targetUserId, ct);
+        var following = await db.UserFollowings
+            .FirstOrDefaultAsync(f => f.UserId == followerId && f.FollowingId == targetUserId, ct);
 
-        if (follow is null) return false;
+        if (following is null) return false;
 
-        db.Follows.Remove(follow);
+        var follower = await db.UserFollowers
+            .FirstOrDefaultAsync(f => f.UserId == targetUserId && f.FollowerId == followerId, ct);
+
+        db.UserFollowings.Remove(following);
+        if (follower is not null) db.UserFollowers.Remove(follower);
+
         await db.SaveChangesAsync(ct);
+        await publisher.Publish(new UserUnfollowedEvent(followerId, targetUserId), ct);
         return true;
     }
 }

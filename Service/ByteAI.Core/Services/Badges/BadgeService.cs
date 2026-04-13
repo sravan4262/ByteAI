@@ -112,10 +112,10 @@ public sealed class BadgeService(AppDbContext db, ILogger<BadgeService> logger) 
 
             // ── FollowReceived trigger ───────────────────────────────────────
             "followers_100" when trigger == BadgeTrigger.FollowReceived =>
-                await db.Follows.CountAsync(f => f.FollowingId == userId, ct) >= 100,
+                await db.UserFollowers.CountAsync(f => f.UserId == userId, ct) >= 100,
 
             "followers_1k" when trigger == BadgeTrigger.FollowReceived =>
-                await db.Follows.CountAsync(f => f.FollowingId == userId, ct) >= 1000,
+                await db.UserFollowers.CountAsync(f => f.UserId == userId, ct) >= 1000,
 
             // ── CommentPosted trigger ────────────────────────────────────────
             "mentor" when trigger == BadgeTrigger.CommentPosted =>

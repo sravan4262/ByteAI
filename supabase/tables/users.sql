@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS users.users (
     seniority_id        uuid        REFERENCES lookups.seniority_types(id) ON DELETE SET NULL,
     domain_id           uuid        REFERENCES lookups.domains(id) ON DELETE SET NULL,
     level_type_id       uuid        REFERENCES lookups.level_types(id) ON DELETE SET NULL,
-    interest_embedding  vector(384),  -- personalised feed: ONNX embedding of user's interests
+    interest_embedding  vector(768),
     is_verified         boolean     NOT NULL DEFAULT false,
     created_at          timestamptz NOT NULL DEFAULT now(),
     updated_at          timestamptz NOT NULL DEFAULT now()
@@ -31,4 +31,4 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username  ON users.users (username);
 CREATE INDEX        IF NOT EXISTS ix_users_domain    ON users.users (domain) WHERE domain IS NOT NULL;
 
 COMMENT ON TABLE  users.users                    IS 'Platform users — synced from Clerk via webhook';
-COMMENT ON COLUMN users.users.interest_embedding IS '384-dim ONNX embedding of user interests for personalised feed ranking';
+COMMENT ON COLUMN users.users.interest_embedding IS '768-dim embedding of user interests for personalised feed ranking';

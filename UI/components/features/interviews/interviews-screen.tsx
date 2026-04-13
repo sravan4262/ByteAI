@@ -255,7 +255,7 @@ export function InterviewsScreen() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.95)] backdrop-blur-md">
+      <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o95)] backdrop-blur-md">
         <div>
           <h1 className="font-mono text-xs lg:text-sm font-bold tracking-[0.07em] flex items-center gap-2">
             <Briefcase size={14} className="text-[var(--purple)]" /> INTERVIEWS
@@ -279,7 +279,7 @@ export function InterviewsScreen() {
       </header>
 
       {/* Filter controls */}
-      <div className="flex-shrink-0 bg-[rgba(5,5,14,0.8)] backdrop-blur-sm border-b border-[var(--border)] relative z-20">
+      <div className="flex-shrink-0 bg-[var(--bg-o80)] backdrop-blur-sm border-b border-[var(--border)] relative z-20">
         <div className="flex flex-wrap items-center gap-3 px-4 lg:px-6 py-3">
           {/* Company filter */}
           <div className="flex items-center gap-2">

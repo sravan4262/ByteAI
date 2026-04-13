@@ -1,5 +1,5 @@
+using ByteAI.Core.Entities;
 using ByteAI.Core.Events;
-using FollowEntity = ByteAI.Core.Entities.Follow;
 using ByteAI.Core.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -11,12 +11,13 @@ public sealed class FollowUserCommandHandler(AppDbContext db, IPublisher publish
 {
     public async Task<bool> Handle(FollowUserCommand request, CancellationToken cancellationToken)
     {
-        var existing = await db.Follows
-            .FirstOrDefaultAsync(f => f.FollowerId == request.FollowerId && f.FollowingId == request.FollowingId, cancellationToken);
+        var existing = await db.UserFollowings
+            .AnyAsync(f => f.UserId == request.FollowerId && f.FollowingId == request.FollowingId, cancellationToken);
 
-        if (existing is not null) return true; // Idempotent
+        if (existing) return true;
 
-        db.Follows.Add(new FollowEntity { FollowerId = request.FollowerId, FollowingId = request.FollowingId, CreatedAt = DateTime.UtcNow });
+        db.UserFollowings.Add(new UserFollowing { UserId = request.FollowerId, FollowingId = request.FollowingId, CreatedAt = DateTime.UtcNow });
+        db.UserFollowers.Add(new UserFollower { UserId = request.FollowingId, FollowerId = request.FollowerId, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync(cancellationToken);
 
         await publisher.Publish(new UserFollowedEvent(request.FollowerId, request.FollowingId), cancellationToken);
@@ -29,12 +30,16 @@ public sealed class UnfollowUserCommandHandler(AppDbContext db)
 {
     public async Task<bool> Handle(UnfollowUserCommand request, CancellationToken cancellationToken)
     {
-        var follow = await db.Follows
-            .FirstOrDefaultAsync(f => f.FollowerId == request.FollowerId && f.FollowingId == request.UnfollowingId, cancellationToken);
+        var following = await db.UserFollowings
+            .FirstOrDefaultAsync(f => f.UserId == request.FollowerId && f.FollowingId == request.UnfollowingId, cancellationToken);
 
-        if (follow is null) return false;
+        if (following is null) return false;
 
-        db.Follows.Remove(follow);
+        var follower = await db.UserFollowers
+            .FirstOrDefaultAsync(f => f.UserId == request.UnfollowingId && f.FollowerId == request.FollowerId, cancellationToken);
+
+        db.UserFollowings.Remove(following);
+        if (follower is not null) db.UserFollowers.Remove(follower);
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }

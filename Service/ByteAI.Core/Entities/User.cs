@@ -35,8 +35,8 @@ public sealed class User
     public ICollection<Comment> Comments { get; set; } = [];
     public ICollection<UserLike> UserLikes { get; set; } = [];
     public ICollection<UserBookmark> UserBookmarks { get; set; } = [];
-    public ICollection<Follow> Following { get; set; } = [];
-    public ICollection<Follow> Followers { get; set; } = [];
+    public ICollection<UserFollowing> Following { get; set; } = [];
+    public ICollection<UserFollower> Followers { get; set; } = [];
     public ICollection<Notification> Notifications { get; set; } = [];
     public ICollection<UserBadge> UserBadges { get; set; } = [];
     public ICollection<Draft> Drafts { get; set; } = [];

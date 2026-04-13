@@ -94,7 +94,7 @@ export function ComposeScreen() {
   return (
     <PhoneFrame>
       {/* Header */}
-      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.92)] backdrop-blur-md">
+      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
         <ByteAILogo size="sm" showText={false} />
         <div className="flex items-center gap-3">
           {/* Type selector */}
@@ -208,7 +208,7 @@ export function ComposeScreen() {
 
       {/* ESC discard confirmation modal */}
       {showEscModal && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(5,5,14,0.8)] backdrop-blur-sm rounded-[inherit]">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--bg-o80)] backdrop-blur-sm rounded-[inherit]">
           <div className="w-[280px] bg-[var(--bg-card)] border border-[var(--border-m)] rounded-xl p-6 flex flex-col gap-4 shadow-[0_8px_40px_rgba(0,0,0,0.6)]">
             <div className="flex items-center gap-2.5">
               <AlertTriangle size={16} className="text-[var(--orange)] flex-shrink-0" />

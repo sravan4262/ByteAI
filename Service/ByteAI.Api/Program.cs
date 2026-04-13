@@ -18,6 +18,7 @@ using ByteAI.Core.Services.Reactions;
 using ByteAI.Core.Services.Search;
 using ByteAI.Core.Services.Trending;
 using ByteAI.Core.Services.Badges;
+using ByteAI.Core.Services.Preferences;
 using ByteAI.Core.Services.Users;
 using ByteAI.Core.Validators;
 using FluentValidation;
@@ -87,6 +88,7 @@ try
     builder.Services.AddScoped<ILookupService, LookupService>();
     builder.Services.AddScoped<IUserService, UserService>();
     builder.Services.AddScoped<IBadgeService, BadgeService>();
+    builder.Services.AddScoped<IUserPreferencesService, UserPreferencesService>();
 
     // ── Business layer ────────────────────────────────────────────────────────
     builder.Services.AddScoped<IBytesBusiness, BytesBusiness>();

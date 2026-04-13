@@ -9,7 +9,7 @@ export function Avatar({
 }: {
   initials: string
   imageUrl?: string | null
-  size?: 'xs' | 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   variant?: 'cyan' | 'purple' | 'green' | 'orange'
   onClick?: (e: React.MouseEvent) => void
 }) {
@@ -18,6 +18,7 @@ export function Avatar({
     sm: 'w-10 h-10 text-[11px] md:w-11 md:h-11 md:text-xs',
     md: 'w-12 h-12 text-xs md:w-14 md:h-14 md:text-sm',
     lg: 'w-16 h-16 text-lg md:w-20 md:h-20 md:text-xl',
+    xl: 'w-20 h-20 text-2xl',
   }
 
   const variantClasses = {

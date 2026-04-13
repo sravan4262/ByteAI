@@ -7,7 +7,7 @@ namespace ByteAI.Core.Services.Bytes;
 public interface IByteService
 {
     Task UpdateEmbeddingAsync(Guid byteId, float[] embedding, CancellationToken ct = default);
-    Task<PagedResult<ByteResult>> GetBytesAsync(PaginationParams pagination, Guid? authorId, string sort, CancellationToken ct);
+    Task<PagedResult<ByteResult>> GetBytesAsync(PaginationParams pagination, Guid? authorId, string sort, CancellationToken ct, Guid? requesterId = null);
     Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct);
     Task<ByteResult> CreateByteAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false);
     Task<Byte> UpdateByteAsync(Guid byteId, Guid authorId, string? title, string? body, string? codeSnippet, string? language, CancellationToken ct);

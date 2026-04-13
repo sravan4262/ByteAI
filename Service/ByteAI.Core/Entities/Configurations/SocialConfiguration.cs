@@ -8,7 +8,7 @@ public sealed class SocialConfiguration : IEntityTypeConfiguration<Social>
 {
     public void Configure(EntityTypeBuilder<Social> builder)
     {
-        builder.ToTable("socials", "users");
+        builder.ToTable("usersocials", "users");
         builder.HasKey(s => s.Id);
         builder.Property(s => s.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
         builder.Property(s => s.UserId).HasColumnName("user_id").IsRequired();
@@ -20,7 +20,7 @@ public sealed class SocialConfiguration : IEntityTypeConfiguration<Social>
         builder.HasOne(s => s.User).WithMany(u => u.Socials)
             .HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(s => s.UserId).HasDatabaseName("ix_socials_user_id");
-        builder.HasIndex(s => new { s.UserId, s.Platform }).IsUnique().HasDatabaseName("uq_socials_user_platform");
+        builder.HasIndex(s => s.UserId).HasDatabaseName("ix_usersocials_user_id");
+        builder.HasIndex(s => new { s.UserId, s.Platform }).IsUnique().HasDatabaseName("uq_usersocials_user_platform");
     }
 }

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS interviews.interview_question_likes (
     CONSTRAINT pk_interview_question_likes PRIMARY KEY (question_id, user_id)
 );
 
-CREATE INDEX IF NOT EXISTS ix_iql_user_id     ON interviews.interview_question_likes (user_id);
-CREATE INDEX IF NOT EXISTS ix_iql_question_id ON interviews.interview_question_likes (question_id);
+CREATE INDEX IF NOT EXISTS ix_iq_likes_question_id ON interviews.interview_question_likes (question_id);
+CREATE INDEX IF NOT EXISTS ix_iq_likes_user_id     ON interviews.interview_question_likes (user_id);
 
 COMMENT ON TABLE interviews.interview_question_likes IS 'Per-question likes — composite PK (question_id, user_id) prevents duplicate likes';

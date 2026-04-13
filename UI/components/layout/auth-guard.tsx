@@ -4,9 +4,18 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { setTokenProvider } from '@/lib/api/http'
-import { getCurrentUser, getMyBytes } from '@/lib/api/client'
+import { getCurrentUser, getMyBytes, getMyPreferences } from '@/lib/api/client'
 import { getMeCache, setMeCache } from '@/lib/user-cache'
 import type { ReactNode } from 'react'
+
+function applyTheme(theme: string) {
+  const html = document.documentElement
+  html.classList.remove('theme-light', 'theme-hacker', 'theme-nord')
+  if (theme !== 'dark') html.classList.add(`theme-${theme}`)
+  if (theme === 'light') html.classList.remove('dark')
+  else html.classList.add('dark')
+  localStorage.setItem('byteai_theme', theme)
+}
 
 /**
  * Client-side auth guard — double-checks Clerk session state after middleware.
@@ -32,7 +41,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     // Skip if already cached (e.g. navigated back to the app without closing tab)
     if (getMeCache()) return
 
-    Promise.all([getCurrentUser(), getMyBytes({ pageSize: 1 })]).then(([user, myBytes]) => {
+    Promise.all([getCurrentUser(), getMyBytes({ pageSize: 1 }), getMyPreferences()]).then(([user, myBytes, prefs]) => {
       if (!user) return
       setMeCache({
         userId: user.id,
@@ -48,6 +57,8 @@ export function AuthGuard({ children }: { children: ReactNode }) {
         followingCount: user.followingCount ?? 0,
         isVerified: user.isVerified,
       })
+      // Apply saved theme from DB preferences (overrides localStorage)
+      if (prefs?.theme) applyTheme(prefs.theme)
     })
   }, [isSignedIn])
 

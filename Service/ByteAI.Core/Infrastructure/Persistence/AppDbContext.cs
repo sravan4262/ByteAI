@@ -31,7 +31,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<InterviewQuestionLike> InterviewQuestionLikes => Set<InterviewQuestionLike>();
 
     // Social graph
-    public DbSet<Follow> Follows => Set<Follow>();
+    public DbSet<UserFollower> UserFollowers => Set<UserFollower>();
+    public DbSet<UserFollowing> UserFollowings => Set<UserFollowing>();
 
     // Lookup tables
     public DbSet<SeniorityType> SeniorityTypes => Set<SeniorityType>();
@@ -49,6 +50,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     // User meta
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserBadge> UserBadges => Set<UserBadge>();
+    public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
     public DbSet<Draft> Drafts => Set<Draft>();
     public DbSet<Social> Socials => Set<Social>();
 

@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS interviews.interview_question_comments (
     created_at  timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS ix_iqc_question_id ON interviews.interview_question_comments (question_id);
-CREATE INDEX IF NOT EXISTS ix_iqc_author_id   ON interviews.interview_question_comments (author_id);
-CREATE INDEX IF NOT EXISTS ix_iqc_parent_id   ON interviews.interview_question_comments (parent_id) WHERE parent_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_iq_comments_question_id ON interviews.interview_question_comments (question_id);
+CREATE INDEX IF NOT EXISTS ix_iq_comments_author_id   ON interviews.interview_question_comments (author_id);
+CREATE INDEX IF NOT EXISTS ix_iq_comments_parent_id   ON interviews.interview_question_comments (parent_id) WHERE parent_id IS NOT NULL;
 
 COMMENT ON TABLE interviews.interview_question_comments IS 'Threaded comments on individual Q&A pairs within an interview post';

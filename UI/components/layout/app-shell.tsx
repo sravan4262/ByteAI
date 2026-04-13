@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <NotificationContext.Provider value={notifCtx}>
     <div className="flex w-full h-full min-h-screen bg-[var(--bg)]">
       {/* Left Sidebar Navigation */}
-      <nav className="w-20 lg:w-64 flex-shrink-0 border-r border-[var(--border)] bg-[rgba(5,5,14,0.98)] backdrop-blur-xl flex flex-col items-center lg:items-start p-4 fixed left-0 top-0 bottom-0 z-50">
+      <nav className="w-20 lg:w-64 flex-shrink-0 border-r border-[var(--border)] bg-[var(--bg-card)] backdrop-blur-xl flex flex-col items-center lg:items-start p-4 fixed left-0 top-0 bottom-0 z-50">
         <div className="mb-8">
           {/* Full logo on wide sidebar */}
           <div className="hidden lg:block">
