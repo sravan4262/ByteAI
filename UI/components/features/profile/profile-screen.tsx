@@ -12,7 +12,9 @@ import { useAuth } from '@/hooks/use-auth'
 import { useUser } from '@clerk/nextjs'
 import { mockCurrentUser, mockUsers, themes } from '@/lib/mock-data'
 import * as api from '@/lib/api'
-import type { TechStackResponse, DomainResponse, SeniorityTypeResponse, Post, InterviewWithQuestions, UserResponse, SocialLinkResponse } from '@/lib/api'
+import type { TechStackResponse, DomainResponse, SeniorityTypeResponse, Post, InterviewWithQuestions, UserResponse, SocialLinkResponse, PersonResult } from '@/lib/api'
+import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
+import { setMeCache } from '@/lib/user-cache'
 
 // ─── Badge card with earned/locked states + click-to-celebrate modal ──────────
 
@@ -387,7 +389,13 @@ export function ProfileScreen() {
   })
   const [privacy, setPrivacy] = useState<'public' | 'private'>('public')
 
-  const followers = mockUsers.slice(1, 4)
+  // People sheets for followers / following
+  const [peopleSheet, setPeopleSheet] = useState<{ type: 'followers' | 'following'; list: PersonResult[] } | null>(null)
+  const [miniProfilePerson, setMiniProfilePerson] = useState<PersonResult | null>(null)
+  // Bytes modal
+  const [showBytesModal, setShowBytesModal] = useState(false)
+  // Byte detail — navigating from modal
+  const [selectedByte, setSelectedByte] = useState<Post | null>(null)
 
   const toggleFeedPreference = async (pref: string) => {
     const newPrefs = feedPreferences.includes(pref)
@@ -477,7 +485,24 @@ export function ProfileScreen() {
         api.getCurrentUser(),
         api.getMySocials(),
       ])
-      if (updatedUser) setCurrentUser(updatedUser)
+      if (updatedUser) {
+        setCurrentUser(updatedUser)
+        // Keep cache in sync after profile edit
+        setMeCache({
+          userId: updatedUser.id,
+          username: updatedUser.username,
+          displayName: updatedUser.displayName,
+          avatarUrl: updatedUser.avatarUrl,
+          bio: updatedUser.bio,
+          roleTitle: updatedUser.roleTitle,
+          company: updatedUser.company,
+          level: updatedUser.level,
+          bytesCount: myBytes.length,
+          followersCount: updatedUser.followersCount ?? 0,
+          followingCount: updatedUser.followingCount ?? 0,
+          isVerified: updatedUser.isVerified,
+        })
+      }
       setSocialLinks(updatedSocials)
       setEditMode(false)
       toast.success('Profile updated')
@@ -732,20 +757,41 @@ export function ProfileScreen() {
         {/* Stats */}
         <div className="grid grid-cols-4 mx-5 mt-4 border border-[var(--border-m)] rounded-lg overflow-hidden">
           {[
-            { label: 'BYTES', value: myBytes.length },
-            { label: 'REACTIONS', value: '—' },
-            { label: 'FOLLOWERS', value: '—' },
-            { label: 'DAY STREAK', value: userLoading ? '…' : `🔥 ${currentUser?.streak ?? 0}`, isStreak: true },
+            {
+              label: 'BYTES', value: myBytes.length, clickable: myBytes.length > 0,
+              onClick: () => setShowBytesModal(true),
+            },
+            { label: 'REACTIONS', value: '—', clickable: false },
+            {
+              label: 'FOLLOWERS', value: currentUser?.followersCount ?? '—', clickable: true,
+              onClick: async () => {
+                if (!currentUser) return
+                const list = await api.getFollowers(currentUser.id)
+                setPeopleSheet({ type: 'followers', list })
+              },
+            },
+            { label: 'DAY STREAK', value: userLoading ? '…' : `🔥 ${currentUser?.streak ?? 0}`, isStreak: true, clickable: false },
           ].map((stat, i) => (
-            <div
-              key={stat.label}
-              className={`py-3 px-2 text-center bg-[var(--bg-card)] ${i < 3 ? 'border-r border-[var(--border-m)]' : ''} ${stat.isStreak ? 'bg-gradient-to-br from-[rgba(16,217,160,0.06)] to-transparent' : ''}`}
-            >
-              <div className={`font-mono text-[15px] font-bold ${stat.isStreak ? 'text-[var(--green)]' : 'text-[var(--t1)]'}`}>
-                {stat.value}
+            stat.clickable ? (
+              <button
+                key={stat.label}
+                onClick={stat.onClick}
+                className={`py-3 px-2 text-center bg-[var(--bg-card)] ${i < 3 ? 'border-r border-[var(--border-m)]' : ''} hover:bg-[var(--bg-el)] transition-colors`}
+              >
+                <div className="font-mono text-[15px] font-bold text-[var(--accent)]">{stat.value}</div>
+                <div className="font-mono text-[9px] tracking-[0.07em] text-[var(--t3)] mt-[3px] underline underline-offset-2">{stat.label}</div>
+              </button>
+            ) : (
+              <div
+                key={stat.label}
+                className={`py-3 px-2 text-center bg-[var(--bg-card)] ${i < 3 ? 'border-r border-[var(--border-m)]' : ''} ${stat.isStreak ? 'bg-gradient-to-br from-[rgba(16,217,160,0.06)] to-transparent' : ''}`}
+              >
+                <div className={`font-mono text-[15px] font-bold ${stat.isStreak ? 'text-[var(--green)]' : 'text-[var(--t1)]'}`}>
+                  {stat.value}
+                </div>
+                <div className="font-mono text-[9px] tracking-[0.07em] text-[var(--t3)] mt-[3px]">{stat.label}</div>
               </div>
-              <div className="font-mono text-[9px] tracking-[0.07em] text-[var(--t3)] mt-[3px]">{stat.label}</div>
-            </div>
+            )
           ))}
         </div>
 
@@ -979,34 +1025,21 @@ export function ProfileScreen() {
         {/* Network */}
         <div className="mt-5 px-5">
           <div className="font-mono text-[11px] font-bold tracking-[0.12em] text-[var(--t3)] mb-3">// NETWORK</div>
-          <div className="bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg overflow-hidden">
-            <div className="flex border-b border-[var(--border)]">
-              {(['followers', 'following'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveFollowTab(tab)}
-                  className={`flex-1 text-center py-[10px] font-mono text-[11px] border-b-2 transition-all ${
-                    activeFollowTab === tab ? 'text-[var(--accent)] border-[var(--accent)]' : 'text-[var(--t2)] border-transparent'
-                  }`}
-                >
-                  {tab.toUpperCase()} <span className="ml-1">{tab === 'followers' ? '2.1k' : '318'}</span>
-                </button>
-              ))}
-            </div>
-            <div className="px-[14px]">
-              {followers.map((user) => (
-                <div key={user.id} className="flex items-center gap-[10px] py-[11px] border-b border-[var(--border)] last:border-b-0">
-                  <Avatar initials={user.initials} size="sm" variant={user.id === '2' ? 'purple' : user.id === '3' ? 'green' : 'orange'} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-mono text-[10px] font-bold text-[var(--t1)]">@{user.username}</div>
-                    <div className="font-mono text-[10px] text-[var(--t2)] mt-px truncate">{user.role} @ {user.company}</div>
-                  </div>
-                  <button className="font-mono text-[7.5px] px-[10px] py-1 rounded-full border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] transition-all whitespace-nowrap hover:border-[var(--red)] hover:text-[var(--red)]">
-                    REMOVE
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div className="flex gap-3">
+            {(['followers', 'following'] as const).map(type => (
+              <button
+                key={type}
+                onClick={async () => {
+                  if (!currentUser) return
+                  const list = await api.getFollowers(currentUser.id)
+                  setPeopleSheet({ type, list })
+                }}
+                className="flex-1 py-3 bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg font-mono text-[11px] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all"
+              >
+                {type === 'followers' ? (currentUser?.followersCount ?? '—') : (currentUser?.followingCount ?? '—')}
+                <div className="font-mono text-[8px] tracking-[0.08em] text-[var(--t3)] mt-0.5">{type.toUpperCase()}</div>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1181,6 +1214,137 @@ export function ProfileScreen() {
           <LogOut size={14} /> SIGN_OUT
         </button>
       </div>
+
+      {/* ── BYTES MODAL ── */}
+      <AnimatePresence>
+        {showBytesModal && !selectedByte && (
+          <>
+            <motion.div key="bytes-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[80] bg-black/50 backdrop-blur-[2px]" onClick={() => setShowBytesModal(false)} />
+            <motion.div key="bytes-sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+              className="absolute bottom-0 left-0 right-0 z-[81] bg-[var(--bg-card)] border-t border-[var(--border)] rounded-t-2xl max-h-[75vh] flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0"><div className="w-10 h-1 rounded-full bg-[var(--border-m)]" /></div>
+              <div className="flex items-center justify-between px-5 py-2 flex-shrink-0 border-b border-[var(--border)]">
+                <span className="font-mono text-xs font-bold tracking-[0.08em]">MY BYTES ({myBytes.length})</span>
+                <button onClick={() => setShowBytesModal(false)} className="text-[var(--t3)] hover:text-[var(--t1)]"><X size={16} /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
+                {myBytes.map(byte => (
+                  <button key={byte.id} onClick={() => setSelectedByte(byte)}
+                    className="w-full text-left px-5 py-3.5 hover:bg-[var(--bg-el)] transition-colors"
+                  >
+                    <div className="font-mono text-[11px] font-bold text-[var(--t1)] line-clamp-1">{byte.title}</div>
+                    <div className="font-mono text-[9px] text-[var(--t2)] mt-0.5 line-clamp-2 leading-relaxed">{byte.body}</div>
+                    <div className="flex gap-3 mt-1.5 font-mono text-[8px] text-[var(--t3)]">
+                      <span>❤ {byte.likes ?? 0}</span><span>💬 {byte.comments ?? 0}</span><span>{byte.createdAt}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── BYTE DETAIL (from bytes modal) ── */}
+      <AnimatePresence>
+        {selectedByte && (
+          <>
+            <motion.div key="detail-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[82] bg-black/50 backdrop-blur-[2px]" onClick={() => setSelectedByte(null)} />
+            <motion.div key="detail-sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+              className="absolute bottom-0 left-0 right-0 z-[83] bg-[var(--bg-card)] border-t border-[var(--border)] rounded-t-2xl max-h-[80vh] flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0"><div className="w-10 h-1 rounded-full bg-[var(--border-m)]" /></div>
+              <div className="flex items-center gap-3 px-5 py-2 flex-shrink-0 border-b border-[var(--border)]">
+                <button onClick={() => setSelectedByte(null)} className="font-mono text-[10px] text-[var(--accent)]">← BACK</button>
+                <span className="font-mono text-[11px] font-bold text-[var(--t1)] flex-1 truncate">{selectedByte.title}</span>
+                <button onClick={() => { setSelectedByte(null); setShowBytesModal(false); router.push(`/post/${selectedByte.id}`) }}
+                  className="font-mono text-[9px] px-3 py-1.5 rounded-lg bg-gradient-to-br from-[var(--accent)] to-[#2563eb] text-white">
+                  VIEW FULL →
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                <p className="text-sm text-[var(--t2)] leading-relaxed">{selectedByte.body}</p>
+                <div className="flex gap-3 mt-4 font-mono text-[10px] text-[var(--t3)]">
+                  <span>❤ {selectedByte.likes ?? 0}</span><span>💬 {selectedByte.comments ?? 0}</span><span>{selectedByte.createdAt}</span>
+                </div>
+                {selectedByte.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {selectedByte.tags.map(t => (
+                      <span key={t} className="font-mono text-[8px] px-2 py-1 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)]">{t}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── FOLLOWERS / FOLLOWING PEOPLE SHEET ── */}
+      <AnimatePresence>
+        {peopleSheet && !miniProfilePerson && (
+          <>
+            <motion.div key="people-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 z-[80] bg-black/50 backdrop-blur-[2px]" onClick={() => setPeopleSheet(null)} />
+            <motion.div key="people-sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+              className="absolute bottom-0 left-0 right-0 z-[81] bg-[var(--bg-card)] border-t border-[var(--border)] rounded-t-2xl max-h-[75vh] flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0"><div className="w-10 h-1 rounded-full bg-[var(--border-m)]" /></div>
+              <div className="flex items-center justify-between px-5 py-2 flex-shrink-0 border-b border-[var(--border)]">
+                <span className="font-mono text-xs font-bold tracking-[0.08em]">
+                  {peopleSheet.type === 'followers' ? 'FOLLOWERS' : 'FOLLOWING'} ({peopleSheet.list.length})
+                </span>
+                <button onClick={() => setPeopleSheet(null)} className="text-[var(--t3)] hover:text-[var(--t1)]"><X size={16} /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
+                {peopleSheet.list.length === 0 ? (
+                  <div className="flex items-center justify-center py-12 font-mono text-[10px] text-[var(--t3)]">
+                    No {peopleSheet.type} yet
+                  </div>
+                ) : peopleSheet.list.map(person => (
+                  <button key={person.id} onClick={() => setMiniProfilePerson(person)}
+                    className="w-full text-left flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-el)] transition-colors"
+                  >
+                    <Avatar
+                      initials={person.displayName?.[0]?.toUpperCase() ?? person.username[0].toUpperCase()}
+                      imageUrl={person.avatarUrl}
+                      size="sm"
+                      variant="cyan"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-[11px] font-bold text-[var(--t1)]">{person.displayName || person.username}</div>
+                      <div className="font-mono text-[10px] text-[var(--accent)]">@{person.username}</div>
+                      {person.bio && <div className="font-mono text-[9px] text-[var(--t3)] truncate mt-0.5">{person.bio}</div>}
+                    </div>
+                    <span className="font-mono text-[9px] text-[var(--t3)]">→</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Mini profile for a person in followers/following */}
+      {miniProfilePerson && (
+        <UserMiniProfile
+          userId={miniProfilePerson.id}
+          username={miniProfilePerson.username}
+          displayName={miniProfilePerson.displayName}
+          initials={miniProfilePerson.displayName?.[0]?.toUpperCase() ?? miniProfilePerson.username[0].toUpperCase()}
+          avatarUrl={miniProfilePerson.avatarUrl}
+          onClose={() => setMiniProfilePerson(null)}
+        />
+      )}
     </PhoneFrame>
   )
 }

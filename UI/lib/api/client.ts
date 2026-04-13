@@ -60,6 +60,10 @@ export interface UserResponse {
   isVerified: boolean
   createdAt: string
   badges: BadgeResponse[]
+  // Extended stats (returned by some endpoints)
+  bytesCount?: number
+  followersCount?: number
+  followingCount?: number
 }
 
 export interface SeniorityTypeResponse {
@@ -92,8 +96,8 @@ interface PagedResponse<T> { items: T[]; total: number; page: number; pageSize: 
 import type { Post } from './__mocks__/api'
 
 function byteToPost(b: ByteResponse): Post {
-  const username = b.authorUsername ?? b.authorId.slice(0, 8)
-  const displayName = b.authorDisplayName ?? username
+  const username = b.authorUsername || b.authorId.slice(0, 8)
+  const displayName = b.authorDisplayName || b.authorUsername || b.authorId.slice(0, 8)
   const initials = displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || username.slice(0, 2).toUpperCase()
   return {
     id: b.id,
@@ -367,6 +371,27 @@ export async function getProfile(username: string): Promise<UserResponse | null>
   }
 }
 
+export async function getProfileById(userId: string): Promise<UserResponse | null> {
+  try {
+    const res = await apiFetch<ApiResponse<UserResponse>>(`/api/users/${encodeURIComponent(userId)}`)
+    return res.data
+  } catch {
+    return null
+  }
+}
+
+export async function getUserBytes(userId: string, params: { page?: number; pageSize?: number } = {}): Promise<{ posts: Post[]; total: number }> {
+  try {
+    const qs = new URLSearchParams()
+    if (params.page) qs.set('page', String(params.page))
+    if (params.pageSize) qs.set('pageSize', String(params.pageSize))
+    const res = await apiFetch<ApiResponse<PagedResponse<ByteResponse>>>(`/api/users/${encodeURIComponent(userId)}/bytes?${qs}`)
+    return { posts: res.data.items.map(byteToPost), total: res.data.total }
+  } catch {
+    return { posts: [], total: 0 }
+  }
+}
+
 export async function updateProfile(data: Record<string, unknown>): Promise<{ success: boolean }> {
   try {
     await apiFetch('/api/users/me/profile', { method: 'PUT', body: JSON.stringify(data) })
@@ -400,6 +425,24 @@ export async function updateMySocials(socials: SocialLinkResponse[]): Promise<{ 
     return { success: true }
   } catch {
     return { success: false }
+  }
+}
+
+export async function getFollowers(userId: string): Promise<PersonResult[]> {
+  try {
+    const res = await apiFetch<ApiResponse<PersonResult[]>>(`/api/users/${encodeURIComponent(userId)}/followers`)
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function getFollowing(userId: string): Promise<PersonResult[]> {
+  try {
+    const res = await apiFetch<ApiResponse<PersonResult[]>>(`/api/users/${encodeURIComponent(userId)}/following`)
+    return res.data
+  } catch {
+    return []
   }
 }
 

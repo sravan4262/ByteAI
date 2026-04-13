@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, BadgeCheck, UserPlus, UserMinus } from 'lucide-react'
 import { Avatar } from '@/components/layout/avatar'
-import { getProfile, followUser, unfollowUser } from '@/lib/api/client'
+import { getProfileById, followUser, unfollowUser } from '@/lib/api/client'
+import { getMeCache } from '@/lib/user-cache'
 import { toast } from 'sonner'
 import type { UserResponse } from '@/lib/api/client'
 
@@ -35,11 +36,14 @@ export function UserMiniProfile({
   const [isFollowing, setIsFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
 
+  // Check if this is the logged-in user's own profile
+  const meCache = getMeCache()
+  const isOwnProfile = meCache?.userId === userId
+
   useEffect(() => {
-    if (username) {
-      getProfile(username).then(p => { if (p) setProfile(p) })
-    }
-  }, [username])
+    if (!userId) return
+    getProfileById(userId).then(p => { if (p) setProfile(p) })
+  }, [userId])
 
   const handleFollow = async () => {
     setFollowLoading(true)
@@ -47,11 +51,11 @@ export function UserMiniProfile({
       if (isFollowing) {
         await unfollowUser(userId)
         setIsFollowing(false)
-        toast.success(`Unfollowed @${username}`)
+        toast.success(`Unfollowed @${resolvedUsername}`)
       } else {
         await followUser(userId)
         setIsFollowing(true)
-        toast.success(`Following @${username}`)
+        toast.success(`Following @${resolvedUsername}`)
       }
     } catch {
       toast.error('Action failed — try again')
@@ -60,10 +64,15 @@ export function UserMiniProfile({
     }
   }
 
-  const resolvedName = profile?.displayName || displayName
-  const resolvedAvatar = profile?.avatarUrl || avatarUrl
-  const resolvedRole = profile?.roleTitle || role || ''
-  const resolvedCompany = profile?.company || company || ''
+  // Prefer API profile data, fall back to cache (own profile), then props
+  const resolvedUsername = profile?.username || (isOwnProfile ? meCache?.username : null) || username
+  const resolvedName = profile?.displayName || (isOwnProfile ? meCache?.displayName : null) || displayName
+  const resolvedAvatar = profile?.avatarUrl || (isOwnProfile ? meCache?.avatarUrl : null) || avatarUrl
+  const resolvedRole = profile?.roleTitle || (isOwnProfile ? meCache?.roleTitle : null) || role || ''
+  const resolvedCompany = profile?.company || (isOwnProfile ? meCache?.company : null) || company || ''
+  const resolvedBytes = profile?.bytesCount ?? (isOwnProfile ? meCache?.bytesCount : undefined) ?? '—'
+  const resolvedFollowers = profile?.followersCount ?? (isOwnProfile ? meCache?.followersCount : undefined) ?? '—'
+  const resolvedLevel = profile?.level ?? (isOwnProfile ? meCache?.level : undefined) ?? '—'
 
   return (
     <AnimatePresence>
@@ -86,7 +95,7 @@ export function UserMiniProfile({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: '100%', opacity: 0 }}
           transition={{ type: 'spring', stiffness: 340, damping: 30 }}
-          className="fixed bottom-0 left-0 right-0 z-[101] bg-[var(--bg-card)] border-t border-[var(--border)] rounded-t-2xl shadow-[0_-8px_40px_rgba(0,0,0,0.5)] max-h-[70vh] overflow-y-auto"
+          className="fixed bottom-0 left-0 right-0 z-[101] bg-[var(--bg-card)] border-t border-[var(--border)] rounded-t-2xl shadow-[0_-8px_40px_rgba(0,0,0,0.5)] max-h-[80vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
         >
           {/* Drag handle */}
@@ -106,11 +115,11 @@ export function UserMiniProfile({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-bold text-base text-[var(--t1)] leading-tight">{resolvedName}</span>
-                  {(profile?.isVerified) && (
+                  {profile?.isVerified && (
                     <BadgeCheck size={14} className="text-[var(--accent)] flex-shrink-0" />
                   )}
                 </div>
-                <div className="font-mono text-[11px] text-[var(--accent)] mt-0.5">@{username}</div>
+                <div className="font-mono text-[11px] text-[var(--accent)] mt-0.5">@{resolvedUsername}</div>
                 {(resolvedRole || resolvedCompany) && (
                   <div className="font-mono text-[10px] text-[var(--t2)] mt-1">
                     {resolvedRole}{resolvedRole && resolvedCompany ? ' @ ' : ''}{resolvedCompany}
@@ -131,11 +140,14 @@ export function UserMiniProfile({
             {/* Stats row */}
             <div className="flex gap-4">
               {[
-                { label: 'BYTES', value: profile ? (profile as UserResponse & { bytesCount?: number }).bytesCount ?? '—' : '—' },
-                { label: 'FOLLOWERS', value: '—' },
-                { label: 'LEVEL', value: profile?.level ?? '—' },
+                { label: 'BYTES', value: resolvedBytes },
+                { label: 'FOLLOWERS', value: resolvedFollowers },
+                { label: 'LEVEL', value: resolvedLevel },
               ].map(stat => (
-                <div key={stat.label} className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2.5 text-center">
+                <div
+                  key={stat.label}
+                  className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2.5 text-center"
+                >
                   <div className="font-mono text-xs font-bold text-[var(--t1)]">{stat.value}</div>
                   <div className="font-mono text-[8px] tracking-[0.08em] text-[var(--t3)] mt-0.5">{stat.label}</div>
                 </div>
@@ -171,7 +183,7 @@ export function UserMiniProfile({
             >
               {isFollowing
                 ? <><UserMinus size={14} /> UNFOLLOW</>
-                : <><UserPlus size={14} /> FOLLOW @{username}</>}
+                : <><UserPlus size={14} /> FOLLOW @{resolvedUsername}</>}
             </button>
           </div>
         </motion.div>

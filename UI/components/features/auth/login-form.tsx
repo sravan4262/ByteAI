@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useSignIn, useAuth } from '@clerk/nextjs'
+import { useSignIn, useAuth, useClerk } from '@clerk/nextjs'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -15,6 +15,7 @@ type Step = 'input' | 'verify'
 export function LoginForm() {
   const { signIn, isLoaded } = useSignIn()
   const { isSignedIn } = useAuth()
+  const { client, setActive } = useClerk()
   const router = useRouter()
   const [step, setStep] = useState<Step>('input')
   const [isLoading, setIsLoading] = useState(false)
@@ -32,24 +33,47 @@ export function LoginForm() {
     defaultValues: { email: '' },
   })
 
+  // Reuse an existing active session instead of creating a new sign-in
+  const reuseActiveSession = async (): Promise<boolean> => {
+    const sessions = client?.activeSessions ?? []
+    if (sessions.length === 0) return false
+    try {
+      await setActive({ session: sessions[0].id })
+      router.replace('/onboarding-check')
+      return true
+    } catch {
+      return false
+    }
+  }
+
   const handleOAuth = async (strategy: 'oauth_google' | 'oauth_github') => {
     if (!isLoaded) return
     setIsLoading(true)
+    // If a session already exists, just activate it — no new OAuth flow needed
+    if (await reuseActiveSession()) return
     try {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: '/sso-callback',
         redirectUrlComplete: '/onboarding-check',
       })
-    } catch {
-      toast.error('Sign in failed — try again')
-      setIsLoading(false)
+    } catch (err: unknown) {
+      const clerkErr = err as { errors?: { code: string; message: string }[] }
+      const code = clerkErr?.errors?.[0]?.code ?? ''
+      if (code === 'session_exists' || code === 'identifier_already_signed_in') {
+        await reuseActiveSession()
+      } else {
+        toast.error('Sign in failed — try again')
+        setIsLoading(false)
+      }
     }
   }
 
   const handleSendOtp = form.handleSubmit(async ({ email }) => {
     if (!isLoaded) return
     setIsLoading(true)
+    // If a session already exists, just activate it — no OTP needed
+    if (await reuseActiveSession()) return
     try {
       await signIn.create({ strategy: 'email_code', identifier: email })
       setStep('verify')
@@ -58,8 +82,7 @@ export function LoginForm() {
       const clerkErr = err as { errors?: { code: string; message: string }[] }
       const code = clerkErr?.errors?.[0]?.code ?? ''
       if (code === 'session_exists' || code === 'identifier_already_signed_in') {
-        // User already has an active session — skip sign-in and route them forward
-        router.replace('/onboarding-check')
+        await reuseActiveSession()
       } else {
         toast.error(clerkErr?.errors?.[0]?.message ?? 'Failed to send code')
       }
@@ -74,13 +97,15 @@ export function LoginForm() {
     try {
       const result = await signIn.attemptFirstFactor({ strategy: 'email_code', code: otp })
       if (result.status === 'complete') {
-        router.push('/onboarding-check')
+        // Activate the new session before navigating — without this isSignedIn stays false
+        await setActive({ session: result.createdSessionId })
+        router.replace('/onboarding-check')
       }
     } catch (err: unknown) {
       const clerkErr = err as { errors?: { code: string; message: string }[] }
       const code = clerkErr?.errors?.[0]?.code ?? ''
       if (code === 'session_exists' || code === 'identifier_already_signed_in') {
-        router.replace('/onboarding-check')
+        await reuseActiveSession()
       } else {
         toast.error('Invalid code — try again')
         setOtp('')

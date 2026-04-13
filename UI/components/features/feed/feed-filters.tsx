@@ -18,7 +18,6 @@ interface FeedFiltersProps {
 
 const TABS = [
   { id: 'for_you', label: 'FOR_YOU' },
-  { id: 'following', label: 'FOLLOWING' },
   { id: 'trending', label: 'TRENDING' },
 ]
 

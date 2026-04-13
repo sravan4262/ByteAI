@@ -50,16 +50,20 @@ export function OnboardingCheckScreen() {
     // ── Slow path (first login or new device) ─────────────────────────────────
     getCurrentUser().then((user) => {
       if (user && user.seniority) {
-        // Cross-device login: user completed onboarding elsewhere — restore cookie
+        // Cross-device login: user completed onboarding elsewhere — restore cookie and go to feed
         setOnboardedCookie()
         router.replace('/feed')
       } else if (user) {
-        // User record exists but onboarding not complete
+        // User record exists in backend but onboarding not complete yet
         router.replace('/onboarding')
       } else {
-        // API failed — treat as unknown; send to onboarding (safe fallback)
+        // No backend record — brand new user, send to onboarding
         router.replace('/onboarding')
       }
+    }).catch(() => {
+      // Network/API error — don't trap user; if they had a cookie we already returned above,
+      // so here they're genuinely new or the backend is down — default to onboarding
+      router.replace('/onboarding')
     })
   }, [isLoaded, userLoaded, isSignedIn, router])
 

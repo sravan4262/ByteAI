@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useSignUp } from '@clerk/nextjs'
+import { useSignUp, useClerk } from '@clerk/nextjs'
 import { useAuth } from '@clerk/nextjs'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -17,6 +17,7 @@ type Step = 'input' | 'verify'
 export function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
   const { signUp, isLoaded } = useSignUp()
   const { isSignedIn } = useAuth()
+  const { client, setActive } = useClerk()
   const router = useRouter()
   const [method, setMethod] = useState<Method>('email')
 
@@ -36,18 +37,38 @@ export function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
   })
   const username = form.watch('username')
 
+  // If a session already exists, activate it instead of starting a new sign-up/sign-in
+  const reuseActiveSession = async (): Promise<boolean> => {
+    const sessions = client?.activeSessions ?? []
+    if (sessions.length === 0) return false
+    try {
+      await setActive({ session: sessions[0].id })
+      router.replace('/onboarding-check')
+      return true
+    } catch {
+      return false
+    }
+  }
+
   const handleOAuth = async (strategy: 'oauth_google' | 'oauth_github') => {
     if (!isLoaded) return
     setIsLoading(true)
+    if (await reuseActiveSession()) return
     try {
       await signUp.authenticateWithRedirect({
         strategy,
         redirectUrl: '/sso-callback',
         redirectUrlComplete: '/onboarding-check',
       })
-    } catch {
-      toast.error('Sign up failed — try again')
-      setIsLoading(false)
+    } catch (err: unknown) {
+      const clerkErr = err as { errors?: { code: string; message: string }[] }
+      const code = clerkErr?.errors?.[0]?.code ?? ''
+      if (code === 'session_exists' || code === 'identifier_already_signed_in') {
+        await reuseActiveSession()
+      } else {
+        toast.error('Sign up failed — try again')
+        setIsLoading(false)
+      }
     }
   }
 
@@ -80,7 +101,9 @@ export function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () => void })
     try {
       const result = await signUp.attemptEmailAddressVerification({ code: otp })
       if (result.status === 'complete') {
-        router.push('/onboarding')
+        // Activate the new session before navigating
+        await setActive({ session: result.createdSessionId })
+        router.replace('/onboarding')
       }
     } catch {
       toast.error('Invalid code — try again')
