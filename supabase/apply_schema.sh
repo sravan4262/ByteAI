@@ -37,7 +37,8 @@ psql "$DB" -f supabase/tables/lookups/seniority_types.sql
 psql "$DB" -f supabase/tables/lookups/level_types.sql
 psql "$DB" -f supabase/tables/lookups/badge_types.sql
 psql "$DB" -f supabase/tables/lookups/search_types.sql
-psql "$DB" -f supabase/tables/lookups/tech_stacks.sql          # depends on lookups.domains
+psql "$DB" -f supabase/tables/lookups/subdomains.sql           # depends on lookups.domains
+psql "$DB" -f supabase/tables/lookups/tech_stacks.sql          # depends on lookups.subdomains
 psql "$DB" -f supabase/tables/lookups/companies.sql            # moved from interviews/
 psql "$DB" -f supabase/tables/lookups/notification_types.sql   # moved from users/
 
@@ -87,6 +88,7 @@ echo "--- Seeds (lookups) ---"
 psql "$DB" -f supabase/seeds/lookups/domains_seed.sql
 psql "$DB" -f supabase/seeds/lookups/seniority_types_seed.sql
 psql "$DB" -f supabase/seeds/lookups/level_types_seed.sql
+psql "$DB" -f supabase/seeds/lookups/subdomains_seed.sql
 psql "$DB" -f supabase/seeds/lookups/tech_stacks_seed.sql
 psql "$DB" -f supabase/seeds/lookups/badge_types_seed.sql
 psql "$DB" -f supabase/seeds/lookups/search_types_seed.sql

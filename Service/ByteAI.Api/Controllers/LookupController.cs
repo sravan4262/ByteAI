@@ -35,16 +35,28 @@ public sealed class LookupController(ILookupBusiness lookupBusiness) : Controlle
             items.Select(d => new DomainResponse(d.Id, d.Name, d.Label, d.Icon, d.SortOrder)).ToList()));
     }
 
-    /// <summary>Tech stacks, optionally filtered by domain.</summary>
-    [HttpGet("tech-stacks")]
-    [ProducesResponseType(typeof(ApiResponse<List<TechStackResponse>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<List<TechStackResponse>>>> GetTechStacks(
+    /// <summary>Subdomains, optionally filtered by domain.</summary>
+    [HttpGet("subdomains")]
+    [ProducesResponseType(typeof(ApiResponse<List<SubdomainResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<SubdomainResponse>>>> GetSubdomains(
         [FromQuery] Guid? domainId = null,
         CancellationToken ct = default)
     {
-        var items = await lookupBusiness.GetTechStacksAsync(domainId, ct);
+        var items = await lookupBusiness.GetSubdomainsAsync(domainId, ct);
+        return Ok(ApiResponse<List<SubdomainResponse>>.Success(
+            items.Select(s => new SubdomainResponse(s.Id, s.DomainId, s.Name, s.Label, s.SortOrder)).ToList()));
+    }
+
+    /// <summary>Tech stacks, optionally filtered by subdomain.</summary>
+    [HttpGet("tech-stacks")]
+    [ProducesResponseType(typeof(ApiResponse<List<TechStackResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<TechStackResponse>>>> GetTechStacks(
+        [FromQuery] Guid? subdomainId = null,
+        CancellationToken ct = default)
+    {
+        var items = await lookupBusiness.GetTechStacksAsync(subdomainId, ct);
         return Ok(ApiResponse<List<TechStackResponse>>.Success(
-            items.Select(t => new TechStackResponse(t.Id, t.DomainId, t.Name, t.Label, t.SortOrder)).ToList()));
+            items.Select(t => new TechStackResponse(t.Id, t.SubdomainId, t.Name, t.Label, t.SortOrder)).ToList()));
     }
 
     /// <summary>All badge type definitions.</summary>

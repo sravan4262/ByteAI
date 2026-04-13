@@ -3,13 +3,12 @@
 INSERT INTO lookups.domains (name, label, icon, sort_order) VALUES
   ('frontend',   'Frontend',           '🎨',  1),
   ('backend',    'Backend',            '🔧',  2),
-  ('fullstack',  'Full Stack',         '🌐',  3),
-  ('devops',     'DevOps / Cloud',     '🚀',  4),
-  ('mobile',     'Mobile',             '📱',  5),
-  ('ai_ml',      'AI / ML',            '🧠',  6),
-  ('data',       'Data Engineering',   '📈',  7),
-  ('security',   'Security',           '🛡️',  8),
-  ('systems',    'Systems / Embedded', '⚡',  9),
-  ('blockchain', 'Blockchain / Web3',  '🔗', 10),
-  ('gaming',     'Game Development',   '👾', 11)
+  ('devops',     'DevOps / Cloud',     '🚀',  3),
+  ('mobile',     'Mobile',             '📱',  4),
+  ('ai_ml',      'AI / ML',            '🧠',  5),
+  ('data',       'Data Engineering',   '📈',  6),
+  ('security',   'Security',           '🛡️',  7),
+  ('systems',    'Systems / Embedded', '⚡',  8),
+  ('blockchain', 'Blockchain / Web3',  '🔗',  9),
+  ('gaming',     'Game Development',   '👾', 10)
 ON CONFLICT (name) DO NOTHING;

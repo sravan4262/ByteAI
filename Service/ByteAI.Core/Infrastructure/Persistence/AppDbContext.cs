@@ -37,6 +37,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     // Lookup tables
     public DbSet<SeniorityType> SeniorityTypes => Set<SeniorityType>();
     public DbSet<Domain> Domains => Set<Domain>();
+    public DbSet<Subdomain> SubDomains => Set<Subdomain>();
     public DbSet<TechStack> TechStacks => Set<TechStack>();
     public DbSet<BadgeType> BadgeTypes => Set<BadgeType>();
     public DbSet<LevelType> LevelTypes => Set<LevelType>();

@@ -12,11 +12,19 @@ public sealed class LookupService(AppDbContext db) : ILookupService
     public Task<List<Domain>> GetDomainsAsync(CancellationToken ct) =>
         db.Domains.AsNoTracking().OrderBy(d => d.SortOrder).ToListAsync(CancellationToken.None);
 
-    public Task<List<TechStack>> GetTechStacksAsync(Guid? domainId, CancellationToken ct)
+    public Task<List<Subdomain>> GetSubdomainsAsync(Guid? domainId, CancellationToken ct)
+    {
+        var query = db.SubDomains.AsNoTracking().AsQueryable();
+        if (domainId.HasValue)
+            query = query.Where(s => s.DomainId == domainId.Value);
+        return query.OrderBy(s => s.SortOrder).ToListAsync(CancellationToken.None);
+    }
+
+    public Task<List<TechStack>> GetTechStacksAsync(Guid? subdomainId, CancellationToken ct)
     {
         var query = db.TechStacks.AsNoTracking().AsQueryable();
-        if (domainId.HasValue)
-            query = query.Where(t => t.DomainId == domainId.Value);
+        if (subdomainId.HasValue)
+            query = query.Where(t => t.SubdomainId == subdomainId.Value);
         return query.OrderBy(t => t.SortOrder).ToListAsync(CancellationToken.None);
     }
 

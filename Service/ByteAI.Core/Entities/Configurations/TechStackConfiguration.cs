@@ -11,15 +11,15 @@ public sealed class TechStackConfiguration : IEntityTypeConfiguration<TechStack>
         builder.ToTable("tech_stacks", "lookups");
         builder.HasKey(t => t.Id);
         builder.Property(t => t.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
-        builder.Property(t => t.DomainId).HasColumnName("domain_id").IsRequired();
+        builder.Property(t => t.SubdomainId).HasColumnName("subdomain_id").IsRequired();
         builder.Property(t => t.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
         builder.Property(t => t.Label).HasColumnName("label").HasMaxLength(100).IsRequired();
         builder.Property(t => t.SortOrder).HasColumnName("sort_order").HasDefaultValue(0);
 
-        builder.HasOne(t => t.Domain).WithMany(d => d.TechStacks)
-            .HasForeignKey(t => t.DomainId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(t => t.Subdomain).WithMany(s => s.TechStacks)
+            .HasForeignKey(t => t.SubdomainId).OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(t => t.Name).IsUnique();
-        builder.HasIndex(t => t.DomainId).HasDatabaseName("ix_tech_stacks_domain_id");
+        builder.HasIndex(t => t.SubdomainId).HasDatabaseName("ix_tech_stacks_subdomain_id");
     }
 }
