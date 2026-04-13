@@ -21,37 +21,34 @@ public sealed class ByteReactedEventHandler(
         // ── 1. Award XP to the byte author ────────────────────────────────────
         try
         {
-            if (notification.AuthorUserId != notification.ReactorUserId)
+            var author = await db.Users.FindAsync([notification.AuthorUserId], cancellationToken);
+            if (author is not null)
             {
-                var author = await db.Users.FindAsync([notification.AuthorUserId], cancellationToken);
-                if (author is not null)
-                {
-                    author.Xp += XpPerLike;
-                    await db.SaveChangesAsync(cancellationToken);
-                    logger.LogDebug("Awarded {Xp} XP to user {UserId}", XpPerLike, author.Id);
-                }
-
-                // ── 2. Create notification for author ─────────────────────────
-                var actor = await db.Users
-                    .AsNoTracking()
-                    .Where(u => u.Id == notification.ReactorUserId)
-                    .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                await notifications.CreateAsync(
-                    userId: notification.AuthorUserId,
-                    type: "like",
-                    payload: new
-                    {
-                        byteId = notification.ByteId,
-                        actorId = notification.ReactorUserId,
-                        actorUsername = actor?.Username ?? string.Empty,
-                        actorDisplayName = actor?.DisplayName ?? string.Empty,
-                        actorAvatarUrl = actor?.AvatarUrl,
-                        reactionType = notification.ReactionType
-                    },
-                    ct: cancellationToken);
+                author.Xp += XpPerLike;
+                await db.SaveChangesAsync(cancellationToken);
+                logger.LogDebug("Awarded {Xp} XP to user {UserId}", XpPerLike, author.Id);
             }
+
+            // ── 2. Create notification for author ─────────────────────────────
+            var actor = await db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == notification.ReactorUserId)
+                .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            await notifications.CreateAsync(
+                userId: notification.AuthorUserId,
+                type: "like",
+                payload: new
+                {
+                    byteId = notification.ByteId,
+                    actorId = notification.ReactorUserId,
+                    actorUsername = actor?.Username ?? string.Empty,
+                    actorDisplayName = actor?.DisplayName ?? string.Empty,
+                    actorAvatarUrl = actor?.AvatarUrl,
+                    reactionType = notification.ReactionType
+                },
+                ct: cancellationToken);
         }
         catch (Exception ex)
         {
@@ -59,16 +56,13 @@ public sealed class ByteReactedEventHandler(
         }
 
         // ── 3. Badge check for the author ─────────────────────────────────────
-        if (notification.AuthorUserId != notification.ReactorUserId)
+        try
         {
-            try
-            {
-                await badgeService.CheckAndAwardAsync(notification.AuthorUserId, BadgeTrigger.ReactionReceived, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Badge check failed after reaction on byte {ByteId}", notification.ByteId);
-            }
+            await badgeService.CheckAndAwardAsync(notification.AuthorUserId, BadgeTrigger.ReactionReceived, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Badge check failed after reaction on byte {ByteId}", notification.ByteId);
         }
     }
 }

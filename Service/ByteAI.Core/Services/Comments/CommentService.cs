@@ -47,7 +47,7 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
             .Select(b => b.AuthorId)
             .FirstOrDefaultAsync(CancellationToken.None);
 
-        if (byteAuthorId != Guid.Empty && byteAuthorId != authorId)
+        if (byteAuthorId != Guid.Empty)
         {
             var actor = await db.Users
                 .AsNoTracking()
@@ -66,7 +66,7 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
                     actorUsername = actor?.Username ?? string.Empty,
                     actorDisplayName = actor?.DisplayName ?? string.Empty,
                     actorAvatarUrl = actor?.AvatarUrl,
-                    preview = body.Length > 80 ? body[..80] + "…" : body,
+                    preview = body.Length > 50 ? body[..50] + "…" : body,
                 },
                 ct: ct);
         }
