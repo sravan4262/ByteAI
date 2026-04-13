@@ -8,6 +8,7 @@ export interface User {
   username: string
   displayName: string
   initials: string
+  avatarUrl?: string | null
   role: string
   company: string
   bio: string

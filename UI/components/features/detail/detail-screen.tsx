@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bookmark, Share2, Heart, MessageSquare, Lightbulb, ChevronLeft, ChevronRight, Send, Trash2, Bot, X, Pencil } from 'lucide-react'
+import { Bookmark, Share2, Heart, MessageSquare, ChevronLeft, ChevronRight, Send, Trash2, Bot, X, Pencil } from 'lucide-react'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
@@ -25,7 +25,6 @@ export function DetailScreen({ post }: DetailScreenProps) {
   const [showLikers, setShowLikers] = useState(false)
   const [comment, setComment] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [activeReactions, setActiveReactions] = useState<string[]>([])
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
@@ -64,13 +63,6 @@ export function DetailScreen({ post }: DetailScreenProps) {
       setCommentCount(loaded.length)
     })
   }, [post.id])
-
-  const handleReaction = async (emoji: string) => {
-    await api.reactToPost(post.id, emoji)
-    setActiveReactions((prev) =>
-      prev.includes(emoji) ? prev.filter((e) => e !== emoji) : [...prev, emoji]
-    )
-  }
 
   const handleAddComment = async () => {
     const trimmed = comment.trim()
@@ -282,18 +274,6 @@ export function DetailScreen({ post }: DetailScreenProps) {
                 <span className="font-bold text-[10px] lg:text-xs text-[var(--t1)]">{likeCount}</span>
               </button>
             </div>
-
-            <button
-              onClick={() => handleReaction('💡')}
-              className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
-                activeReactions.includes('💡')
-                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
-                  : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]'
-              }`}
-            >
-              <Lightbulb size={12} fill={activeReactions.includes('💡') ? 'currentColor' : 'none'} />
-              INSIGHTFUL
-            </button>
 
             <button
               onClick={handleShare}

@@ -18,10 +18,16 @@ export type { Post, Comment } from './__mocks__/api'
 interface ByteResponse {
   id: string
   authorId: string
+  authorUsername?: string
+  authorDisplayName?: string
+  authorAvatarUrl?: string
+  authorRole?: string
+  authorCompany?: string
   title: string
   body: string
   codeSnippet?: string
   language?: string
+  tags?: string[]
   type: string
   createdAt: string
   updatedAt: string
@@ -86,17 +92,21 @@ interface PagedResponse<T> { items: T[]; total: number; page: number; pageSize: 
 import type { Post } from './__mocks__/api'
 
 function byteToPost(b: ByteResponse): Post {
+  const username = b.authorUsername ?? b.authorId.slice(0, 8)
+  const displayName = b.authorDisplayName ?? username
+  const initials = displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || username.slice(0, 2).toUpperCase()
   return {
     id: b.id,
     title: b.title,
     body: b.body,
     author: {
       id: b.authorId,
-      username: 'user',
-      displayName: 'User',
-      initials: 'U',
-      role: '',
-      company: '',
+      username,
+      displayName,
+      initials,
+      avatarUrl: b.authorAvatarUrl,
+      role: b.authorRole ?? '',
+      company: b.authorCompany ?? '',
       bio: '',
       level: 1,
       xp: 0,
@@ -114,7 +124,7 @@ function byteToPost(b: ByteResponse): Post {
       isOnline: false,
     },
     code: b.codeSnippet ? { language: b.language ?? 'TEXT', filename: 'snippet', content: b.codeSnippet } : undefined,
-    tags: [],
+    tags: b.tags ?? [],
     reactions: [],
     comments: b.commentCount ?? 0,
     likes: b.likeCount ?? 0,

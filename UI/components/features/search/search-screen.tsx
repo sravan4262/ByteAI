@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Search, Bot, X } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
+import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
 import * as api from '@/lib/api'
 import type { Post, PersonResult, SearchAskSource } from '@/lib/api'
 
@@ -29,6 +30,7 @@ export function SearchScreen() {
   const [askMode, setAskMode] = useState(false)
   const [ragAnswer, setRagAnswer] = useState<string | null>(null)
   const [ragSources, setRagSources] = useState<SearchAskSource[]>([])
+  const [miniProfilePerson, setMiniProfilePerson] = useState<PersonResult | null>(null)
 
   const resetResults = () => {
     setContentResults([])
@@ -285,6 +287,7 @@ export function SearchScreen() {
                     <div className="flex items-center gap-[10px] mb-3">
                       <Avatar
                         initials={post.author.initials || (post.author.username?.[0] ?? 'U').toUpperCase()}
+                        imageUrl={post.author.avatarUrl}
                         size="sm"
                         variant="cyan"
                       />
@@ -342,28 +345,42 @@ export function SearchScreen() {
             {selectedType === 'people' && (
               <div className="flex flex-col gap-3">
                 {peopleResults.map((person) => (
-                  <div
+                  <button
                     key={person.id}
-                    className="flex items-center gap-3 bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg p-4 transition-all hover:border-[var(--border-h)]"
+                    onClick={() => setMiniProfilePerson(person)}
+                    className="flex items-center gap-3 bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg p-4 transition-all hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.3)] text-left w-full"
                   >
                     <Avatar
                       initials={person.displayName?.[0]?.toUpperCase() ?? person.username[0].toUpperCase()}
+                      imageUrl={person.avatarUrl}
                       size="sm"
                       variant="purple"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="font-mono text-[11px] font-bold text-[var(--t1)] flex items-center gap-1.5">
-                        @{person.username}
+                        {person.displayName || person.username}
                         {person.isVerified && <span className="text-[8px] text-[var(--accent)]">✦</span>}
                       </div>
-                      <div className="font-mono text-[10px] text-[var(--t2)] mt-0.5">{person.displayName}</div>
+                      <div className="font-mono text-[10px] text-[var(--accent)] mt-0.5">@{person.username}</div>
                       {person.bio && (
-                        <div className="font-mono text-[9px] text-[var(--t3)] mt-0.5 truncate">{person.bio}</div>
+                        <div className="font-mono text-[9px] text-[var(--t3)] mt-1 line-clamp-2 leading-relaxed">{person.bio}</div>
                       )}
                     </div>
-                  </div>
+                    <span className="font-mono text-[9px] text-[var(--t3)] flex-shrink-0">VIEW →</span>
+                  </button>
                 ))}
               </div>
+            )}
+
+            {miniProfilePerson && (
+              <UserMiniProfile
+                userId={miniProfilePerson.id}
+                username={miniProfilePerson.username}
+                displayName={miniProfilePerson.displayName}
+                initials={miniProfilePerson.displayName?.[0]?.toUpperCase() ?? miniProfilePerson.username[0].toUpperCase()}
+                avatarUrl={miniProfilePerson.avatarUrl}
+                onClose={() => setMiniProfilePerson(null)}
+              />
             )}
 
             {/* No results */}

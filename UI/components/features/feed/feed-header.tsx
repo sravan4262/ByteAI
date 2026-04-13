@@ -1,9 +1,10 @@
 "use client"
 
 import Link from 'next/link'
-import { Bell } from 'lucide-react'
+import { Bell, Zap } from 'lucide-react'
 import { Avatar } from '@/components/layout/avatar'
 import { useUser } from '@clerk/nextjs'
+import { useNotifications } from '@/components/layout/notification-context'
 
 interface FeedHeaderProps {
   contentType: 'bytes' | 'interviews'
@@ -11,6 +12,7 @@ interface FeedHeaderProps {
 
 export function FeedHeader({ contentType }: FeedHeaderProps) {
   const { user } = useUser()
+  const { openNotifications } = useNotifications()
 
   const initials = ((user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')).toUpperCase() || '?'
 
@@ -18,16 +20,19 @@ export function FeedHeader({ contentType }: FeedHeaderProps) {
     <header className="flex items-center justify-between px-4 md:px-8 lg:px-12 xl:px-16 py-3 md:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[rgba(5,5,14,0.95)] backdrop-blur-md">
       <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
         <div>
-          <h1 className="font-mono text-sm md:text-base lg:text-lg font-bold tracking-[0.07em]">
+          <h1 className="font-mono text-sm md:text-base lg:text-lg font-bold tracking-[0.07em] flex items-center gap-2">
+            <Zap size={14} className="text-[var(--accent)]" />
             {contentType === 'interviews' ? 'INTERVIEWS' : 'BITS'}
           </h1>
-          <div className="font-mono text-[10px] md:text-xs tracking-[0.08em] text-[var(--t2)] mt-0.5 flex items-center gap-[5px]">
-            <span className="w-[6px] h-[6px] rounded-full bg-[var(--green)] animate-blink shadow-[0_0_5px_var(--green)]" />
-            8,412 DEVS ONLINE
+          <div className="font-mono text-[10px] md:text-xs tracking-[0.08em] text-[var(--t2)] mt-0.5">
+            DAILY INSIGHTS · BUILT BY AI DEVS · FOR AI DEVS
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <button className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center relative transition-all hover:border-[var(--border-h)]">
+          <button
+            onClick={openNotifications}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center relative transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
             <Bell size={16} className="text-[var(--t2)]" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)] shadow-[0_0_5px_var(--accent)]" />
           </button>

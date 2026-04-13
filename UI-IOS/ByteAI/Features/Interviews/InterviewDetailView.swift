@@ -221,7 +221,7 @@ private struct QuestionCard: View {
                             let next = !isLiked
                             isLiked = next; likeCount += next ? 1 : -1
                             if next { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
-                            Task { await (next ? APIClient.shared.likeQuestion(questionId: q.id) : APIClient.shared.unlikeQuestion(questionId: q.id)).catch() }
+                            Task { try? await (next ? APIClient.shared.likeQuestion(questionId: q.id) : APIClient.shared.unlikeQuestion(questionId: q.id)) }
                         } label: {
                             Label("\(likeCount)", systemImage: isLiked ? "hand.thumbsup.fill" : "hand.thumbsup")
                                 .font(.system(size: 12))
@@ -237,7 +237,7 @@ private struct QuestionCard: View {
         }
         .background(Color.byteElement)
         .cornerRadius(10)
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderMed, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderMedium, lineWidth: 1))
     }
 }
 
@@ -303,7 +303,7 @@ private struct CommentBar: View {
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 .background(Color.byteElement)
                 .cornerRadius(20)
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.byteBorderMed, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.byteBorderMedium, lineWidth: 1))
                 .lineLimit(1...4)
             if submitting {
                 ProgressView().tint(.byteAccent)

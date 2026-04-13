@@ -33,6 +33,15 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className="dark h-full">
+        <head>
+          {/* Restore saved theme before first paint to avoid flash */}
+          <script dangerouslySetInnerHTML={{ __html: `
+            try {
+              var t = localStorage.getItem('byteai_theme');
+              if (t && t !== 'dark') document.documentElement.classList.add('theme-' + t);
+            } catch(e) {}
+          `}} />
+        </head>
         <body className={`${bricolage.variable} ${jetbrains.variable} font-sans antialiased h-full w-full`}>
           {children}
           {process.env.NODE_ENV === 'production' && <Analytics />}

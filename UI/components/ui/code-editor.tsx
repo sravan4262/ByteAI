@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { Code2, Wand2, ChevronDown, Search } from 'lucide-react'
+import { Code2, Wand2, ChevronDown, Search, X } from 'lucide-react'
 import { formatCode as formatCodeApi } from '@/lib/api/client'
 
 export interface Language {
@@ -142,8 +142,21 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
   )
 
   const handleSelectLanguage = (lang: Language) => {
+    // clicking the already-selected language deselects it
+    if (lang.id === language) {
+      onLanguageChange('')
+      setShowLangPicker(true)
+      setSearch('')
+      return
+    }
     onLanguageChange(lang.id)
     setShowLangPicker(false)
+    setSearch('')
+  }
+
+  const handleClearLanguage = () => {
+    onLanguageChange('')
+    setShowLangPicker(true)
     setSearch('')
   }
 
@@ -194,13 +207,28 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
             {isFormatting ? 'FORMATTING...' : 'FORMAT'}
           </button>
           {/* Language selector button */}
-          <button
-            onClick={() => setShowLangPicker(v => !v)}
-            className="flex items-center gap-1 font-mono text-[8px] px-2.5 py-1 rounded border border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)] hover:text-[var(--t1)] transition-all"
-          >
-            {selected ? selected.id : 'SELECT LANG'}
-            <ChevronDown size={9} className={`transition-transform ${showLangPicker ? 'rotate-180' : ''}`} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowLangPicker(v => !v)}
+              className={`flex items-center gap-1 font-mono text-[8px] px-2.5 py-1 rounded-l border transition-all ${
+                selected
+                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
+                  : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)] hover:text-[var(--t1)]'
+              }`}
+            >
+              {selected ? selected.id : 'SELECT LANG'}
+              <ChevronDown size={9} className={`transition-transform ${showLangPicker ? 'rotate-180' : ''}`} />
+            </button>
+            {selected && (
+              <button
+                onClick={handleClearLanguage}
+                title="Clear language"
+                className="flex items-center justify-center px-1.5 py-1 rounded-r border border-l-0 border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] hover:bg-[rgba(59,130,246,0.2)] transition-all"
+              >
+                <X size={9} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -248,7 +276,7 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
       <div className="relative">
         {!selected && (
           <div className="absolute inset-0 bg-[var(--bg-card)]/80 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-b-lg">
-            <span className="font-mono text-[10px] text-[var(--t3)]">← Select a language to start coding</span>
+            <span className="font-mono text-[10px] text-[var(--t3)]">← Select a language · paste your relevant code here</span>
           </div>
         )}
         <div className="flex px-4 py-3 gap-3">

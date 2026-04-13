@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSignUp } from '@clerk/nextjs'
+import { useAuth } from '@clerk/nextjs'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -15,8 +16,16 @@ type Step = 'input' | 'verify'
 
 export function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
   const { signUp, isLoaded } = useSignUp()
+  const { isSignedIn } = useAuth()
   const router = useRouter()
   const [method, setMethod] = useState<Method>('email')
+
+  // Already signed in — skip straight to onboarding-check
+  useEffect(() => {
+    if (isSignedIn) {
+      router.replace('/onboarding-check')
+    }
+  }, [isSignedIn, router])
   const [step, setStep] = useState<Step>('input')
   const [isLoading, setIsLoading] = useState(false)
   const [otp, setOtp] = useState('')

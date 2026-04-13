@@ -29,6 +29,7 @@
 		AA000018 /* PostCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100018 /* PostCardView.swift */; };
 		AA000019 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100019 /* PostDetailView.swift */; };
 		AA000020 /* InterviewsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100020 /* InterviewsView.swift */; };
+		AA000040 /* InterviewDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100040 /* InterviewDetailView.swift */; };
 		AA000021 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100021 /* SearchView.swift */; };
 		AA000022 /* ComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100022 /* ComposeView.swift */; };
 		AA000023 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100023 /* ProfileView.swift */; };
@@ -57,6 +58,7 @@
 		AA100018 /* PostCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PostCardView.swift; path = Features/Feed/PostCardView.swift; sourceTree = "<group>"; };
 		AA100019 /* PostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PostDetailView.swift; path = Features/PostDetail/PostDetailView.swift; sourceTree = "<group>"; };
 		AA100020 /* InterviewsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InterviewsView.swift; path = Features/Interviews/InterviewsView.swift; sourceTree = "<group>"; };
+		AA100040 /* InterviewDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InterviewDetailView.swift; path = Features/Interviews/InterviewDetailView.swift; sourceTree = "<group>"; };
 		AA100021 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SearchView.swift; path = Features/Search/SearchView.swift; sourceTree = "<group>"; };
 		AA100022 /* ComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ComposeView.swift; path = Features/Compose/ComposeView.swift; sourceTree = "<group>"; };
 		AA100023 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProfileView.swift; path = Features/Profile/ProfileView.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				AA100018 /* PostCardView.swift */,
 				AA100019 /* PostDetailView.swift */,
 				AA100020 /* InterviewsView.swift */,
+				AA100040 /* InterviewDetailView.swift */,
 				AA100021 /* SearchView.swift */,
 				AA100022 /* ComposeView.swift */,
 				AA100023 /* ProfileView.swift */,
@@ -292,6 +295,7 @@
 				AA000018 /* PostCardView.swift in Sources */,
 				AA000019 /* PostDetailView.swift in Sources */,
 				AA000020 /* InterviewsView.swift in Sources */,
+				AA000040 /* InterviewDetailView.swift in Sources */,
 				AA000021 /* SearchView.swift in Sources */,
 				AA000022 /* ComposeView.swift in Sources */,
 				AA000023 /* ProfileView.swift in Sources */,

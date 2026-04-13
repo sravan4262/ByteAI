@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { X, ChevronDown } from 'lucide-react'
+import { X, ChevronDown, AlertTriangle } from 'lucide-react'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { ComposeInterviewScreen } from './compose-interview-screen'
-import { composeTags } from '@/lib/mock-data'
 import * as api from '@/lib/api'
 
 type ComposeType = 'byte' | 'interview'
@@ -24,49 +23,51 @@ export function ComposeScreen() {
   const [content, setContent] = useState('')
   const [codeContent, setCodeContent] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('')
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [reachEstimate, setReachEstimate] = useState(1200)
   const [isLoading, setIsLoading] = useState(false)
+  const [showEscModal, setShowEscModal] = useState(false)
 
   useEffect(() => {
     if (content.length <= 10) return
     const fetchReach = async () => {
-      const { reach } = await api.getReachEstimate(content, selectedTags)
+      const { reach } = await api.getReachEstimate(content, [])
       setReachEstimate(reach)
     }
     fetchReach()
-  }, [content, selectedTags])
+  }, [content])
 
-  // ESC clears all content
+  // ESC → show confirmation modal if there's content
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setTitle('')
-        setContent('')
-        setCodeContent('')
-        setSelectedTags([])
-        toast('Cleared', { description: 'All content cleared' })
+        if (title.trim() || content.trim() || codeContent.trim()) {
+          setShowEscModal(true)
+        } else {
+          router.push('/feed')
+        }
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [title, content, codeContent, router])
+
+  const handleDiscardAndLeave = () => {
+    setTitle('')
+    setContent('')
+    setCodeContent('')
+    setShowEscModal(false)
+    router.push('/feed')
+  }
 
   if (composeType === 'interview') {
     return <ComposeInterviewScreen onBack={() => setComposeType('byte')} />
-  }
-
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    )
   }
 
   const handleSaveDraft = async () => {
     await api.saveDraft({
       content,
       code: codeContent ? { language: selectedLanguage, content: codeContent } : undefined,
-      tags: selectedTags,
+      tags: [],
     })
     toast.success('Draft saved')
   }
@@ -79,7 +80,7 @@ export function ComposeScreen() {
         title: title.trim() || undefined,
         content,
         code: codeContent ? { language: selectedLanguage, content: codeContent } : undefined,
-        tags: selectedTags,
+        tags: [],
       })
       toast.success('Byte posted!')
       router.push('/feed')
@@ -176,26 +177,6 @@ export function ComposeScreen() {
             onLanguageChange={setSelectedLanguage}
           />
 
-          {/* Tags */}
-          <div>
-            <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// TAGS</div>
-            <div className="flex flex-wrap gap-2">
-              {composeTags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => toggleTag(tag)}
-                  className={`font-mono text-[9px] px-3 py-1.5 rounded-full border transition-all ${
-                    selectedTags.includes(tag)
-                      ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)]'
-                      : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)]'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Stats */}
           <div className="flex gap-4">
             <div className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-4 py-3">
@@ -224,6 +205,35 @@ export function ComposeScreen() {
           </div>
         </div>
       </div>
+
+      {/* ESC discard confirmation modal */}
+      {showEscModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(5,5,14,0.8)] backdrop-blur-sm rounded-[inherit]">
+          <div className="w-[280px] bg-[var(--bg-card)] border border-[var(--border-m)] rounded-xl p-6 flex flex-col gap-4 shadow-[0_8px_40px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle size={16} className="text-[var(--orange)] flex-shrink-0" />
+              <span className="font-mono text-[11px] font-bold tracking-[0.07em] text-[var(--t1)]">DISCARD BYTE?</span>
+            </div>
+            <p className="font-mono text-[10px] text-[var(--t2)] leading-relaxed">
+              Your draft will be cleared and you&apos;ll be taken back to the feed. This cannot be undone.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setShowEscModal(false)}
+                className="flex-1 py-2.5 border border-[var(--border-m)] rounded-lg font-mono text-[10px] font-bold tracking-[0.07em] text-[var(--t2)] transition-all hover:border-[var(--border-h)] hover:text-[var(--t1)]"
+              >
+                KEEP EDITING
+              </button>
+              <button
+                onClick={handleDiscardAndLeave}
+                className="flex-1 py-2.5 bg-[var(--red)] rounded-lg font-mono text-[10px] font-bold tracking-[0.07em] text-white transition-all hover:opacity-90"
+              >
+                DISCARD →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex gap-3 px-5 py-4 border-t border-[var(--border)] flex-shrink-0">

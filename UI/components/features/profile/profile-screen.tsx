@@ -255,7 +255,10 @@ export function ProfileScreen() {
   const [currentUser, setCurrentUser] = useState<UserResponse | null>(null)
   const [userLoading, setUserLoading] = useState(true)
   const [activeFollowTab, setActiveFollowTab] = useState<'followers' | 'following'>('followers')
-  const [activeTheme, setActiveTheme] = useState('darker')
+  const [activeTheme, setActiveTheme] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('byteai_theme') ?? 'dark'
+    return 'dark'
+  })
   const [feedPreferences, setFeedPreferences] = useState(mockCurrentUser.feedPreferences)
   const [techStack, setTechStack] = useState(mockCurrentUser.techStack)
 
@@ -411,6 +414,11 @@ export function ProfileScreen() {
 
   const handleThemeChange = async (theme: string) => {
     setActiveTheme(theme)
+    // Apply theme class to <html> so CSS variables take effect globally
+    const html = document.documentElement
+    html.classList.remove('theme-light', 'theme-hacker', 'theme-nord')
+    if (theme !== 'dark') html.classList.add(`theme-${theme}`)
+    localStorage.setItem('byteai_theme', theme)
     await api.updateTheme(theme as 'dark' | 'darker' | 'oled')
   }
 
@@ -759,6 +767,25 @@ export function ProfileScreen() {
             />
           ))}
         </div>
+
+        {/* Next badge to earn */}
+        {(() => {
+          const nextBadge = mergedBadges.find(b => !b.earned)
+          if (!nextBadge) return null
+          return (
+            <div className="mx-5 mt-3 mb-1 flex items-center gap-3 px-4 py-3 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-xl">
+              <div className="text-xl opacity-30 grayscale">{nextBadge.icon}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-mono text-[9px] tracking-[0.1em] text-[var(--t3)] mb-0.5">// NEXT TO UNLOCK</div>
+                <div className="font-mono text-[11px] font-bold text-[var(--t1)]">{nextBadge.label}</div>
+                <div className="font-mono text-[9px] text-[var(--t2)] mt-0.5 leading-relaxed">{nextBadge.description}</div>
+              </div>
+              <div className="w-5 h-5 rounded-full bg-[var(--bg-card)] border border-[var(--border-m)] flex items-center justify-center flex-shrink-0">
+                <span className="text-[10px]">🔒</span>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Content Explorer */}
         <div className="mt-5 px-5">

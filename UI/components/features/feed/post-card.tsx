@@ -6,6 +6,7 @@ import { Heart, MessageSquare, Bookmark, Share2, BadgeCheck } from 'lucide-react
 import { Avatar } from '@/components/layout/avatar'
 import { CodeBlock } from '@/components/ui/code-block'
 import { LikersSheet } from '@/components/ui/likers-sheet'
+import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
 import type { Post } from '@/lib/api'
 
 interface PostCardProps {
@@ -20,6 +21,7 @@ interface PostCardProps {
 export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldTruncate }: PostCardProps) {
   const router = useRouter()
   const [showLikers, setShowLikers] = useState(false)
+  const [showMiniProfile, setShowMiniProfile] = useState(false)
 
   return (
     <article className="px-4 md:px-8 py-5 md:py-6 flex flex-col gap-4 border-b border-[var(--border)] relative">
@@ -30,8 +32,10 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
       <div className="flex items-start gap-3 md:gap-4">
         <Avatar
           initials={post.author.initials}
+          imageUrl={post.author.avatarUrl}
           size="md"
           variant={post.author.id === '1' ? 'cyan' : post.author.id === '4' ? 'purple' : 'green'}
+          onClick={(e) => { e.stopPropagation(); setShowMiniProfile(true) }}
         />
         <div className="flex-1 min-w-0">
           <div className="font-mono text-xs md:text-sm font-bold text-[var(--t1)] flex items-center gap-2">
@@ -154,6 +158,20 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
           <span>→</span>
         </button>
       </div>
+
+      {showMiniProfile && (
+        <UserMiniProfile
+          userId={post.author.id}
+          username={post.author.username}
+          displayName={post.author.displayName}
+          initials={post.author.initials}
+          avatarUrl={post.author.avatarUrl}
+          role={post.author.role}
+          company={post.author.company}
+          tags={post.tags ?? []}
+          onClose={() => setShowMiniProfile(false)}
+        />
+      )}
     </article>
   )
 }

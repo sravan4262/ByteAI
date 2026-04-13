@@ -131,11 +131,15 @@ final class AuthManager: ObservableObject {
 
     // MARK: - Onboarding completion
 
-    func completeOnboarding() {
+    func completeOnboarding() async {
         guard case .onboarding = state else { return }
         UserDefaults.standard.set(true, forKey: "byteai_onboarded")
-        if let user = currentUser {
+        do {
+            let user = try await APIClient.shared.getMe()
             state = .authenticated(user: user)
+        } catch {
+            // API unavailable — return to auth so they can retry
+            state = .unauthenticated
         }
     }
 
@@ -167,8 +171,14 @@ final class AuthManager: ObservableObject {
             state = .authenticated(user: user)
         } catch {
             print("[AuthManager] getMe() failed: \(error)")
-            // New user not yet in our DB — show onboarding
-            state = .onboarding
+            let wasOnboarded = UserDefaults.standard.bool(forKey: "byteai_onboarded")
+            if wasOnboarded {
+                // Returning user — network/server error. Return to auth to retry.
+                state = .unauthenticated
+            } else {
+                // Truly new user not yet in our DB — show onboarding
+                state = .onboarding
+            }
         }
     }
 

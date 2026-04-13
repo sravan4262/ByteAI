@@ -24,8 +24,8 @@ enum MockData {
             techStack: ["REACT", "TYPESCRIPT", "NEXT.JS", "RUST"],
             feedPreferences: ["react", "performance", "typescript"],
             links: [
-                SocialLink(type: "github", url: "https://github.com/alexchen", label: "alexchen"),
-                SocialLink(type: "linkedin", url: "https://linkedin.com/in/alexchen", label: "alexchen")
+                SocialLink(platform: "github", url: "https://github.com/alexchen", label: "alexchen"),
+                SocialLink(platform: "linkedin", url: "https://linkedin.com/in/alexchen", label: "alexchen")
             ],
             badges: MockData.badges,
             isVerified: true,

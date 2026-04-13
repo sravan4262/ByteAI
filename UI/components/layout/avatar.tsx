@@ -2,12 +2,16 @@
 
 export function Avatar({
   initials,
+  imageUrl,
   size = 'xs',
   variant = 'cyan',
+  onClick,
 }: {
   initials: string
+  imageUrl?: string | null
   size?: 'xs' | 'sm' | 'md' | 'lg'
   variant?: 'cyan' | 'purple' | 'green' | 'orange'
+  onClick?: (e: React.MouseEvent) => void
 }) {
   const sizeClasses = {
     xs: 'w-8 h-8 text-[8px] md:w-9 md:h-9 md:text-[9px]',
@@ -23,9 +27,25 @@ export function Avatar({
     orange: 'bg-gradient-to-br from-[#1a1040] to-[#2a1880] text-[var(--orange)]',
   }
 
+  const base = `${sizeClasses[size]} rounded-full border-[1.5px] border-[var(--border-h)] flex-shrink-0 transition-all hover:scale-105 ${onClick ? 'cursor-pointer' : ''}`
+
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageUrl}
+        alt={initials}
+        referrerPolicy="no-referrer"
+        onClick={onClick}
+        className={`${base} object-cover hover:ring-2 hover:ring-[var(--accent)]`}
+      />
+    )
+  }
+
   return (
     <div
-      className={`${sizeClasses[size]} ${variantClasses[variant]} rounded-full border-[1.5px] border-[var(--border-h)] flex items-center justify-center font-mono font-bold flex-shrink-0 transition-all hover:scale-105 hover:shadow-[0_0_16px_rgba(34,211,238,0.2)]`}
+      onClick={onClick}
+      className={`${base} ${variantClasses[variant]} flex items-center justify-center font-mono font-bold hover:shadow-[0_0_16px_rgba(34,211,238,0.2)]`}
     >
       {initials}
     </div>

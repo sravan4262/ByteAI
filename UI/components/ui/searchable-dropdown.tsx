@@ -64,16 +64,23 @@ export function SearchableDropdown({
     .filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => a.label.localeCompare(b.label))
 
-  // Close on outside click
+  // Close on outside click or ESC
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const clickHandler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false)
         setSearch('')
       }
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setOpen(false); setSearch('') }
+    }
+    document.addEventListener('mousedown', clickHandler)
+    document.addEventListener('keydown', keyHandler)
+    return () => {
+      document.removeEventListener('mousedown', clickHandler)
+      document.removeEventListener('keydown', keyHandler)
+    }
   }, [])
 
   // Focus input when opened

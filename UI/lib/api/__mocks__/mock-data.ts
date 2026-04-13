@@ -494,9 +494,10 @@ export const stackFilters = ['ALL', 'REACT', 'RUST', 'NODE', 'AI', 'GO', 'K8S']
 export const searchFilters = ['ALL', 'BYTES', 'DEVS', 'TOPICS', 'CODE']
 
 export const themes = [
-  { id: 'dark', label: 'DARK', color: '#0d0d20' },
-  { id: 'darker', label: 'DARKER', color: '#05050e' },
-  { id: 'oled', label: 'OLED', color: '#000000' },
+  { id: 'dark',   label: 'DARK',   color: '#05050e' },
+  { id: 'light',  label: 'LIGHT',  color: '#f4f5fb' },
+  { id: 'hacker', label: 'HACKER', color: '#001200' },
+  { id: 'nord',   label: 'NORD',   color: '#1a1e2e' },
 ]
 
 export const feedPreferenceOptions = ['RUST', 'AI / ML', 'ARCHITECTURE', 'DEVOPS', 'SECURITY', 'WASM']

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from 'react'
-import { useSignIn } from '@clerk/nextjs'
+import { useState, useEffect } from 'react'
+import { useSignIn, useAuth } from '@clerk/nextjs'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -14,10 +14,18 @@ type Step = 'input' | 'verify'
 
 export function LoginForm() {
   const { signIn, isLoaded } = useSignIn()
+  const { isSignedIn } = useAuth()
   const router = useRouter()
   const [step, setStep] = useState<Step>('input')
   const [isLoading, setIsLoading] = useState(false)
   const [otp, setOtp] = useState('')
+
+  // If already signed in, skip the form and go straight to onboarding-check
+  useEffect(() => {
+    if (isSignedIn) {
+      router.replace('/onboarding-check')
+    }
+  }, [isSignedIn, router])
 
   const form = useForm<LoginEmailData>({
     resolver: zodResolver(loginEmailSchema),
@@ -46,8 +54,15 @@ export function LoginForm() {
       await signIn.create({ strategy: 'email_code', identifier: email })
       setStep('verify')
       toast.success('Code sent — check your inbox')
-    } catch {
-      toast.error('Failed to send code')
+    } catch (err: unknown) {
+      const clerkErr = err as { errors?: { code: string; message: string }[] }
+      const code = clerkErr?.errors?.[0]?.code ?? ''
+      if (code === 'session_exists' || code === 'identifier_already_signed_in') {
+        // User already has an active session — skip sign-in and route them forward
+        router.replace('/onboarding-check')
+      } else {
+        toast.error(clerkErr?.errors?.[0]?.message ?? 'Failed to send code')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -61,9 +76,15 @@ export function LoginForm() {
       if (result.status === 'complete') {
         router.push('/onboarding-check')
       }
-    } catch {
-      toast.error('Invalid code — try again')
-      setOtp('')
+    } catch (err: unknown) {
+      const clerkErr = err as { errors?: { code: string; message: string }[] }
+      const code = clerkErr?.errors?.[0]?.code ?? ''
+      if (code === 'session_exists' || code === 'identifier_already_signed_in') {
+        router.replace('/onboarding-check')
+      } else {
+        toast.error('Invalid code — try again')
+        setOtp('')
+      }
     } finally {
       setIsLoading(false)
     }

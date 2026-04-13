@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useUser } from '@clerk/nextjs'
 import { Avatar } from '@/components/layout/avatar'
 import { FeedHeader } from './feed-header'
 import { FeedFilters } from './feed-filters'
@@ -27,19 +28,47 @@ function parseTime(timeStr: string): number {
 }
 
 export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
+  const { user: clerkUser } = useUser()
   const [activeTab, setActiveTab] = useState('for_you')
   const [sortBy, setSortBy] = useState('relevant')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [activeStackFilter, setActiveStackFilter] = useState<string | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [selectedFollower, setSelectedFollower] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const isMobile = useIsMobile()
 
+  // Fetch current user's backend ID for post authorship hydration
+  useEffect(() => {
+    api.getCurrentUser().then(u => { if (u) setCurrentUserId(u.id) })
+  }, [])
+
   useEffect(() => {
     setIsLoading(true)
     api.getFeed({ filter: activeTab as 'for_you' | 'following' | 'trending', stackFilter: activeStackFilter ?? undefined })
-      .then(({ posts }) => setPosts(posts))
+      .then(({ posts: fetched }) => {
+        // Hydrate own posts with real Clerk profile data
+        const hydrated = fetched.map(p => {
+          if (clerkUser && currentUserId && p.author.id === currentUserId) {
+            const firstName = clerkUser.firstName ?? ''
+            const lastName = clerkUser.lastName ?? ''
+            const fullName = [firstName, lastName].filter(Boolean).join(' ')
+            return {
+              ...p,
+              author: {
+                ...p.author,
+                username: clerkUser.username ?? p.author.username,
+                displayName: fullName || clerkUser.username || p.author.displayName,
+                initials: ((firstName[0] ?? '') + (lastName[0] ?? '')).toUpperCase() || (clerkUser.username?.[0]?.toUpperCase() ?? 'U'),
+                avatarUrl: clerkUser.imageUrl ?? null,
+              },
+            }
+          }
+          return p
+        })
+        setPosts(hydrated)
+      })
       .catch(() => toast.error('Failed to load feed'))
       .finally(() => setIsLoading(false))
   }, [activeTab, activeStackFilter])

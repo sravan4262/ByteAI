@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Briefcase, Bell, Bookmark, Share2, Plus, ChevronsUpDown, ChevronsDownUp, MessageSquare } from 'lucide-react'
+import { useNotifications } from '@/components/layout/notification-context'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
@@ -231,6 +232,7 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
 export function InterviewsScreen() {
+  const { openNotifications } = useNotifications()
   const [companyFilter, setCompanyFilter] = useState<string | null>(null)
   const [techFilters, setTechFilters] = useState<string[]>([])
   const [difficultyFilter, setDifficultyFilter] = useState<string | null>(null)
@@ -259,11 +261,14 @@ export function InterviewsScreen() {
             <Briefcase size={14} className="text-[var(--purple)]" /> INTERVIEWS
           </h1>
           <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t2)] mt-0.5">
-            INTERVIEW Q&amp;A · PREP &amp; SYSTEM DESIGN
+            FIND INTERVIEWS ACROSS TOP COMPANIES · ACE YOUR NEXT ROLE
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button className="w-[30px] h-[30px] lg:w-9 lg:h-9 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center relative transition-all hover:border-[var(--border-h)]">
+          <button
+            onClick={openNotifications}
+            className="w-[30px] h-[30px] lg:w-9 lg:h-9 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center relative transition-all hover:border-[var(--accent)]"
+          >
             <Bell size={14} className="text-[var(--t2)]" />
             <span className="absolute top-[3px] right-[3px] w-[7px] h-[7px] bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)]" />
           </button>

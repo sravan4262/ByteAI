@@ -236,3 +236,104 @@
 .animate-floatup {
   animation: floatup 2.5s ease-in-out infinite;
 }
+
+/* ── Themes ──────────────────────────────────────────────────────────────── */
+
+/* Light theme */
+html.theme-light {
+  --bg: #f4f5fb;
+  --bg-card: #ffffff;
+  --bg-el: #eceef8;
+  --border: #d8dcea;
+  --border-m: #c4cade;
+  --border-h: #a0aac8;
+  --t1: #0c0e1e;
+  --t2: #4a5280;
+  --t3: #9098be;
+  --accent: #3b82f6;
+  --accent-d: rgba(59,130,246,.12);
+  --accent-glow: rgba(59,130,246,.3);
+  --cyan: #0ea5e9;
+  --cyan-d: rgba(14,165,233,.12);
+  --green: #10b981;
+  --green-d: rgba(16,185,129,.12);
+  --purple: #8b5cf6;
+  --purple-d: rgba(139,92,246,.12);
+  --orange: #f97316;
+  --red: #ef4444;
+  --code-bg: #1e1e3f;
+  --background: #f4f5fb;
+  --foreground: #0c0e1e;
+  --card: #ffffff;
+  --card-foreground: #0c0e1e;
+  --popover: #ffffff;
+  --popover-foreground: #0c0e1e;
+  --secondary: #eceef8;
+  --secondary-foreground: #0c0e1e;
+  --muted: #eceef8;
+  --muted-foreground: #4a5280;
+  --border-color: #c4cade;
+  --input: #c4cade;
+}
+
+/* Hacker — green-on-black terminal */
+html.theme-hacker {
+  --bg: #000800;
+  --bg-card: #001200;
+  --bg-el: #001a00;
+  --border: #003300;
+  --border-m: #005500;
+  --border-h: #008800;
+  --t1: #00ff41;
+  --t2: #00cc34;
+  --t3: #006618;
+  --accent: #00ff41;
+  --accent-d: rgba(0,255,65,.08);
+  --accent-glow: rgba(0,255,65,.4);
+  --cyan: #00ffcc;
+  --cyan-d: rgba(0,255,204,.08);
+  --green: #00ff41;
+  --green-d: rgba(0,255,65,.08);
+  --purple: #cc00ff;
+  --purple-d: rgba(204,0,255,.08);
+  --orange: #ffaa00;
+  --red: #ff2244;
+  --code-bg: #000500;
+  --background: #000800;
+  --foreground: #00ff41;
+  --card: #001200;
+  --card-foreground: #00ff41;
+  --border-color: #005500;
+  --input: #005500;
+}
+
+/* Nord — cool blue-gray */
+html.theme-nord {
+  --bg: #1a1e2e;
+  --bg-card: #1f2335;
+  --bg-el: #24283b;
+  --border: #2e3347;
+  --border-m: #3b4261;
+  --border-h: #545c7e;
+  --t1: #c0caf5;
+  --t2: #7982a9;
+  --t3: #414868;
+  --accent: #7aa2f7;
+  --accent-d: rgba(122,162,247,.12);
+  --accent-glow: rgba(122,162,247,.35);
+  --cyan: #7dcfff;
+  --cyan-d: rgba(125,207,255,.1);
+  --green: #9ece6a;
+  --green-d: rgba(158,206,106,.1);
+  --purple: #bb9af7;
+  --purple-d: rgba(187,154,247,.1);
+  --orange: #ff9e64;
+  --red: #f7768e;
+  --code-bg: #13141e;
+  --background: #1a1e2e;
+  --foreground: #c0caf5;
+  --card: #1f2335;
+  --card-foreground: #c0caf5;
+  --border-color: #3b4261;
+  --input: #3b4261;
+}

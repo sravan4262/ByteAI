@@ -6,7 +6,8 @@ import { Home, Briefcase, Search, SquarePen, Bell } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { NotificationPanel } from '@/components/features/notifications/notification-panel'
-import { useEffect, useState } from 'react'
+import { NotificationContext } from '@/components/layout/notification-context'
+import { useEffect, useState, useMemo } from 'react'
 import { getUnreadNotificationCount } from '@/lib/api/client'
 import type { ReactNode } from 'react'
 
@@ -42,7 +43,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => { cancelled = true; clearInterval(id) }
   }, [])
 
+  const notifCtx = useMemo(() => ({ openNotifications: () => setNotifOpen(true) }), [])
+
   return (
+    <NotificationContext.Provider value={notifCtx}>
     <div className="flex w-full h-full min-h-screen bg-[var(--bg)]">
       {/* Left Sidebar Navigation */}
       <nav className="w-20 lg:w-64 flex-shrink-0 border-r border-[var(--border)] bg-[rgba(5,5,14,0.98)] backdrop-blur-xl flex flex-col items-center lg:items-start p-4 fixed left-0 top-0 bottom-0 z-50">
@@ -111,5 +115,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         onCountChange={setUnreadCount}
       />
     </div>
+    </NotificationContext.Provider>
   )
 }
