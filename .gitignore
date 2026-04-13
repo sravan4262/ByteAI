@@ -93,3 +93,7 @@ UI/node_modules/
 # AI model files — too large for git, download separately
 Service/ByteAI.Api/models/
 
+# Xcode — per-user UI state, changes on every open
+*.xcuserstate
+xcuserdata/
+
