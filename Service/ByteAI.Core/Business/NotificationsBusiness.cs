@@ -32,6 +32,12 @@ public sealed class NotificationsBusiness(INotificationService notificationServi
         return await notificationService.GetUnreadCountAsync(userId, ct);
     }
 
+    public async Task<bool> DeleteAsync(string clerkId, Guid notificationId, CancellationToken ct)
+    {
+        var userId = await ResolveUserIdAsync(clerkId, ct);
+        return await notificationService.DeleteAsync(notificationId, userId, ct);
+    }
+
     private async Task<Guid> ResolveUserIdAsync(string clerkId, CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);

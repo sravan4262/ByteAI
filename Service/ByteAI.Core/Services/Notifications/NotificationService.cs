@@ -62,4 +62,14 @@ public sealed class NotificationService(AppDbContext db) : INotificationService
 
     public async Task<int> GetUnreadCountAsync(Guid userId, CancellationToken ct) =>
         await db.Notifications.CountAsync(n => n.UserId == userId && !n.Read, ct);
+
+    public async Task<bool> DeleteAsync(Guid notificationId, Guid userId, CancellationToken ct)
+    {
+        var notification = await db.Notifications.FindAsync([notificationId], CancellationToken.None);
+        if (notification is null || notification.UserId != userId) return false;
+
+        db.Notifications.Remove(notification);
+        await db.SaveChangesAsync(ct);
+        return true;
+    }
 }

@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Heart, MessageCircle, UserPlus, Award, X, CheckCheck } from 'lucide-react'
+import { Bell, Heart, MessageCircle, UserPlus, Award, X, CheckCheck, Trash2 } from 'lucide-react'
 import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   getUnreadNotificationCount,
+  deleteNotification,
   type NotificationResponse,
   type NotificationPayloadLike,
   type NotificationPayloadComment,
@@ -27,6 +28,7 @@ function notificationMeta(n: NotificationResponse): {
   icon: React.ReactNode
   color: string
   text: string
+  preview?: string
 } {
   const p = n.payload as Record<string, unknown> | null
 
@@ -47,8 +49,9 @@ function notificationMeta(n: NotificationResponse): {
         icon: <MessageCircle size={14} />,
         color: 'text-blue-400',
         text: cp
-          ? `${cp.actorDisplayName || cp.actorUsername} commented: "${cp.preview}"`
+          ? `${cp.actorDisplayName || cp.actorUsername} commented on your byte`
           : 'Someone commented on your byte',
+        preview: cp?.preview,
       }
     }
     case 'follow':
@@ -97,11 +100,13 @@ function ActorAvatar({ url, name }: { url?: string | null; name: string }) {
 function NotificationItem({
   notification,
   onRead,
+  onDelete,
 }: {
   notification: NotificationResponse
   onRead: (id: string) => void
+  onDelete: (id: string) => void
 }) {
-  const { icon, color, text } = notificationMeta(notification)
+  const { icon, color, text, preview } = notificationMeta(notification)
   const p = notification.payload as Record<string, unknown> | null
 
   const avatarUrl = (p?.actorAvatarUrl as string | null) ?? null
@@ -115,26 +120,47 @@ function NotificationItem({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 24, transition: { duration: 0.15 } }}
       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-      onClick={() => !notification.read && onRead(notification.id)}
-      className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-[var(--border)] last:border-none
+      className={`group flex items-start gap-3 px-4 py-3 transition-colors border-b border-[var(--border)] last:border-none
         ${notification.read
           ? 'opacity-50 hover:opacity-70'
           : 'bg-[rgba(59,130,246,0.04)] hover:bg-[rgba(59,130,246,0.08)]'
         }`}
     >
       {/* Avatar */}
-      <ActorAvatar url={avatarUrl} name={actorName} />
+      <div
+        className="cursor-pointer"
+        onClick={() => !notification.read && onRead(notification.id)}
+      >
+        <ActorAvatar url={avatarUrl} name={actorName} />
+      </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <div
+        className="flex-1 min-w-0 cursor-pointer"
+        onClick={() => !notification.read && onRead(notification.id)}
+      >
         <p className="text-[13px] text-[var(--t1)] leading-snug">{text}</p>
+        {preview && (
+          <p className="text-[11px] text-[var(--t2)] mt-0.5 leading-snug line-clamp-1 italic">
+            "{preview}"
+          </p>
+        )}
         <p className="font-mono text-[10px] text-[var(--t3)] mt-0.5 tracking-wide">
           {timeAgo(notification.createdAt)}
         </p>
       </div>
 
-      {/* Type icon */}
-      <span className={`flex-shrink-0 mt-0.5 ${color}`}>{icon}</span>
+      {/* Right side: type icon + delete */}
+      <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+        <span className={`${color}`}>{icon}</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(notification.id) }}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--t3)] hover:text-red-400"
+          aria-label="Delete notification"
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
 
       {/* Unread dot */}
       {!notification.read && (
@@ -181,6 +207,18 @@ export function NotificationPanel({ open, onClose, onCountChange }: Notification
     const count = await getUnreadNotificationCount()
     onCountChange?.(count)
   }, [onCountChange])
+
+  const handleDelete = useCallback(async (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    try {
+      await deleteNotification(id)
+      const count = await getUnreadNotificationCount()
+      onCountChange?.(count)
+    } catch {
+      // re-fetch on failure so UI stays in sync
+      load(1, true)
+    }
+  }, [load, onCountChange])
 
   const handleMarkAll = useCallback(async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
@@ -285,6 +323,7 @@ export function NotificationPanel({ open, onClose, onCountChange }: Notification
                       key={n.id}
                       notification={n}
                       onRead={handleRead}
+                      onDelete={handleDelete}
                     />
                   ))}
                 </AnimatePresence>

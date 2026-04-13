@@ -12,4 +12,5 @@ public sealed class Notification
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public User User { get; set; } = null!;
+    public NotificationType NotificationType { get; set; } = null!;
 }

@@ -21,6 +21,10 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
         builder.HasOne(n => n.User).WithMany(u => u.Notifications)
             .HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(n => n.NotificationType).WithMany(nt => nt.Notifications)
+            .HasForeignKey(n => n.Type).HasPrincipalKey(nt => nt.Key)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(n => n.UserId).HasDatabaseName("ix_notifications_user_id");
     }
 }

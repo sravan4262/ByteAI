@@ -933,6 +933,10 @@ export async function getUnreadNotificationCount(): Promise<number> {
   }
 }
 
+export async function deleteNotification(id: string): Promise<void> {
+  await apiFetch(`/api/notifications/${id}`, { method: 'DELETE' })
+}
+
 export async function createPost(data: Record<string, unknown>): Promise<{ id: string }> {
   const codeObj = data.code as { language?: string; content?: string } | null | undefined
   const bodyText = String(data.content ?? data.body ?? '')

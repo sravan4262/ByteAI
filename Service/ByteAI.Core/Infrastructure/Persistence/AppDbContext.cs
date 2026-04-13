@@ -40,6 +40,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<BadgeType> BadgeTypes => Set<BadgeType>();
     public DbSet<LevelType> LevelTypes => Set<LevelType>();
     public DbSet<SearchType> SearchTypes => Set<SearchType>();
+    public DbSet<NotificationType> NotificationTypes => Set<NotificationType>();
 
     // Junction tables — users schema
     public DbSet<UserTechStack> UserTechStacks => Set<UserTechStack>();
