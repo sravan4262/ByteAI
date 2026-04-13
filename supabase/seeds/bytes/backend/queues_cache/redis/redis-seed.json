@@ -1,0 +1,6 @@
+{
+  "tech_stack": "redis",
+  "subdomain": "queues_cache",
+  "domain": "backend",
+  "bytes": []
+}

@@ -1,0 +1,6 @@
+{
+  "tech_stack": "rabbitmq",
+  "subdomain": "queues_cache",
+  "domain": "backend",
+  "bytes": []
+}
