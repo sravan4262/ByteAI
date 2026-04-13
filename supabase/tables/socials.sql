@@ -1,3 +1,0 @@
--- RENAMED — this table is now users.usersocials
--- See: supabase/tables/usersocials.sql
--- DELETE THIS FILE

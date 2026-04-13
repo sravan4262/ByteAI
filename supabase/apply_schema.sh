@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# ByteAI — Apply full schema + seeds to local Supabase DB
+# ByteAI — Apply full schema + seeds to a fresh DB
 # Usage: ./supabase/apply_schema.sh
 # Requires: psql in PATH  (brew install libpq && export PATH="/opt/homebrew/opt/libpq/bin:$PATH")
 #
 # Schema layout:
-#   lookups   — static lookup tables (seniority_types, domains, tech_stacks, badge_types, level_types, search_types)
-#   users     — user profile + social graph + notifications + badges + logs
-#   bytes     — byte posts + comments + likes + views + bookmarks + drafts + trending
-#   interviews — interview posts + comments + likes + views + bookmarks
+#   lookups    — static lookup tables (domains, seniority, level, tech_stacks, badge_types, search_types)
+#   users      — user profiles, social graph, notifications, badges, preferences, logs
+#   bytes      — byte posts, comments, likes, views, bookmarks, drafts, trending, quality scores
+#   interviews — interview posts, questions, comments, likes, views, bookmarks
 
 set -e
 
@@ -29,69 +29,71 @@ psql "$DB" -c "CREATE SCHEMA IF NOT EXISTS users;"
 psql "$DB" -c "CREATE SCHEMA IF NOT EXISTS bytes;"
 psql "$DB" -c "CREATE SCHEMA IF NOT EXISTS interviews;"
 
-# ── lookups schema (no FK deps outside lookups) ───────────────────────────────
+# ── lookups (no deps outside lookups) ────────────────────────────────────────
 echo ""
-echo "--- lookups schema ---"
-psql "$DB" -f supabase/tables/seniority_types.sql
-psql "$DB" -f supabase/tables/domains.sql
-psql "$DB" -f supabase/tables/badge_types.sql
-psql "$DB" -f supabase/tables/level_types.sql
-psql "$DB" -f supabase/tables/search_types.sql
-psql "$DB" -f supabase/tables/tech_stacks.sql      # depends on lookups.domains
+echo "--- lookups ---"
+psql "$DB" -f supabase/tables/lookups/domains.sql
+psql "$DB" -f supabase/tables/lookups/seniority_types.sql
+psql "$DB" -f supabase/tables/lookups/level_types.sql
+psql "$DB" -f supabase/tables/lookups/badge_types.sql
+psql "$DB" -f supabase/tables/lookups/search_types.sql
+psql "$DB" -f supabase/tables/lookups/tech_stacks.sql       # depends on lookups.domains
 
-# ── users schema (depends on lookups) ────────────────────────────────────────
+# ── users (depends on lookups) ────────────────────────────────────────────────
 echo ""
-echo "--- users schema ---"
-psql "$DB" -f supabase/tables/users.sql             # depends on lookups.*
-psql "$DB" -f supabase/tables/user_badges.sql       # depends on users.users, lookups.badge_types
-psql "$DB" -f supabase/tables/user_tech_stacks.sql  # depends on users.users, lookups.tech_stacks
-psql "$DB" -f supabase/tables/user_feed_preferences.sql
-psql "$DB" -f supabase/tables/follows.sql
-psql "$DB" -f supabase/tables/followers.sql
-psql "$DB" -f supabase/tables/following.sql
-psql "$DB" -f supabase/tables/socials.sql
-psql "$DB" -f supabase/tables/notifications.sql
-psql "$DB" -f supabase/tables/logs.sql
+echo "--- users ---"
+psql "$DB" -f supabase/tables/users/users.sql               # depends on lookups.*
+psql "$DB" -f supabase/tables/users/notification_types.sql
+psql "$DB" -f supabase/tables/users/userfollowers.sql       # depends on users.users
+psql "$DB" -f supabase/tables/users/userfollowing.sql       # depends on users.users
+psql "$DB" -f supabase/tables/users/usersocials.sql         # depends on users.users
+psql "$DB" -f supabase/tables/users/user_badges.sql         # depends on users.users, lookups.badge_types
+psql "$DB" -f supabase/tables/users/user_tech_stacks.sql    # depends on users.users, lookups.tech_stacks
+psql "$DB" -f supabase/tables/users/user_feed_preferences.sql
+psql "$DB" -f supabase/tables/users/user_preferences.sql    # depends on users.users
+psql "$DB" -f supabase/tables/users/notifications.sql       # depends on users.users, notification_types
+psql "$DB" -f supabase/tables/users/logs.sql
 
-# ── bytes schema (depends on users.users, lookups.tech_stacks) ───────────────
+# ── bytes (depends on users.users, lookups.tech_stacks) ──────────────────────
 echo ""
-echo "--- bytes schema ---"
-psql "$DB" -f supabase/tables/bytes.sql             # depends on users.users
-psql "$DB" -f supabase/tables/byte_tech_stacks.sql  # depends on bytes.bytes, lookups.tech_stacks
-psql "$DB" -f supabase/tables/comments.sql          # depends on bytes.bytes, users.users
-psql "$DB" -f supabase/tables/user_likes.sql        # depends on bytes.bytes, users.users
-psql "$DB" -f supabase/tables/user_views.sql        # depends on bytes.bytes, users.users (nullable)
-psql "$DB" -f supabase/tables/user_bookmarks.sql    # depends on bytes.bytes, users.users
-psql "$DB" -f supabase/tables/drafts.sql            # depends on users.users
-psql "$DB" -f supabase/tables/trending.sql          # depends on users.users (nullable)
+echo "--- bytes ---"
+psql "$DB" -f supabase/tables/bytes/bytes.sql
+psql "$DB" -f supabase/tables/bytes/byte_tech_stacks.sql    # depends on bytes.bytes, lookups.tech_stacks
+psql "$DB" -f supabase/tables/bytes/byte_quality_scores.sql # depends on bytes.bytes
+psql "$DB" -f supabase/tables/bytes/comments.sql            # depends on bytes.bytes, users.users
+psql "$DB" -f supabase/tables/bytes/user_likes.sql
+psql "$DB" -f supabase/tables/bytes/user_bookmarks.sql
+psql "$DB" -f supabase/tables/bytes/user_views.sql
+psql "$DB" -f supabase/tables/bytes/drafts.sql              # depends on users.users
+psql "$DB" -f supabase/tables/bytes/trending.sql
 
-# ── interviews schema (depends on users.users, lookups.tech_stacks) ──────────
+# ── interviews (depends on users.users, lookups.tech_stacks) ─────────────────
 echo ""
-echo "--- interviews schema ---"
-psql "$DB" -f supabase/tables/interviews.sql                        # depends on users.users
-psql "$DB" -f supabase/tables/interview_tech_stacks.sql             # depends on interviews.interviews, lookups.tech_stacks
-psql "$DB" -f supabase/tables/interview_comments.sql                # depends on interviews.interviews, users.users
-psql "$DB" -f supabase/tables/interview_likes.sql                   # depends on interviews.interviews, users.users
-psql "$DB" -f supabase/tables/interview_views.sql                   # depends on interviews.interviews, users.users
-psql "$DB" -f supabase/tables/interview_bookmarks.sql               # depends on interviews.interviews, users.users
-psql "$DB" -f supabase/tables/interview_questions.sql               # depends on interviews.interviews
-psql "$DB" -f supabase/tables/interview_question_comments.sql       # depends on interviews.interview_questions, users.users
-psql "$DB" -f supabase/tables/interview_question_likes.sql          # depends on interviews.interview_questions, users.users
+echo "--- interviews ---"
+psql "$DB" -f supabase/tables/interviews/companies.sql
+psql "$DB" -f supabase/tables/interviews/interviews.sql     # depends on users.users
+psql "$DB" -f supabase/tables/interviews/interview_tech_stacks.sql
+psql "$DB" -f supabase/tables/interviews/interview_questions.sql
+psql "$DB" -f supabase/tables/interviews/interview_comments.sql
+psql "$DB" -f supabase/tables/interviews/interview_likes.sql
+psql "$DB" -f supabase/tables/interviews/interview_bookmarks.sql
+psql "$DB" -f supabase/tables/interviews/interview_views.sql
+psql "$DB" -f supabase/tables/interviews/interview_question_comments.sql
+psql "$DB" -f supabase/tables/interviews/interview_question_likes.sql
 
-# ── Seeds (dependency order: lookups → users → content) ──────────────────────
+# ── Seeds (lookups first, then content via seed_data.py) ─────────────────────
 echo ""
-echo "--- Seeds ---"
-psql "$DB" -f supabase/seeds/seed_seniority.sql
-psql "$DB" -f supabase/seeds/seed_domains.sql
-psql "$DB" -f supabase/seeds/seed_tech_stacks.sql
-psql "$DB" -f supabase/seeds/seed_badge_types.sql
-psql "$DB" -f supabase/seeds/seed_level_types.sql
-psql "$DB" -f supabase/seeds/seed_search_types.sql
-psql "$DB" -f supabase/seeds/seed_users.sql
-psql "$DB" -f supabase/seeds/seed_bytes.sql
-psql "$DB" -f supabase/seeds/seed_byte_tech_stacks.sql
-psql "$DB" -f supabase/seeds/seed_interviews.sql
-psql "$DB" -f supabase/seeds/seed_interview_comments.sql
+echo "--- Seeds (lookups) ---"
+psql "$DB" -f supabase/seeds/lookups/domains.sql
+psql "$DB" -f supabase/seeds/lookups/seniority_types.sql
+psql "$DB" -f supabase/seeds/lookups/level_types.sql
+psql "$DB" -f supabase/seeds/lookups/tech_stacks.sql
+psql "$DB" -f supabase/seeds/lookups/badge_types.sql
+psql "$DB" -f supabase/seeds/lookups/search_types.sql
+psql "$DB" -f supabase/seeds/lookups/notification_types.sql
 
 echo ""
-echo "✓ Schema + seeds applied successfully."
+echo "✓ Schema + lookup seeds applied."
+echo ""
+echo "  To seed content (bytes + interviews), run:"
+echo "  python3 supabase/seeds/seed_data.py | psql \$BYTEAI_DB_URL"

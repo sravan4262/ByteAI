@@ -1,2 +1,0 @@
--- DROPPED — replaced by users.userfollowers + users.userfollowing
--- DELETE THIS FILE

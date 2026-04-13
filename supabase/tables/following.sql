@@ -1,3 +1,0 @@
--- RENAMED — this table is now users.userfollowing
--- See: supabase/tables/userfollowing.sql
--- DELETE THIS FILE
