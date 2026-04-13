@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# ByteAI — Apply full schema + seeds to a fresh DB
+# ByteAI — Apply full schema + seeds
 # Usage: ./supabase/apply_schema.sh
 # Requires: psql in PATH  (brew install libpq && export PATH="/opt/homebrew/opt/libpq/bin:$PATH")
+#
+# Behaviour:
+#   - Drops and recreates all schemas on each run (always reflects current state)
+#   - Column additions, removals, type changes are automatically picked up
+#   - Data is wiped on schema re-apply — run seeds after
 #
 # Schema layout:
 #   lookups    — static lookup tables (domains, seniority, level, tech_stacks, badge_types, search_types, companies, notification_types)
@@ -16,18 +21,27 @@ DB="${BYTEAI_DB_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}"
 echo "==> Connecting to: $DB"
 echo ""
 
-# ── Extensions ────────────────────────────────────────────────────────────────
+# ── Extensions (idempotent — safe to re-run) ──────────────────────────────────
 echo "--- Extensions ---"
 psql "$DB" -c "CREATE EXTENSION IF NOT EXISTS vector;"
 psql "$DB" -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
 
-# ── Schemas ───────────────────────────────────────────────────────────────────
+# ── Drop schemas in reverse dependency order ──────────────────────────────────
+# CASCADE drops all tables, indexes, constraints within the schema.
 echo ""
-echo "--- Schemas ---"
-psql "$DB" -c "CREATE SCHEMA IF NOT EXISTS lookups;"
-psql "$DB" -c "CREATE SCHEMA IF NOT EXISTS users;"
-psql "$DB" -c "CREATE SCHEMA IF NOT EXISTS bytes;"
-psql "$DB" -c "CREATE SCHEMA IF NOT EXISTS interviews;"
+echo "--- Dropping schemas (reverse dependency order) ---"
+psql "$DB" -c "DROP SCHEMA IF EXISTS interviews CASCADE;"
+psql "$DB" -c "DROP SCHEMA IF EXISTS bytes      CASCADE;"
+psql "$DB" -c "DROP SCHEMA IF EXISTS users      CASCADE;"
+psql "$DB" -c "DROP SCHEMA IF EXISTS lookups    CASCADE;"
+
+# ── Recreate schemas ──────────────────────────────────────────────────────────
+echo ""
+echo "--- Recreating schemas ---"
+psql "$DB" -c "CREATE SCHEMA lookups;"
+psql "$DB" -c "CREATE SCHEMA users;"
+psql "$DB" -c "CREATE SCHEMA bytes;"
+psql "$DB" -c "CREATE SCHEMA interviews;"
 
 # ── lookups (no deps outside lookups) ────────────────────────────────────────
 echo ""
@@ -39,8 +53,8 @@ psql "$DB" -f supabase/tables/lookups/badge_types.sql
 psql "$DB" -f supabase/tables/lookups/search_types.sql
 psql "$DB" -f supabase/tables/lookups/subdomains.sql           # depends on lookups.domains
 psql "$DB" -f supabase/tables/lookups/tech_stacks.sql          # depends on lookups.subdomains
-psql "$DB" -f supabase/tables/lookups/companies.sql            # moved from interviews/
-psql "$DB" -f supabase/tables/lookups/notification_types.sql   # moved from users/
+psql "$DB" -f supabase/tables/lookups/companies.sql
+psql "$DB" -f supabase/tables/lookups/notification_types.sql
 
 # ── users (depends on lookups) ────────────────────────────────────────────────
 echo ""
@@ -82,7 +96,7 @@ psql "$DB" -f supabase/tables/interviews/interview_views.sql
 psql "$DB" -f supabase/tables/interviews/interview_question_comments.sql
 psql "$DB" -f supabase/tables/interviews/interview_question_likes.sql
 
-# ── Seeds (lookups first, then content via seed_data.py) ─────────────────────
+# ── Seeds: lookups ────────────────────────────────────────────────────────────
 echo ""
 echo "--- Seeds (lookups) ---"
 psql "$DB" -f supabase/seeds/lookups/domains_seed.sql
@@ -98,5 +112,8 @@ psql "$DB" -f supabase/seeds/lookups/companies_seed.sql
 echo ""
 echo "✓ Schema + lookup seeds applied."
 echo ""
-echo "  To seed content (bytes + interviews with embeddings), run:"
-echo "  python3 supabase/seeds/seed_data.py | psql \$BYTEAI_DB_URL"
+echo "  To generate byte content (fills JSON files per tech stack), run:"
+echo "  python3 ../seeds/generate-seed-json.py --domain frontend"
+echo ""
+echo "  To embed + insert bytes into DB, run:"
+echo "  python3 ../seeds/generate_seed_data.py"

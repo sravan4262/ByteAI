@@ -1,32 +1,30 @@
 """
 ByteAI — Byte Content Generator
-Reads each *-seed.md file, calls Groq per (tech_stack × topic),
+Reads each *-seed.md file, calls Claude Code CLI per (tech_stack × topic),
 and fills bytes[] in each {tech_stack}-seed.json.
 
 Usage:
-    pip install groq
-
-    export GROQ_API_KEY=your_key_here
-
     # All domains
-    python3 seeds/generate.py
+    python3 seeds/generate-seed-json.py
 
     # Single domain
-    python3 seeds/generate.py --domain frontend
+    python3 seeds/generate-seed-json.py --domain frontend
 
     # Single subdomain
-    python3 seeds/generate.py --domain frontend --subdomain ui_frameworks
+    python3 seeds/generate-seed-json.py --domain frontend --subdomain ui_frameworks
 
     # Single tech stack
-    python3 seeds/generate.py --domain frontend --subdomain ui_frameworks --tech_stack react
+    python3 seeds/generate-seed-json.py --domain frontend --subdomain ui_frameworks --tech_stack react
 
 Resumable: already-generated topics (status=done) are skipped on rerun.
+Requires: claude CLI installed and authenticated (claude.ai/code).
 """
 
 import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 
@@ -38,55 +36,50 @@ parser.add_argument("--tech_stack", default=None)
 args = parser.parse_args()
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SEEDS_BASE   = os.path.join(os.path.dirname(__file__), "bytes")
-GROQ_MODEL   = "llama-3.3-70b-versatile"
-RETRY_LIMIT  = 3
-RETRY_DELAY  = 5   # seconds between retries
+SEEDS_BASE  = os.path.dirname(__file__)
+RETRY_LIMIT = 3
+RETRY_DELAY = 3   # seconds between retries
 
-# ── Groq client ───────────────────────────────────────────────────────────────
-try:
-    from groq import Groq
-except ImportError:
-    print("ERROR: groq not installed. Run: pip install groq", file=sys.stderr)
-    sys.exit(1)
+# Claude CLI — find the binary
+CLAUDE_CMD = "/Users/sravanravula/Library/Application Support/Claude/claude-code/2.1.92/claude.app/Contents/MacOS/claude"
 
-api_key = os.environ.get("GROQ_API_KEY")
-if not api_key:
-    print("ERROR: GROQ_API_KEY env var not set.", file=sys.stderr)
-    sys.exit(1)
-
-client = Groq(api_key=api_key)
-
-# ── Prompts ───────────────────────────────────────────────────────────────────
-SYSTEM_PROMPT = """\
+# ── Prompt ───────────────────────────────────────────────────────────────────
+def build_prompt(tech_stack: str, domain: str, subdomain: str, topic: str) -> str:
+    return f"""\
 You are a technical content writer for ByteAI, a short-form tech content platform (think Inshorts for developers).
 
-Your job is to write a single "byte" — a concise, high-signal technical article targeted at developers who use a specific technology.
+Write a single "byte" — a concise, high-signal technical article for a developer who uses {tech_stack} daily.
 
-Rules:
-- Be specific to the tech stack given. Never write generic content that could apply to any language or framework.
-- Body must be 150–200 words. Dense, practical, no fluff.
-- Use correct terminology for that specific tech stack.
-- Code snippet: short (5–15 lines), runnable, idiomatic for the tech stack. Set to null if the topic is purely conceptual.
-- Title: specific and punchy. Bad: "React Performance". Good: "React memo() — When It Helps and When It Doesn't".
-- Do not start the body with "In this article" or "Today we'll learn". Jump straight into the content.
-- Return ONLY valid JSON. No markdown fences, no explanation outside the JSON.
-
-Output format:
-{
-  "title": "...",
-  "body": "...",
-  "code_snippet": "..." or null,
-  "language": "typescript" | "javascript" | "python" | "go" | "rust" | "cpp" | "csharp" | "swift" | "kotlin" | "solidity" | "bash" | "sql" | "gdscript" | "lua" | "hlsl" | "glsl" | null
-}"""
-
-def user_prompt(tech_stack: str, domain: str, subdomain: str, topic: str) -> str:
-    return f"""\
 Tech stack: {tech_stack}
 Domain: {domain} › {subdomain}
 Topic: {topic}
 
-Write a byte for a developer who works with {tech_stack} daily."""
+Rules:
+- Be specific to {tech_stack}. Never write generic content that applies to any stack.
+- Body: 150–200 words. Dense, practical, no fluff.
+- Use correct {tech_stack} terminology and APIs.
+- Code snippet: 5–15 lines, runnable, idiomatic. Set to null if purely conceptual.
+- Title: MUST include the tech stack name ({tech_stack}). Specific and punchy (e.g. "React memo() — When It Helps and When It Doesn't", not "memo() — When It Helps and When It Doesn't").
+- Do not start body with "In this article" or "Today we'll learn". Jump straight in.
+- Return ONLY valid JSON. No markdown fences, no text outside the JSON.
+
+Also self-score the byte on these 4 dimensions (0–10 each):
+- clarity: is the explanation easy to follow?
+- specificity: is it specific to {tech_stack}, not generic?
+- relevance: does it match the topic well?
+- overall: overall quality of the byte
+
+Output format:
+{{
+  "title": "...",
+  "body": "...",
+  "code_snippet": "..." or null,
+  "language": "typescript" | "javascript" | "python" | "go" | "rust" | "cpp" | "csharp" | "swift" | "kotlin" | "solidity" | "bash" | "sql" | "gdscript" | "lua" | "hlsl" | "glsl" | null,
+  "clarity": 0-10,
+  "specificity": 0-10,
+  "relevance": 0-10,
+  "overall": 0-10
+}}"""
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -123,21 +116,28 @@ def save_json(path: str, data: dict):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
-def call_groq(tech_stack: str, domain: str, subdomain: str, topic: str) -> dict:
-    """Call Groq and return parsed JSON. Retries on failure."""
+def call_claude(tech_stack: str, domain: str, subdomain: str, topic: str) -> dict:
+    """Call Claude Code CLI and return parsed JSON. Retries on failure."""
+    prompt = build_prompt(tech_stack, domain, subdomain, topic)
+
     for attempt in range(1, RETRY_LIMIT + 1):
         try:
-            response = client.chat.completions.create(
-                model=GROQ_MODEL,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user",   "content": user_prompt(tech_stack, domain, subdomain, topic)},
-                ],
-                temperature=0.7,
-                max_tokens=1024,
-                response_format={"type": "json_object"},
+            result = subprocess.run(
+                [CLAUDE_CMD, "-p", prompt, "--output-format", "text"],
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
-            raw = response.choices[0].message.content
+
+            if result.returncode != 0:
+                raise RuntimeError(result.stderr.strip())
+
+            raw = result.stdout.strip()
+
+            # Strip markdown fences if Claude adds them anyway
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
+
             return json.loads(raw)
 
         except Exception as e:
@@ -171,7 +171,7 @@ def process_tech_stack(seed_meta: dict, ts: str, ts_json_path: str):
     for i, topic in enumerate(pending, 1):
         print(f"    ({i}/{len(pending)}) {topic[:60]}...")
 
-        result = call_groq(ts, seed_meta["domain"], seed_meta["subdomain"], topic)
+        result = call_claude(ts, seed_meta["domain"], seed_meta["subdomain"], topic)
 
         if not result or not result.get("title") or not result.get("body"):
             print(f"    ✗ FAILED — skipping topic, will retry on next run")
@@ -191,6 +191,10 @@ def process_tech_stack(seed_meta: dict, ts: str, ts_json_path: str):
                 "body":         result.get("body"),
                 "code_snippet": result.get("code_snippet"),
                 "language":     result.get("language"),
+                "clarity":      result.get("clarity"),
+                "specificity":  result.get("specificity"),
+                "relevance":    result.get("relevance"),
+                "overall":      result.get("overall"),
             })
             print(f"    ✓ {result.get('title', '')[:60]}")
 
