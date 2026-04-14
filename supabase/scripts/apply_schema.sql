@@ -236,14 +236,6 @@ CREATE TABLE users.user_tech_stacks (
 CREATE INDEX ix_user_tech_stacks_tech_stack_id ON users.user_tech_stacks (tech_stack_id);
 COMMENT ON TABLE users.user_tech_stacks IS 'User tech stack selections — normalized junction table';
 
-CREATE TABLE users.user_feed_preferences (
-    user_id       uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
-    tech_stack_id uuid        NOT NULL REFERENCES lookups.tech_stacks(id) ON DELETE CASCADE,
-    created_at    timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT pk_user_feed_preferences PRIMARY KEY (user_id, tech_stack_id)
-);
-CREATE INDEX ix_user_feed_preferences_tech_stack_id ON users.user_feed_preferences (tech_stack_id);
-COMMENT ON TABLE users.user_feed_preferences IS 'User feed preferences — tech stacks the user wants to see';
 
 CREATE TABLE users.user_preferences (
     user_id           uuid        PRIMARY KEY REFERENCES users.users(id) ON DELETE CASCADE,

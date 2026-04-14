@@ -70,6 +70,7 @@ try
     // ── AI infrastructure (ONNX singleton — optional model file) ─────────────
     builder.Services.AddSingleton<OnnxEmbedder>();
     builder.Services.AddSingleton<TechDomainAnchors>();
+    builder.Services.AddSingleton<GroqLoadBalancer>();
     builder.Services.AddScoped<IEmbeddingService, EmbeddingService>();
     builder.Services.AddHttpClient<IGroqService, GroqService>();
 

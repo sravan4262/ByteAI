@@ -47,7 +47,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     // Junction tables — users schema
     public DbSet<UserTechStack> UserTechStacks => Set<UserTechStack>();
-    public DbSet<UserFeedPreference> UserFeedPreferences => Set<UserFeedPreference>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     // User meta

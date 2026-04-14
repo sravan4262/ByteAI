@@ -21,6 +21,9 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
+    if (res.status === 503) {
+      throw new Error('AI_QUOTA_EXHAUSTED')
+    }
     throw new Error(`API ${res.status} ${path}: ${text}`)
   }
 

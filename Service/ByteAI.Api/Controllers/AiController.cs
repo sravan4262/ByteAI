@@ -7,6 +7,7 @@ using ByteAI.Core.Services.Search;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 
 namespace ByteAI.Api.Controllers;
 
@@ -21,23 +22,8 @@ public sealed class AiController(
     ISearchService search,
     AppDbContext db) : ControllerBase
 {
-    /// <summary>
-    /// Suggest up to 5 tags for a byte using Groq Llama 3.3 70B.
-    /// Returns an empty list if the Groq API key is not configured.
-    /// </summary>
-    [HttpPost("suggest-tags")]
-    [RequireFeatureFlag("ai-suggest-tags")]
-    [ProducesResponseType(typeof(ApiResponse<SuggestTagsResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ApiResponse<SuggestTagsResponse>>> SuggestTags(
-        [FromBody] SuggestTagsRequest request,
-        CancellationToken ct)
-    {
-        var allowedTags = await db.TechStacks.Select(t => t.Name).ToListAsync(ct);
-        var tags = await groq.SuggestTagsAsync(request.Title, request.Body, request.CodeSnippet, allowedTags, ct);
-        return Ok(ApiResponse<SuggestTagsResponse>.Success(new SuggestTagsResponse(tags)));
-    }
+    // suggest-tags endpoint removed — auto-tagging happens in ByteCreatedEventHandler after every post.
+    // SuggestTagsAsync on IGroqService is kept because ByteCreatedEventHandler still calls it internally.
 
     /// <summary>
     /// Ask a tech question answered by Groq Llama 3.3 70B.
@@ -56,28 +42,39 @@ public sealed class AiController(
         return Ok(ApiResponse<AskResponse>.Success(new AskResponse(answer)));
     }
 
+    // ask-about-byte endpoint removed — low value for short-form content (bytes are 150-200 words,
+    // faster to read than to ask a question about). Replaced by GET ~/api/bytes/{byteId}/similar.
+
     /// <summary>
-    /// Option A — Ask a question grounded in a specific byte's content.
-    /// The byte body becomes the sole RAG context passage.
+    /// Returns bytes semantically similar to the given byte, using its stored embedding.
+    /// Used by the "Show similar bytes" button — navigates to the search screen pre-populated with results.
     /// </summary>
-    [HttpPost("~/api/bytes/{byteId:guid}/ask")]
-    [RequireFeatureFlag("ai-ask")]
-    [ProducesResponseType(typeof(ApiResponse<ByteAskResponse>), StatusCodes.Status200OK)]
+    [HttpGet("~/api/bytes/{byteId:guid}/similar")]
+    [ProducesResponseType(typeof(ApiResponse<List<SimilarByteResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<ActionResult<ApiResponse<ByteAskResponse>>> AskAboutByte(
+    public async Task<ActionResult<ApiResponse<List<SimilarByteResponse>>>> GetSimilarBytes(
         Guid byteId,
-        [FromBody] ByteAskRequest request,
-        CancellationToken ct)
+        [FromQuery] int limit = 10,
+        CancellationToken ct = default)
     {
-        var b = await db.Bytes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == byteId, ct);
-        if (b is null) return NotFound(new { message = $"Byte {byteId} not found" });
+        var source = await db.Bytes
+            .AsNoTracking()
+            .Where(b => b.Id == byteId && b.IsActive)
+            .Select(b => new { b.Embedding })
+            .FirstOrDefaultAsync(ct);
 
-        var passage = new RagPassage(b.Title, b.Body, b.Id.ToString());
-        var answer = await groq.RagAnswerAsync(request.Question, [passage], ct);
+        if (source is null) return NotFound(new { message = $"Byte {byteId} not found" });
+        if (source.Embedding is null) return Ok(ApiResponse<List<SimilarByteResponse>>.Success([]));
 
-        return Ok(ApiResponse<ByteAskResponse>.Success(new ByteAskResponse(answer, b.Id.ToString(), b.Title)));
+        var similar = await db.Bytes
+            .AsNoTracking()
+            .Where(b => b.Id != byteId && b.IsActive && b.Embedding != null)
+            .OrderBy(b => b.Embedding!.CosineDistance(source.Embedding))
+            .Take(Math.Min(limit, 20))
+            .Select(b => new SimilarByteResponse(b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type, b.CreatedAt))
+            .ToListAsync(ct);
+
+        return Ok(ApiResponse<List<SimilarByteResponse>>.Success(similar));
     }
 
     /// <summary>

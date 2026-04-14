@@ -17,9 +17,16 @@ public sealed class SearchQueryHandler(
     {
         Vector? queryEmbedding = null;
 
-        // Use user's interest_embedding as fallback, or embed the query string
-        if (request.UserId.HasValue)
+        // Explicit query always takes priority — embed what the user typed.
+        // InterestEmbedding is only for discovery (no query), not explicit search.
+        if (!string.IsNullOrWhiteSpace(request.Q))
         {
+            var floats = await embedding.EmbedQueryAsync(request.Q, cancellationToken);
+            queryEmbedding = new Vector(floats);
+        }
+        else if (request.UserId.HasValue)
+        {
+            // No query string — fall back to user's interest profile for personalised discovery
             var user = await db.Users
                 .AsNoTracking()
                 .Where(u => u.Id == request.UserId.Value)
@@ -27,13 +34,6 @@ public sealed class SearchQueryHandler(
                 .FirstOrDefaultAsync(cancellationToken);
 
             queryEmbedding = user?.InterestEmbedding;
-        }
-
-        // Embed the search query for vector search
-        if (queryEmbedding is null && !string.IsNullOrWhiteSpace(request.Q))
-        {
-            var floats = await embedding.EmbedQueryAsync(request.Q, cancellationToken);
-            queryEmbedding = new Vector(floats);
         }
 
         var results = new List<SearchResultDto>();

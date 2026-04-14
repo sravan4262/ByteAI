@@ -16,3 +16,7 @@ public sealed record SearchAskResponse(string Answer, List<SearchAskSource> Sour
 
 public sealed record FormatCodeRequest(string Code, string Language);
 public sealed record FormatCodeResponse(string Formatted);
+
+public sealed record SimilarByteResponse(
+    Guid Id, Guid AuthorId, string Title, string Body,
+    string? CodeSnippet, string? Language, string Type, DateTime CreatedAt);

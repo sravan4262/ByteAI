@@ -23,8 +23,7 @@ public sealed class ByteCreatedEventHandler(
 {
     public async Task Handle(ByteCreatedEvent notification, CancellationToken cancellationToken)
     {
-        var content = notification.Body +
-            (string.IsNullOrEmpty(notification.CodeSnippet) ? "" : $"\n{notification.CodeSnippet}");
+        var content = notification.Title + " " + notification.Body;
 
         // ── 1. Generate and store embedding ───────────────────────────────────
         try

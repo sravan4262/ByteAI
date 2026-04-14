@@ -30,7 +30,6 @@ DELETE FROM bytes.bytes;
 -- ── Users (after bytes/interviews are cleared) ────────────────
 DELETE FROM users.notifications;
 DELETE FROM users.user_badges;
-DELETE FROM users.user_feed_preferences;
 DELETE FROM users.user_tech_stacks;
 DELETE FROM users.userfollowers;
 DELETE FROM users.userfollowing;

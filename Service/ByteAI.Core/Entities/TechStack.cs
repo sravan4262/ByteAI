@@ -11,7 +11,6 @@ public sealed class TechStack
     // Navigation
     public Subdomain Subdomain { get; set; } = null!;
     public ICollection<UserTechStack> UserTechStacks { get; set; } = [];
-    public ICollection<UserFeedPreference> UserFeedPreferences { get; set; } = [];
     public ICollection<ByteTechStack> ByteTechStacks { get; set; } = [];
     public ICollection<InterviewTechStack> InterviewTechStacks { get; set; } = [];
 }

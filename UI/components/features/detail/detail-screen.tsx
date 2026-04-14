@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bookmark, Share2, Heart, MessageSquare, ChevronLeft, ChevronRight, Send, Trash2, Bot, X, Pencil } from 'lucide-react'
+import { Bookmark, Share2, Heart, MessageSquare, ChevronLeft, ChevronRight, Send, Trash2, Layers, X, Pencil } from 'lucide-react'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
@@ -39,12 +39,6 @@ export function DetailScreen({ post }: DetailScreenProps) {
   const [editCode, setEditCode] = useState(post.code?.content ?? '')
   const [editLanguage, setEditLanguage] = useState(post.code?.language ?? 'JS')
   const [isSaving, setIsSaving] = useState(false)
-
-  // ASK AI
-  const [showAsk, setShowAsk] = useState(false)
-  const [askQuestion, setAskQuestion] = useState('')
-  const [askAnswer, setAskAnswer] = useState<string | null>(null)
-  const [isAsking, setIsAsking] = useState(false)
 
   useEffect(() => {
     api.getCurrentUser().then((u) => { if (u) setCurrentUserId(u.id) })
@@ -159,21 +153,6 @@ export function DetailScreen({ post }: DetailScreenProps) {
       toast.error('Failed to save changes')
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const handleAsk = async () => {
-    const q = askQuestion.trim()
-    if (!q || isAsking) return
-    setIsAsking(true)
-    setAskAnswer(null)
-    try {
-      const result = await api.askAboutByte(post.id, q)
-      setAskAnswer(result.answer)
-    } catch {
-      setAskAnswer('Failed to get an answer. Please try again.')
-    } finally {
-      setIsAsking(false)
     }
   }
 
@@ -295,14 +274,10 @@ export function DetailScreen({ post }: DetailScreenProps) {
             </button>
 
             <button
-              onClick={() => { setShowAsk((v) => !v); setAskAnswer(null); setAskQuestion('') }}
-              className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
-                showAsk
-                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
-                  : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]'
-              }`}
+              onClick={() => router.push(`/search?byteId=${post.id}&type=bytes`)}
+              className="flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]"
             >
-              <Bot size={12} /> ASK AI
+              <Layers size={12} /> SIMILAR
             </button>
 
             {currentUserId && post.author.id === currentUserId && (
@@ -318,45 +293,6 @@ export function DetailScreen({ post }: DetailScreenProps) {
               </button>
             )}
           </div>
-
-          {/* ASK AI panel */}
-          {showAsk && (
-            <div className="rounded-xl border border-[var(--accent)] bg-[var(--accent-d)] p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="font-mono text-[9px] lg:text-[10px] font-bold tracking-[0.1em] text-[var(--accent)] flex items-center gap-1.5">
-                  <Bot size={11} /> ASK AI ABOUT THIS BYTE
-                </div>
-                <button onClick={() => setShowAsk(false)} className="text-[var(--t3)] hover:text-[var(--t1)]">
-                  <X size={13} />
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={askQuestion}
-                  onChange={(e) => setAskQuestion(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
-                  placeholder="What would you like to know?"
-                  className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-2 px-3 font-mono text-[10px] text-[var(--t1)] outline-none placeholder:text-[var(--t3)] focus:border-[var(--accent)]"
-                />
-                <button
-                  onClick={handleAsk}
-                  disabled={!askQuestion.trim() || isAsking}
-                  className="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-white transition-all hover:bg-[var(--accent)]/80 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-                >
-                  <Send size={13} />
-                </button>
-              </div>
-              {isAsking && (
-                <div className="font-mono text-[9px] text-[var(--accent)] animate-pulse">THINKING...</div>
-              )}
-              {askAnswer && (
-                <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-lg p-3 font-mono text-[10px] lg:text-xs leading-relaxed text-[var(--t1)] whitespace-pre-wrap">
-                  {askAnswer}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* EDIT panel */}
           {showEdit && (

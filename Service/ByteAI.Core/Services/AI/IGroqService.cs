@@ -13,7 +13,7 @@ public sealed record RagPassage(string Title, string Body, string? SourceId = nu
 
 public interface IGroqService
 {
-    /// <summary>Returns up to 5 tag suggestions for a byte's content, constrained to the provided allowed tag names.</summary>
+    /// <summary>Returns the single most relevant tag for a byte's content, constrained to the provided allowed tag names.</summary>
     Task<List<string>> SuggestTagsAsync(string title, string body, string? codeSnippet, IReadOnlyList<string> allowedTags, CancellationToken ct = default);
 
     /// <summary>Scores a byte's quality on clarity, specificity and relevance (1–10 each).</summary>

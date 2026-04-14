@@ -879,12 +879,6 @@ export async function saveDraft(data: Record<string, unknown>): Promise<void> {
 // RAG / AI ASK API
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface AskByteResult {
-  answer: string
-  sourceId: string
-  sourceTitle: string
-}
-
 export interface SearchAskSource {
   id: string
   title: string
@@ -896,12 +890,19 @@ export interface SearchAskResult {
   sources: SearchAskSource[]
 }
 
-/** Option A — ask a question grounded in a specific byte */
-export async function askAboutByte(byteId: string, question: string): Promise<AskByteResult> {
-  const res = await apiFetch<ApiResponse<AskByteResult>>(`/api/bytes/${byteId}/ask`, {
-    method: 'POST',
-    body: JSON.stringify({ question }),
-  })
+export interface SimilarByteResponse {
+  id: string
+  title: string
+  body: string
+  authorUsername: string
+  tags: string[]
+  likeCount: number
+  commentCount: number
+}
+
+/** Show Similar Bytes — semantic similarity using stored byte embedding */
+export async function getSimilarBytes(byteId: string, limit = 10): Promise<SimilarByteResponse[]> {
+  const res = await apiFetch<ApiResponse<SimilarByteResponse[]>>(`/api/bytes/${byteId}/similar?limit=${limit}`)
   return res.data
 }
 

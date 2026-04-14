@@ -41,7 +41,6 @@ public sealed class User
     public ICollection<UserBadge> UserBadges { get; set; } = [];
     public ICollection<Draft> Drafts { get; set; } = [];
     public ICollection<UserTechStack> UserTechStacks { get; set; } = [];
-    public ICollection<UserFeedPreference> UserFeedPreferences { get; set; } = [];
     public ICollection<UserRole> UserRoles { get; set; } = [];
     public ICollection<UserFeatureFlag> UserFeatureFlags { get; set; } = [];
     public ICollection<Social> Socials { get; set; } = [];

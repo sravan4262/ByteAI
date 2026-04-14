@@ -6,9 +6,12 @@ using System.Text.Json.Serialization;
 
 namespace ByteAI.Core.Services.AI;
 
-public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<GroqService> logger) : IGroqService
+public sealed class GroqService(
+    HttpClient http,
+    IConfiguration config,
+    ILogger<GroqService> logger,
+    GroqLoadBalancer balancer) : IGroqService
 {
-    private const string Model = "llama-3.3-70b-versatile";
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
     public async Task<List<string>> SuggestTagsAsync(string title, string body, string? codeSnippet, IReadOnlyList<string> allowedTags, CancellationToken ct = default)
@@ -20,8 +23,8 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
         var allowedList = string.Join(", ", allowedTags);
 
         var prompt = $"""
-            You are a tech content tagger. Pick 1-5 tags from the ALLOWED LIST below that best match the content.
-            Return ONLY a JSON array of the exact tag names from the list. No explanation. No tags outside the list.
+            You are a tech content tagger. Pick the SINGLE most relevant tag from the ALLOWED LIST below that best matches the content.
+            Return ONLY a JSON array containing exactly one tag name from the list. No explanation. No tags outside the list.
 
             ALLOWED LIST: {allowedList}
 
@@ -29,7 +32,7 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
             {content}
             """;
 
-        var raw = await ChatAsync(prompt, maxTokens: 100, ct);
+        var raw = await ChatAsync(prompt, maxTokens: 50, ct);
         if (string.IsNullOrEmpty(raw)) return [];
 
         try
@@ -40,7 +43,7 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
             if (start < 0 || end < 0) return [];
 
             var tags = JsonSerializer.Deserialize<List<string>>(raw[start..(end + 1)], JsonOpts) ?? [];
-            return tags.Take(5).ToList();
+            return tags.Take(1).ToList();
         }
         catch (Exception ex)
         {
@@ -182,12 +185,23 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
             return null;
         }
 
+        if (!balancer.IsAvailable)
+        {
+            logger.LogWarning("Both Groq models RPD-exhausted. Dropping request until UTC midnight.");
+            return null;
+        }
+
+        return await SendAsync(prompt, maxTokens, balancer.GetModel(), isRetry: false, apiKey, ct);
+    }
+
+    private async Task<string?> SendAsync(
+        string prompt, int maxTokens, string model, bool isRetry, string apiKey, CancellationToken ct)
+    {
         var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions");
         request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
-
         request.Content = JsonContent.Create(new
         {
-            model = Model,
+            model,
             messages = new[] { new { role = "user", content = prompt } },
             max_tokens = maxTokens,
             temperature = 0.3
@@ -196,6 +210,37 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
         try
         {
             var response = await http.SendAsync(request, ct);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                var body = await response.Content.ReadAsStringAsync(ct);
+                var isRpd = body.Contains("per_day", StringComparison.OrdinalIgnoreCase);
+
+                if (isRpd)
+                {
+                    balancer.RecordRpd(model);
+                    if (!isRetry && balancer.IsAvailable)
+                    {
+                        logger.LogWarning("Groq RPD hit on {Model}. Retrying with fallback model.", model);
+                        return await SendAsync(prompt, maxTokens, balancer.GetModel(), isRetry: true, apiKey, ct);
+                    }
+                    logger.LogError("Both Groq models RPD-exhausted. Request dropped.");
+                    return null;
+                }
+
+                // per_minute — transient, switch model for this retry only
+                if (!isRetry)
+                {
+                    var fallback = balancer.GetFallback(model);
+                    logger.LogWarning("Groq RPM hit on {Model}. Retrying with {Fallback}.", model, fallback);
+                    return await SendAsync(prompt, maxTokens, fallback, isRetry: true, apiKey, ct);
+                }
+
+                // Both RPM-blocked simultaneously — drop rather than blocking thread for 60s
+                logger.LogWarning("Both Groq models RPM-blocked. Dropping request.");
+                return null;
+            }
+
             response.EnsureSuccessStatusCode();
 
             using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
@@ -207,7 +252,7 @@ public sealed class GroqService(HttpClient http, IConfiguration config, ILogger<
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Groq API call failed");
+            logger.LogError(ex, "Groq API call failed for model {Model}", model);
             return null;
         }
     }

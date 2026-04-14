@@ -100,7 +100,7 @@ public sealed class FeedService(AppDbContext db) : IFeedService
                 break;
 
             default: // for_you
-                (items, total) = await GetForYouFeed(pagination, tags, ct);
+                (items, total) = await GetForYouFeed(userId, pagination, tags, ct);
                 break;
         }
 
@@ -119,14 +119,74 @@ public sealed class FeedService(AppDbContext db) : IFeedService
         return query.Where(b => matchingByteIds.Contains(b.Id));
     }
 
-    private async Task<(List<ByteResult>, int)> GetForYouFeed(PaginationParams pagination, List<string>? tags, CancellationToken ct)
+    private async Task<(List<ByteResult>, int)> GetForYouFeed(
+        Guid? userId, PaginationParams pagination, List<string>? tags, CancellationToken ct)
     {
-        var query = ApplyTagFilter(
+        // ── Personalised path: interest_embedding + tech_stack soft boost ──────
+        if (userId.HasValue)
+        {
+            var interestEmbedding = await db.Users
+                .AsNoTracking()
+                .Where(u => u.Id == userId.Value)
+                .Select(u => u.InterestEmbedding)
+                .FirstOrDefaultAsync(CancellationToken.None);
+
+            if (interestEmbedding is not null)
+            {
+                // Stacks the user selected during onboarding — used as soft boost
+                var preferredStackIds = await db.UserTechStacks
+                    .Where(uts => uts.UserId == userId.Value)
+                    .Select(uts => uts.TechStackId)
+                    .ToListAsync(CancellationToken.None);
+
+                var baseQuery = db.Bytes
+                    .AsNoTracking()
+                    .Where(b => b.IsActive && b.Embedding != null);
+
+                baseQuery = ApplyTagFilter(baseQuery, tags);
+
+                var total = await baseQuery.CountAsync(CancellationToken.None);
+
+                // Pull a larger candidate window so re-ranking is meaningful across pages
+                var candidateCount = Math.Max(pagination.Skip + pagination.PageSize * 3, 60);
+
+                var candidates = await baseQuery
+                    .OrderBy(b => b.Embedding!.CosineDistance(interestEmbedding))
+                    .Take(candidateCount)
+                    .Select(b => new
+                    {
+                        b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
+                        b.CreatedAt, b.UpdatedAt,
+                        CommentCount = b.Comments.Count(),
+                        LikeCount    = b.UserLikes.Count(),
+                        HasPreferredStack = preferredStackIds.Count > 0 &&
+                            b.ByteTechStacks.Any(bts => preferredStackIds.Contains(bts.TechStackId)),
+                        Distance = b.Embedding!.CosineDistance(interestEmbedding),
+                    })
+                    .ToListAsync(CancellationToken.None);
+
+                // Soft boost: preferred-stack bytes surface first within similar distance bands
+                var items = candidates
+                    .OrderBy(c => c.HasPreferredStack ? 0 : 1)
+                    .ThenBy(c => c.Distance)
+                    .Skip(pagination.Skip)
+                    .Take(pagination.PageSize)
+                    .Select(c => new ByteResult(
+                        c.Id, c.AuthorId, c.Title, c.Body, c.CodeSnippet, c.Language, c.Type,
+                        c.CreatedAt, c.UpdatedAt, c.CommentCount, c.LikeCount))
+                    .ToList();
+
+                return (items, total);
+            }
+        }
+
+        // ── Fallback: pure recency (anonymous or no interest_embedding yet) ────
+        var fallbackQuery = ApplyTagFilter(
             db.Bytes.AsNoTracking().Where(b => b.IsActive).OrderByDescending(b => b.CreatedAt),
             tags);
 
-        var total = await query.CountAsync(CancellationToken.None);
-        var items = await query
+        var fallbackTotal = await fallbackQuery.CountAsync(CancellationToken.None);
+        var fallbackItems = await fallbackQuery
             .Skip(pagination.Skip)
             .Take(pagination.PageSize)
             .Select(b => new ByteResult(
@@ -134,7 +194,7 @@ public sealed class FeedService(AppDbContext db) : IFeedService
                 b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
             .ToListAsync(CancellationToken.None);
 
-        return (items, total);
+        return (fallbackItems, fallbackTotal);
     }
 
     private async Task<(List<ByteResult>, int)> GetFollowingFeed(Guid? userId, PaginationParams pagination, List<string>? tags, CancellationToken ct)
