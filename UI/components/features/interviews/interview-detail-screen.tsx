@@ -54,7 +54,7 @@ function QuestionItem({
 
 export function InterviewDetailScreen({ interview }: { interview: InterviewWithQuestions }) {
   const router = useRouter()
-  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [isBookmarked, setIsBookmarked] = useState(interview.isBookmarked ?? false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const allExpanded = interview.questions.length > 0 && expandedIds.size === interview.questions.length
 
@@ -149,10 +149,15 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
 
           {/* Author */}
           <div className="flex items-center gap-3">
-            <Avatar initials={interview.authorId.slice(0, 1).toUpperCase()} size="md" variant="purple" />
+            <Avatar
+              initials={(interview.authorDisplayName || interview.authorUsername || interview.authorId).slice(0, 1).toUpperCase()}
+              imageUrl={interview.authorAvatarUrl}
+              size="md"
+              variant="purple"
+            />
             <div>
               <div className="font-mono text-xs lg:text-sm font-bold text-[var(--t1)]">
-                @{interview.authorId.slice(0, 8)}
+                @{interview.authorUsername || interview.authorId.slice(0, 8)}
               </div>
               <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-[3px] tracking-[0.04em]">
                 {interview.role ?? ''}

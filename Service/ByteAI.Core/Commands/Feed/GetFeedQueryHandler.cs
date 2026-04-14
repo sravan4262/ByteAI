@@ -61,9 +61,10 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
         var items = await query
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
-            .Select(b => new ByteResult(
+            .Join(db.Users, b => b.AuthorId, u => u.Id, (b, u) => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(), false, false,
+                u.Username, u.DisplayName ?? u.Username, u.AvatarUrl, u.RoleTitle, u.Company))
             .ToListAsync(CancellationToken.None);
 
         return (items, total);
@@ -92,9 +93,10 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
         var items = await query
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
-            .Select(b => new ByteResult(
+            .Join(db.Users, b => b.AuthorId, u => u.Id, (b, u) => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(), false, false,
+                u.Username, u.DisplayName ?? u.Username, u.AvatarUrl, u.RoleTitle, u.Company))
             .ToListAsync(CancellationToken.None);
 
         return (items, total);
@@ -125,11 +127,12 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
                 request.Tags, db);
         }
 
-        // Load with comment counts — trending sort applied in memory to preserve order
+        // Load with author join — trending sort applied in memory to preserve order
         var candidates = await query
-            .Select(b => new ByteResult(
+            .Join(db.Users, b => b.AuthorId, u => u.Id, (b, u) => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(), false, false,
+                u.Username, u.DisplayName ?? u.Username, u.AvatarUrl, u.RoleTitle, u.Company))
             .ToListAsync(CancellationToken.None);
 
         var sorted = trendingIds.Count > 0

@@ -7,7 +7,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard>
       <AppShell>{children}</AppShell>
-      <Toaster position="top-right" theme="dark" richColors />
+      <Toaster position="top-right" theme="dark" richColors duration={800} />
     </AuthGuard>
   )
 }

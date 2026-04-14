@@ -96,7 +96,7 @@ public sealed class FeedService(AppDbContext db) : IFeedService
                 break;
 
             case "trending":
-                (items, total) = await GetTrendingFeed(pagination, tags, ct);
+                (items, total) = await GetTrendingFeed(pagination, tags, ct, userId);
                 break;
 
             default: // for_you
@@ -162,6 +162,13 @@ public sealed class FeedService(AppDbContext db) : IFeedService
                         HasPreferredStack = preferredStackIds.Count > 0 &&
                             b.ByteTechStacks.Any(bts => preferredStackIds.Contains(bts.TechStackId)),
                         Distance = b.Embedding!.CosineDistance(interestEmbedding),
+                        IsLiked      = b.UserLikes.Any(l => l.UserId == userId.Value),
+                        IsBookmarked = b.UserBookmarks.Any(bk => bk.UserId == userId.Value),
+                        AuthorUsername    = b.Author.Username,
+                        AuthorDisplayName = b.Author.DisplayName ?? b.Author.Username,
+                        AuthorAvatarUrl   = b.Author.AvatarUrl,
+                        AuthorRole        = b.Author.RoleTitle,
+                        AuthorCompany     = b.Author.Company,
                     })
                     .ToListAsync(CancellationToken.None);
 
@@ -173,7 +180,9 @@ public sealed class FeedService(AppDbContext db) : IFeedService
                     .Take(pagination.PageSize)
                     .Select(c => new ByteResult(
                         c.Id, c.AuthorId, c.Title, c.Body, c.CodeSnippet, c.Language, c.Type,
-                        c.CreatedAt, c.UpdatedAt, c.CommentCount, c.LikeCount))
+                        c.CreatedAt, c.UpdatedAt, c.CommentCount, c.LikeCount,
+                        c.IsLiked, c.IsBookmarked,
+                        c.AuthorUsername, c.AuthorDisplayName, c.AuthorAvatarUrl, c.AuthorRole, c.AuthorCompany))
                     .ToList();
 
                 return (items, total);
@@ -191,7 +200,10 @@ public sealed class FeedService(AppDbContext db) : IFeedService
             .Take(pagination.PageSize)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(),
+                userId.HasValue && b.UserLikes.Any(l => l.UserId == userId.Value),
+                userId.HasValue && b.UserBookmarks.Any(bk => bk.UserId == userId.Value),
+                b.Author.Username, b.Author.DisplayName ?? b.Author.Username, b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
             .ToListAsync(CancellationToken.None);
 
         return (fallbackItems, fallbackTotal);
@@ -222,13 +234,16 @@ public sealed class FeedService(AppDbContext db) : IFeedService
             .Take(pagination.PageSize)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(),
+                userId.HasValue && b.UserLikes.Any(l => l.UserId == userId.Value),
+                userId.HasValue && b.UserBookmarks.Any(bk => bk.UserId == userId.Value),
+                b.Author.Username, b.Author.DisplayName ?? b.Author.Username, b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
             .ToListAsync(CancellationToken.None);
 
         return (items, total);
     }
 
-    private async Task<(List<ByteResult>, int)> GetTrendingFeed(PaginationParams pagination, List<string>? tags, CancellationToken ct)
+    private async Task<(List<ByteResult>, int)> GetTrendingFeed(PaginationParams pagination, List<string>? tags, CancellationToken ct, Guid? userId = null)
     {
         var since = DateTime.UtcNow.AddHours(-24);
 
@@ -256,7 +271,10 @@ public sealed class FeedService(AppDbContext db) : IFeedService
         var candidates = await query
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(),
+                userId.HasValue && b.UserLikes.Any(l => l.UserId == userId.Value),
+                userId.HasValue && b.UserBookmarks.Any(bk => bk.UserId == userId.Value),
+                b.Author.Username, b.Author.DisplayName ?? b.Author.Username, b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
             .ToListAsync(CancellationToken.None);
 
         var sorted = trendingIds.Count > 0

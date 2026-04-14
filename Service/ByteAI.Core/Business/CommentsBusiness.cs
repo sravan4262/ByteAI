@@ -11,6 +11,9 @@ public sealed class CommentsBusiness(ICommentService commentService, ICurrentUse
     public async Task<PagedResult<Comment>> GetCommentsByByteAsync(Guid byteId, int page, int pageSize, CancellationToken ct) =>
         await commentService.GetCommentsByByteAsync(byteId, new PaginationParams(page, Math.Min(pageSize, 200)), ct);
 
+    public async Task<PagedResult<CommentWithAuthor>> GetCommentsWithAuthorByByteAsync(Guid byteId, int page, int pageSize, CancellationToken ct) =>
+        await commentService.GetCommentsWithAuthorByByteAsync(byteId, new PaginationParams(page, Math.Min(pageSize, 200)), ct);
+
     public async Task<Comment> CreateCommentAsync(string clerkId, Guid byteId, string body, Guid? parentCommentId, CancellationToken ct)
     {
         var authorId = await ResolveUserIdAsync(clerkId, ct);

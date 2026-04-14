@@ -25,6 +25,7 @@ public static class UserMappers
             Level: entity.Level,
             Xp: entity.Xp,
             Streak: entity.Streak,
+            IsOnboarded: entity.IsOnboarded,
             IsVerified: entity.IsVerified,
             Role: entity.UserRoles != null && entity.UserRoles.Any()
                 ? (entity.UserRoles.Any(ur => ur.RoleType != null && ur.RoleType.Name == "admin") ? "admin" : "user")
@@ -43,6 +44,10 @@ public static class UserMappers
             BytesCount: bytesCount,
             FollowersCount: followersCount,
             FollowingCount: followingCount,
-            IsFollowedByMe: isFollowedByMe
+            IsFollowedByMe: isFollowedByMe,
+            TechStack: entity.UserTechStacks
+                .Where(uts => uts.TechStack?.Name is not null)
+                .Select(uts => uts.TechStack.Name)
+                .ToList()
         );
 }

@@ -15,15 +15,15 @@ namespace ByteAI.Api.Controllers;
 [RequireRole("user")]
 public sealed class CommentsController(ICommentsBusiness commentsBusiness) : ControllerBase
 {
-    /// <summary>List comments on a byte.</summary>
+    /// <summary>List comments on a byte (includes author username and avatar).</summary>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<PagedResponse<CommentResponse>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<PagedResponse<CommentResponse>>>> GetComments(
+    [ProducesResponseType(typeof(ApiResponse<PagedResponse<CommentWithAuthorResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<PagedResponse<CommentWithAuthorResponse>>>> GetComments(
         Guid byteId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default)
     {
-        var result = await commentsBusiness.GetCommentsByByteAsync(byteId, page, pageSize, ct);
-        var response = new PagedResponse<CommentResponse>(result.Items.Select(c => c.ToResponse()).ToList(), result.Total, result.Page, result.PageSize);
-        return Ok(ApiResponse<PagedResponse<CommentResponse>>.Success(response));
+        var result = await commentsBusiness.GetCommentsWithAuthorByByteAsync(byteId, page, pageSize, ct);
+        var response = new PagedResponse<CommentWithAuthorResponse>(result.Items.Select(c => c.ToWithAuthorResponse()).ToList(), result.Total, result.Page, result.PageSize);
+        return Ok(ApiResponse<PagedResponse<CommentWithAuthorResponse>>.Success(response));
     }
 
     /// <summary>Add a comment to a byte. Supports threaded replies via ParentCommentId.</summary>

@@ -51,18 +51,24 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
             .Take(pagination.PageSize)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(),
+                requesterId.HasValue && b.UserLikes.Any(l => l.UserId == requesterId.Value),
+                requesterId.HasValue && b.UserBookmarks.Any(bk => bk.UserId == requesterId.Value),
+                b.Author.Username, b.Author.DisplayName ?? b.Author.Username, b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
             .ToListAsync(CancellationToken.None);
 
         return new PagedResult<ByteResult>(items, total, pagination.Page, pagination.PageSize);
     }
 
-    public Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct) =>
+    public Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct, Guid? requesterId = null) =>
         db.Bytes
             .Where(b => b.Id == byteId && b.IsActive)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(),
+                requesterId.HasValue && b.UserLikes.Any(l => l.UserId == requesterId.Value),
+                requesterId.HasValue && b.UserBookmarks.Any(bk => bk.UserId == requesterId.Value),
+                b.Author.Username, b.Author.DisplayName ?? b.Author.Username, b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
             .FirstOrDefaultAsync(CancellationToken.None);
 
     public async Task<ByteResult> CreateByteAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false)
@@ -223,7 +229,8 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
             .Take(pagination.PageSize)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(), false, false,
+                b.Author.Username, b.Author.DisplayName ?? b.Author.Username, b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
             .ToListAsync(CancellationToken.None);
 
         return new PagedResult<ByteResult>(items, total, pagination.Page, pagination.PageSize);

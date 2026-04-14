@@ -19,6 +19,8 @@ using ByteAI.Core.Services.Search;
 using ByteAI.Core.Services.Trending;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Preferences;
+using ByteAI.Core.Services.Drafts;
+using ByteAI.Core.Services.Avatar;
 using ByteAI.Core.Services.Users;
 using ByteAI.Core.Validators;
 using FluentValidation;
@@ -90,7 +92,9 @@ try
     builder.Services.AddScoped<IUserService, UserService>();
     builder.Services.AddScoped<IBadgeService, BadgeService>();
     builder.Services.AddScoped<IUserPreferencesService, UserPreferencesService>();
+    builder.Services.AddScoped<IDraftService, DraftService>();
     builder.Services.AddScoped<ByteAI.Core.Services.FeatureFlags.IFeatureFlagService, ByteAI.Core.Services.FeatureFlags.FeatureFlagService>();
+    builder.Services.AddHttpClient<IAvatarService, AvatarService>();
 
     // ── Business layer ────────────────────────────────────────────────────────
     builder.Services.AddScoped<IBytesBusiness, BytesBusiness>();
@@ -106,6 +110,7 @@ try
     builder.Services.AddScoped<IReactionsBusiness, ReactionsBusiness>();
     builder.Services.AddScoped<ITrendingBusiness, TrendingBusiness>();
     builder.Services.AddScoped<IAdminBusiness, AdminBusiness>();
+    builder.Services.AddScoped<IDraftsBusiness, DraftsBusiness>();
 
     // ── Redis (optional) ─────────────────────────────────────────────────────
     // RedisFeedCache is always registered so MediatR handlers can inject it as nullable.

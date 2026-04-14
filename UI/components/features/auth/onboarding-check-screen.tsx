@@ -6,10 +6,6 @@ import { useRouter } from 'next/navigation'
 import { setTokenProvider } from '@/lib/api/http'
 import { getCurrentUser } from '@/lib/api'
 
-function hasCookie(name: string) {
-  return document.cookie.split(';').some((c) => c.trim().startsWith(`${name}=`))
-}
-
 function setOnboardedCookie() {
   document.cookie = 'byteai_onboarded=1; path=/; max-age=2592000; SameSite=Lax'
 }
@@ -39,32 +35,24 @@ export function OnboardingCheckScreen() {
     if (!isLoaded || !userLoaded) return
     if (!isSignedIn) { router.replace('/'); return }
 
-    // ── Fast path ─────────────────────────────────────────────────────────────
-    // Cookie is the client-side record of completed onboarding. If it's here,
-    // skip the backend round-trip entirely.
-    if (hasCookie('byteai_onboarded')) {
-      router.replace('/feed')
-      return
-    }
-
-    // ── Slow path (first login or new device) ─────────────────────────────────
+    // Always verify with the backend — the cookie fast-path is intentionally
+    // removed here. The cookie exists for the middleware (so it doesn't redirect
+    // on every in-app navigation), not for this check. Skipping the backend call
+    // here caused returning cookies from previous accounts to bypass onboarding
+    // for newly registered users on the same device.
     getCurrentUser()
       .then((user) => {
-        if (user && user.seniority && user.seniority.trim() !== '') {
-          // Cross-device login: user completed onboarding elsewhere — restore cookie and go to feed
+        if (user?.isOnboarded) {
+          // Completed onboarding (this or another device) — restore cookie and go to feed
           setOnboardedCookie()
           router.replace('/feed')
-        } else if (user) {
-          // User record exists in backend but onboarding not complete yet
-          router.replace('/onboarding')
         } else {
-          // No backend record — brand new user, send to onboarding
+          // New user or onboarding not complete — send to onboarding
           router.replace('/onboarding')
         }
       })
       .catch(() => {
-        // Network/API error — don't trap user; if they had a cookie we already returned above,
-        // so here they're genuinely new or the backend is down — default to onboarding
+        // Network/API error — default to onboarding, don't trap the user
         router.replace('/onboarding')
       })
   }, [isLoaded, userLoaded, isSignedIn, router])

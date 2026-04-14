@@ -136,6 +136,26 @@ COMMENT ON TABLE  lookups.feature_flag_types             IS 'Runtime feature def
 COMMENT ON COLUMN lookups.feature_flag_types.key         IS 'Unique machine-readable key used in code: useFeatureFlag(''key'')';
 COMMENT ON COLUMN lookups.feature_flag_types.global_open IS 'When true, the feature is active for all users. When false it requires user_feature_flags.';
 
+CREATE TABLE lookups.xp_action_types (
+    id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        text        NOT NULL UNIQUE CHECK (char_length(name) BETWEEN 1 AND 100),
+    label       text        NOT NULL CHECK (char_length(label) BETWEEN 1 AND 200),
+    description text        CHECK (char_length(description) <= 500),
+    xp_amount   integer     NOT NULL CHECK (xp_amount >= 0),
+    max_per_day integer     CHECK (max_per_day > 0),
+    is_one_time boolean     NOT NULL DEFAULT false,
+    icon        text        NOT NULL DEFAULT '⚡',
+    is_active   boolean     NOT NULL DEFAULT true,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE  lookups.xp_action_types             IS 'XP economy config — one row per action type. Handlers look up xp_amount by name.';
+COMMENT ON COLUMN lookups.xp_action_types.name        IS 'Machine key used in event handlers, e.g. ''post_byte''.';
+COMMENT ON COLUMN lookups.xp_action_types.xp_amount   IS 'Base XP awarded per occurrence.';
+COMMENT ON COLUMN lookups.xp_action_types.max_per_day IS 'Daily cap on XP awards for this action (NULL = unlimited).';
+COMMENT ON COLUMN lookups.xp_action_types.is_one_time IS 'If true the user can only earn this XP once ever.';
+COMMENT ON COLUMN lookups.xp_action_types.is_active   IS 'Toggle to disable an XP source without deleting the row.';
+
 -- ============================================================
 -- USERS
 -- ============================================================
@@ -261,6 +281,18 @@ CREATE TABLE users.notifications (
 CREATE INDEX ix_notifications_user_id     ON users.notifications (user_id);
 CREATE INDEX ix_notifications_user_unread ON users.notifications (user_id) WHERE read = false;
 COMMENT ON TABLE users.notifications IS 'In-app notifications — type must exist in notification_types';
+
+CREATE TABLE users.user_xp_log (
+    id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
+    action_name text        NOT NULL CHECK (char_length(action_name) BETWEEN 1 AND 100),
+    xp_amount   integer     NOT NULL CHECK (xp_amount > 0),
+    awarded_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_user_xp_log_user_action ON users.user_xp_log (user_id, action_name);
+CREATE INDEX ix_user_xp_log_awarded_at  ON users.user_xp_log (awarded_at);
+COMMENT ON TABLE  users.user_xp_log             IS 'Audit log of XP awards. One-time actions use this to prevent double-awarding.';
+COMMENT ON COLUMN users.user_xp_log.action_name IS 'Matches lookups.xp_action_types.name.';
 
 CREATE TABLE users.logs (
     id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -568,6 +600,23 @@ INSERT INTO lookups.level_types (level, name, label, xp_required, icon) VALUES
   (11, 'grandmaster', 'Grandmaster', 50000, '👑'),
   (12, 'pioneer',     'Pioneer',     75000, '🚀')
 ON CONFLICT (level) DO NOTHING;
+
+INSERT INTO lookups.xp_action_types (name, label, description, xp_amount, max_per_day, is_one_time, icon, is_active, created_at, updated_at) VALUES
+  ('post_byte',               'Post a Byte',            'Awarded each time you publish a byte to the feed.',                      20,  NULL, FALSE, '✦',  TRUE, now(), now()),
+  ('post_interview',          'Share an Interview',     'Awarded when you publish a tech interview experience.',                   30,  NULL, FALSE, '🎯', TRUE, now(), now()),
+  ('post_comment',            'Leave a Comment',        'Awarded when you comment on a byte or interview.',                        2,  NULL, FALSE, '💬', TRUE, now(), now()),
+  ('receive_reaction',        'Reaction Received',      'Awarded to the byte author each time someone reacts.',                    5,  NULL, FALSE, '💡', TRUE, now(), now()),
+  ('receive_comment',         'Comment Received',       'Awarded to the author when someone comments on their content.',           3,  NULL, FALSE, '📨', TRUE, now(), now()),
+  ('byte_saved_by_user',      'Byte Bookmarked',        'Awarded when another user saves your byte.',                              3,  NULL, FALSE, '🔖', TRUE, now(), now()),
+  ('interview_saved_by_user', 'Interview Bookmarked',   'Awarded when another user saves your interview.',                         4,  NULL, FALSE, '🔖', TRUE, now(), now()),
+  ('get_followed',            'New Follower',           'Awarded when someone follows you.',                                      10,  NULL, FALSE, '👤', TRUE, now(), now()),
+  ('daily_login',             'Daily Check-in',         'Awarded once per day when you open the app.',                             5,     1, FALSE, '📅', TRUE, now(), now()),
+  ('streak_milestone_7',      '7-Day Streak',           'Bonus XP for maintaining a 7-day posting streak.',                      50,  NULL, FALSE, '🔥', TRUE, now(), now()),
+  ('streak_milestone_30',     '30-Day Streak',          'Bonus XP for maintaining a 30-day posting streak.',                    200,  NULL, FALSE, '🌠', TRUE, now(), now()),
+  ('first_byte',              'First Byte Posted',      'One-time bonus for publishing your very first byte.',                    25,  NULL, TRUE,  '🥇', TRUE, now(), now()),
+  ('profile_complete',        'Profile Completed',      'One-time bonus for filling in bio, tech stack, and a social link.',      50,  NULL, TRUE,  '✅', TRUE, now(), now()),
+  ('github_linked',           'GitHub Linked',          'One-time bonus for connecting your GitHub profile.',                     15,  NULL, TRUE,  '🐙', TRUE, now(), now())
+ON CONFLICT (name) DO NOTHING;
 
 INSERT INTO lookups.badge_types (name, label, icon, description) VALUES
   ('first_byte',    'First Byte',    '🥇', 'Posted your first byte'),

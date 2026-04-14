@@ -41,6 +41,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<TechStack> TechStacks => Set<TechStack>();
     public DbSet<BadgeType> BadgeTypes => Set<BadgeType>();
     public DbSet<LevelType> LevelTypes => Set<LevelType>();
+    public DbSet<XpActionType> XpActionTypes => Set<XpActionType>();
     public DbSet<SearchType> SearchTypes => Set<SearchType>();
     public DbSet<NotificationType> NotificationTypes => Set<NotificationType>();
     public DbSet<RoleType> RoleTypes => Set<RoleType>();
@@ -55,6 +56,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
     public DbSet<Draft> Drafts => Set<Draft>();
     public DbSet<Social> Socials => Set<Social>();
+    public DbSet<UserXpLog> UserXpLogs => Set<UserXpLog>();
 
     // Observability / engagement
     public DbSet<TrendingEvent> TrendingEvents => Set<TrendingEvent>();

@@ -5,6 +5,7 @@ import { Bell, Zap } from 'lucide-react'
 import { Avatar } from '@/components/layout/avatar'
 import { useUser } from '@clerk/nextjs'
 import { useNotifications } from '@/components/layout/notification-context'
+import { getMeCache } from '@/lib/user-cache'
 
 interface FeedHeaderProps {
   contentType: 'bytes' | 'interviews'
@@ -13,8 +14,12 @@ interface FeedHeaderProps {
 export function FeedHeader({ contentType }: FeedHeaderProps) {
   const { user } = useUser()
   const { openNotifications } = useNotifications()
+  const cache = getMeCache()
 
   const initials = ((user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')).toUpperCase() || '?'
+  // Prefer custom avatar from DB; fall back to Clerk provider photo
+  const avatarSrc = cache?.avatarUrl || user?.imageUrl || null
+  const isEmoji = avatarSrc && !avatarSrc.startsWith('http')
 
   return (
     <header className="flex items-center justify-between px-4 md:px-8 lg:px-12 xl:px-16 py-3 md:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o95)] backdrop-blur-md">
@@ -37,9 +42,11 @@ export function FeedHeader({ contentType }: FeedHeaderProps) {
             <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)] shadow-[0_0_5px_var(--accent)]" />
           </button>
           <Link href="/profile">
-            {user?.imageUrl
-              ? <img src={user.imageUrl} referrerPolicy="no-referrer" alt="profile" className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover ring-1 ring-[var(--border-h)] hover:ring-[var(--accent)] transition-all" />
-              : <Avatar initials={initials} size="sm" />
+            {isEmoji
+              ? <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[var(--bg-el)] border border-[var(--border-h)] flex items-center justify-center text-xl ring-1 ring-[var(--border-h)] hover:ring-[var(--accent)] transition-all">{avatarSrc}</div>
+              : avatarSrc
+                ? <img src={avatarSrc} referrerPolicy="no-referrer" alt="profile" className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover ring-1 ring-[var(--border-h)] hover:ring-[var(--accent)] transition-all" />
+                : <Avatar initials={initials} size="sm" />
             }
           </Link>
         </div>

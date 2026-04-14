@@ -1,13 +1,17 @@
 namespace ByteAI.Api.ViewModels;
 
+public sealed record AvatarUploadResponse(string AvatarUrl);
+
 public sealed record UpdateProfileRequest(
+    string? Username,
     string? DisplayName,
     string? Bio,
     string? Company,
     string? RoleTitle,
     string? Seniority,
     string? Domain,
-    List<string>? TechStack
+    List<string>? TechStack,
+    string? CustomAvatarUrl
 );
 
 public sealed record BadgeResponse(
@@ -32,6 +36,7 @@ public sealed record UserResponse(
     int Level,
     int Xp,
     int Streak,
+    bool IsOnboarded,
     bool IsVerified,
     string Role,
     DateTime CreatedAt,
@@ -40,7 +45,8 @@ public sealed record UserResponse(
     int? BytesCount = null,
     int? FollowersCount = null,
     int? FollowingCount = null,
-    bool? IsFollowedByMe = null
+    bool? IsFollowedByMe = null,
+    IReadOnlyList<string>? TechStack = null
 );
 
 public sealed record SocialResponse(string Platform, string Url, string? Label);

@@ -11,6 +11,8 @@ import { CodeBlock } from '@/components/ui/code-block'
 import { LikersSheet } from '@/components/ui/likers-sheet'
 import * as api from '@/lib/api'
 import type { Post, Comment } from '@/lib/api'
+import { getMeCache } from '@/lib/user-cache'
+import { useUser } from '@clerk/nextjs'
 
 interface DetailScreenProps {
   post: Post
@@ -18,14 +20,19 @@ interface DetailScreenProps {
 
 export function DetailScreen({ post }: DetailScreenProps) {
   const router = useRouter()
+  const { user: clerkUser } = useUser()
+  const meCache = getMeCache()
+  const myAvatarUrl = meCache?.avatarUrl || clerkUser?.imageUrl || null
+  const myInitials = ((clerkUser?.firstName?.[0] ?? '') + (clerkUser?.lastName?.[0] ?? '')).toUpperCase()
+    || meCache?.username?.[0]?.toUpperCase() || 'U'
   const [comments, setComments] = useState<Comment[]>([])
   const [commentCount, setCommentCount] = useState(post.comments ?? 0)
   const [likeCount, setLikeCount] = useState(post.likes ?? 0)
-  const [isLiked, setIsLiked] = useState(false)
+  const [isLiked, setIsLiked] = useState(post.isLiked ?? false)
   const [showLikers, setShowLikers] = useState(false)
   const [comment, setComment] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [isBookmarked, setIsBookmarked] = useState(post.isBookmarked ?? false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   type FeedItem = { id: string; title: string; username: string; role: string; company: string }
@@ -178,8 +185,8 @@ export function DetailScreen({ post }: DetailScreenProps) {
           <div className="flex items-center gap-3">
             <Avatar
               initials={post.author.initials}
+              imageUrl={post.author.avatarUrl}
               size="md"
-              variant={post.author.id === '1' ? 'cyan' : post.author.id === '4' ? 'purple' : 'green'}
             />
             <div>
               <div className="font-mono text-xs lg:text-sm font-bold text-[var(--t1)] flex items-center gap-1.5">
@@ -188,9 +195,11 @@ export function DetailScreen({ post }: DetailScreenProps) {
                   <span className="text-[9px] text-[var(--accent)]">✦</span>
                 )}
               </div>
-              <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-[3px] tracking-[0.04em]">
-                {post.author.role} @ {post.author.company}
-              </div>
+              {(post.author.role || post.author.company) && (
+                <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-[3px] tracking-[0.04em]">
+                  {post.author.role}{post.author.role && post.author.company ? ' @ ' : ''}{post.author.company}
+                </div>
+              )}
             </div>
           </div>
 
@@ -207,7 +216,7 @@ export function DetailScreen({ post }: DetailScreenProps) {
               language={post.code.language}
               filename={post.code.filename}
               showLineNumbers={true}
-              maxHeight="400px"
+              maxHeight="auto"
             />
           )}
 
@@ -364,9 +373,7 @@ export function DetailScreen({ post }: DetailScreenProps) {
               {comments.length > 0 ? (
                 comments.map((c) => (
                   <div key={c.id} className="flex gap-[10px] lg:gap-4">
-                    <div className="w-[30px] h-[30px] lg:w-10 lg:h-10 rounded-full border border-[var(--border-m)] flex-shrink-0 flex items-center justify-center font-mono text-[8px] lg:text-[10px] font-bold bg-gradient-to-br from-[#1a1f2f] to-[#16243f] text-[var(--accent)]">
-                      {c.author.initials}
-                    </div>
+                    <Avatar initials={c.author.initials} imageUrl={c.author.avatarUrl} size="xs" />
                     <div className="flex-1 min-w-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-3 py-[10px] lg:px-4 lg:py-3">
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <span className="font-mono text-[10px] lg:text-xs font-bold text-[var(--t1)]">@{c.author.username}</span>
@@ -411,9 +418,11 @@ export function DetailScreen({ post }: DetailScreenProps) {
                     <div className="flex-1 min-w-0">
                       <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t3)] mb-1">PREV</div>
                       <div className="font-mono text-[10px] lg:text-sm font-bold text-[var(--t1)] truncate">{prevPost.title}</div>
-                      <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">
-                        @{prevPost.username}{prevPost.role ? ` · ${prevPost.role}` : ''}{prevPost.company ? ` @ ${prevPost.company}` : ''}
-                      </div>
+                      {(prevPost.username || prevPost.role || prevPost.company) && (
+                        <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">
+                          {prevPost.username && `@${prevPost.username}`}{prevPost.role ? ` · ${prevPost.role}` : ''}{prevPost.company ? ` @ ${prevPost.company}` : ''}
+                        </div>
+                      )}
                     </div>
                     <ChevronLeft size={16} className="text-[var(--t3)] flex-shrink-0" />
                   </button>
@@ -427,9 +436,11 @@ export function DetailScreen({ post }: DetailScreenProps) {
                     <div className="flex-1 min-w-0">
                       <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t3)] mb-1">UP_NEXT</div>
                       <div className="font-mono text-[10px] lg:text-sm font-bold text-[var(--t1)] truncate">{nextPost.title}</div>
-                      <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">
-                        @{nextPost.username}{nextPost.role ? ` · ${nextPost.role}` : ''}{nextPost.company ? ` @ ${nextPost.company}` : ''}
-                      </div>
+                      {(nextPost.username || nextPost.role || nextPost.company) && (
+                        <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">
+                          {nextPost.username && `@${nextPost.username}`}{nextPost.role ? ` · ${nextPost.role}` : ''}{nextPost.company ? ` @ ${nextPost.company}` : ''}
+                        </div>
+                      )}
                     </div>
                     <ChevronRight size={16} className="text-[var(--accent)] flex-shrink-0 transition-all group-hover:translate-x-1" />
                   </button>
@@ -442,7 +453,7 @@ export function DetailScreen({ post }: DetailScreenProps) {
 
       {/* Comment input */}
       <div className="flex items-center gap-2 px-3 py-2 lg:px-6 lg:py-3 border-t border-[var(--border)] bg-[var(--bg-card)] flex-shrink-0">
-        <Avatar initials="AX" size="xs" />
+        <Avatar initials={myInitials} imageUrl={myAvatarUrl} size="xs" />
         <input
           type="text"
           value={comment}

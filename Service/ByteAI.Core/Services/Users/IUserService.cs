@@ -16,6 +16,7 @@ public interface IUserService
     /// <summary>Update the current user's full profile including seniority, domain, and tech stack.</summary>
     Task<User> UpdateMyProfileAsync(
         Guid userId,
+        string? username,
         string? displayName,
         string? bio,
         string? company,
@@ -23,6 +24,7 @@ public interface IUserService
         string? seniority,
         string? domain,
         List<string>? techStack,
+        string? customAvatarUrl,
         CancellationToken ct);
 
     /// <summary>Insert or update a user record from a Clerk webhook payload. Returns the user and whether it was newly created.</summary>

@@ -14,6 +14,7 @@ interface SearchableDropdownProps {
   onChange: (value: string | null) => void
   placeholder?: string
   allLabel?: string
+  showAllOption?: boolean
   className?: string
   accentColor?: 'accent' | 'cyan' | 'green' | 'purple'
 }
@@ -47,6 +48,7 @@ export function SearchableDropdown({
   onChange,
   placeholder = 'SELECT',
   allLabel = 'ALL',
+  showAllOption = true,
   className = '',
   accentColor = 'accent',
 }: SearchableDropdownProps) {
@@ -139,16 +141,18 @@ export function SearchableDropdown({
           {/* Options list */}
           <div className="max-h-52 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
             {/* ALL option */}
-            <button
-              onClick={() => select(null)}
-              className={`w-full text-left font-mono text-xs px-3 py-2 transition-all ${
-                !value
-                  ? accent.highlight
-                  : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-white/5'
-              }`}
-            >
-              {allLabel}
-            </button>
+            {showAllOption && (
+              <button
+                onClick={() => select(null)}
+                className={`w-full text-left font-mono text-xs px-3 py-2 transition-all ${
+                  !value
+                    ? accent.highlight
+                    : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-white/5'
+                }`}
+              >
+                {allLabel}
+              </button>
+            )}
 
             {filtered.length === 0 ? (
               <div className="font-mono text-xs text-[var(--t3)] px-3 py-3 text-center">

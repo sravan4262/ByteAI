@@ -13,3 +13,21 @@ public sealed record CommentResponse(
     int VoteCount,
     DateTime CreatedAt
 );
+
+public sealed record CommentAuthorSummary(
+    Guid Id,
+    string Username,
+    string DisplayName,
+    string Initials,
+    string? AvatarUrl
+);
+
+public sealed record CommentWithAuthorResponse(
+    Guid Id,
+    Guid ByteId,
+    Guid? ParentId,
+    string Body,
+    int VoteCount,
+    DateTime CreatedAt,
+    CommentAuthorSummary Author
+);

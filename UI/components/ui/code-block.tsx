@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 
 interface CodeBlockProps {
   code: string
@@ -10,14 +11,15 @@ interface CodeBlockProps {
   maxHeight?: string
 }
 
-export function CodeBlock({ 
-  code, 
-  language, 
+export function CodeBlock({
+  code,
+  language,
   filename,
   showLineNumbers = true,
   maxHeight = '300px'
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(code)
@@ -26,6 +28,7 @@ export function CodeBlock({
   }
 
   const lines = code.split('\n')
+  const isExpandable = maxHeight !== 'auto'
 
   return (
     <div className="bg-[var(--code-bg)] border border-white/5 rounded-lg overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)]">
@@ -42,6 +45,15 @@ export function CodeBlock({
         <span className="font-mono text-[8px] text-[var(--cyan)] bg-[rgba(34,211,238,0.08)] border border-[rgba(34,211,238,0.18)] px-2 py-0.5 rounded-sm tracking-wider uppercase">
           {language}
         </span>
+        {isExpandable && isExpanded && (
+          <button
+            onClick={() => setIsExpanded(false)}
+            className="flex items-center gap-1 font-mono text-[8px] text-[var(--t2)] hover:text-[var(--accent)] transition-colors px-2 py-0.5 rounded hover:bg-white/5"
+          >
+            <ChevronUp size={10} />
+            COLLAPSE
+          </button>
+        )}
         <button
           onClick={handleCopy}
           className="font-mono text-[8px] text-[var(--t2)] hover:text-[var(--accent)] transition-colors px-2 py-0.5 rounded hover:bg-white/5"
@@ -49,26 +61,41 @@ export function CodeBlock({
           {copied ? 'COPIED!' : 'COPY'}
         </button>
       </div>
-      
+
       {/* Code content */}
-      <div 
-        className="overflow-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]"
-        style={{ maxHeight }}
-      >
-        <pre className="px-4 py-3 font-mono text-[11px] leading-relaxed">
-          <code className="block">
-            {lines.map((line, i) => (
-              <div key={i} className="flex">
-                {showLineNumbers && (
-                  <span className="select-none text-[var(--t3)] w-8 shrink-0 pr-4 text-right">
-                    {i + 1}
-                  </span>
-                )}
-                <span className="text-[var(--t2)] flex-1 whitespace-pre">{highlightSyntax(line, language)}</span>
-              </div>
-            ))}
-          </code>
-        </pre>
+      <div className="relative">
+        <div
+          className="overflow-auto scrollbar-thin scrollbar-thumb-[var(--border-m)] transition-[max-height] duration-300 ease-in-out"
+          style={{ maxHeight: isExpanded ? 'none' : maxHeight }}
+        >
+          <pre className="px-4 py-3 font-mono text-[11px] leading-relaxed">
+            <code className="block">
+              {lines.map((line, i) => (
+                <div key={i} className="flex">
+                  {showLineNumbers && (
+                    <span className="select-none text-[var(--t3)] w-8 shrink-0 pr-4 text-right">
+                      {i + 1}
+                    </span>
+                  )}
+                  <span className="text-[var(--t2)] flex-1 whitespace-pre">{highlightSyntax(line, language)}</span>
+                </div>
+              ))}
+            </code>
+          </pre>
+        </div>
+
+        {/* Expand overlay — only shown when expandable and collapsed */}
+        {isExpandable && !isExpanded && (
+          <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-2 pt-8 bg-gradient-to-t from-[var(--code-bg)] via-[var(--code-bg)]/80 to-transparent pointer-events-none">
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="pointer-events-auto flex items-center gap-1.5 font-mono text-[8px] tracking-[0.1em] text-[var(--t2)] bg-[var(--code-bg)] border border-white/10 hover:border-[var(--accent)] hover:text-[var(--accent)] px-3 py-1.5 rounded-full transition-all hover:shadow-[0_0_12px_rgba(59,130,246,0.2)] hover:bg-[var(--accent-d)]"
+            >
+              <ChevronDown size={10} />
+              EXPAND · {lines.length} LINES
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

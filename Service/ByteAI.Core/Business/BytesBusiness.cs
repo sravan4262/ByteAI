@@ -9,11 +9,17 @@ namespace ByteAI.Core.Business;
 
 public sealed class BytesBusiness(IByteService byteService, ICurrentUserService currentUserService) : IBytesBusiness
 {
-    public async Task<PagedResult<ByteResult>> GetBytesAsync(int page, int pageSize, Guid? authorId, string sort, CancellationToken ct) =>
-        await byteService.GetBytesAsync(new PaginationParams(page, Math.Min(pageSize, 100)), authorId, sort, ct);
+    public async Task<PagedResult<ByteResult>> GetBytesAsync(int page, int pageSize, Guid? authorId, string sort, CancellationToken ct, string? clerkId = null)
+    {
+        var requesterId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
+        return await byteService.GetBytesAsync(new PaginationParams(page, Math.Min(pageSize, 100)), authorId, sort, ct, requesterId);
+    }
 
-    public async Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct) =>
-        await byteService.GetByteByIdAsync(byteId, ct);
+    public async Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct, string? clerkId = null)
+    {
+        var requesterId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
+        return await byteService.GetByteByIdAsync(byteId, ct, requesterId);
+    }
 
     public async Task<CreateByteResult> CreateByteAsync(string clerkId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false)
     {

@@ -166,10 +166,13 @@ public sealed class OnnxEmbedder : IDisposable
 
     public void Dispose()
     {
-        if (!_disposed)
-        {
-            _session?.Dispose();
-            _disposed = true;
-        }
+        if (_disposed) return;
+        _disposed = true;
+
+        // ONNX Runtime has a known macOS bug where disposing the InferenceSession
+        // during process shutdown triggers a native mutex lock failure.
+        // The session is a process-lifetime singleton — the OS reclaims it anyway.
+        try { _session?.Dispose(); }
+        catch { /* suppress native shutdown crash */ }
     }
 }

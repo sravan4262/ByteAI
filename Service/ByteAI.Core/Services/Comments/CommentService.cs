@@ -1,13 +1,15 @@
 using ByteAI.Core.Entities;
+using ByteAI.Core.Events;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Notifications;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Comments;
 
-public sealed class CommentService(AppDbContext db, IBadgeService badgeService, INotificationService notifications) : ICommentService
+public sealed class CommentService(AppDbContext db, IBadgeService badgeService, INotificationService notifications, IPublisher publisher) : ICommentService
 {
     public async Task<PagedResult<Comment>> GetCommentsByByteAsync(Guid byteId, PaginationParams pagination, CancellationToken ct)
     {
@@ -22,6 +24,28 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
             .ToListAsync(CancellationToken.None);
 
         return new PagedResult<Comment>(items, total, pagination.Page, pagination.PageSize);
+    }
+
+    public async Task<PagedResult<CommentWithAuthor>> GetCommentsWithAuthorByByteAsync(Guid byteId, PaginationParams pagination, CancellationToken ct)
+    {
+        var query = db.Comments
+            .Where(c => c.ByteId == byteId && c.ParentId == null)
+            .OrderByDescending(c => c.CreatedAt);
+
+        var total = await query.CountAsync(CancellationToken.None);
+
+        var items = await query
+            .Skip(pagination.Skip)
+            .Take(pagination.PageSize)
+            .Join(db.Users, c => c.AuthorId, u => u.Id, (c, u) => new CommentWithAuthor(
+                c,
+                u.Username,
+                u.DisplayName ?? u.Username,
+                u.AvatarUrl
+            ))
+            .ToListAsync(CancellationToken.None);
+
+        return new PagedResult<CommentWithAuthor>(items, total, pagination.Page, pagination.PageSize);
     }
 
     public async Task<Comment> CreateCommentAsync(Guid byteId, Guid authorId, string body, Guid? parentCommentId, CancellationToken ct)
@@ -70,6 +94,9 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
                 },
                 ct: ct);
         }
+
+        // ── XP event — published after all DB operations complete ──────────────
+        await publisher.Publish(new CommentCreatedEvent(comment.Id, authorId, byteAuthorId), CancellationToken.None);
 
         return comment;
     }

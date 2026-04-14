@@ -1,6 +1,6 @@
 namespace ByteAI.Core.Commands.Bytes;
 
-/// <summary>Projection DTO for byte queries — includes computed stats like comment count and like count.</summary>
+/// <summary>Projection DTO for byte queries — includes computed stats and author details.</summary>
 public sealed record ByteResult(
     Guid Id,
     Guid AuthorId,
@@ -12,5 +12,12 @@ public sealed record ByteResult(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     int CommentCount,
-    int LikeCount
+    int LikeCount,
+    bool IsLiked = false,
+    bool IsBookmarked = false,
+    string AuthorUsername = "",
+    string AuthorDisplayName = "",
+    string? AuthorAvatarUrl = null,
+    string? AuthorRole = null,
+    string? AuthorCompany = null
 );

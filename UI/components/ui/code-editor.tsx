@@ -194,8 +194,8 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
-          <Code2 size={13} className="text-[var(--cyan)]" />
-          <span className="font-mono text-[9px] tracking-[0.08em] text-[var(--t2)]">CODE_SNIPPET</span>
+          <Code2 size={14} className="text-[var(--cyan)]" />
+          <span className="font-mono text-xs tracking-[0.08em] text-[var(--t2)]">CODE_SNIPPET</span>
         </div>
         <div className="flex items-center gap-2">
           {/* Format button */}
@@ -208,35 +208,35 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
               : !hasAiFormatCode ? 'AI formatting not available'
               : 'Format with AI (Groq)'
             }
-            className={`flex items-center gap-1 font-mono text-[8px] px-2.5 py-1 rounded border transition-all ${
+            className={`flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded border transition-all ${
               canFormat
                 ? 'border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-d)]'
                 : 'border-[var(--border-m)] text-[var(--t3)] cursor-not-allowed opacity-50'
             }`}
           >
-            <Wand2 size={10} />
+            <Wand2 size={11} />
             {isFormatting ? 'FORMATTING...' : 'FORMAT'}
           </button>
           {/* Language selector button */}
           <div className="flex items-center gap-1">
             <button
               onClick={() => setShowLangPicker(v => !v)}
-              className={`flex items-center gap-1 font-mono text-[8px] px-2.5 py-1 rounded-l border transition-all ${
+              className={`flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-l border transition-all ${
                 selected
                   ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
                   : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)] hover:text-[var(--t1)]'
               }`}
             >
               {selected ? selected.id : 'SELECT LANG'}
-              <ChevronDown size={9} className={`transition-transform ${showLangPicker ? 'rotate-180' : ''}`} />
+              <ChevronDown size={10} className={`transition-transform ${showLangPicker ? 'rotate-180' : ''}`} />
             </button>
             {selected && (
               <button
                 onClick={handleClearLanguage}
                 title="Clear language"
-                className="flex items-center justify-center px-1.5 py-1 rounded-r border border-l-0 border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] hover:bg-[rgba(59,130,246,0.2)] transition-all"
+                className="flex items-center justify-center px-2 py-1.5 rounded-r border border-l-0 border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] hover:bg-[rgba(59,130,246,0.2)] transition-all"
               >
-                <X size={9} />
+                <X size={10} />
               </button>
             )}
           </div>
@@ -246,39 +246,44 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
       {/* Language picker */}
       {showLangPicker && (
         <div className="border-b border-[var(--border)] bg-[var(--bg-el)]">
-          <div className="px-3 py-2 flex items-center gap-2 border-b border-[var(--border)]">
-            <Search size={11} className="text-[var(--t3)] flex-shrink-0" />
+          <div className="px-3 py-2.5 flex items-center gap-2 border-b border-[var(--border)]">
+            <Search size={13} className="text-[var(--t3)] flex-shrink-0" />
             <input
               autoFocus
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search language..."
-              className="flex-1 bg-transparent font-mono text-[10px] text-[var(--t1)] outline-none placeholder:text-[var(--t3)]"
+              className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] outline-none placeholder:text-[var(--t3)]"
             />
           </div>
-          <div className="flex flex-wrap gap-1.5 p-3 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
+          <div className="flex flex-wrap gap-2 p-3 max-h-44 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
             {filtered.map(lang => (
               <button
                 key={lang.id}
                 onClick={() => handleSelectLanguage(lang)}
-                className={`flex items-center gap-1 font-mono text-[9px] px-2.5 py-1.5 rounded border transition-all ${
+                className={`flex items-center gap-1.5 font-mono text-[11px] px-3 py-1.5 rounded border transition-all ${
                   lang.id === language
                     ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)]'
                     : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)] hover:text-[var(--t1)]'
                 }`}
               >
-                <span className="text-[8px] text-[var(--t3)]">{lang.id}</span>
+                <span className="text-[9px] text-[var(--t3)]">{lang.id}</span>
                 <span>{lang.label}</span>
-                <span className={`text-[7px] ${lang.parser ? 'text-[var(--green)]' : 'text-[var(--accent)]'}`}>
-                  {lang.parser ? '✦' : 'AI'}
-                </span>
+                {lang.parser
+                  ? <span className="text-[9px] text-[var(--green)]">✦</span>
+                  : hasAiFormatCode
+                    ? <span className="text-[9px] text-[var(--accent)]">⚡</span>
+                    : null
+                }
               </button>
             ))}
           </div>
-          <div className="px-3 pb-2 font-mono text-[8px] text-[var(--t3)] flex gap-3">
+          <div className="px-3 pb-2.5 font-mono text-[10px] text-[var(--t3)] flex gap-3">
             <span><span className="text-[var(--green)]">✦</span> Prettier</span>
-            <span><span className="text-[var(--accent)]">AI</span> Groq</span>
+            {hasAiFormatCode && (
+              <span><span className="text-[var(--accent)]">⚡</span> Groq</span>
+            )}
           </div>
         </div>
       )}
@@ -287,13 +292,13 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
       <div className="relative">
         {!selected && (
           <div className="absolute inset-0 bg-[var(--bg-card)]/80 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-b-lg">
-            <span className="font-mono text-[10px] text-[var(--t3)]">← Select a language · paste your relevant code here</span>
+            <span className="font-mono text-xs text-[var(--t3)]">← Select a language · paste your relevant code here</span>
           </div>
         )}
         <div className="flex px-4 py-3 gap-3">
           <div className="flex flex-col gap-1 select-none pt-px">
             {(value || ' ').split('\n').map((_, i) => (
-              <span key={i} className="font-mono text-[10px] text-[var(--t3)] leading-relaxed w-5 text-right">
+              <span key={i} className="font-mono text-[11px] text-[var(--t3)] leading-relaxed w-6 text-right">
                 {String(i + 1).padStart(2, '0')}
               </span>
             ))}
@@ -304,14 +309,14 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
             placeholder={selected ? `// ${selected.label} code here` : ''}
             disabled={!selected}
             rows={Math.max(4, value.split('\n').length)}
-            className="flex-1 bg-transparent font-mono text-[10px] text-[var(--t2)] outline-none resize-none leading-relaxed disabled:cursor-not-allowed"
+            className="flex-1 bg-transparent font-mono text-[11px] text-[var(--t2)] outline-none resize-none leading-relaxed disabled:cursor-not-allowed"
           />
         </div>
       </div>
 
       {/* Format error */}
       {formatError && (
-        <div className="px-4 py-2 border-t border-[var(--border)] font-mono text-[9px] text-[var(--red)]">
+        <div className="px-4 py-2 border-t border-[var(--border)] font-mono text-xs text-[var(--red)]">
           {formatError}
         </div>
       )}

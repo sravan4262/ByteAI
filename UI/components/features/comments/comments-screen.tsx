@@ -5,24 +5,27 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, Send, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
-import { addComment, getCurrentUser, deleteComment } from '@/lib/api'
+import { addComment, getCurrentUser, deleteComment, getPostComments } from '@/lib/api'
 import type { Comment, Post } from '@/lib/api'
 
 interface CommentsScreenProps {
   post: Post
-  comments: Comment[]
 }
 
-export function CommentsScreen({ post, comments: initialComments }: CommentsScreenProps) {
+export function CommentsScreen({ post }: CommentsScreenProps) {
   const router = useRouter()
-  const [comments, setComments] = useState<Comment[]>(initialComments)
+  const [comments, setComments] = useState<Comment[]>([])
+  const [loading, setLoading] = useState(true)
   const [body, setBody] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
     getCurrentUser().then((u) => { if (u) setCurrentUserId(u.id) })
-  }, [])
+    getPostComments(post.id, {})
+      .then(({ comments: loaded }) => setComments(loaded))
+      .finally(() => setLoading(false))
+  }, [post.id])
 
   const handleDeleteComment = async (commentId: string) => {
     try {
@@ -106,8 +109,8 @@ export function CommentsScreen({ post, comments: initialComments }: CommentsScre
             <div className="flex items-center gap-3 mb-4">
               <Avatar
                 initials={post.author.initials}
+                imageUrl={post.author.avatarUrl}
                 size="md"
-                variant={post.author.id === '1' ? 'cyan' : post.author.id === '4' ? 'purple' : 'green'}
               />
               <div>
                 <div className="font-mono text-xs lg:text-sm font-bold text-[var(--t1)] flex items-center gap-2">
@@ -116,9 +119,11 @@ export function CommentsScreen({ post, comments: initialComments }: CommentsScre
                     <span className="text-[9px] text-[var(--accent)]">✦</span>
                   )}
                 </div>
-                <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-1 tracking-[0.04em]">
-                  {post.author.role} @ {post.author.company}
-                </div>
+                {(post.author.role || post.author.company) && (
+                  <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-1 tracking-[0.04em]">
+                    {post.author.role}{post.author.role && post.author.company ? ' @ ' : ''}{post.author.company}
+                  </div>
+                )}
               </div>
             </div>
             <h1 className="text-xl lg:text-2xl font-extrabold tracking-tight leading-tight mb-3">{post.title}</h1>
@@ -147,14 +152,16 @@ export function CommentsScreen({ post, comments: initialComments }: CommentsScre
             </div>
 
             <div className="space-y-4">
-              {comments.length > 0 ? (
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-5 h-5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
+                </div>
+              ) : comments.length > 0 ? (
                 comments.map((comment) => (
                   <div key={comment.id} className="rounded-3xl border border-[var(--border)] bg-[var(--bg-card)] p-4">
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full border border-[var(--border-m)] bg-gradient-to-br from-[#1a1f2f] to-[#16243f] flex items-center justify-center font-mono font-bold text-xs text-[var(--accent)]">
-                          {comment.author.initials}
-                        </div>
+                        <Avatar initials={comment.author.initials} imageUrl={comment.author.avatarUrl} size="sm" />
                         <div>
                           <p className="font-mono text-[10px] lg:text-[11px] font-bold text-[var(--t1)]">@{comment.author.username}</p>
                           <p className="font-mono text-[8px] lg:text-[9px] text-[var(--t3)]">{comment.createdAt}</p>

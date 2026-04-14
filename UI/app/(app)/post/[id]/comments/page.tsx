@@ -1,5 +1,6 @@
+import { auth } from '@clerk/nextjs/server'
 import { CommentsScreen } from '@/components/features/comments/comments-screen'
-import { getPost, getPostComments } from '@/lib/api'
+import { getPost } from '@/lib/api'
 
 interface PostCommentsPageProps {
   params: Promise<{ id: string }>
@@ -7,7 +8,9 @@ interface PostCommentsPageProps {
 
 export default async function PostCommentsPage({ params }: PostCommentsPageProps) {
   const { id } = await params
-  const post = await getPost(id)
+  const { getToken } = await auth()
+  const token = await getToken()
+  const post = await getPost(id, token)
 
   if (!post) {
     return (
@@ -18,6 +21,6 @@ export default async function PostCommentsPage({ params }: PostCommentsPageProps
     )
   }
 
-  const { comments } = await getPostComments(id, {})
-  return <CommentsScreen post={post} comments={comments} />
+  // Comments require auth — fetched client-side in CommentsScreen
+  return <CommentsScreen post={post} />
 }

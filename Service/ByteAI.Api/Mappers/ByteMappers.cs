@@ -16,6 +16,11 @@ public static class ByteMappers
         new(
             Id: result.Id,
             AuthorId: result.AuthorId,
+            AuthorUsername: result.AuthorUsername,
+            AuthorDisplayName: result.AuthorDisplayName,
+            AuthorAvatarUrl: result.AuthorAvatarUrl,
+            AuthorRole: result.AuthorRole,
+            AuthorCompany: result.AuthorCompany,
             Title: result.Title,
             Body: result.Body,
             CodeSnippet: result.CodeSnippet,
@@ -24,14 +29,21 @@ public static class ByteMappers
             CreatedAt: result.CreatedAt,
             UpdatedAt: result.UpdatedAt,
             CommentCount: result.CommentCount,
-            LikeCount: result.LikeCount
+            LikeCount: result.LikeCount,
+            IsLiked: result.IsLiked,
+            IsBookmarked: result.IsBookmarked
         );
 
-    // Used for write operations (create/update) where counts are not relevant
+    // Used for write operations (create/update) where author join is not needed
     public static ByteResponse ToResponse(this Byte entity, int commentCount = 0, int likeCount = 0) =>
         new(
             Id: entity.Id,
             AuthorId: entity.AuthorId,
+            AuthorUsername: string.Empty,
+            AuthorDisplayName: string.Empty,
+            AuthorAvatarUrl: null,
+            AuthorRole: null,
+            AuthorCompany: null,
             Title: entity.Title,
             Body: entity.Body,
             CodeSnippet: entity.CodeSnippet,

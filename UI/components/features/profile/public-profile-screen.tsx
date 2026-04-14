@@ -55,17 +55,17 @@ function ByteCard({ post, onClick }: { post: Post; onClick: () => void }) {
       className="px-4 py-4 border-b border-[var(--border)] cursor-pointer hover:bg-[rgba(59,130,246,0.04)] transition-colors"
     >
       <h3 className="font-bold text-sm text-[var(--t1)] leading-snug mb-1.5">{post.title}</h3>
-      <p className="text-[12px] text-[var(--t2)] leading-relaxed line-clamp-2">{post.body}</p>
+      <p className="text-[12px] text-[var(--t1)] leading-relaxed line-clamp-2">{post.body}</p>
       <div className="flex items-center gap-3 mt-2.5">
-        <span className="font-mono text-[10px] text-[var(--t3)]">{post.createdAt}</span>
-        <span className="flex items-center gap-1 font-mono text-[10px] text-[var(--t3)]">
+        <span className="font-mono text-[10px] text-[var(--t2)]">{post.createdAt}</span>
+        <span className="flex items-center gap-1 font-mono text-[10px] text-[var(--t2)]">
           <Heart size={10} /> {post.likes ?? 0}
         </span>
-        <span className="flex items-center gap-1 font-mono text-[10px] text-[var(--t3)]">
+        <span className="flex items-center gap-1 font-mono text-[10px] text-[var(--t2)]">
           <MessageSquare size={10} /> {post.comments ?? 0}
         </span>
         {(post.tags ?? []).slice(0, 2).map(tag => (
-          <span key={tag} className="font-mono text-[9px] px-2 py-0.5 rounded border border-[var(--border-m)] text-[var(--t3)]">
+          <span key={tag} className="font-mono text-[9px] px-2 py-0.5 rounded border border-[var(--border-m)] text-[var(--t2)]">
             {tag}
           </span>
         ))}
@@ -240,13 +240,13 @@ export function PublicProfileScreen({ username }: { username: string }) {
               <div className="font-mono text-[11px] text-[var(--accent)] mt-0.5">@{profile.username}</div>
 
               {(profile.roleTitle || profile.company) && (
-                <div className="font-mono text-[10px] text-[var(--t2)] mt-1 tracking-[0.04em]">
+                <div className="font-mono text-[10px] text-[var(--t1)] mt-1 tracking-[0.04em]">
                   {profile.roleTitle}{profile.roleTitle && profile.company ? ' @ ' : ''}{profile.company}
                 </div>
               )}
 
               {profile.bio && (
-                <p className="text-xs text-[var(--t2)] mt-2 leading-relaxed">{profile.bio}</p>
+                <p className="text-xs text-[var(--t1)] mt-2 leading-relaxed">{profile.bio}</p>
               )}
 
               {/* Stats */}
@@ -261,7 +261,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
                     className="bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2.5 text-center"
                   >
                     <div className="font-mono text-xs font-bold text-[var(--t1)]">{stat.value}</div>
-                    <div className="font-mono text-[8px] tracking-[0.08em] text-[var(--t3)] mt-0.5">{stat.label}</div>
+                    <div className="font-mono text-[8px] tracking-[0.08em] text-[var(--t2)] mt-0.5">{stat.label}</div>
                   </div>
                 ))}
               </div>

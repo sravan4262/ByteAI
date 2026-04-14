@@ -54,6 +54,7 @@ public sealed class UsersBusiness(
 
     public async Task<User> UpdateMyProfileAsync(
         string clerkId,
+        string? username,
         string? displayName,
         string? bio,
         string? company,
@@ -61,12 +62,13 @@ public sealed class UsersBusiness(
         string? seniority,
         string? domain,
         List<string>? techStack,
+        string? customAvatarUrl,
         CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct)
             ?? throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
 
-        return await userService.UpdateMyProfileAsync(userId, displayName, bio, company, roleTitle, seniority, domain, techStack, ct);
+        return await userService.UpdateMyProfileAsync(userId, username, displayName, bio, company, roleTitle, seniority, domain, techStack, customAvatarUrl, ct);
     }
 
     public async Task<List<Social>> GetMySocialsAsync(string clerkId, CancellationToken ct)

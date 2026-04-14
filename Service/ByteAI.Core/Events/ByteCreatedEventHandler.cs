@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace ByteAI.Core.Events;
 
 public sealed class ByteCreatedEventHandler(
+    AppDbContext db,
     IEmbeddingService embedding,
     IGroqService groq,
     IByteService byteService,
@@ -128,7 +129,12 @@ public sealed class ByteCreatedEventHandler(
             }
         });
 
-        // ── 4. Badge checks for the author ───────────────────────────────────
+        // ── 4. Award XP to the author ────────────────────────────────────────
+        await XpAwarder.AwardAsync(db, notification.AuthorId, "post_byte", logger, cancellationToken);
+        // One-time bonus for first ever byte (XpAwarder guards against double-award)
+        await XpAwarder.AwardAsync(db, notification.AuthorId, "first_byte", logger, cancellationToken);
+
+        // ── 5. Badge checks for the author ───────────────────────────────────
         try
         {
             await badgeService.CheckAndAwardAsync(notification.AuthorId, BadgeTrigger.BytePosted, cancellationToken);
@@ -138,7 +144,7 @@ public sealed class ByteCreatedEventHandler(
             logger.LogWarning(ex, "Badge check failed after byte {ByteId} created", notification.ByteId);
         }
 
-        // ── 5. Invalidate feed caches for author's followers ──────────────────
+        // ── 6. Invalidate feed caches for author's followers ──────────────────
         if (feedCache is not null)
         {
             try

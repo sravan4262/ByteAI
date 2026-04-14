@@ -18,7 +18,11 @@ public sealed class BookmarksBusiness(IBookmarkService bookmarkService, ICurrent
     {
         var userId = await ResolveUserIdAsync(clerkId, ct);
         var result = await bookmarkService.GetUserBookmarksAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
-        var items = result.Items.Select(b => new ByteResult(b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type, b.CreatedAt, b.UpdatedAt, 0, 0)).ToList();
+        var items = result.Items.Select(b => new ByteResult(
+            b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
+            b.CreatedAt, b.UpdatedAt, 0, 0, false, false,
+            b.Author?.Username ?? "", b.Author?.DisplayName ?? b.Author?.Username ?? "",
+            b.Author?.AvatarUrl, b.Author?.RoleTitle, b.Author?.Company)).ToList();
         return new PagedResult<ByteResult>(items, result.Total, result.Page, result.PageSize);
     }
 

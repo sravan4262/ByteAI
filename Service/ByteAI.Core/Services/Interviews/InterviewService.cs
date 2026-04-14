@@ -1,12 +1,15 @@
 using ByteAI.Core.Commands.Interviews;
 using ByteAI.Core.Entities;
+using ByteAI.Core.Events;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ByteAI.Core.Services.Interviews;
 
-public sealed class InterviewService(AppDbContext db) : IInterviewService
+public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILogger<InterviewService> logger) : IInterviewService
 {
     public async Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? difficulty, List<string>? techStacks, string sort, CancellationToken ct, Guid? requesterId = null)
     {
@@ -22,6 +25,7 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
             .Where(i => i.IsActive)
             .Include(i => i.Author)
             .Include(i => i.Comments)
+            .Include(i => i.Bookmarks)
             .Include(i => i.Questions.OrderBy(q => q.OrderIndex))
                 .ThenInclude(q => q.Likes)
             .Include(i => i.Questions.OrderBy(q => q.OrderIndex))
@@ -62,6 +66,7 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
             .Where(i => i.IsActive)
             .Include(i => i.Author)
             .Include(i => i.Comments)
+            .Include(i => i.Bookmarks)
             .Include(i => i.Questions.OrderBy(q => q.OrderIndex))
                 .ThenInclude(q => q.Likes)
             .Include(i => i.Questions.OrderBy(q => q.OrderIndex))
@@ -96,6 +101,7 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
         }
 
         await db.SaveChangesAsync(ct);
+        await XpAwarder.AwardAsync(db, authorId, "post_interview", logger, ct);
         return entity;
     }
 
@@ -140,6 +146,7 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
         }
 
         await db.SaveChangesAsync(ct);
+        await XpAwarder.AwardAsync(db, authorId, "post_interview", logger, ct);
 
         return await db.Interviews
             .Include(i => i.Questions)
@@ -286,6 +293,14 @@ public sealed class InterviewService(AppDbContext db) : IInterviewService
 
         db.InterviewBookmarks.Add(new InterviewBookmark { InterviewId = interviewId, UserId = userId, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync(ct);
+
+        var interviewAuthorId = await db.Interviews
+            .Where(i => i.Id == interviewId)
+            .Select(i => i.AuthorId)
+            .FirstOrDefaultAsync(CancellationToken.None);
+
+        await publisher.Publish(new ContentBookmarkedEvent(userId, interviewAuthorId, BookmarkedContentType.Interview), CancellationToken.None);
+
         return true;
     }
 

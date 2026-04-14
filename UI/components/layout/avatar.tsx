@@ -30,7 +30,9 @@ export function Avatar({
 
   const base = `${sizeClasses[size]} rounded-full border-[1.5px] border-[var(--border-h)] flex-shrink-0 transition-all hover:scale-105 ${onClick ? 'cursor-pointer' : ''}`
 
-  if (imageUrl) {
+  const isEmoji = imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')
+
+  if (imageUrl && !isEmoji) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -40,6 +42,17 @@ export function Avatar({
         onClick={onClick}
         className={`${base} object-cover hover:ring-2 hover:ring-[var(--accent)]`}
       />
+    )
+  }
+
+  if (isEmoji) {
+    return (
+      <div
+        onClick={onClick}
+        className={`${base} ${variantClasses[variant]} flex items-center justify-center hover:shadow-[0_0_16px_rgba(34,211,238,0.2)]`}
+      >
+        <span className="text-lg leading-none select-none">{imageUrl}</span>
+      </div>
     )
   }
 

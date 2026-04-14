@@ -7,6 +7,7 @@ import { X, BadgeCheck, UserCheck, UserPlus, ArrowUpRight, Briefcase } from 'luc
 import { Avatar } from '@/components/layout/avatar'
 import { getProfileById, followUser, unfollowUser } from '@/lib/api/client'
 import { getMeCache } from '@/lib/user-cache'
+import { useUser } from '@clerk/nextjs'
 import { toast } from 'sonner'
 import type { UserResponse } from '@/lib/api/client'
 
@@ -34,6 +35,7 @@ export function UserMiniProfile({
   onClose,
 }: UserMiniProfileProps) {
   const router = useRouter()
+  const { user: clerkUser } = useUser()
   const [profile, setProfile] = useState<UserResponse | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
@@ -73,7 +75,10 @@ export function UserMiniProfile({
 
   const resolvedUsername = profile?.username || (isOwnProfile ? meCache?.username : null) || username
   const resolvedName = profile?.displayName || (isOwnProfile ? meCache?.displayName : null) || displayName
-  const resolvedAvatar = profile?.avatarUrl || (isOwnProfile ? meCache?.avatarUrl : null) || avatarUrl
+  const resolvedAvatar = profile?.avatarUrl
+    || (isOwnProfile ? (meCache?.avatarUrl || clerkUser?.imageUrl) : null)
+    || avatarUrl
+    || (isOwnProfile ? clerkUser?.imageUrl : null)
   const resolvedRole = profile?.roleTitle || (isOwnProfile ? meCache?.roleTitle : null) || role || ''
   const resolvedCompany = profile?.company || (isOwnProfile ? meCache?.company : null) || company || ''
   const resolvedBytes = profile?.bytesCount ?? (isOwnProfile ? meCache?.bytesCount : undefined) ?? '—'

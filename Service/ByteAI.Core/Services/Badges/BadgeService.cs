@@ -1,4 +1,5 @@
 using ByteAI.Core.Entities;
+using ByteAI.Core.Events;
 using ByteAI.Core.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -82,6 +83,14 @@ public sealed class BadgeService(AppDbContext db, ILogger<BadgeService> logger) 
 
         user.Streak = newStreak;
         await db.SaveChangesAsync(ct);
+
+        // ── Streak milestone XP ───────────────────────────────────────────────
+        // Award once when the streak first hits 7 or 30 (XpAwarder guards via UserXpLog)
+        if (newStreak == 7)
+            await XpAwarder.AwardAsync(db, userId, "streak_milestone_7", logger, ct);
+        if (newStreak == 30)
+            await XpAwarder.AwardAsync(db, userId, "streak_milestone_30", logger, ct);
+
         return newStreak;
     }
 

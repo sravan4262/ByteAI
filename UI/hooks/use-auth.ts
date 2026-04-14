@@ -28,9 +28,10 @@ export function useAuth() {
     clearMeCache()
     // Clear feed context so stale posts don't show on next login
     try { sessionStorage.removeItem('byteai_feed_context') } catch {}
-    // Do NOT delete byteai_onboarded — onboarding status is per-device and should
-    // survive sessions. Returning users are routed via /onboarding-check which
-    // re-validates against the backend and sets the cookie if needed.
+    // Clear onboarding cookie so a different account signing in on this device
+    // goes through /onboarding-check, which re-validates against the backend
+    // and sets the cookie if they've already completed onboarding.
+    document.cookie = 'byteai_onboarded=; path=/; max-age=0; SameSite=Lax'
     try {
       // Clear all active sessions (handles multi-session edge cases)
       const sessions = clerk.client?.activeSessions ?? []

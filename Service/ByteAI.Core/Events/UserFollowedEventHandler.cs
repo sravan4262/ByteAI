@@ -16,6 +16,9 @@ public sealed class UserFollowedEventHandler(
 {
     public async Task Handle(UserFollowedEvent notification, CancellationToken cancellationToken)
     {
+        // ── 1. Award XP to the user who was followed ──────────────────────────
+        await XpAwarder.AwardAsync(db, notification.FollowingId, "get_followed", logger, cancellationToken);
+
         try
         {
             // Respect notification preference

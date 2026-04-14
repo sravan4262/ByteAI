@@ -25,9 +25,10 @@ public sealed class GetBytesQueryHandler(AppDbContext db)
         var items = await query
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
-            .Select(b => new ByteResult(
+            .Join(db.Users, b => b.AuthorId, u => u.Id, (b, u) => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(), false, false,
+                u.Username, u.DisplayName ?? u.Username, u.AvatarUrl, u.RoleTitle, u.Company))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<ByteResult>(items, total, request.Pagination.Page, request.Pagination.PageSize);
@@ -47,9 +48,10 @@ public sealed class GetMyBytesQueryHandler(AppDbContext db)
         var items = await query
             .Skip(request.Pagination.Skip)
             .Take(request.Pagination.PageSize)
-            .Select(b => new ByteResult(
+            .Join(db.Users, b => b.AuthorId, u => u.Id, (b, u) => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count()))
+                b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(), false, false,
+                u.Username, u.DisplayName ?? u.Username, u.AvatarUrl, u.RoleTitle, u.Company))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<ByteResult>(items, total, request.Pagination.Page, request.Pagination.PageSize);

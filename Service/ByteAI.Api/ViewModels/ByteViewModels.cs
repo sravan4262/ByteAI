@@ -18,6 +18,11 @@ public sealed record UpdateByteRequest(
 public sealed record ByteResponse(
     Guid Id,
     Guid AuthorId,
+    string AuthorUsername,
+    string AuthorDisplayName,
+    string? AuthorAvatarUrl,
+    string? AuthorRole,
+    string? AuthorCompany,
     string Title,
     string Body,
     string? CodeSnippet,
@@ -26,5 +31,7 @@ public sealed record ByteResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     int CommentCount,
-    int LikeCount
+    int LikeCount,
+    bool IsLiked = false,
+    bool IsBookmarked = false
 );

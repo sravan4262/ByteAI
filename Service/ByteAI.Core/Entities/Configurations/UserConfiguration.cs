@@ -25,6 +25,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Domain).HasColumnName("domain");
         builder.Property(u => u.Seniority).HasColumnName("seniority");
         builder.Property(u => u.InterestEmbedding).HasColumnName("interest_embedding").HasColumnType("vector(768)");
+        builder.Property(u => u.IsOnboarded).HasColumnName("is_onboarded").HasDefaultValue(false);
         builder.Property(u => u.IsVerified).HasColumnName("is_verified").HasDefaultValue(false);
         builder.Property(u => u.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
         builder.Property(u => u.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");

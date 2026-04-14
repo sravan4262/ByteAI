@@ -14,20 +14,13 @@ public sealed class ByteReactedEventHandler(
     ILogger<ByteReactedEventHandler> logger)
     : INotificationHandler<ByteReactedEvent>
 {
-    private const int XpPerLike = 5;
-
     public async Task Handle(ByteReactedEvent notification, CancellationToken cancellationToken)
     {
         // ── 1. Award XP to the byte author ────────────────────────────────────
+        await XpAwarder.AwardAsync(db, notification.AuthorUserId, "receive_reaction", logger, cancellationToken);
+
         try
         {
-            var author = await db.Users.FindAsync([notification.AuthorUserId], cancellationToken);
-            if (author is not null)
-            {
-                author.Xp += XpPerLike;
-                await db.SaveChangesAsync(cancellationToken);
-                logger.LogDebug("Awarded {Xp} XP to user {UserId}", XpPerLike, author.Id);
-            }
 
             // ── 2. Create notification for author (if reactions enabled) ──────
             var prefs = await db.UserPreferences.FindAsync([notification.AuthorUserId], cancellationToken);

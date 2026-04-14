@@ -54,7 +54,7 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
     const fullName = [firstName, lastName].filter(Boolean).join(' ')
     const resolvedUsername = clerkUser?.username || cache?.username || ''
     const resolvedDisplayName = fullName || resolvedUsername || cache?.displayName || ''
-    const resolvedAvatar = clerkUser?.imageUrl || cache?.avatarUrl || null
+    const resolvedAvatar = cache?.avatarUrl || clerkUser?.imageUrl || null
     const initials = ((firstName[0] ?? '') + (lastName[0] ?? '')).toUpperCase()
       || resolvedUsername[0]?.toUpperCase() || 'U'
 

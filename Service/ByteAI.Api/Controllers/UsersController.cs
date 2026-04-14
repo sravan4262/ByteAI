@@ -3,6 +3,7 @@ using ByteAI.Api.Mappers;
 using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
+using ByteAI.Core.Services.Avatar;
 using ByteAI.Core.Services.Preferences;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,7 @@ namespace ByteAI.Api.Controllers;
 [Produces("application/json")]
 [Tags("Users")]
 [RequireRole("user")]
-public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferencesService prefsService) : ControllerBase
+public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferencesService prefsService, IAvatarService avatarService) : ControllerBase
 {
     /// <summary>Get a user's public profile by ID.</summary>
     [HttpGet("{userId:guid}")]
@@ -122,7 +123,7 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
         try
         {
             var result = await usersBusiness.UpdateMyProfileAsync(
-                clerkId, request.DisplayName, request.Bio, request.Company, request.RoleTitle, request.Seniority, request.Domain, request.TechStack, ct);
+                clerkId, request.Username, request.DisplayName, request.Bio, request.Company, request.RoleTitle, request.Seniority, request.Domain, request.TechStack, request.CustomAvatarUrl, ct);
             return Ok(ApiResponse<UserResponse>.Success(result.ToResponse()));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -205,5 +206,38 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
             prefs.Theme, prefs.Visibility,
             prefs.NotifReactions, prefs.NotifComments,
             prefs.NotifFollowers, prefs.NotifUnfollows)));
+    }
+
+    /// <summary>Upload a profile photo — resized to 256×256 WebP and stored in Supabase Storage.</summary>
+    [HttpPost("me/avatar")]
+    [Authorize]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(ApiResponse<AvatarUploadResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<ApiResponse<AvatarUploadResponse>>> UploadMyAvatar(
+        IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new { message = "No file provided." });
+
+        if (file.Length > 10 * 1024 * 1024)
+            return BadRequest(new { message = "File too large. Maximum 10 MB." });
+
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "File must be an image." });
+
+        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var me = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
+        if (me is null) return NotFound(new { message = "User not found" });
+
+        await using var stream = file.OpenReadStream();
+        var avatarUrl = await avatarService.UploadAsync(me.Id, stream, file.ContentType, ct);
+
+        // Persist the URL to the users table
+        await usersBusiness.UpdateMyProfileAsync(
+            clerkId, null, null, null, null, null, null, null, null, avatarUrl, ct);
+
+        return Ok(ApiResponse<AvatarUploadResponse>.Success(new AvatarUploadResponse(avatarUrl)));
     }
 }

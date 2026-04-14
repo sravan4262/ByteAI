@@ -1,11 +1,13 @@
 using ByteAI.Core.Entities;
+using ByteAI.Core.Events;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ByteAI.Core.Services.Users;
 
-public sealed class UserService(AppDbContext db) : IUserService
+public sealed class UserService(AppDbContext db, ILogger<UserService> logger) : IUserService
 {
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct) =>
         db.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.RoleType).FirstOrDefaultAsync(u => u.Id == userId, ct);
@@ -64,6 +66,7 @@ public sealed class UserService(AppDbContext db) : IUserService
 
     public async Task<User> UpdateMyProfileAsync(
         Guid userId,
+        string? username,
         string? displayName,
         string? bio,
         string? company,
@@ -71,17 +74,28 @@ public sealed class UserService(AppDbContext db) : IUserService
         string? seniority,
         string? domain,
         List<string>? techStack,
+        string? customAvatarUrl,
         CancellationToken ct)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)
             ?? throw new InvalidOperationException($"User {userId} not found");
+
+        // Username — validate uniqueness before applying
+        if (!string.IsNullOrWhiteSpace(username) && username != user.Username)
+        {
+            var taken = await db.Users.AnyAsync(u => u.Username == username && u.Id != userId, CancellationToken.None);
+            if (taken) throw new InvalidOperationException($"Username '{username}' is already taken.");
+            user.Username = username;
+        }
 
         if (!string.IsNullOrWhiteSpace(displayName)) user.DisplayName = displayName;
         user.Bio = bio;
         user.Company = company;
         user.RoleTitle = roleTitle;
         if (!string.IsNullOrWhiteSpace(seniority)) user.Seniority = seniority;
+        user.IsOnboarded = true;
         if (!string.IsNullOrWhiteSpace(domain)) user.Domain = domain;
+        if (customAvatarUrl is not null) user.AvatarUrl = string.IsNullOrWhiteSpace(customAvatarUrl) ? null : customAvatarUrl;
         user.UpdatedAt = DateTime.UtcNow;
 
         if (techStack is not null)
@@ -107,6 +121,14 @@ public sealed class UserService(AppDbContext db) : IUserService
         }
 
         await db.SaveChangesAsync(ct);
+
+        // ── profile_complete XP (one-time, guarded by UserXpLog) ─────────────
+        var hasBio       = !string.IsNullOrWhiteSpace(user.Bio);
+        var hasTechStack = await db.UserTechStacks.AnyAsync(t => t.UserId == userId, CancellationToken.None);
+        var hasSocial    = await db.Socials.AnyAsync(s => s.UserId == userId, CancellationToken.None);
+        if (hasBio && hasTechStack && hasSocial)
+            await XpAwarder.AwardAsync(db, userId, "profile_complete", logger, ct);
+
         return user;
     }
 
@@ -155,6 +177,10 @@ public sealed class UserService(AppDbContext db) : IUserService
         if (avatarUrl is not null) existing.AvatarUrl = avatarUrl;
         existing.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+
+        // ── daily_login XP (once per calendar day, guarded by UserXpLog) ─────
+        await XpAwarder.AwardAsync(db, existing.Id, "daily_login", logger, ct);
+
         return (existing, false);
     }
 
@@ -189,6 +215,12 @@ public sealed class UserService(AppDbContext db) : IUserService
             }));
 
         await db.SaveChangesAsync(ct);
+
+        // ── github_linked XP (one-time, guarded by UserXpLog) ────────────────
+        var hasGithub = socials.Any(s => s.Platform.Equals("github", StringComparison.OrdinalIgnoreCase)
+                                      && !string.IsNullOrWhiteSpace(s.Url));
+        if (hasGithub)
+            await XpAwarder.AwardAsync(db, userId, "github_linked", logger, ct);
     }
 
     public Task<bool> IsFollowingAsync(Guid followerId, Guid targetUserId, CancellationToken ct) =>

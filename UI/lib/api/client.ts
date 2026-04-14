@@ -33,6 +33,8 @@ interface ByteResponse {
   updatedAt: string
   commentCount: number
   likeCount: number
+  isLiked?: boolean
+  isBookmarked?: boolean
 }
 
 export interface BadgeResponse {
@@ -57,6 +59,7 @@ export interface UserResponse {
   level: number
   xp: number
   streak: number
+  isOnboarded: boolean
   isVerified: boolean
   role: string
   createdAt: string
@@ -66,6 +69,7 @@ export interface UserResponse {
   followersCount?: number
   followingCount?: number
   isFollowedByMe?: boolean
+  techStack?: string[]
 }
 
 export interface SeniorityTypeResponse {
@@ -143,8 +147,8 @@ function byteToPost(b: ByteResponse): Post {
     comments: b.commentCount ?? 0,
     likes: b.likeCount ?? 0,
     createdAt: new Date(b.createdAt).toLocaleDateString(),
-    isLiked: false,
-    isBookmarked: false,
+    isLiked: b.isLiked ?? false,
+    isBookmarked: b.isBookmarked ?? false,
     views: 0,
     type: b.type === 'interview' ? 'interview' : 'byte',
   }
@@ -229,6 +233,11 @@ export interface InterviewQuestion {
 export interface InterviewWithQuestions {
   id: string
   authorId: string
+  authorUsername?: string
+  authorDisplayName?: string
+  authorAvatarUrl?: string
+  authorRole?: string
+  authorCompany?: string
   title: string
   company?: string
   role?: string
@@ -237,6 +246,7 @@ export interface InterviewWithQuestions {
   createdAt: string
   commentCount: number
   questions: InterviewQuestion[]
+  isBookmarked?: boolean
 }
 
 interface InterviewPagedResponse {
@@ -246,10 +256,15 @@ interface InterviewPagedResponse {
   pageSize: number
 }
 
-export async function getInterview(id: string): Promise<InterviewWithQuestions | null> {
+export async function getInterview(id: string, token?: string | null): Promise<InterviewWithQuestions | null> {
   try {
-    const res = await apiFetch<ApiResponse<InterviewWithQuestions>>(`/api/interviews/${id}`)
-    return res.data
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5239'
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const res = await fetch(`${BASE_URL}/api/interviews/${id}`, { headers })
+    if (!res.ok) throw new Error(`${res.status}`)
+    const data: ApiResponse<InterviewWithQuestions> = await res.json()
+    return data.data
   } catch {
     return null
   }
@@ -369,10 +384,15 @@ export async function getFeed(params: {
   }
 }
 
-export async function getPost(id: string): Promise<Post | null> {
+export async function getPost(id: string, token?: string | null): Promise<Post | null> {
   try {
-    const res = await apiFetch<ApiResponse<ByteResponse>>(`/api/bytes/${id}`)
-    return byteToPost(res.data)
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5239'
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    const res = await fetch(`${BASE_URL}/api/bytes/${id}`, { headers })
+    if (!res.ok) throw new Error(`${res.status}`)
+    const data: ApiResponse<ByteResponse> = await res.json()
+    return byteToPost(data.data)
   } catch {
     const all = [...mockPosts, ...mockInterviewPosts, ...mockTrendingPosts]
     return all.find((p) => p.id === id) ?? null
@@ -452,8 +472,8 @@ export async function updateMySocials(socials: SocialLinkResponse[]): Promise<{ 
 
 export async function getFollowers(userId: string): Promise<PersonResult[]> {
   try {
-    const res = await apiFetch<ApiResponse<PersonResult[]>>(`/api/users/${encodeURIComponent(userId)}/followers`)
-    return res.data
+    const res = await apiFetch<ApiResponse<PagedResponse<PersonResult>>>(`/api/users/${encodeURIComponent(userId)}/followers`)
+    return res.data.items ?? []
   } catch {
     return []
   }
@@ -461,11 +481,22 @@ export async function getFollowers(userId: string): Promise<PersonResult[]> {
 
 export async function getFollowing(userId: string): Promise<PersonResult[]> {
   try {
-    const res = await apiFetch<ApiResponse<PersonResult[]>>(`/api/users/${encodeURIComponent(userId)}/following`)
-    return res.data
+    const res = await apiFetch<ApiResponse<PagedResponse<PersonResult>>>(`/api/users/${encodeURIComponent(userId)}/following`)
+    return res.data.items ?? []
   } catch {
     return []
   }
+}
+
+export async function uploadAvatar(file: File): Promise<string> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await apiFetch<ApiResponse<{ avatarUrl: string }>>('/api/users/me/avatar', {
+    method: 'POST',
+    body: form,
+    // Don't set Content-Type — browser sets it with the correct boundary for multipart
+  })
+  return res.data.avatarUrl
 }
 
 export async function followUser(userId: string): Promise<void> {
@@ -530,17 +561,19 @@ export async function getPostComments(
 ): Promise<{ comments: import('./__mocks__/api').Comment[] }> {
   try {
     const res = await apiFetch<ApiResponse<PagedResponse<{
-      id: string; byteId: string; authorId: string; parentId?: string;
+      id: string; byteId: string; parentId?: string;
       body: string; voteCount: number; createdAt: string
+      author: { id: string; username: string; displayName: string; initials: string; avatarUrl?: string | null }
     }>>>(`/api/bytes/${postId}/comments`)
     const comments: import('./__mocks__/api').Comment[] = res.data.items.map((c) => ({
       id: c.id,
       postId,
       author: {
-        id: c.authorId,
-        username: 'user',
-        displayName: 'User',
-        initials: 'U',
+        id: c.author.id,
+        username: c.author.username,
+        displayName: c.author.displayName,
+        initials: c.author.initials,
+        avatarUrl: c.author.avatarUrl ?? null,
         role: '',
         company: '',
         bio: '',
@@ -871,8 +904,46 @@ export async function getReachEstimate(_content: string, _tags: string[]): Promi
   return { reach: Math.floor(Math.random() * 5000) + 500 }
 }
 
-export async function saveDraft(data: Record<string, unknown>): Promise<void> {
-  console.log('[API] saveDraft — no backend endpoint yet', data)
+export interface DraftResponse {
+  id: string
+  authorId: string
+  title?: string
+  body?: string
+  codeSnippet?: string
+  language?: string
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+}
+
+export async function saveDraft(data: {
+  draftId?: string
+  title?: string
+  content?: string
+  code?: { language: string; content: string }
+  tags?: string[]
+}): Promise<DraftResponse> {
+  const res = await apiFetch<{ data: DraftResponse }>('/api/me/drafts', {
+    method: 'POST',
+    body: JSON.stringify({
+      draftId: data.draftId ?? null,
+      title: data.title ?? null,
+      body: data.content ?? null,
+      codeSnippet: data.code?.content ?? null,
+      language: data.code?.language ?? null,
+      tags: data.tags ?? [],
+    }),
+  })
+  return res.data
+}
+
+export async function deleteDraft(draftId: string): Promise<void> {
+  await apiFetch(`/api/me/drafts/${draftId}`, { method: 'DELETE' })
+}
+
+export async function getMyDrafts(): Promise<DraftResponse[]> {
+  const res = await apiFetch<{ data: { items: DraftResponse[] } }>('/api/me/drafts')
+  return res.data.items ?? []
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

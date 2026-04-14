@@ -8,7 +8,7 @@ public interface IByteService
 {
     Task UpdateEmbeddingAsync(Guid byteId, float[] embedding, CancellationToken ct = default);
     Task<PagedResult<ByteResult>> GetBytesAsync(PaginationParams pagination, Guid? authorId, string sort, CancellationToken ct, Guid? requesterId = null);
-    Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct);
+    Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct, Guid? requesterId = null);
     Task<ByteResult> CreateByteAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false);
     Task<Byte> UpdateByteAsync(Guid byteId, Guid authorId, string? title, string? body, string? codeSnippet, string? language, CancellationToken ct);
     Task<bool> DeleteByteAsync(Guid byteId, Guid authorId, CancellationToken ct);

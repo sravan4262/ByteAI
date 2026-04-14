@@ -7,8 +7,8 @@ namespace ByteAI.Core.Business.Interfaces;
 public interface IInterviewsBusiness
 {
     // Reads
-    Task<PagedResult<Interview>> GetInterviewsAsync(int page, int pageSize, Guid? authorId, string? company, string? difficulty, List<string>? techStacks, string sort, CancellationToken ct);
-    Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct);
+    Task<PagedResult<Interview>> GetInterviewsAsync(int page, int pageSize, Guid? authorId, string? company, string? difficulty, List<string>? techStacks, string sort, CancellationToken ct, string? clerkId = null);
+    Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? clerkId = null);
 
     // Writes
     Task<Interview> CreateInterviewAsync(string clerkId, string title, string body, string? codeSnippet, string? language, string? company, string? role, string difficulty, string type, CancellationToken ct);

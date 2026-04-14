@@ -7,6 +7,8 @@ import { Briefcase, Bell, Bookmark, Share2, Plus, ChevronsUpDown, ChevronsDownUp
 import { useNotifications } from '@/components/layout/notification-context'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
+import { getMeCache } from '@/lib/user-cache'
+import { useUser } from '@clerk/nextjs'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
 import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
 import * as api from '@/lib/api'
@@ -74,7 +76,7 @@ function QuestionCard({
 
 function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQuestions; avatarVariant: typeof AVATAR_VARIANTS[number] }) {
   const router = useRouter()
-  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [isBookmarked, setIsBookmarked] = useState(interview.isBookmarked ?? false)
   // Controlled expansion: set of expanded question IDs
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const allExpanded = interview.questions.length > 0 && expandedIds.size === interview.questions.length
@@ -113,13 +115,14 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
       {/* Header — matches PostCard exactly */}
       <div className="flex items-start gap-3 md:gap-4">
         <Avatar
-          initials={interview.authorId.slice(0, 1).toUpperCase()}
+          initials={(interview.authorDisplayName || interview.authorUsername || interview.authorId).slice(0, 1).toUpperCase()}
+          imageUrl={interview.authorAvatarUrl}
           size="md"
           variant={avatarVariant}
         />
         <div className="flex-1 min-w-0">
           <div className="font-mono text-xs md:text-sm font-bold text-[var(--t1)] flex items-center gap-2">
-            @{interview.authorId.slice(0, 8)}
+            @{interview.authorUsername || interview.authorId.slice(0, 8)}
           </div>
           <div className="font-mono text-xs md:text-[13px] text-[var(--t2)] mt-0.5 tracking-[0.04em]">
             {interview.role ?? ''}
@@ -233,6 +236,11 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
 
 export function InterviewsScreen() {
   const { openNotifications } = useNotifications()
+  const { user: clerkUser } = useUser()
+  const cache = getMeCache()
+  const avatarSrc = cache?.avatarUrl || clerkUser?.imageUrl || null
+  const isEmoji = avatarSrc && !avatarSrc.startsWith('http')
+  const initials = ((clerkUser?.firstName?.[0] ?? '') + (clerkUser?.lastName?.[0] ?? '')).toUpperCase() || cache?.username?.[0]?.toUpperCase() || '?'
   const [companyFilter, setCompanyFilter] = useState<string | null>(null)
   const [techFilters, setTechFilters] = useState<string[]>([])
   const [difficultyFilter, setDifficultyFilter] = useState<string | null>(null)
@@ -273,7 +281,12 @@ export function InterviewsScreen() {
             <span className="absolute top-[3px] right-[3px] w-[7px] h-[7px] bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)]" />
           </button>
           <Link href="/profile">
-            <Avatar initials="AX" size="xs" />
+            {isEmoji
+              ? <div className="w-8 h-8 rounded-full bg-[var(--bg-el)] border border-[var(--border-h)] flex items-center justify-center text-lg">{avatarSrc}</div>
+              : avatarSrc
+                ? <img src={avatarSrc} referrerPolicy="no-referrer" alt="profile" className="w-8 h-8 rounded-full object-cover ring-1 ring-[var(--border-h)] hover:ring-[var(--accent)] transition-all" />
+                : <Avatar initials={initials} size="xs" />
+            }
           </Link>
         </div>
       </header>

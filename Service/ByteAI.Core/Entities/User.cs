@@ -18,6 +18,7 @@ public sealed class User
     public string? Domain { get; set; }
     public string? Seniority { get; set; }
     public Vector? InterestEmbedding { get; set; }
+    public bool IsOnboarded { get; set; } = false;
     public bool IsVerified { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

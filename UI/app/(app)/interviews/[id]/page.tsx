@@ -1,3 +1,4 @@
+import { auth } from '@clerk/nextjs/server'
 import { getInterview } from '@/lib/api'
 import { InterviewDetailScreen } from '@/components/features/interviews/interview-detail-screen'
 
@@ -7,7 +8,9 @@ interface InterviewPageProps {
 
 export default async function InterviewDetailPage({ params }: InterviewPageProps) {
   const { id } = await params
-  const interview = await getInterview(id)
+  const { getToken } = await auth()
+  const token = await getToken()
+  const interview = await getInterview(id, token)
 
   if (!interview) {
     return (

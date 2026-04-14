@@ -26,7 +26,8 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
         [FromQuery] string sort = "recent",
         CancellationToken ct = default)
     {
-        var result = await bytesBusiness.GetBytesAsync(page, pageSize, authorId, sort, ct);
+        var clerkId = HttpContext.GetClerkUserId();
+        var result = await bytesBusiness.GetBytesAsync(page, pageSize, authorId, sort, ct, clerkId);
         var response = new PagedResponse<ByteResponse>(result.Items.Select(b => b.ToResponse()).ToList(), result.Total, result.Page, result.PageSize);
         return Ok(ApiResponse<PagedResponse<ByteResponse>>.Success(response));
     }
@@ -37,7 +38,8 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ByteResponse>>> GetByteById(Guid byteId, CancellationToken ct)
     {
-        var result = await bytesBusiness.GetByteByIdAsync(byteId, ct);
+        var clerkId = HttpContext.GetClerkUserId();
+        var result = await bytesBusiness.GetByteByIdAsync(byteId, ct, clerkId);
         if (result is null) return NotFound(new { message = $"Byte {byteId} not found" });
         return Ok(ApiResponse<ByteResponse>.Success(result.ToResponse()));
     }

@@ -12,6 +12,8 @@ public sealed class CurrentUserService(AppDbContext db) : ICurrentUserService
                 .ThenInclude(ub => ub.BadgeTypeNav)
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.RoleType)
+            .Include(u => u.UserTechStacks)
+                .ThenInclude(uts => uts.TechStack)
             .FirstOrDefaultAsync(u => u.ClerkId == clerkId, CancellationToken.None);
 
     public async Task<Guid?> GetCurrentUserIdAsync(string clerkId, CancellationToken ct = default)

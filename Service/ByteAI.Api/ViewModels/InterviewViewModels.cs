@@ -70,5 +70,11 @@ public sealed record InterviewWithQuestionsResponse(
     string Type,
     DateTime CreatedAt,
     int CommentCount,
-    List<InterviewQuestionResponse> Questions
+    List<InterviewQuestionResponse> Questions,
+    string AuthorUsername = "",
+    string AuthorDisplayName = "",
+    string? AuthorAvatarUrl = null,
+    string? AuthorRole = null,
+    string? AuthorCompany = null,
+    bool IsBookmarked = false
 );

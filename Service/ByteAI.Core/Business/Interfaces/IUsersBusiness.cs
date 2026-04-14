@@ -21,6 +21,7 @@ public interface IUsersBusiness
     /// <summary>Update the current authenticated user's profile fields.</summary>
     Task<User> UpdateMyProfileAsync(
         string clerkId,
+        string? username,
         string? displayName,
         string? bio,
         string? company,
@@ -28,6 +29,7 @@ public interface IUsersBusiness
         string? seniority,
         string? domain,
         List<string>? techStack,
+        string? customAvatarUrl,
         CancellationToken ct);
 
     Task<List<Social>> GetMySocialsAsync(string clerkId, CancellationToken ct);

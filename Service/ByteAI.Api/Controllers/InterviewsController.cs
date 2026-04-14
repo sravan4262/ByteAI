@@ -4,6 +4,7 @@ using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Commands.Interviews;
 using ByteAI.Core.Entities;
+using ByteAI.Core.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +15,7 @@ namespace ByteAI.Api.Controllers;
 [Produces("application/json")]
 [Tags("Interviews")]
 [RequireRole("user")]
-public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness) : ControllerBase
+public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness, ICurrentUserService currentUserService) : ControllerBase
 {
     // ── Mappers ──────────────────────────────────────────────────────────────
 
@@ -30,7 +31,13 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness)
     static InterviewWithQuestionsResponse ToFullResponse(Interview i, Guid? userId = null) => new(
         i.Id, i.AuthorId, i.Title, i.Company, i.Role, i.Difficulty, i.Type, i.CreatedAt,
         i.Comments.Count,
-        i.Questions.OrderBy(q => q.OrderIndex).Select(q => ToQuestionResponse(q, userId)).ToList());
+        i.Questions.OrderBy(q => q.OrderIndex).Select(q => ToQuestionResponse(q, userId)).ToList(),
+        i.Author?.Username ?? "",
+        i.Author?.DisplayName ?? i.Author?.Username ?? "",
+        i.Author?.AvatarUrl,
+        i.Author?.RoleTitle,
+        i.Author?.Company,
+        userId.HasValue && i.Bookmarks.Any(b => b.UserId == userId.Value));
 
     // ── Reads ─────────────────────────────────────────────────────────────────
 
@@ -50,11 +57,13 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness)
         [FromQuery] string sort = "recent",
         CancellationToken ct = default)
     {
+        var clerkId = HttpContext.GetClerkUserId();
+        var userId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
         var techStacks = string.IsNullOrEmpty(stack) ? null : stack.Split(',').Select(s => s.Trim()).ToList();
-        var result = await interviewsBusiness.GetInterviewsAsync(page, pageSize, authorId, company, difficulty, techStacks, sort, ct);
+        var result = await interviewsBusiness.GetInterviewsAsync(page, pageSize, authorId, company, difficulty, techStacks, sort, ct, clerkId);
 
         var response = new PagedResponse<InterviewWithQuestionsResponse>(
-            result.Items.Select(i => ToFullResponse(i)).ToList(),
+            result.Items.Select(i => ToFullResponse(i, userId)).ToList(),
             result.Total, result.Page, result.PageSize);
         return Ok(ApiResponse<PagedResponse<InterviewWithQuestionsResponse>>.Success(response));
     }
@@ -65,9 +74,11 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness)
     [ProducesResponseType(404)]
     public async Task<ActionResult<ApiResponse<InterviewWithQuestionsResponse>>> GetById(Guid id, CancellationToken ct)
     {
-        var result = await interviewsBusiness.GetInterviewByIdAsync(id, ct);
+        var clerkId = HttpContext.GetClerkUserId();
+        var userId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
+        var result = await interviewsBusiness.GetInterviewByIdAsync(id, ct, clerkId);
         if (result is null) return NotFound();
-        return Ok(ApiResponse<InterviewWithQuestionsResponse>.Success(ToFullResponse(result)));
+        return Ok(ApiResponse<InterviewWithQuestionsResponse>.Success(ToFullResponse(result, userId)));
     }
 
     // ── Writes ────────────────────────────────────────────────────────────────

@@ -13,13 +13,19 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
 
     public async Task<PagedResult<Interview>> GetInterviewsAsync(
         int page, int pageSize, Guid? authorId, string? company, string? difficulty,
-        List<string>? techStacks, string sort, CancellationToken ct) =>
-        await interviewService.GetInterviewsAsync(
+        List<string>? techStacks, string sort, CancellationToken ct, string? clerkId = null)
+    {
+        var requesterId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
+        return await interviewService.GetInterviewsAsync(
             new PaginationParams(page, Math.Min(pageSize, 50)),
-            authorId, company, difficulty, techStacks, sort, ct);
+            authorId, company, difficulty, techStacks, sort, ct, requesterId);
+    }
 
-    public async Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct) =>
-        await interviewService.GetInterviewByIdAsync(id, ct);
+    public async Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? clerkId = null)
+    {
+        // requesterId not currently used in service query but stored for future use
+        return await interviewService.GetInterviewByIdAsync(id, ct);
+    }
 
     // ── Writes ───────────────────────────────────────────────────────────────
 

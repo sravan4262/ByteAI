@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users.users (
     domain_id           uuid        REFERENCES lookups.domains(id) ON DELETE SET NULL,
     level_type_id       uuid        REFERENCES lookups.level_types(id) ON DELETE SET NULL,
     interest_embedding  vector(768),
+    is_onboarded        boolean     NOT NULL DEFAULT false,
     is_verified         boolean     NOT NULL DEFAULT false,
     created_at          timestamptz NOT NULL DEFAULT now(),
     updated_at          timestamptz NOT NULL DEFAULT now()

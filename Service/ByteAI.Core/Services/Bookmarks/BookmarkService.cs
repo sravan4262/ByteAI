@@ -24,8 +24,13 @@ public sealed class BookmarkService(AppDbContext db, IPublisher publisher) : IBo
         db.UserBookmarks.Add(new UserBookmark { ByteId = byteId, UserId = userId, CreatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync(ct);
 
-        // Update user's interest embedding toward this byte's content (fire-and-forget)
-        _ = publisher.Publish(new UserEngagedWithByteEvent(userId, byteId), ct);
+        var byteAuthorId = await db.Bytes
+            .Where(b => b.Id == byteId)
+            .Select(b => b.AuthorId)
+            .FirstOrDefaultAsync(CancellationToken.None);
+
+        await publisher.Publish(new ContentBookmarkedEvent(userId, byteAuthorId, BookmarkedContentType.Byte), CancellationToken.None);
+        await publisher.Publish(new UserEngagedWithByteEvent(userId, byteId), ct);
 
         return true;
     }
@@ -35,7 +40,8 @@ public sealed class BookmarkService(AppDbContext db, IPublisher publisher) : IBo
         var query = db.UserBookmarks
             .Where(b => b.UserId == userId)
             .OrderByDescending(b => b.CreatedAt)
-            .Include(b => b.Byte);
+            .Include(b => b.Byte)
+                .ThenInclude(b => b.Author);
 
         var total = await query.CountAsync(CancellationToken.None);
         var items = await query
