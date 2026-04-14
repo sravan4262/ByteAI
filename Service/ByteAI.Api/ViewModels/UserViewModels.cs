@@ -33,6 +33,7 @@ public sealed record UserResponse(
     int Xp,
     int Streak,
     bool IsVerified,
+    string Role,
     DateTime CreatedAt,
     DateTime UpdatedAt,
     IReadOnlyList<BadgeResponse> Badges,

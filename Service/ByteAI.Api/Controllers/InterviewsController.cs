@@ -13,6 +13,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [Tags("Interviews")]
+[RequireRole("user")]
 public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness) : ControllerBase
 {
     // ── Mappers ──────────────────────────────────────────────────────────────

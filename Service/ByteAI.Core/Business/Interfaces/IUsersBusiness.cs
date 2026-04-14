@@ -13,7 +13,7 @@ public interface IUsersBusiness
     Task<User> UpdateProfileAsync(string clerkId, Guid userId, string? displayName, string? bio, CancellationToken ct);
 
     /// <summary>Sync a Clerk user.created or user.updated event into the users table.</summary>
-    Task<User> SyncClerkUserAsync(string clerkId, string displayName, string? avatarUrl, CancellationToken ct);
+    Task<User> SyncClerkUserAsync(string clerkId, string displayName, string? avatarUrl, string? email, CancellationToken ct);
 
     /// <summary>Remove a user triggered by a Clerk user.deleted event. Returns false if not found.</summary>
     Task<bool> DeleteClerkUserAsync(string clerkId, CancellationToken ct);

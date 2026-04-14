@@ -12,6 +12,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/bytes/{byteId:guid}/reactions")]
 [Produces("application/json")]
 [Tags("Reactions")]
+[RequireRole("user")]
 public sealed class ReactionsController(IReactionsBusiness reactionsBusiness) : ControllerBase
 {
     /// <summary>Get aggregated reaction counts for a byte.</summary>

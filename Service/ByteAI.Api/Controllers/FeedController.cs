@@ -11,6 +11,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/feed")]
 [Produces("application/json")]
 [Tags("Feed")]
+[RequireRole("user")]
 public sealed class FeedController(IFeedBusiness feedBusiness) : ControllerBase
 {
     /// <summary>

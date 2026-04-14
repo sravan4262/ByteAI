@@ -41,9 +41,9 @@ public sealed class UsersBusiness(
         return await userService.UpdateProfileAsync(userId, displayName, bio, ct);
     }
 
-    public async Task<User> SyncClerkUserAsync(string clerkId, string displayName, string? avatarUrl, CancellationToken ct)
+    public async Task<User> SyncClerkUserAsync(string clerkId, string displayName, string? avatarUrl, string? email, CancellationToken ct)
     {
-        var (user, wasCreated) = await userService.UpsertByClerkAsync(clerkId, displayName, avatarUrl, ct);
+        var (user, wasCreated) = await userService.UpsertByClerkAsync(clerkId, displayName, avatarUrl, email, ct);
         if (wasCreated)
             await badgeService.CheckAndAwardAsync(user.Id, BadgeTrigger.UserRegistered, ct);
         return user;

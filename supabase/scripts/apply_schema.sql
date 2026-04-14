@@ -112,6 +112,29 @@ CREATE TABLE lookups.notification_types (
 );
 COMMENT ON TABLE lookups.notification_types IS 'Lookup: valid notification types';
 
+CREATE TABLE lookups.role_types (
+    id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        text        NOT NULL UNIQUE,
+    label       text        NOT NULL,
+    description text
+);
+CREATE UNIQUE INDEX uq_role_types_name ON lookups.role_types (name);
+COMMENT ON TABLE  lookups.role_types      IS 'Definitions for system roles users can be granted.';
+COMMENT ON COLUMN lookups.role_types.name IS 'Machine-readable identifier (e.g., ''admin'').';
+
+CREATE TABLE lookups.feature_flag_types (
+    id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    key         text        NOT NULL UNIQUE CHECK (char_length(key) BETWEEN 1 AND 100),
+    name        text        NOT NULL CHECK (char_length(name) BETWEEN 1 AND 200),
+    description text        CHECK (char_length(description) <= 500),
+    global_open boolean     NOT NULL DEFAULT false,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    updated_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX uq_feature_flag_types_key ON lookups.feature_flag_types (key);
+COMMENT ON TABLE  lookups.feature_flag_types             IS 'Runtime feature definitions';
+COMMENT ON COLUMN lookups.feature_flag_types.key         IS 'Unique machine-readable key used in code: useFeatureFlag(''key'')';
+COMMENT ON COLUMN lookups.feature_flag_types.global_open IS 'When true, the feature is active for all users. When false it requires user_feature_flags.';
 
 -- ============================================================
 -- USERS
@@ -144,6 +167,24 @@ CREATE UNIQUE INDEX uq_users_username  ON users.users (username);
 CREATE INDEX        ix_users_domain    ON users.users (domain) WHERE domain IS NOT NULL;
 COMMENT ON TABLE  users.users                    IS 'Platform users — synced from Clerk via webhook';
 COMMENT ON COLUMN users.users.interest_embedding IS '768-dim embedding of user interests for personalised feed ranking';
+
+CREATE TABLE users.user_roles (
+    user_id       uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
+    role_type_id  uuid        NOT NULL REFERENCES lookups.role_types(id) ON DELETE CASCADE,
+    assigned_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, role_type_id)
+);
+CREATE INDEX ix_user_roles_role_type_id ON users.user_roles(role_type_id);
+COMMENT ON TABLE users.user_roles IS 'Junction table assigning permissions/roles directly to users.';
+
+CREATE TABLE users.user_feature_flags (
+    user_id              uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
+    feature_flag_type_id uuid        NOT NULL REFERENCES lookups.feature_flag_types(id) ON DELETE CASCADE,
+    granted_at           timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, feature_flag_type_id)
+);
+CREATE INDEX ix_user_feature_flags_feature_flag_type_id ON users.user_feature_flags(feature_flag_type_id);
+COMMENT ON TABLE users.user_feature_flags IS 'Junction assigning feature flags to specific users individually';
 
 CREATE TABLE users.userfollowers (
     user_id     uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
@@ -559,6 +600,13 @@ INSERT INTO lookups.notification_types (key, label, icon_name) VALUES
   ('badge',    'Badge Earned',  'award'),
   ('system',   'System Notice', 'bell')
 ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO lookups.role_types (name, label, description) VALUES
+  ('user', 'Standard User', 'Default platform access assigned upon user registration.'),
+  ('admin', 'Administrator', 'Has complete system access including the admin dashboard and feature flags panel.')
+ON CONFLICT (name) DO UPDATE SET
+label = EXCLUDED.label,
+description = EXCLUDED.description;
 
 INSERT INTO lookups.companies (name) VALUES
   ('Google'), ('Meta'), ('Apple'), ('Amazon'), ('Microsoft'), ('Netflix'),

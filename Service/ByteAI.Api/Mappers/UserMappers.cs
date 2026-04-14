@@ -26,6 +26,9 @@ public static class UserMappers
             Xp: entity.Xp,
             Streak: entity.Streak,
             IsVerified: entity.IsVerified,
+            Role: entity.UserRoles != null && entity.UserRoles.Any()
+                ? (entity.UserRoles.Any(ur => ur.RoleType != null && ur.RoleType.Name == "admin") ? "admin" : "user")
+                : "user",
             CreatedAt: entity.CreatedAt,
             UpdatedAt: entity.UpdatedAt,
             Badges: entity.UserBadges

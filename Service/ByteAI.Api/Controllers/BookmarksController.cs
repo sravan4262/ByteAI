@@ -12,6 +12,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/bytes/{byteId:guid}/bookmarks")]
 [Produces("application/json")]
 [Tags("Bookmarks")]
+[RequireRole("user")]
 public sealed class BookmarksController(IBookmarksBusiness bookmarksBusiness) : ControllerBase
 {
     /// <summary>Toggle bookmark on a byte. Returns isSaved=true if now bookmarked, false if removed.</summary>

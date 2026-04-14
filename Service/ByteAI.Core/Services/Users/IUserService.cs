@@ -26,7 +26,7 @@ public interface IUserService
         CancellationToken ct);
 
     /// <summary>Insert or update a user record from a Clerk webhook payload. Returns the user and whether it was newly created.</summary>
-    Task<(User user, bool wasCreated)> UpsertByClerkAsync(string clerkId, string displayName, string? avatarUrl, CancellationToken ct);
+    Task<(User user, bool wasCreated)> UpsertByClerkAsync(string clerkId, string displayName, string? avatarUrl, string? email, CancellationToken ct);
 
     /// <summary>Hard-delete a user by Clerk ID. Returns false if no matching record was found.</summary>
     Task<bool> DeleteByClerkIdAsync(string clerkId, CancellationToken ct);

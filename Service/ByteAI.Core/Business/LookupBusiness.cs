@@ -18,6 +18,9 @@ public sealed class LookupBusiness(ILookupService lookupService) : ILookupBusine
     public async Task<List<TechStack>> GetTechStacksAsync(Guid? subdomainId, CancellationToken ct) =>
         await lookupService.GetTechStacksAsync(subdomainId, ct);
 
+    public async Task<List<TechStack>> GetTechStacksByDomainAsync(Guid domainId, CancellationToken ct) =>
+        await lookupService.GetTechStacksByDomainAsync(domainId, ct);
+
     public async Task<List<BadgeType>> GetBadgeTypesAsync(CancellationToken ct) =>
         await lookupService.GetBadgeTypesAsync(ct);
 

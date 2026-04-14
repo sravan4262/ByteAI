@@ -9,6 +9,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [Tags("Trending")]
+[RequireRole("user")]
 public sealed class TrendingController(ITrendingBusiness trendingBusiness) : ControllerBase
 {
     /// <summary>Record a click on a byte or interview (for trending calculation).</summary>

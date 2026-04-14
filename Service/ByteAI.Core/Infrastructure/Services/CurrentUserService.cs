@@ -10,6 +10,8 @@ public sealed class CurrentUserService(AppDbContext db) : ICurrentUserService
         await db.Users.AsNoTracking()
             .Include(u => u.UserBadges)
                 .ThenInclude(ub => ub.BadgeTypeNav)
+            .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.RoleType)
             .FirstOrDefaultAsync(u => u.ClerkId == clerkId, CancellationToken.None);
 
     public async Task<Guid?> GetCurrentUserIdAsync(string clerkId, CancellationToken ct = default)

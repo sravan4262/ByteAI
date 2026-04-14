@@ -43,10 +43,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<LevelType> LevelTypes => Set<LevelType>();
     public DbSet<SearchType> SearchTypes => Set<SearchType>();
     public DbSet<NotificationType> NotificationTypes => Set<NotificationType>();
+    public DbSet<RoleType> RoleTypes => Set<RoleType>();
 
     // Junction tables — users schema
     public DbSet<UserTechStack> UserTechStacks => Set<UserTechStack>();
     public DbSet<UserFeedPreference> UserFeedPreferences => Set<UserFeedPreference>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     // User meta
     public DbSet<Notification> Notifications => Set<Notification>();
@@ -58,6 +60,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     // Observability / engagement
     public DbSet<TrendingEvent> TrendingEvents => Set<TrendingEvent>();
     public DbSet<AppLog> AppLogs => Set<AppLog>();
+
+    public DbSet<FeatureFlagType> FeatureFlagTypes => Set<FeatureFlagType>();
+    
+    // Feature flags junction — users schema
+    public DbSet<UserFeatureFlag> UserFeatureFlags => Set<UserFeatureFlag>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

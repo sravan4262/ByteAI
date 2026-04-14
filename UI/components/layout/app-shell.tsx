@@ -2,11 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Briefcase, Search, SquarePen, Bell } from 'lucide-react'
+import { Home, Briefcase, Search, SquarePen, Bell, Settings } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { NotificationPanel } from '@/components/features/notifications/notification-panel'
 import { NotificationContext } from '@/components/layout/notification-context'
+import { useIsAdmin } from '@/hooks/use-is-admin'
 import { useEffect, useState, useMemo } from 'react'
 import { getUnreadNotificationCount } from '@/lib/api/client'
 import type { ReactNode } from 'react'
@@ -15,6 +16,7 @@ const pathToActiveTab = (pathname: string) => {
   if (pathname.startsWith('/interviews')) return 'interviews'
   if (pathname.startsWith('/search')) return 'search'
   if (pathname.startsWith('/compose')) return 'post'
+  if (pathname.startsWith('/admin')) return 'admin'
   return 'feed'
 }
 
@@ -30,6 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const active = pathToActiveTab(pathname)
   const [notifOpen, setNotifOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const { isAdmin, isLoaded } = useIsAdmin()
 
   // Poll unread count every 60 seconds
   useEffect(() => {
@@ -101,6 +104,23 @@ export function AppShell({ children }: { children: ReactNode }) {
             ALERTS
           </span>
         </button>
+
+        {/* Admin Button */}
+        {isLoaded && isAdmin && (
+          <Link
+            href="/admin"
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg w-full transition-all ${
+              active === 'admin'
+                ? 'bg-[rgba(59,130,246,0.15)] text-[var(--accent)]'
+                : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.05)]'
+            }`}
+          >
+            <Settings size={20} className="flex-shrink-0" />
+            <span className="font-mono text-xs font-bold tracking-[0.07em] hidden lg:inline whitespace-nowrap">
+              ADMIN
+            </span>
+          </Link>
+        )}
       </nav>
 
       {/* Main Content Area */}

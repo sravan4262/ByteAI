@@ -8,10 +8,10 @@ namespace ByteAI.Core.Services.Users;
 public sealed class UserService(AppDbContext db) : IUserService
 {
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct) =>
-        db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        db.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.RoleType).FirstOrDefaultAsync(u => u.Id == userId, ct);
 
     public Task<User?> GetByUsernameAsync(string username, CancellationToken ct) =>
-        db.Users.FirstOrDefaultAsync(u => u.Username == username, ct);
+        db.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.RoleType).FirstOrDefaultAsync(u => u.Username == username, ct);
 
     public async Task<PagedResult<User>> GetFollowersAsync(Guid userId, PaginationParams pagination, CancellationToken ct)
     {
@@ -110,7 +110,7 @@ public sealed class UserService(AppDbContext db) : IUserService
         return user;
     }
 
-    public async Task<(User user, bool wasCreated)> UpsertByClerkAsync(string clerkId, string displayName, string? avatarUrl, CancellationToken ct)
+    public async Task<(User user, bool wasCreated)> UpsertByClerkAsync(string clerkId, string displayName, string? avatarUrl, string? email, CancellationToken ct)
     {
         var existing = await db.Users.FirstOrDefaultAsync(u => u.ClerkId == clerkId, ct);
 
@@ -124,8 +124,30 @@ public sealed class UserService(AppDbContext db) : IUserService
                 DisplayName = displayName,
                 AvatarUrl = avatarUrl,
             };
+
             db.Users.Add(user);
             await db.SaveChangesAsync(ct);
+
+            // Assign default "user" role
+            var userRoleType = await db.RoleTypes.FirstOrDefaultAsync(r => r.Name == "user", ct);
+            if (userRoleType != null)
+            {
+                db.UserRoles.Add(new UserRole { UserId = user.Id, RoleTypeId = userRoleType.Id });
+                await db.SaveChangesAsync(ct);
+            }
+
+            // Check if this email should be assigned admin role
+            var adminEmail = "sravan4262@gmail.com";
+            if (!string.IsNullOrEmpty(email) && email.Equals(adminEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                var adminRoleType = await db.RoleTypes.FirstOrDefaultAsync(r => r.Name == "admin", ct);
+                if (adminRoleType != null && !await db.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleTypeId == adminRoleType.Id, ct))
+                {
+                    db.UserRoles.Add(new UserRole { UserId = user.Id, RoleTypeId = adminRoleType.Id });
+                    await db.SaveChangesAsync(ct);
+                }
+            }
+
             return (user, true);
         }
 

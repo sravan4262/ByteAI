@@ -62,20 +62,36 @@ public sealed class WebhooksController(
         {
             case "user.created":
             case "user.updated":
-                var (clerkId, displayName, avatarUrl) = ParseUserData(evt.Data);
-                if (string.IsNullOrEmpty(clerkId)) return BadRequest();
-                await usersBusiness.SyncClerkUserAsync(clerkId, displayName, avatarUrl, ct);
-                logger.LogInformation("Clerk {EventType} — synced user {ClerkId}", evt.Type, clerkId);
+                try
+                {
+                    var (clerkId, displayName, avatarUrl, email) = ParseUserData(evt.Data);
+                    if (string.IsNullOrEmpty(clerkId)) return BadRequest();
+                    await usersBusiness.SyncClerkUserAsync(clerkId, displayName, avatarUrl, email, ct);
+                    logger.LogInformation("Clerk {EventType} — synced user {ClerkId}", evt.Type, clerkId);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Clerk webhook {EventType} — failed to sync user", evt.Type);
+                    throw;
+                }
                 break;
 
             case "user.deleted":
-                var deletedClerkId = evt.Data.TryGetProperty("id", out var idProp)
-                    ? idProp.GetString()
-                    : null;
-                if (string.IsNullOrEmpty(deletedClerkId)) return BadRequest();
-                var deleted = await usersBusiness.DeleteClerkUserAsync(deletedClerkId, ct);
-                logger.LogInformation("Clerk user.deleted — {Result} for {ClerkId}",
-                    deleted ? "removed user" : "user not found", deletedClerkId);
+                try
+                {
+                    var deletedClerkId = evt.Data.TryGetProperty("id", out var idProp)
+                        ? idProp.GetString()
+                        : null;
+                    if (string.IsNullOrEmpty(deletedClerkId)) return BadRequest();
+                    var deleted = await usersBusiness.DeleteClerkUserAsync(deletedClerkId, ct);
+                    logger.LogInformation("Clerk user.deleted — {Result} for {ClerkId}",
+                        deleted ? "removed user" : "user not found", deletedClerkId);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Clerk webhook user.deleted — failed to delete user");
+                    throw;
+                }
                 break;
 
             default:
@@ -86,26 +102,32 @@ public sealed class WebhooksController(
         return Ok();
     }
 
-    private static (string clerkId, string displayName, string? avatarUrl) ParseUserData(JsonElement data)
+    private static (string clerkId, string displayName, string? avatarUrl, string? email) ParseUserData(JsonElement data)
     {
-        var clerkId = data.TryGetProperty("id", out var id) ? id.GetString() ?? string.Empty : string.Empty;
-
-        var firstName = data.TryGetProperty("first_name", out var fn) ? fn.GetString() : null;
-        var lastName = data.TryGetProperty("last_name", out var ln) ? ln.GetString() : null;
-        var avatarUrl = data.TryGetProperty("image_url", out var img) ? img.GetString() : null;
-
-        var displayName = string.Join(" ", new[] { firstName, lastName }
-            .Where(s => !string.IsNullOrEmpty(s))).Trim();
-
-        if (string.IsNullOrEmpty(displayName))
+        try
         {
+            var clerkId = data.TryGetProperty("id", out var id) ? id.GetString() ?? string.Empty : string.Empty;
+
+            var firstName = data.TryGetProperty("first_name", out var fn) ? fn.GetString() : null;
+            var lastName = data.TryGetProperty("last_name", out var ln) ? ln.GetString() : null;
+            var avatarUrl = data.TryGetProperty("image_url", out var img) ? img.GetString() : null;
+
             var email = data.TryGetProperty("email_addresses", out var emails) && emails.GetArrayLength() > 0
                 ? emails[0].GetProperty("email_address").GetString()
                 : null;
-            displayName = email?.Split('@')[0] ?? clerkId;
-        }
 
-        return (clerkId, displayName, avatarUrl);
+            var displayName = string.Join(" ", new[] { firstName, lastName }
+                .Where(s => !string.IsNullOrEmpty(s))).Trim();
+
+            if (string.IsNullOrEmpty(displayName))
+                displayName = email?.Split('@')[0] ?? clerkId;
+
+            return (clerkId, displayName, avatarUrl, email);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Failed to parse Clerk user data: {ex.Message}", ex);
+        }
     }
 
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };

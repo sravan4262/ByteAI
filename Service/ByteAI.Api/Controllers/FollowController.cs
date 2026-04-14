@@ -10,6 +10,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/users/{userId:guid}/follow")]
 [Produces("application/json")]
 [Tags("Follow")]
+[RequireRole("user")]
 public sealed class FollowController(IFollowBusiness followBusiness) : ControllerBase
 {
     /// <summary>Follow a user.</summary>

@@ -12,6 +12,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/bytes/{byteId:guid}/comments")]
 [Produces("application/json")]
 [Tags("Comments")]
+[RequireRole("user")]
 public sealed class CommentsController(ICommentsBusiness commentsBusiness) : ControllerBase
 {
     /// <summary>List comments on a byte.</summary>

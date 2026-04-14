@@ -10,7 +10,7 @@ namespace ByteAI.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[RequireRole("user")]
 [Produces("application/json")]
 [Tags("Notifications")]
 public sealed class NotificationsController(INotificationsBusiness notificationsBusiness) : ControllerBase

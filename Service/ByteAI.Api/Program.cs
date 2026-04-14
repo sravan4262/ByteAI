@@ -89,6 +89,7 @@ try
     builder.Services.AddScoped<IUserService, UserService>();
     builder.Services.AddScoped<IBadgeService, BadgeService>();
     builder.Services.AddScoped<IUserPreferencesService, UserPreferencesService>();
+    builder.Services.AddScoped<ByteAI.Core.Services.FeatureFlags.IFeatureFlagService, ByteAI.Core.Services.FeatureFlags.FeatureFlagService>();
 
     // ── Business layer ────────────────────────────────────────────────────────
     builder.Services.AddScoped<IBytesBusiness, BytesBusiness>();
@@ -103,6 +104,7 @@ try
     builder.Services.AddScoped<INotificationsBusiness, NotificationsBusiness>();
     builder.Services.AddScoped<IReactionsBusiness, ReactionsBusiness>();
     builder.Services.AddScoped<ITrendingBusiness, TrendingBusiness>();
+    builder.Services.AddScoped<IAdminBusiness, AdminBusiness>();
 
     // ── Redis (optional) ─────────────────────────────────────────────────────
     // RedisFeedCache is always registered so MediatR handlers can inject it as nullable.

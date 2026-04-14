@@ -11,6 +11,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [Tags("Search")]
+[RequireRole("user")]
 public sealed class SearchController(ISearchBusiness searchBusiness) : ControllerBase
 {
     /// <summary>

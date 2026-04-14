@@ -55,11 +55,15 @@ psql "$DB" -f supabase/tables/lookups/subdomains.sql           # depends on look
 psql "$DB" -f supabase/tables/lookups/tech_stacks.sql          # depends on lookups.subdomains
 psql "$DB" -f supabase/tables/lookups/companies.sql
 psql "$DB" -f supabase/tables/lookups/notification_types.sql
+psql "$DB" -f supabase/tables/lookups/role_types.sql
+psql "$DB" -f supabase/tables/lookups/feature_flag_types.sql
 
 # ── users (depends on lookups) ────────────────────────────────────────────────
 echo ""
 echo "--- users ---"
 psql "$DB" -f supabase/tables/users/users.sql                  # depends on lookups.*
+psql "$DB" -f supabase/tables/users/user_roles.sql             # depends on role_types
+psql "$DB" -f supabase/tables/users/user_feature_flags.sql     # depends on feature_flag_types
 psql "$DB" -f supabase/tables/users/userfollowers.sql
 psql "$DB" -f supabase/tables/users/userfollowing.sql
 psql "$DB" -f supabase/tables/users/usersocials.sql
@@ -108,6 +112,7 @@ psql "$DB" -f supabase/seeds/lookups/badge_types_seed.sql
 psql "$DB" -f supabase/seeds/lookups/search_types_seed.sql
 psql "$DB" -f supabase/seeds/lookups/notification_types_seed.sql
 psql "$DB" -f supabase/seeds/lookups/companies_seed.sql
+psql "$DB" -f supabase/seeds/lookups/role_types_seed.sql
 
 echo ""
 echo "✓ Schema + lookup seeds applied."

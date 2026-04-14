@@ -13,6 +13,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [Tags("Bytes")]
+[RequireRole("user")]
 public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBase
 {
     /// <summary>List bytes with optional filtering and pagination.</summary>

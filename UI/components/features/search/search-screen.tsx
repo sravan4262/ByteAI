@@ -6,6 +6,7 @@ import { Search, Bot, X } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
 import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
+import { useFeatureFlag } from '@/hooks/use-feature-flags'
 import * as api from '@/lib/api'
 import type { Post, PersonResult, SearchAskSource } from '@/lib/api'
 
@@ -25,6 +26,7 @@ export function SearchScreen() {
   const [peopleResults, setPeopleResults] = useState<PersonResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const hasAiSearchAsk = useFeatureFlag('ai-search-ask')
 
   // RAG / ASK mode
   const [askMode, setAskMode] = useState(false)
@@ -93,12 +95,15 @@ export function SearchScreen() {
   }
 
   const toggleAskMode = () => {
+    if (!hasAiSearchAsk) {
+      // Silently prevent enabling ask mode if feature not available
+      return
+    }
     setAskMode((v) => !v)
     resetResults()
   }
 
   const isRagMode = !selectedType || askMode
-  const totalResults = selectedType === 'people' && !askMode ? peopleResults.length : contentResults.length
 
   return (
     <PhoneFrame>
@@ -156,7 +161,7 @@ export function SearchScreen() {
             ))}
 
             {/* ASK AI toggle — only for bytes/interviews, not people */}
-            {selectedType && selectedType !== 'people' && (
+            {selectedType && selectedType !== 'people' && hasAiSearchAsk && (
               <button
                 onClick={toggleAskMode}
                 className={`ml-auto flex items-center gap-1 font-mono text-[9px] px-3 py-2 rounded-full transition-all border ${

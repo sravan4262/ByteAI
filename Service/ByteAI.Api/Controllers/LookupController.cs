@@ -52,11 +52,21 @@ public sealed class LookupController(ILookupBusiness lookupBusiness) : Controlle
     [ProducesResponseType(typeof(ApiResponse<List<TechStackResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<TechStackResponse>>>> GetTechStacks(
         [FromQuery] Guid? subdomainId = null,
+        [FromQuery] Guid? domainId = null,
         CancellationToken ct = default)
     {
-        var items = await lookupBusiness.GetTechStacksAsync(subdomainId, ct);
+        // If domainId is provided, get tech stacks from all subdomains of that domain
+        if (domainId.HasValue && !subdomainId.HasValue)
+        {
+            var items = await lookupBusiness.GetTechStacksByDomainAsync(domainId.Value, ct);
+            return Ok(ApiResponse<List<TechStackResponse>>.Success(
+                items.Select(t => new TechStackResponse(t.Id, t.SubdomainId, t.Name, t.Label, t.SortOrder)).ToList()));
+        }
+
+        // If subdomainId is provided, get tech stacks from that subdomain
+        var techStacks = await lookupBusiness.GetTechStacksAsync(subdomainId, ct);
         return Ok(ApiResponse<List<TechStackResponse>>.Success(
-            items.Select(t => new TechStackResponse(t.Id, t.SubdomainId, t.Name, t.Label, t.SortOrder)).ToList()));
+            techStacks.Select(t => new TechStackResponse(t.Id, t.SubdomainId, t.Name, t.Label, t.SortOrder)).ToList()));
     }
 
     /// <summary>All badge type definitions.</summary>

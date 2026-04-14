@@ -28,6 +28,24 @@ public sealed class LookupService(AppDbContext db) : ILookupService
         return query.OrderBy(t => t.SortOrder).ToListAsync(CancellationToken.None);
     }
 
+    public async Task<List<TechStack>> GetTechStacksByDomainAsync(Guid domainId, CancellationToken ct)
+    {
+        // Get all subdomains for the domain, then get all tech stacks for those subdomains
+        var subdomainIds = await db.SubDomains
+            .AsNoTracking()
+            .Where(s => s.DomainId == domainId)
+            .Select(s => s.Id)
+            .ToListAsync(CancellationToken.None);
+
+        var techStacks = await db.TechStacks
+            .AsNoTracking()
+            .Where(t => subdomainIds.Contains(t.SubdomainId))
+            .OrderBy(t => t.SortOrder)
+            .ToListAsync(CancellationToken.None);
+
+        return techStacks;
+    }
+
     public Task<List<BadgeType>> GetBadgeTypesAsync(CancellationToken ct) =>
         db.BadgeTypes.AsNoTracking().OrderBy(b => b.Name).ToListAsync(CancellationToken.None);
 

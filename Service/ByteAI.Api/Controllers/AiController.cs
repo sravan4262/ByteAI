@@ -12,7 +12,7 @@ namespace ByteAI.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[RequireRole("user")]
 [Produces("application/json")]
 [Tags("AI")]
 public sealed class AiController(
@@ -26,8 +26,10 @@ public sealed class AiController(
     /// Returns an empty list if the Groq API key is not configured.
     /// </summary>
     [HttpPost("suggest-tags")]
+    [RequireFeatureFlag("ai-suggest-tags")]
     [ProducesResponseType(typeof(ApiResponse<SuggestTagsResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ApiResponse<SuggestTagsResponse>>> SuggestTags(
         [FromBody] SuggestTagsRequest request,
         CancellationToken ct)
@@ -42,8 +44,10 @@ public sealed class AiController(
     /// Optionally pass a <c>context</c> string (e.g. the byte body) for RAG-style answers.
     /// </summary>
     [HttpPost("ask")]
+    [RequireFeatureFlag("ai-ask")]
     [ProducesResponseType(typeof(ApiResponse<AskResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ApiResponse<AskResponse>>> Ask(
         [FromBody] AskRequest request,
         CancellationToken ct)
@@ -57,9 +61,11 @@ public sealed class AiController(
     /// The byte body becomes the sole RAG context passage.
     /// </summary>
     [HttpPost("~/api/bytes/{byteId:guid}/ask")]
+    [RequireFeatureFlag("ai-ask")]
     [ProducesResponseType(typeof(ApiResponse<ByteAskResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ApiResponse<ByteAskResponse>>> AskAboutByte(
         Guid byteId,
         [FromBody] ByteAskRequest request,
@@ -81,8 +87,10 @@ public sealed class AiController(
     /// Returns the synthesised answer plus the source items used.
     /// </summary>
     [HttpPost("search-ask")]
+    [RequireFeatureFlag("ai-search-ask")]
     [ProducesResponseType(typeof(ApiResponse<SearchAskResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ApiResponse<SearchAskResponse>>> SearchAsk(
         [FromBody] SearchAskRequest request,
         CancellationToken ct)
@@ -127,8 +135,10 @@ public sealed class AiController(
     /// Format code using Groq. Used for languages not supported by Prettier (C#, Go, Java, Python, etc.).
     /// </summary>
     [HttpPost("format-code")]
+    [RequireFeatureFlag("ai-format-code")]
     [ProducesResponseType(typeof(ApiResponse<FormatCodeResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ApiResponse<FormatCodeResponse>>> FormatCode(
         [FromBody] FormatCodeRequest request,
         CancellationToken ct)

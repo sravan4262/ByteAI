@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Code2, Wand2, ChevronDown, Search, X } from 'lucide-react'
 import { formatCode as formatCodeApi } from '@/lib/api/client'
+import { useFeatureFlag } from '@/hooks/use-feature-flags'
 
 export interface Language {
   id: string
@@ -134,6 +135,7 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
   const [showLangPicker, setShowLangPicker] = useState(!language)
   const [isFormatting, setIsFormatting] = useState(false)
   const [formatError, setFormatError] = useState<string | null>(null)
+  const hasAiFormatCode = useFeatureFlag('ai-format-code')
 
   const selected = LANGUAGES.find(l => l.id === language) ?? null
   const filtered = LANGUAGES.filter(l =>
@@ -171,6 +173,10 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
         formatted = await formatWithPrettier(value, selected)
       } else {
         // Groq for everything else (C#, Go, Java, Python, Rust, etc.)
+        if (!hasAiFormatCode) {
+          setFormatError('AI code formatting is not available — contact your admin')
+          return
+        }
         formatted = await formatCodeApi(value, selected.label)
       }
       onChange(formatted)
@@ -181,7 +187,7 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
     }
   }
 
-  const canFormat = selected != null && value.trim().length > 0
+  const canFormat = selected != null && value.trim().length > 0 && (selected.parser !== null || hasAiFormatCode)
 
   return (
     <div className="bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg overflow-hidden">
@@ -196,7 +202,12 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
           <button
             onClick={handleFormat}
             disabled={!canFormat || isFormatting}
-            title={!selected ? 'Select a language first' : selected.parser ? 'Format with Prettier' : 'Format with AI (Groq)'}
+            title={
+              !selected ? 'Select a language first'
+              : selected.parser ? 'Format with Prettier'
+              : !hasAiFormatCode ? 'AI formatting not available'
+              : 'Format with AI (Groq)'
+            }
             className={`flex items-center gap-1 font-mono text-[8px] px-2.5 py-1 rounded border transition-all ${
               canFormat
                 ? 'border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-d)]'

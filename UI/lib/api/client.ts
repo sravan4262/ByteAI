@@ -58,6 +58,7 @@ export interface UserResponse {
   xp: number
   streak: number
   isVerified: boolean
+  role: string
   createdAt: string
   badges: BadgeResponse[]
   // Extended stats (returned by some endpoints)
@@ -80,6 +81,14 @@ export interface DomainResponse {
   name: string
   label: string
   icon: string
+  sortOrder: number
+}
+
+export interface SubdomainResponse {
+  id: string
+  domainId: string
+  name: string
+  label: string
   sortOrder: number
 }
 
@@ -193,6 +202,15 @@ export async function getCurrentUser(): Promise<UserResponse | null> {
     return null
   }
 }
+
+// export async function syncCurrentUser(): Promise<UserResponse | null> {
+//   try {
+//     const res = await apiFetch<ApiResponse<UserResponse>>('/api/users/me/sync', { method: 'POST' })
+//     return res.data
+//   } catch {
+//     return null
+//   }
+// }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INTERVIEWS API — full Q&A format
@@ -657,10 +675,23 @@ export async function getDomains(): Promise<DomainResponse[]> {
   }
 }
 
-export async function getTechStacks(domainId?: string): Promise<TechStackResponse[]> {
+export async function getSubdomains(domainId?: string): Promise<SubdomainResponse[]> {
   try {
     const qs = domainId ? `?domainId=${domainId}` : ''
-    const res = await apiFetch<ApiResponse<TechStackResponse[]>>(`/api/lookup/tech-stacks${qs}`)
+    const res = await apiFetch<ApiResponse<SubdomainResponse[]>>(`/api/lookup/subdomains${qs}`)
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function getTechStacks(subdomainId?: string, domainId?: string): Promise<TechStackResponse[]> {
+  try {
+    const qs = new URLSearchParams()
+    if (subdomainId) qs.set('subdomainId', subdomainId)
+    if (domainId) qs.set('domainId', domainId)
+    const qsStr = qs.toString() ? `?${qs.toString()}` : ''
+    const res = await apiFetch<ApiResponse<TechStackResponse[]>>(`/api/lookup/tech-stacks${qsStr}`)
     return res.data
   } catch {
     return []
@@ -788,6 +819,26 @@ export async function searchPeople(query: string): Promise<PersonResult[]> {
     return res.data
   } catch {
     return []
+  }
+}
+
+export async function searchUsers(query: string, page: number = 1, pageSize: number = 20): Promise<{ items: UserResponse[], total: number }> {
+  try {
+    const qs = new URLSearchParams({
+      q: query,
+      type: 'people',
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+      limit: pageSize.toString()
+    })
+    const res = await apiFetch<ApiResponse<PersonResult[]>>(`/api/search?${qs}`)
+    const items = res.data || []
+    return {
+      items: items as unknown as UserResponse[],
+      total: items.length
+    }
+  } catch {
+    return { items: [], total: 0 }
   }
 }
 
