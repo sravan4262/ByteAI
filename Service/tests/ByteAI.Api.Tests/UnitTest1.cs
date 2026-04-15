@@ -1,10 +1,1 @@
-namespace ByteAI.Api.Tests;
-
-public class UnitTest1
-{
-    [Fact]
-    public void Test1()
-    {
-
-    }
-}
+// Placeholder removed — all tests are in Unit/ subdirectories.
