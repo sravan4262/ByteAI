@@ -35,8 +35,8 @@ resource "azurerm_container_app" "api" {
   template {
     revision_suffix = "blue" # initial revision; CD swaps between blue/green
 
-    min_replicas = 1
-    max_replicas = 3
+    min_replicas = 0
+    max_replicas = 1
 
     container {
       name   = "byteai-api"
@@ -109,8 +109,8 @@ resource "azurerm_container_app" "gateway" {
   template {
     revision_suffix = "blue"
 
-    min_replicas = 1
-    max_replicas = 3
+    min_replicas = 0
+    max_replicas = 1
 
     container {
       name   = "byteai-gateway"
