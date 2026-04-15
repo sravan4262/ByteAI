@@ -1,0 +1,20 @@
+# Build context must be Service/
+# Usage: docker build -f Service/Dockerfile.gateway -t byteai/gateway:latest ./Service
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+COPY ByteAI.Gateway/ByteAI.Gateway.csproj ByteAI.Gateway/
+RUN dotnet restore ByteAI.Gateway/ByteAI.Gateway.csproj
+
+COPY ByteAI.Gateway/ ByteAI.Gateway/
+RUN dotnet publish ByteAI.Gateway/ByteAI.Gateway.csproj -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:8090
+
+EXPOSE 8090
+ENTRYPOINT ["dotnet", "ByteAI.Gateway.dll"]

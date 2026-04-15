@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — build & test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.x"
+
+      - name: Restore
+        run: dotnet restore Service/ByteAI.sln
+
+      - name: Build
+        run: dotnet build Service/ByteAI.sln --no-restore --configuration Release
+
+      - name: Test
+        run: >
+          dotnet test Service/ByteAI.sln
+          --no-build --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory ./test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: ./test-results/*.trx
+
+  frontend:
+    name: Frontend — build & test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: UI/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: UI
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: UI
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_API_URL: http://localhost:8090
+        run: pnpm run build
+
+      - name: Test
+        working-directory: UI
+        run: pnpm test

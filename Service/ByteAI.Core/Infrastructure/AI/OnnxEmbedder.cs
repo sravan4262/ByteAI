@@ -68,6 +68,9 @@ public sealed class OnnxEmbedder : IDisposable
         }
     }
 
+    /// <summary>True when the ONNX model file was found and loaded. False = zero-vector mode.</summary>
+    public bool IsModelLoaded => _session is not null;
+
     /// <summary>Embed a document for storage (byte body, interview content, user interests).</summary>
     public float[] EmbedDocument(string text) => RunEmbed(DocumentPrefix + text);
 

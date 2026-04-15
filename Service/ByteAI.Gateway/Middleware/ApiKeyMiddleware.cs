@@ -1,0 +1,50 @@
+namespace ByteAI.Gateway.Middleware;
+
+/// <summary>
+/// Enforces authentication at the gateway edge before YARP forwards the request.
+///
+/// Allows:
+///   1. /health/* paths — always unauthenticated
+///   2. Authorization: Bearer &lt;token&gt; — Clerk JWT; the downstream API validates the token
+///   3. X-Api-Key: &lt;key&gt; — machine-to-machine; key must be in the ApiKeys config value
+///
+/// Rejects everything else with 401.
+/// </summary>
+public sealed class ApiKeyMiddleware(RequestDelegate next, IConfiguration config)
+{
+    private const string ApiKeyHeader = "X-Api-Key";
+
+    public async Task InvokeAsync(HttpContext ctx)
+    {
+        // Health endpoints are always accessible without auth
+        if (ctx.Request.Path.StartsWithSegments("/health"))
+        {
+            await next(ctx);
+            return;
+        }
+
+        // Clerk JWT passthrough — the downstream API validates the token itself
+        if (ctx.Request.Headers.Authorization.ToString()
+                .StartsWith("Bearer ", StringComparison.Ordinal))
+        {
+            await next(ctx);
+            return;
+        }
+
+        // API-key auth (machine-to-machine clients)
+        var incomingKey = ctx.Request.Headers[ApiKeyHeader].ToString();
+        var validKeys   = (config["ApiKeys"] ?? "")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (validKeys.Length > 0 && validKeys.Contains(incomingKey))
+        {
+            await next(ctx);
+            return;
+        }
+
+        ctx.Response.StatusCode  = StatusCodes.Status401Unauthorized;
+        ctx.Response.ContentType = "application/json";
+        await ctx.Response.WriteAsync(
+            """{"error":"Unauthorized. Provide Authorization: Bearer <token> or X-Api-Key: <key>."}""");
+    }
+}

@@ -97,3 +97,10 @@ Service/ByteAI.Api/models/
 *.xcuserstate
 xcuserdata/
 
+# Terraform — secrets and generated state files, never commit
+infra/terraform/terraform.tfvars
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/crash.log

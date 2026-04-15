@@ -1,0 +1,21 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars to source control — it contains secrets.
+# terraform.tfvars is listed in .gitignore.
+
+location = "eastus"
+prefix   = "byteai"
+
+# Docker images — updated automatically by GitHub Actions CD workflow
+api_image     = "ghcr.io/YOUR_ORG/byteai/api:latest"
+gateway_image = "ghcr.io/YOUR_ORG/byteai/gateway:latest"
+
+# Secrets
+database_url    = "postgresql://postgres.<project-ref>:<password>@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+clerk_authority = "https://clerk.YOUR_CLERK_DOMAIN.com"
+groq_api_key    = "gsk_..."
+api_keys        = "key1,key2"    # generate: openssl rand -hex 32
+redis_url       = ""             # leave empty to disable Redis
+
+# App config
+cors_allowed_origin = "https://yourdomain.com"
+custom_domain       = "yourdomain.com"   # leave empty ("") to skip custom domain setup

@@ -1,4 +1,5 @@
 using ByteAI.Api.Common.Auth;
+using ByteAI.Api.HealthChecks;
 using ByteAI.Core.Business;
 using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Infrastructure.AI;
@@ -26,10 +27,13 @@ using ByteAI.Core.Validators;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Pgvector.EntityFrameworkCore;
+using System.Text.Json;
 
 using Serilog;
 
@@ -121,6 +125,15 @@ try
     else
         builder.Services.AddDistributedMemoryCache(); // no-op fallback — keeps IDistributedCache resolvable
     builder.Services.AddScoped<RedisFeedCache>();
+
+    // ── Health checks ─────────────────────────────────────────────────────────
+    var pgConnStr = builder.Configuration.GetConnectionString("Postgres") ?? "";
+    var hcBuilder = builder.Services.AddHealthChecks()
+        .AddNpgsql(pgConnStr, name: "postgres", tags: ["ready"])
+        .AddCheck<OnnxModelHealthCheck>("onnx-model", tags: ["ready"]);
+
+    if (!string.IsNullOrEmpty(redisConn))
+        hcBuilder.AddRedis(redisConn, name: "redis", tags: ["ready"]);
 
     // ── CORS ─────────────────────────────────────────────────────────────────
     builder.Services.AddCors(opt =>
@@ -227,7 +240,23 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    app.MapGet("/health", () => Results.Ok(new { status = "healthy", ts = DateTime.UtcNow }));
+    // Liveness: process is alive — no dependency checks (fast, never fails)
+    app.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate      = _ => false,
+        ResponseWriter = HealthJson.Write,
+    });
+
+    // Readiness: all tagged deps must pass before traffic is sent (used by blue-green gate)
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate      = c => c.Tags.Contains("ready"),
+        ResponseWriter = HealthJson.Write,
+    });
+
+    // Legacy alias — keeps backwards compatibility
+    app.MapGet("/health", () => Results.Redirect("/health/ready"));
+
     app.MapControllers();
 
     app.Run();

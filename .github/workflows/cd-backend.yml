@@ -1,0 +1,199 @@
+name: CD — Backend (Blue-Green)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Service/**"
+      - ".github/workflows/cd-backend.yml"
+  workflow_dispatch:
+
+env:
+  IMAGE_API:     ghcr.io/${{ github.repository_owner }}/byteai-api
+  IMAGE_GATEWAY: ghcr.io/${{ github.repository_owner }}/byteai-gateway
+  RESOURCE_GROUP: byteai-rg
+  API_APP:        byteai-api
+  GATEWAY_APP:    byteai-gateway
+  ENV_NAME:       byteai-env
+
+permissions:
+  contents: read
+  packages: write    # push images to GHCR
+  id-token: write    # OIDC login to Azure
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Build & push Docker images to GHCR
+  # ─────────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build & push images
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Service
+          file:    ./Service/Dockerfile.api
+          push:    true
+          tags:    ${{ env.IMAGE_API }}:${{ github.sha }}
+
+      - name: Build & push Gateway image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Service
+          file:    ./Service/Dockerfile.gateway
+          push:    true
+          tags:    ${{ env.IMAGE_GATEWAY }}:${{ github.sha }}
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. Deploy to inactive slot, health check, swap
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy (blue-green)
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── Detect active slot ────────────────────────────────────────────────────
+      - name: Detect active slot
+        id: slot
+        run: |
+          ACTIVE_REV=$(az containerapp revision list \
+            -n "$API_APP" -g "$RESOURCE_GROUP" \
+            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv)
+
+          echo "Current active revision: $ACTIVE_REV"
+
+          if [[ "$ACTIVE_REV" == *"green"* ]]; then
+            ACTIVE="green"
+            INACTIVE="blue"
+          else
+            ACTIVE="blue"
+            INACTIVE="green"
+          fi
+
+          SUFFIX="${INACTIVE}-${GITHUB_RUN_NUMBER}"
+          echo "active=$ACTIVE"     >> $GITHUB_OUTPUT
+          echo "inactive=$INACTIVE" >> $GITHUB_OUTPUT
+          echo "suffix=$SUFFIX"     >> $GITHUB_OUTPUT
+          echo "Deploying to slot: $INACTIVE (suffix: $SUFFIX)"
+
+      # ── Deploy new revisions to inactive slot (0% traffic) ───────────────────
+      - name: Deploy API → inactive slot
+        run: |
+          az containerapp update \
+            -n "$API_APP" -g "$RESOURCE_GROUP" \
+            --image "$IMAGE_API:${{ github.sha }}" \
+            --revision-suffix "${{ steps.slot.outputs.suffix }}"
+
+      - name: Deploy Gateway → inactive slot
+        run: |
+          az containerapp update \
+            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+            --image "$IMAGE_GATEWAY:${{ github.sha }}" \
+            --revision-suffix "${{ steps.slot.outputs.suffix }}"
+
+      # ── Wait for API revision to reach Running state ──────────────────────────
+      - name: Health gate — API revision running state
+        run: |
+          API_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
+          echo "Waiting for revision $API_REV to reach Running state..."
+
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp revision show \
+              -n "$API_APP" -g "$RESOURCE_GROUP" \
+              --revision "$API_REV" \
+              --query "properties.runningState" -o tsv 2>/dev/null || echo "Unknown")
+
+            echo "Attempt $i/18: state = $STATE"
+
+            if [[ "$STATE" == "Running" ]]; then
+              echo "API revision is Running — proceeding"
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "ERROR: API revision did not reach Running state within 3 minutes"
+          exit 1
+
+      # ── HTTP health check via the inactive Gateway revision URL ───────────────
+      - name: Label inactive Gateway revision
+        run: |
+          GW_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
+          INACTIVE="${{ steps.slot.outputs.inactive }}"
+
+          # Assign label so it gets a stable URL: https://{app}---{label}.{env-domain}
+          az containerapp ingress traffic set \
+            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+            --label-revision "${INACTIVE}=${GW_REV}" \
+            --revision-weight "${GW_REV}=0"
+
+      - name: Health gate — HTTP check on inactive Gateway
+        run: |
+          INACTIVE="${{ steps.slot.outputs.inactive }}"
+          ENV_DOMAIN=$(az containerapp env show \
+            -n "$ENV_NAME" -g "$RESOURCE_GROUP" \
+            --query "properties.defaultDomain" -o tsv)
+
+          URL="https://${GATEWAY_APP}---${INACTIVE}.${ENV_DOMAIN}/health/ready"
+          echo "Health checking: $URL"
+
+          for i in $(seq 1 12); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+            echo "Attempt $i/12: HTTP $STATUS"
+
+            if [[ "$STATUS" == "200" ]]; then
+              echo "Health check passed — swapping traffic"
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "ERROR: Health check failed after 2 minutes — aborting deployment"
+          exit 1
+
+      # ── Swap: send 100% traffic to inactive (now promoted) slot ─────────────
+      - name: Swap API traffic
+        run: |
+          INACTIVE_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
+          ACTIVE_REV=$(az containerapp revision list \
+            -n "$API_APP" -g "$RESOURCE_GROUP" \
+            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv)
+
+          az containerapp ingress traffic set \
+            -n "$API_APP" -g "$RESOURCE_GROUP" \
+            --revision-weight "${INACTIVE_REV}=100" "${ACTIVE_REV}=0"
+
+          echo "API traffic swapped: $INACTIVE_REV is now live"
+
+      - name: Swap Gateway traffic
+        run: |
+          INACTIVE_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
+          ACTIVE_REV=$(az containerapp revision list \
+            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv)
+
+          az containerapp ingress traffic set \
+            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+            --revision-weight "${INACTIVE_REV}=100" "${ACTIVE_REV}=0"
+
+          echo "Gateway traffic swapped: $INACTIVE_REV is now live"
+          echo "Deploy complete — ${{ steps.slot.outputs.inactive }} slot is now production"

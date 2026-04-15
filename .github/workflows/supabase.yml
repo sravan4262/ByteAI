@@ -1,0 +1,63 @@
+name: Deploy — Supabase DB
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/tables/**"
+      - "supabase/migrations/**"
+      - "supabase/scripts/**"
+      - "supabase/seeds/lookups/**"
+      - ".github/workflows/supabase.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy-schema:
+    name: Apply schema & migrations
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Apply full schema (idempotent — safe to re-run) ───────────────────────
+      # This script is the source of truth for a blank database.
+      - name: Apply full schema
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          echo "Applying schema..."
+          psql "$SUPABASE_DB_URL" -f supabase/scripts/apply_schema.sql
+          echo "Schema applied"
+
+      # ── Apply pending migrations in sort order ─────────────────────────────────
+      # Migration files follow the naming convention: YYYYMMDDHHMMSS_description.sql
+      # Each migration must be idempotent (use IF NOT EXISTS, ON CONFLICT DO NOTHING).
+      - name: Apply migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          MIGRATION_DIR="supabase/migrations"
+
+          if [ -z "$(ls -A $MIGRATION_DIR/*.sql 2>/dev/null)" ]; then
+            echo "No migration files found — skipping"
+            exit 0
+          fi
+
+          for f in $(ls -1 "$MIGRATION_DIR"/*.sql | sort); do
+            echo "Applying migration: $f"
+            psql "$SUPABASE_DB_URL" -f "$f"
+          done
+
+          echo "All migrations applied"
+
+      # ── Apply lookup seeds (idempotent) ────────────────────────────────────────
+      # Lookup seeds use ON CONFLICT DO NOTHING so they are safe to re-run.
+      - name: Apply lookup seeds
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          for f in supabase/seeds/lookups/*.sql; do
+            echo "Seeding: $f"
+            psql "$SUPABASE_DB_URL" -f "$f"
+          done
+          echo "Lookup seeds applied"

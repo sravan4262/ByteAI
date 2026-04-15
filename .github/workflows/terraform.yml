@@ -1,0 +1,96 @@
+name: Terraform — Provision Infrastructure
+
+# Manual trigger only — infrastructure changes need explicit intent.
+# Never runs automatically on push to avoid unexpected resource creation/deletion.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action to run"
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+
+env:
+  TF_WORKING_DIR: infra/terraform
+  ARM_USE_OIDC:   true
+
+permissions:
+  contents: read
+  id-token: write    # OIDC login to Azure
+
+jobs:
+  terraform:
+    name: Terraform ${{ inputs.action }}
+    runs-on: ubuntu-latest
+    environment: production    # requires environment approval for apply
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.6"
+
+      # ── Init ────────────────────────────────────────────────────────────────
+      - name: Terraform init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
+        env:
+          ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── Plan ────────────────────────────────────────────────────────────────
+      - name: Terraform plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform plan -out=tfplan \
+            -var="database_url=${{ secrets.DATABASE_URL }}" \
+            -var="clerk_authority=${{ secrets.CLERK_AUTHORITY }}" \
+            -var="groq_api_key=${{ secrets.GROQ_API_KEY }}" \
+            -var="api_keys=${{ secrets.API_KEYS }}" \
+            -var="redis_url=${{ secrets.REDIS_URL }}" \
+            -var="cors_allowed_origin=${{ secrets.NEXT_PUBLIC_API_URL }}" \
+            -var="custom_domain=${{ vars.CUSTOM_DOMAIN }}" \
+            -var="api_image=ghcr.io/${{ github.repository_owner }}/byteai-api:latest" \
+            -var="gateway_image=ghcr.io/${{ github.repository_owner }}/byteai-gateway:latest"
+        env:
+          ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── Apply (only when action = apply) ────────────────────────────────────
+      - name: Terraform apply
+        if: inputs.action == 'apply'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply tfplan
+        env:
+          ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── Output SWA deploy token after first apply ────────────────────────────
+      - name: Show outputs
+        if: inputs.action == 'apply'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          echo "=== Terraform Outputs ==="
+          terraform output swa_default_hostname
+          terraform output gateway_fqdn
+          echo ""
+          echo "Store the SWA deploy token in GitHub Secrets as SWA_DEPLOY_TOKEN:"
+          terraform output -raw swa_api_key
+        env:
+          ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

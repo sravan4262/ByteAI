@@ -1,0 +1,37 @@
+# Build context must be Service/ (not Service/ByteAI.Api/) so that ByteAI.Core
+# project reference is available during restore and publish.
+# Usage: docker build -f Service/Dockerfile.api -t byteai/api:latest ./Service
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copy project files first — maximises layer cache on source-only changes
+COPY ByteAI.Core/ByteAI.Core.csproj ByteAI.Core/
+COPY ByteAI.Api/ByteAI.Api.csproj   ByteAI.Api/
+RUN dotnet restore ByteAI.Api/ByteAI.Api.csproj
+
+COPY ByteAI.Core/ ByteAI.Core/
+COPY ByteAI.Api/  ByteAI.Api/
+RUN dotnet publish ByteAI.Api/ByteAI.Api.csproj -c Release -o /app/publish --no-restore
+
+# ── Runtime stage ─────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Download ONNX model from HuggingFace, pinned to commit e9b6763.
+# This layer is cached and only re-executed when the SHA changes.
+RUN apt-get update && apt-get install -y --no-install-recommends wget \
+ && mkdir -p /app/models \
+ && wget -q "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5/resolve/e9b6763023c676ca8431644204f50c2b100d9aab/onnx/model_quantized.onnx" \
+         -O /app/models/nomic-embed-text-v1.5.onnx \
+ && wget -q "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5/resolve/e9b6763023c676ca8431644204f50c2b100d9aab/vocab.txt" \
+         -O /app/models/vocab.txt \
+ && apt-get purge -y wget && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV Ai__OnnxModelPath=/app/models/nomic-embed-text-v1.5.onnx
+ENV Ai__VocabPath=/app/models/vocab.txt
+
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "ByteAI.Api.dll"]
