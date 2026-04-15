@@ -1,5 +1,5 @@
 resource "azurerm_log_analytics_workspace" "byteai" {
-  name                = "${var.prefix}-logs"
+  name                = "${var.prefix}-logws"
   location            = azurerm_resource_group.byteai.location
   resource_group_name = azurerm_resource_group.byteai.name
   sku                 = "PerGB2018"
