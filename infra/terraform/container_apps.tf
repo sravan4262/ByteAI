@@ -20,14 +20,6 @@ resource "azurerm_container_app" "api" {
     value = var.groq_api_key
   }
 
-  dynamic "secret" {
-    for_each = var.redis_url != "" ? [1] : []
-    content {
-      name  = "redis-url"
-      value = var.redis_url
-    }
-  }
-
   ingress {
     external_enabled = false # internal only — gateway is the public-facing entry point
     target_port      = 8080
@@ -67,14 +59,6 @@ resource "azurerm_container_app" "api" {
       env {
         name  = "Cors__AllowedOrigin"
         value = var.cors_allowed_origin
-      }
-
-      dynamic "env" {
-        for_each = var.redis_url != "" ? [1] : []
-        content {
-          name        = "ConnectionStrings__Redis"
-          secret_name = "redis-url"
-        }
       }
 
       liveness_probe {

@@ -57,13 +57,6 @@ variable "api_keys" {
   description = "Comma-separated API keys validated by the YARP gateway."
 }
 
-variable "redis_url" {
-  type        = string
-  sensitive   = true
-  default     = ""
-  description = "Redis connection string. Leave empty to disable Redis."
-}
-
 # ── App config ───────────────────────────────────────────────────────────────
 
 variable "cors_allowed_origin" {

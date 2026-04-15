@@ -59,7 +59,6 @@ jobs:
             -var="clerk_authority=${{ secrets.CLERK_AUTHORITY }}" \
             -var="groq_api_key=${{ secrets.GROQ_API_KEY }}" \
             -var="api_keys=${{ secrets.API_KEYS }}" \
-            -var="redis_url=${{ secrets.REDIS_URL }}" \
             -var="cors_allowed_origin=${{ secrets.NEXT_PUBLIC_API_URL }}" \
             -var="custom_domain=${{ vars.CUSTOM_DOMAIN }}" \
             -var="api_image=ghcr.io/${{ github.repository_owner }}/byteai-api:latest" \

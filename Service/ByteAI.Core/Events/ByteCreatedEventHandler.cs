@@ -1,5 +1,4 @@
 using ByteAI.Core.Entities;
-using ByteAI.Core.Infrastructure.Cache;
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.AI;
 using ByteAI.Core.Services.Badges;
@@ -18,7 +17,6 @@ public sealed class ByteCreatedEventHandler(
     IByteService byteService,
     IBadgeService badgeService,
     IServiceScopeFactory scopeFactory,
-    RedisFeedCache? feedCache,
     ILogger<ByteCreatedEventHandler> logger)
     : INotificationHandler<ByteCreatedEvent>
 {
@@ -142,28 +140,6 @@ public sealed class ByteCreatedEventHandler(
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Badge check failed after byte {ByteId} created", notification.ByteId);
-        }
-
-        // ── 6. Invalidate feed caches for author's followers ──────────────────
-        if (feedCache is not null)
-        {
-            try
-            {
-                using var scope = scopeFactory.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-                var followerIds = await db.UserFollowers
-                    .Where(f => f.UserId == notification.AuthorId)
-                    .Select(f => f.FollowerId)
-                    .ToListAsync(cancellationToken);
-
-                foreach (var followerId in followerIds)
-                    await feedCache.InvalidateAsync(followerId, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to invalidate feed caches after byte {ByteId} created", notification.ByteId);
-            }
         }
     }
 }

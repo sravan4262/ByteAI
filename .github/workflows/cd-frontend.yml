@@ -1,11 +1,6 @@
 name: CD — Frontend (Azure Static Web Apps)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "UI/**"
-      - ".github/workflows/cd-frontend.yml"
   workflow_dispatch:
 
 env:

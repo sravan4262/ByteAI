@@ -1,14 +1,6 @@
 name: Deploy — Supabase DB
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "supabase/tables/**"
-      - "supabase/migrations/**"
-      - "supabase/scripts/**"
-      - "supabase/seeds/lookups/**"
-      - ".github/workflows/supabase.yml"
   workflow_dispatch:
 
 jobs:

@@ -14,7 +14,6 @@ database_url    = "postgresql://postgres.<project-ref>:<password>@aws-0-us-east-
 clerk_authority = "https://clerk.YOUR_CLERK_DOMAIN.com"
 groq_api_key    = "gsk_..."
 api_keys        = "key1,key2"    # generate: openssl rand -hex 32
-redis_url       = ""             # leave empty to disable Redis
 
 # App config
 cors_allowed_origin = "https://yourdomain.com"

@@ -1,11 +1,6 @@
 name: CD — Backend (Blue-Green)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "Service/**"
-      - ".github/workflows/cd-backend.yml"
   workflow_dispatch:
 
 env:

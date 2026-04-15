@@ -116,24 +116,11 @@ try
     builder.Services.AddScoped<IAdminBusiness, AdminBusiness>();
     builder.Services.AddScoped<IDraftsBusiness, DraftsBusiness>();
 
-    // ── Redis (optional) ─────────────────────────────────────────────────────
-    // RedisFeedCache is always registered so MediatR handlers can inject it as nullable.
-    // When Redis is not configured we fall back to a no-op in-memory cache.
-    var redisConn = builder.Configuration.GetConnectionString("Redis");
-    if (!string.IsNullOrEmpty(redisConn))
-        builder.Services.AddStackExchangeRedisCache(opt => opt.Configuration = redisConn);
-    else
-        builder.Services.AddDistributedMemoryCache(); // no-op fallback — keeps IDistributedCache resolvable
-    builder.Services.AddScoped<RedisFeedCache>();
-
     // ── Health checks ─────────────────────────────────────────────────────────
     var pgConnStr = builder.Configuration.GetConnectionString("Postgres") ?? "";
-    var hcBuilder = builder.Services.AddHealthChecks()
+    builder.Services.AddHealthChecks()
         .AddNpgsql(pgConnStr, name: "postgres", tags: ["ready"])
         .AddCheck<OnnxModelHealthCheck>("onnx-model", tags: ["ready"]);
-
-    if (!string.IsNullOrEmpty(redisConn))
-        hcBuilder.AddRedis(redisConn, name: "redis", tags: ["ready"]);
 
     // ── CORS ─────────────────────────────────────────────────────────────────
     builder.Services.AddCors(opt =>
