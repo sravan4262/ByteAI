@@ -26,9 +26,8 @@ resource "azurerm_container_app" "api" {
     transport        = "http"
 
     traffic_weight {
-      label           = "blue"
+      latest_revision = true
       percentage      = 100
-      latest_revision = false
     }
   }
 
@@ -100,9 +99,8 @@ resource "azurerm_container_app" "gateway" {
     transport        = "http"
 
     traffic_weight {
-      label           = "blue"
+      latest_revision = true
       percentage      = 100
-      latest_revision = false
     }
   }
 
