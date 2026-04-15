@@ -62,20 +62,18 @@ resource "azurerm_container_app" "api" {
       }
 
       liveness_probe {
-        path             = "/health/live"
-        port             = 8080
-        transport        = "HTTP"
-        initial_delay    = 15
-        interval_seconds = 30
+        path                    = "/health/live"
+        port                    = 8080
+        transport               = "HTTP"
+        interval_seconds        = 30
         failure_count_threshold = 3
       }
 
       readiness_probe {
-        path             = "/health/ready"
-        port             = 8080
-        transport        = "HTTP"
-        initial_delay    = 20
-        interval_seconds = 15
+        path                    = "/health/ready"
+        port                    = 8080
+        transport               = "HTTP"
+        interval_seconds        = 15
         failure_count_threshold = 3
         success_count_threshold = 1
       }
@@ -132,20 +130,18 @@ resource "azurerm_container_app" "gateway" {
       }
 
       liveness_probe {
-        path             = "/health/live"
-        port             = 8090
-        transport        = "HTTP"
-        initial_delay    = 10
-        interval_seconds = 30
+        path                    = "/health/live"
+        port                    = 8090
+        transport               = "HTTP"
+        interval_seconds        = 30
         failure_count_threshold = 3
       }
 
       readiness_probe {
-        path             = "/health/ready"
-        port             = 8090
-        transport        = "HTTP"
-        initial_delay    = 15
-        interval_seconds = 15
+        path                    = "/health/ready"
+        port                    = 8090
+        transport               = "HTTP"
+        interval_seconds        = 15
         failure_count_threshold = 3
         success_count_threshold = 1
       }
