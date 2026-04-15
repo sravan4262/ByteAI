@@ -2,5 +2,253 @@
   "tech_stack": "jwt",
   "subdomain": "cryptography",
   "domain": "security",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Cryptography Fundamentals — symmetric vs asymmetric, hashing vs encryption",
+      "status": "done",
+      "title": "jwt — Symmetric vs Asymmetric Signing: When to Use Each",
+      "body": "When signing a JWT, you can choose between symmetric and asymmetric algorithms. Symmetric algorithms, like HS256, use the same secret key for signing and verification. Asymmetric algorithms, like RS256, use a public key for signing and a private key for verification. Symmetric signing is faster and more secure for short-term use cases, like session management. Asymmetric signing provides better long-term security and can be used for authenticating users. If you're using a third-party service for JWT verification, stick with symmetric signing.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "OAuth 2.0 — authorization code flow, PKCE, implicit flow deprecation, scopes",
+      "status": "done",
+      "title": "jwt - Authorization Code Flow with PKCE: A Secure Approach",
+      "body": "When implementing OAuth 2.0 with jwt, the authorization code flow with Proof Key for Code Exchange (PKCE) is a secure alternative to implicit flow. PKCE mitigates authorization code interception attacks by generating a cryptographically secure code verifier and challenge. To use PKCE with jwt, generate a code verifier, encode it to a challenge, and include it in the authorization request. The authorization server will then verify the code verifier and challenge to ensure the authorization code is not intercepted.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "TLS — handshake, certificates, cipher suites, TLS 1.2 vs 1.3",
+      "status": "done",
+      "title": "jwt: TLS Handshake and Certificate Verification",
+      "body": "When using JWT with TLS (Transport Layer Security), the TLS handshake is crucial for secure communication. The TLS handshake involves certificate verification, which ensures the authenticity of the server's identity. JWT libraries like PyJWT and jsonwebtoken verify the TLS certificate chain to ensure the server's identity matches the expected one. In JWT, the `verify` method checks the TLS certificate against a list of trusted certificates. The TLS protocol version also plays a role, with TLS 1.3 offering improved performance and security features over TLS 1.2.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "OpenID Connect — ID token vs access token, userinfo endpoint, discovery",
+      "status": "done",
+      "title": "jwt - ID Tokens vs Access Tokens: Choosing the Right Strategy",
+      "body": "When implementing OpenID Connect (OIDC) with JSON Web Tokens (JWT), you'll encounter two types of tokens: ID tokens and access tokens. ID tokens contain the user's profile information, while access tokens grant access to protected resources. OIDC's UserInfo endpoint retrieves the user's profile from the ID token, which can be validated using the JWT library. To discover the OIDC configuration, use the .well-known/openid-configuration endpoint, which returns a JSON object containing the necessary parameters. When using JWT to validate the ID token, ensure to verify the token's signature and payload.",
+      "code_snippet": "const jwksClient = require('jwks-rsa');\nconst client = new jwksClient({ jwksUri: 'https://example.com/.well-known/jwks.json' });\nconst token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';\nclient.getSigningKey(token, (err, key) => {\n  if (err) return console.error(err);\n  const signingKey = key.getPublicKey();\n  const decoded = jwt.verify(token, signingKey);\n  console.log(decoded); // User's profile information\n});",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Hashing vs Encryption — when to hash (passwords), when to encrypt (reversible data)",
+      "status": "done",
+      "title": "JWT: Hashing Passwords vs Encrypting Reversible Data",
+      "body": "When working with JWT, it's crucial to differentiate between hashing and encryption. JWT stores sensitive data in the payload. Passwords are hashed using algorithms like SHA256, while reversible data like tokens or session IDs are encrypted using symmetric or asymmetric encryption like AES or RSA. In JWT, password hashes are typically stored in the payload as a string, whereas encrypted data can be stored in the payload or headers. Use the `alg` header to specify the hashing algorithm for passwords and the `enc` header for encrypted data.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Certificate Management — CA, self-signed vs CA-signed, renewal automation (Let's Encrypt)",
+      "status": "done",
+      "title": "jwt - Choosing a Certificate Authority: CA-signed vs Self-Signed",
+      "body": "When working with JSON Web Tokens (jwt), a secure certificate authority (CA) is crucial for verifying token signatures. A CA-signed certificate ensures authenticity and trust. Self-signed certificates, however, can be used for development or testing but are not recommended for production. To automate certificate renewal, consider using Let's Encrypt, a free and open-source CA. Its ACME protocol allows for automated certificate issuance and renewal via APIs.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "HTTPS — HSTS, certificate transparency, mixed content issues",
+      "status": "done",
+      "title": "jwt — Avoiding Mixed Content Issues with HTTPS",
+      "body": "When using JWT with HTTPS, ensure your server responds with HSTS headers to force clients to use HTTPS. Certificate transparency logs can help detect compromised certificates. However, be aware that JWT signatures are not affected by mixed content issues, as they rely on the JWT token's integrity, not its origin. To verify JWT signatures, use the `verify()` method, passing the JWT token, secret key, and options. Here's an example in Node.js:\n```\nconst jwt = require('jsonwebtoken');\nconst secretKey = 'your_secret_key';\nconst token = 'your_jwt_token';\njwt.verify(token, secretKey, { algorithms: ['HS256'] }, (err, decoded) => {\n  if (err) return console.error(err);\n  console.log(decoded);\n});\n```\nThis code verifies the JWT token using the specified secret key and algorithm, ensuring the token's integrity.",
+      "code_snippet": "typescript",
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Password Hashing — bcrypt vs Argon2 vs scrypt, never SHA-256 for passwords",
+      "status": "done",
+      "title": "jwt Security — When to Use bcrypt, Argon2, or scrypt",
+      "body": "When securing JWT tokens, it's essential to use a password-based key derivation function (PBKDF) to protect against brute-force attacks. However, not all PBKDFs are created equal. In this context, bcrypt, Argon2, and scrypt are popular choices. Bcrypt is widely used but has been shown to be vulnerable to side-channel attacks. Argon2 is the winner of the Password Hashing Competition and is considered more secure. Scrypt is another option but can be slower than bcrypt. When using JWT, consider the trade-off between security and performance.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "JWT — structure (header.payload.signature), signing algorithms (HS256 vs RS256), validation",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "JWT Pitfalls — alg:none attack, expiry enforcement, storing tokens safely",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Token Storage — httpOnly cookies vs localStorage, XSS vs CSRF trade-offs",
+      "status": "done",
+      "title": "jwt Security — Token Storage: httpOnly Cookies vs localStorage",
+      "body": "When storing JWTs in cookies, httpOnly mode prevents JavaScript access, shielding against XSS attacks. However, this doesn't protect against CSRF. For local storage, consider using JSON Web Tokens with a short expiration time to minimize the attack window. In Node.js, use express-session and store JWTs in the session object. When using client-side storage, ensure secure cookie flags (Secure, HttpOnly) and use token blacklisting for revocation.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Cryptographic Agility — designing systems to swap algorithms when they're broken",
+      "status": "done",
+      "title": "jwt: Safely Swapping Algorithms with Algorithm Flexibility",
+      "body": "When a cryptanalytic attack breaks a widely used algorithm, such as RSA-4096, JWTs relying on it become vulnerable. Implementing algorithm flexibility in your JWT system ensures a smooth transition to a safer alternative. Use the `alg` parameter in the header to specify the algorithm for signing and verifying JWTs. For example, you can switch from `RS256` to `ES256`. To make this change, update your signature verification logic to handle different algorithms, and configure your JWT issuer to use the new algorithm. Be aware that this might require changes to your key management and validation processes.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "mTLS — mutual authentication, client certificates, service mesh use cases",
+      "status": "done",
+      "title": "jwt - Mutual TLS (mTLS) with Client Certificates in JWT-based Service Mesh",
+      "body": "When using JWT in a service mesh, mutual TLS (mTLS) with client certificates ensures end-to-end encryption and authentication between services. In JWT, the `alg` header specifies the algorithm used to sign the payload. For mTLS, the `alg` can be set to `none` to enable transport-layer encryption. The `kid` header, representing the key ID, can be used to reference the client certificate's public key. To enable mTLS in a JWT-based service mesh, use a library like `jsonwebtoken` to verify the client's JWT and extract the `kid` header. Then, use the extracted `kid` to verify the client's certificate.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Key Management — generation, storage, rotation, HSMs",
+      "status": "done",
+      "title": "jwt: Secure Key Management with HSMs",
+      "body": "When using JWTs, secure key management is crucial. Keys for signature verification should be generated randomly, stored securely, and rotated regularly. Hardware Security Modules (HSMs) provide an additional layer of security by storing and managing keys in a tamper-evident environment. To integrate an HSM with JWT, use the `crypto` library to generate a key pair and store the private key securely. For example, with the `forge` library in Node.js:\n\n```typescript\nconst forge = require('node-forge');\nconst keyPair = forge.pki.rsa.generateKeyPair(2048);\nconst privateKey = keyPair.privateKey.toPem();\nconst publicKey = keyPair.publicKey.toPem();\n```",
+      "code_snippet": {
+        "code": "const forge = require('node-forge');\nconst keyPair = forge.pki.rsa.generateKeyPair(2048);\nconst privateKey = keyPair.privateKey.toPem();\nconst publicKey = keyPair.publicKey.toPem();",
+        "language": "typescript"
+      },
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "Common Mistakes — MD5/SHA1 for passwords, ECB mode, rolling your own crypto",
+      "status": "done",
+      "title": "jwt — 3 Common Cryptographic Mistakes to Avoid",
+      "body": "When using JSON Web Tokens (JWT) for authentication, developers often make mistakes with password hashing and encryption. Firstly, never use MD5 or SHA1 for password hashing in JWT. Instead, use a library like `jsonwebtoken` that supports algorithms like `HS256` or `RS256`. Avoid using ECB mode in JWT, as it's vulnerable to padding oracle attacks. Lastly, never roll your own crypto, always rely on established libraries like `jsonwebtoken`.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "CORS — preflight, allowed origins, credentials flag, security implications",
+      "status": "done",
+      "title": "jwt: Understanding CORS Preflight and Security Implications",
+      "body": "When making requests with JWT tokens, CORS preflight checks can expose sensitive information. The `Access-Control-Allow-Origin` header specifies allowed origins, but including credentials (`*` or a specific value) can lead to CSRF attacks. To mitigate this, use the `credentials` flag in the `fetch` API or `XMLHttpRequest` to restrict credentials to only the allowed origin. For example, in a JWT authentication flow, set `credentials: 'include'` or `credentials: 'same-origin'` to ensure secure data exchange.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Compliance — FIPS 140-2, PCI-DSS cryptography requirements",
+      "status": "done",
+      "title": "jwt - Compliance with FIPS 140-2 and PCI-DSS Cryptography Requirements",
+      "body": "When using jwt for authentication in a PCI-DSS compliant environment, it's essential to meet the cryptography requirements. This includes using FIPS 140-2 validated cryptographic modules. jwt uses the HS256 and RS256 algorithms, which are both FIPS 140-2 compliant. However, when using these algorithms, ensure that the key used for signing is also FIPS 140-2 validated. For HS256, the key is usually a shared secret, which must be securely stored and managed. For RS256, the key is a private RSA key, which must be generated and managed according to FIPS 140-2 guidelines.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "API Authentication — API keys vs OAuth tokens vs JWTs, use cases per pattern",
+      "status": "done",
+      "title": "jwt: When to Choose Signed vs Encrypted Tokens",
+      "body": "When authenticating APIs, developers choose between API keys, OAuth tokens, or JSON Web Tokens (JWTs). JWTs are particularly useful when you need to convey user identity, permissions, and additional claims. However, JWTs can be vulnerable to token theft, especially when transmitted in plain text. In such cases, consider using JWT with digital signatures (e.g., HMAC SHA-256) for authenticity verification. For confidentiality, use JWT with encryption (e.g., JWE) and a shared secret key. When transmitting sensitive data, always prefer JWE over JWS.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "JWT — structure (header.payload.signature), signing algorithms (HS256 vs RS256), validation",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "JWT Pitfalls — alg:none attack, expiry enforcement, storing tokens safely",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "JWT — structure (header.payload.signature), signing algorithms (HS256 vs RS256), validation",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "JWT Pitfalls — alg:none attack, expiry enforcement, storing tokens safely",
+      "status": "done",
+      "title": "JWT Pitfalls — alg:none attack, expiry enforcement, storing tokens safely",
+      "body": "Using an algorithm of `alg:none` in JSON Web Tokens (JWT) is a significant security risk due to the lack of encryption. An attacker can easily intercept and modify the token, compromising user authentication. To mitigate this, use a secure algorithm like `alg:HS256`. Additionally, ensure you enforce token expiry by setting a reasonable `exp` claim. Finally, never store JWTs in client-side storage like LocalStorage or cookies, as they can be accessed by malicious scripts. Instead, store them securely on the server-side using a secure token store.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    }
+  ]
 }

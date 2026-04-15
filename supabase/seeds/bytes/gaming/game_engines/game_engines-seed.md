@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: game_engines
 domain: gaming
-tech_stacks: [unity, unreal, godot, bevy, pygame]
+tech_stacks: [unity, godot]
 byte_type_default: article
 
 ## Topics to Seed

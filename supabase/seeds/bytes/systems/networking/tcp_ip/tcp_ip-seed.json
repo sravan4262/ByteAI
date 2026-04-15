@@ -2,5 +2,405 @@
   "tech_stack": "tcp_ip",
   "subdomain": "networking",
   "domain": "systems",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "OSI Model — layers, what lives at each layer, why it matters for debugging",
+      "status": "done",
+      "title": "tcp_ip: Navigating the OSI Model for Debugging",
+      "body": "When troubleshooting TCP/IP connections, understanding the OSI model's layers is crucial. The model divides the communication process into seven layers: Physical, Data Link, Network, Transport, Session, Presentation, and Application.\n\nAt the TCP/IP layer, the Transport layer (Layer 4) handles segmentation and reassembly of data, while the Internet layer (Layer 3) routes packets between networks. The Application layer (Layer 7) defines the format of the data, while the Socket API interacts with the Transport layer. To debug TCP/IP issues, start by identifying the affected layer and use the relevant tools and APIs, such as `netstat` for network statistics and `tcpdump` for packet capture.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "DNS — resolution chain, TTL, record types, DNS over HTTPS, split horizon",
+      "status": "done",
+      "title": "tcp_ip: Optimizing DNS Resolution Chains with TTL and Record Types",
+      "body": "When using tcp_ip to resolve DNS queries, it's essential to understand the resolution chain, TTL (Time-To-Live), and record types. The resolution chain consists of a series of recursive DNS lookups, typically starting from a root DNS server. The TTL specifies the maximum time a DNS record is considered valid. tcp_ip supports various record types, such as A, AAAA, MX, and TXT. To optimize resolution chains, consider using DNS over HTTPS (DoH) for increased security and privacy. Additionally, split horizon DNS allows for different DNS responses based on the client's IP address, enabling more efficient and secure DNS resolution.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 8,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "TCP — three-way handshake, flow control, congestion control, TIME_WAIT",
+      "status": "done",
+      "title": "tcp_ip: Mastering the Three-Way Handshake and Beyond",
+      "body": "When a client initiates a connection with a server using tcp_ip, it sends a SYN packet, which is acknowledged by the server with a SYN-ACK packet. The client then sends an ACK packet, completing the three-way handshake. Flow control is achieved through the use of TCP window sizes, which dictate the amount of data that can be sent before an acknowledgement is required. Congestion control, on the other hand, is managed through mechanisms like slow-start and congestion avoidance algorithms. TIME_WAIT is a state where a connection remains active for a short period after it's been closed, to allow for duplicate ACKs and retransmissions.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "UDP — stateless, use cases (DNS, media, gaming), reliability built on top",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "IP — IPv4 vs IPv6, subnetting, routing, NAT, CIDR",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "TLS over TCP — handshake, session resumption, 0-RTT trade-offs",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "HTTP/1.1 vs HTTP/2 vs HTTP/3 — multiplexing, head-of-line blocking, QUIC",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "QUIC — UDP-based transport, connection migration, 0-RTT, loss recovery",
+      "status": "done",
+      "title": "tcp_ip: Understanding QUIC's Connection Migration",
+      "body": "When migrating a QUIC connection, the sender retransmits unacknowledged packets. To avoid duplicate packets, the receiver sends a MaxAckDelay hint indicating the maximum time before acknowledging a packet. This allows the sender to optimize retransmissions. The sender uses the hint to determine the optimal retransmission interval. For example, if the hint is set to 10ms, the sender will retransmit packets with a delay of 10ms.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "DPDK — kernel bypass, poll-mode drivers, hugepages, ultra-low latency use cases",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Socket Programming — blocking vs non-blocking, epoll/kqueue, io_uring",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Load Balancing — L4 vs L7, algorithms, health checks, sticky sessions",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Congestion Control — CUBIC, BBR, QUIC's approach, buffer bloat",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Network Observability — tcpdump, Wireshark, ss/netstat, eBPF for networking",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Firewalls & NAT — iptables/nftables, connection tracking, SNAT/DNAT",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Service Mesh — sidecar proxy model, mTLS between services, observability",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Zero-copy Networking — sendfile, splice, DMA, reducing CPU in data path",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Latency vs Throughput — trade-offs, tuning kernel network stack",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging Network Issues — systematic approach, tools per OSI layer",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "UDP — stateless, use cases (DNS, media, gaming), reliability built on top",
+      "status": "done",
+      "title": "tcp_ip: Reliability on Top of UDP for Media Streaming",
+      "body": "UDP's statelessness makes it ideal for real-time media streaming. However, this comes at the cost of reliability. To build reliable media streaming, you can use TCP's reliability features on top of UDP. This is achieved by implementing a protocol like TCP's Selective Acknowledgment (SACK) or UDP-based reliability protocols like Forward Error Correction (FEC). For example, you can use a FEC algorithm to detect and correct packet errors. In tcp_ip, you can use the `IPPROTO_UDP` protocol family and the `SO_REUSEADDR` option to enable datagram sockets for media streaming.",
+      "code_snippet": "",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "IP — IPv4 vs IPv6, subnetting, routing, NAT, CIDR",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "TLS over TCP — handshake, session resumption, 0-RTT trade-offs",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "HTTP/1.1 vs HTTP/2 vs HTTP/3 — multiplexing, head-of-line blocking, QUIC",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "DPDK — kernel bypass, poll-mode drivers, hugepages, ultra-low latency use cases",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Socket Programming — blocking vs non-blocking, epoll/kqueue, io_uring",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Load Balancing — L4 vs L7, algorithms, health checks, sticky sessions",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Congestion Control — CUBIC, BBR, QUIC's approach, buffer bloat",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Network Observability — tcpdump, Wireshark, ss/netstat, eBPF for networking",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging Network Issues — systematic approach, tools per OSI layer",
+      "status": "done",
+      "title": "tcp_ip — Debugging Network Issues with a Systematic Approach",
+      "body": "When debugging network issues with tcp_ip, start by identifying the OSI layer where the problem occurs. Use tools like Wireshark for the Physical (Layer 1) and Data Link (Layer 2) layers, and tcpdump for Network (Layer 3), Transport (Layer 4), Session (Layer 5), Presentation (Layer 6), and Application (Layer 7) layers. For the Transport layer, use the SO_LINGER option to enable lingered closes and tcpdump's -s option to capture large packets. For example, to capture and print packets larger than 1KB using tcpdump:\n```bash\n$ tcpdump -s 1024 -i any -w large_packets.pcap\n```\n   For the Application layer, use tools like netstat to identify active connections and their associated ports.",
+      "code_snippet": null,
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Firewalls & NAT — iptables/nftables, connection tracking, SNAT/DNAT",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Service Mesh — sidecar proxy model, mTLS between services, observability",
+      "status": "done",
+      "title": "tcp_ip Service Mesh with Sidecar Proxies and mTLS",
+      "body": "A service mesh uses sidecar proxies to intercept and manage communication between microservices. In tcp_ip, this is achieved using the SO_MARK and SO_ATTACH_FILTER socket options. The sidecar proxy uses the TCP_ESTATS socket option to expose detailed connection statistics. Mutual Transport Layer Security (mTLS) is enabled using the TLS handshake protocol. Observability is enhanced by logging and metrics collected by the sidecar proxy. The service mesh controller ensures sidecar proxies are properly configured and communication between services is secure.",
+      "code_snippet": [
+        "import net",
+        "from netfilter_queue import NFQ_CB_ACCEPT, NFQ_CB_DISCARD",
+        "import socket",
+        "import ssl",
+        "sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)",
+        "sock.bind(('localhost', 8080))",
+        "sock.listen(5)",
+        "while True:",
+        "    conn, addr = sock.accept()",
+        "    ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)",
+        "    ssl_context.load_cert_chain('server.crt', 'server.key')",
+        "    ssl_conn = ssl_context.wrap_socket(conn, server_side=True)",
+        "    data = ssl_conn.recv(1024)",
+        "    ssl_conn.sendall(data)"
+      ],
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Zero-copy Networking — sendfile, splice, DMA, reducing CPU in data path",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Latency vs Throughput — trade-offs, tuning kernel network stack",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "IP — IPv4 vs IPv6, subnetting, routing, NAT, CIDR",
+      "status": "done",
+      "title": "tcp_ip — IPv4 vs IPv6: Choosing the Right IP Version",
+      "body": "When working with tcp_ip, you'll encounter both IPv4 and IPv6. IPv4 uses 32-bit addresses, while IPv6 uses 128-bit addresses. To choose between them, consider your network size and address space requirements. IPv4 is sufficient for small to medium-sized networks, but IPv6 is necessary for larger networks or those with a high address space demand. Subnetting is used to divide IP addresses into smaller sub-networks, improving routing efficiency. CIDR notation (e.g., /24) specifies the number of bits allocated to the subnet mask. NAT (Network Address Translation) is used to map multiple private IP addresses to a single public IP address. When choosing between IPv4 and IPv6, consider the trade-offs between address space, routing efficiency, and NAT requirements.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "TLS over TCP — handshake, session resumption, 0-RTT trade-offs",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Congestion Control — CUBIC, BBR, QUIC's approach, buffer bloat",
+      "status": "done",
+      "title": "tcp_ip Congestion Control — CUBIC vs BBR vs QUIC",
+      "body": "CUBIC, BBR, and QUIC employ distinct congestion control strategies on tcp_ip. CUBIC (CUBIC, 2007) adapts to network dynamics using a cubic growth function. BBR (Google's BBR, 2016) measures buffer occupancy to adjust sending rates. QUIC (IETF's QUIC, 2019) uses a separate congestion control protocol (CC). CUBIC and BBR operate within the standard tcp_ip congestion avoidance algorithm's framework, adjusting the congestion window (cwnd). In contrast, QUIC's CC is designed for low-latency, high-bandwidth networks, making it more suitable for real-time applications.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "HTTP/1.1 vs HTTP/2 vs HTTP/3 — multiplexing, head-of-line blocking, QUIC",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "DPDK — kernel bypass, poll-mode drivers, hugepages, ultra-low latency use cases",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Socket Programming — blocking vs non-blocking, epoll/kqueue, io_uring",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Load Balancing — L4 vs L7, algorithms, health checks, sticky sessions",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Network Observability — tcpdump, Wireshark, ss/netstat, eBPF for networking",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Firewalls & NAT — iptables/nftables, connection tracking, SNAT/DNAT",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Zero-copy Networking — sendfile, splice, DMA, reducing CPU in data path",
+      "status": "done",
+      "title": "tcp_ip - Zero-Copy Networking with sendfile and splice",
+      "body": "tcp_ip's sendfile and splice APIs enable zero-copy networking, reducing CPU overhead by bypassing user space. sendfile transfers data directly from the file system cache to the socket buffer, while splice moves data from a file descriptor to a socket or pipe. By leveraging DMA (Direct Memory Access) and CPU-efficient I/O paths, these APIs conserve system resources and improve performance.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 8
+    },
+    {
+      "topic": "Latency vs Throughput — trade-offs, tuning kernel network stack",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

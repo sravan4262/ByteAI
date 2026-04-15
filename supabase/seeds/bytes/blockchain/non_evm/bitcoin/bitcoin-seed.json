@@ -2,5 +2,134 @@
   "tech_stack": "bitcoin",
   "subdomain": "non_evm",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Bitcoin — UTXO model, Script, PoW, block structure, Lightning Network",
+      "status": "done",
+      "title": "Bitcoin — Understanding the UTXO Model and Its Impact on Transaction Verification",
+      "body": "The Unspent Transaction Output (UTXO) model is a fundamental concept in Bitcoin, where each transaction input refers to a previous unspent output. This model allows for efficient transaction verification, as each input can be verified independently. In Bitcoin, the UTXO model is implemented using the Script language, which defines the spending conditions for each output. The Proof-of-Work (PoW) consensus algorithm secures the network by requiring miners to solve a complex mathematical puzzle, ensuring the integrity of the blockchain. The Lightning Network, a second-layer scaling solution, further enhances the efficiency of Bitcoin transactions by enabling off-chain transactions and reducing the load on the main blockchain.",
+      "code_snippet": "const bitcoin = require('bitcoinjs-lib');\nconst tx = new bitcoin.TransactionBuilder();\nconst utxo = {\n  'txId': '...',\n  'outputIndex': 0,\n  'address': '...',\n  'script': '...',\n  'satoshis': 10000\n};\nconsole.log(utxo);",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Solana — account model, PoH + PoS, Sealevel parallel execution, programs vs accounts",
+      "status": "done",
+      "title": "Bitcoin Developers: Understanding Solana's Account Model and PoH + PoS",
+      "body": "Solana's account model differs significantly from Bitcoin's UTXO model. In Solana, accounts are the fundamental data structure, and each account has a unique address and a balance. Solana uses a combination of Proof of History (PoH) and Proof of Stake (PoS) to secure its network. PoH is used to order transactions, while PoS is used to validate them. Sealevel parallel execution enables Solana to process multiple transactions in parallel, increasing throughput. In contrast, Bitcoin uses a single-threaded approach to process transactions. Solana programs are stateless, whereas accounts are stateful, allowing for more complex logic to be implemented.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 6,
+      "relevance": 7,
+      "overall": 7
+    },
+    {
+      "topic": "Polkadot — relay chain, parachains, XCM cross-chain messaging, parachain slots",
+      "status": "done",
+      "title": "Bitcoin: Unlocking Scalability with Polkadot Parachains",
+      "body": "Polkadot's relay chain and parachains enable interoperability between chains, improving scalability. In Bitcoin, we can use XCM (Cross-Chain Messaging) to communicate between chains. The parachain slots determine the number of parallel chains that can run on the relay chain. To integrate Polkadot parachains with Bitcoin, we can use the Bitcoin XCM implementation, which supports XCM messages. This allows Bitcoin to interact with Polkadot parachains, enabling cross-chain transactions and asset transfer.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Cosmos — Tendermint consensus, IBC protocol, app-specific chains, ABCI",
+      "status": "done",
+      "title": "Bitcoin — Securing the Network with Cosmos' Tendermint Consensus",
+      "body": "Bitcoin's Tendermint-based implementation ensures secure and efficient validation of transactions. Tendermint uses a consensus algorithm that combines proof-of-stake (PoS) voting with a BFT (Byzantine Fault Tolerance) algorithm. In the context of Bitcoin, Tendermint is used to validate blocks. Each Tendermint block contains a set of transactions and metadata, which are verified by validators in the network. Validators vote on the validity of the block, and a majority vote is required for the block to be considered valid. This consensus algorithm is integrated with Bitcoin's IBC (Inter-Blockchain Communication) protocol, allowing seamless communication with other blockchains. The ABCI (Application Blockchain Interface) allows developers to create app-specific chains, which can interact with the Bitcoin blockchain.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "UTXO vs Account Model — how Bitcoin and Ethereum differ fundamentally",
+      "status": "done",
+      "title": "Bitcoin UTXO vs Account Model: A Fundamental Difference",
+      "body": "Bitcoin's UTXO (Unspent Transaction Output) model is based on the concept of unspent transaction outputs. When a transaction is created, it references one or more UTXOs and spends their value, creating new UTXOs. This creates a chain of UTXOs, making it easy to verify the balance of a user. In contrast, Ethereum's account model uses a balance-based system, where each account has a balance that's incremented or decremented with each transaction. Bitcoin's UTXO model allows for more efficient transaction verification, as each transaction only needs to reference the UTXOs it spends, rather than the entire balance of the sender.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "Consensus Mechanisms — PoW, PoS, PoH, BFT variants, trade-offs",
+      "status": "done",
+      "title": "Bitcoin - A Deep Dive into its Consensus Mechanism",
+      "body": "Bitcoin's consensus mechanism is based on Proof of Work (PoW), which requires miners to compete to solve a complex mathematical puzzle. The puzzle solver is rewarded with newly minted bitcoins and transaction fees. This mechanism incentivizes miners to maintain the integrity of the blockchain by ensuring that only valid transactions are included in a block. The difficulty level of the puzzle is adjusted every 2016 blocks to maintain a consistent block time of 10 minutes. This ensures that on average, one block is added to the blockchain every 10 minutes.",
+      "code_snippet": "null",
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Solana Development — programs in Rust, Anchor framework, PDAs, CPIs",
+      "status": "done",
+      "title": "Bitcoin Development — Solana-style Programs in Rust: PDAs and CPIs",
+      "body": "Solana's Anchor framework simplifies developing smart contracts, but how does it fare with Bitcoin's unique constraints? In Bitcoin, smart contracts are executed as programs written in Rust, utilizing Procedural Data Assets (PDAs) for data storage and Callable Programs (CPIs) for inter-program communication. Let's explore how to use these constructs to create efficient and secure programs.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Solana Performance — parallel execution, Gulf Stream, Turbine, Sealevel",
+      "status": "done",
+      "title": "Bitcoin on Solana: Optimizing Performance with Gulf Stream, Turbine, and Sealevel",
+      "body": "Solana, a proof-of-stake blockchain, boasts parallel execution and sharding through its Gulf Stream and Turbine components. However, Bitcoin's UTXO model and transaction scripting language require modifications to achieve similar performance. Sealevel, a proof-of-stake variant of Bitcoin, leverages these Solana features to increase throughput. By utilizing Gulf Stream's parallel execution and Turbine's sharding, Sealevel achieves faster transaction processing and higher scalability.",
+      "code_snippet": null,
+      "language": "null",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Bitcoin Script — stack-based, intentionally limited, P2PKH, P2SH, multisig",
+      "status": "done",
+      "title": "Bitcoin Script - Stack-Based and Intentionally Limited",
+      "body": "Bitcoin Script is a stack-based, intentionally limited programming language used for scripting transactions on the Bitcoin blockchain. It's designed for simplicity and security. Two essential concepts in Bitcoin Script are Pay-to-Public-Key-Hash (P2PKH) and Pay-to-Script-Hash (P2SH). P2PKH ensures that a transaction can be spent by anyone who knows the private key corresponding to a specific public key. P2SH allows a script to be hashed and stored in the blockchain, making it possible to create multisignature wallets. In Bitcoin Script, multisignature wallets can be implemented using the CHECKSIG and CHECKMULTISIG operators.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Lightning Network — payment channels, routing, HTLC, liquidity management",
+      "status": "done",
+      "title": "Bitcoin: Optimizing HTLCs with Route Selection in Lightning Network",
+      "body": "When establishing a payment channel in the Bitcoin Lightning Network, a sender must select a suitable route to forward the payment. The sender's node and the receiver's node can be connected through multiple routes. To optimize the route selection, the sender can use the `getroute` method, which returns a list of candidate routes. Each route is evaluated based on its hop count, latency, and fee. The sender can then choose the optimal route based on these factors. For instance, a sender can prioritize routes with lower fees or shorter hop counts.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "IBC — Inter-Blockchain Communication, packet relaying, channel/port model",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

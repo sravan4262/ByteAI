@@ -2,5 +2,386 @@
   "tech_stack": "kafka",
   "subdomain": "queues_cache",
   "domain": "backend",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Dead Letter Queues — poison message handling, retry strategies with backoff",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Message Delivery Guarantees — at-least-once vs at-most-once vs exactly-once",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Idempotency — designing consumers to safely handle duplicate messages",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Why Queues — decoupling, async processing, load leveling",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Why Caching — reducing DB load, latency, cache-aside pattern",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Redis as Queue — pub/sub vs streams vs lists, persistence trade-offs",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Redis as Cache — TTL, eviction policies, cache-aside vs write-through vs write-behind",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Kafka — partitions, consumer groups, offset management, log compaction",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "BullMQ — job priorities, rate limiting, repeatable jobs, job dependencies",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "RabbitMQ — exchanges, routing keys, acknowledgements, prefetch count",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Backpressure — what happens when consumers lag, preventing memory blowout",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Celery — task routing, beat scheduler, result backends, task chaining",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "NATS — JetStream, subject-based routing, at-least-once delivery",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Ordering — when order matters, partitioning strategy for ordered processing",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Scaling — horizontal consumer scaling, partition count, rebalancing",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Testing — testing consumers in isolation, mocking brokers in tests",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Monitoring — queue depth alerts, consumer lag, dead letter queue alerts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Use What — Redis vs Kafka vs RabbitMQ decision framework",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Security — broker authentication, TLS, network isolation",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Why Queues — decoupling, async processing, load leveling",
+      "status": "done",
+      "title": "Kafka Queues — Decoupling, Async Processing, and Load Leveling Explained",
+      "body": "Kafka decouples producers from consumers by writing events to a durable, partitioned log — producers never wait for downstream processing. A payment service publishing to a `transactions` topic has zero knowledge of the fraud-detection consumer reading it; deploy, restart, or scale either side independently.\n\nAsync processing drops synchronous latency from your hot path. Instead of calling a notification service inline, publish a `UserSignedUp` event and return HTTP 201 immediately. The consumer processes it on its own schedule.\n\nLoad leveling is where Kafka's retention model shines. A burst of 50,000 events/sec can be absorbed into partitions and consumed at a sustainable 5,000 events/sec — the log acts as a shock absorber. Unlike RabbitMQ queues, messages aren't lost after ACK; a consumer can lag behind and catch up without backpressure cascading upstream.\n\nPartition count directly controls max parallelism: 12 partitions → max 12 active consumers in a group. Set `max.poll.records` and `fetch.max.bytes` to tune throughput vs. latency tradeoffs per consumer group.",
+      "code_snippet": "import { Kafka } from 'kafkajs';\n\nconst kafka = new Kafka({ clientId: 'payment-service', brokers: ['broker:9092'] });\nconst producer = kafka.producer();\n\nawait producer.connect();\n\n// Fire-and-forget: decoupled from fraud-detection consumer\nawait producer.send({\n  topic: 'transactions',\n  messages: [{ key: txn.userId, value: JSON.stringify(txn) }],\n});\n\nawait producer.disconnect();",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Message Delivery Guarantees — at-least-once vs at-most-once vs exactly-once",
+      "status": "done",
+      "title": "Kafka Message Delivery Guarantees — At-Most-Once, At-Least-Once, and Exactly-Once Explained",
+      "body": "Kafka's delivery semantics are controlled by a combination of producer configs, consumer commit strategies, and broker settings — not a single flag.\n\n**At-most-once**: Set `acks=0` on the producer and commit offsets *before* processing. Messages can be lost if the broker crashes or processing fails, but you'll never reprocess.\n\n**At-least-once**: Use `acks=all` with `retries > 0` and commit offsets *after* processing. Duplicates are possible on retry — your consumer logic must be idempotent.\n\n**Exactly-once (EOS)**: Requires `enable.idempotence=true` on the producer (assigns a PID + sequence number, deduped by the broker) and `isolation.level=read_committed` on the consumer. For cross-partition atomicity, use the Kafka Transactions API: `initTransactions()`, `beginTransaction()`, `commitTransaction()`. EOS has ~10–20% throughput overhead and requires Kafka 2.5+ with a 3-broker quorum. In Kafka Streams, set `processing.guarantee=exactly_once_v2` — it wires all of this automatically.",
+      "code_snippet": "// Exactly-once producer with Kafka Transactions API (Java)\nProperties props = new Properties();\nprops.put(\"bootstrap.servers\", \"localhost:9092\");\nprops.put(\"enable.idempotence\", \"true\");\nprops.put(\"transactional.id\", \"my-transactional-producer\");\nprops.put(\"acks\", \"all\");\n\nKafkaProducer<String, String> producer = new KafkaProducer<>(props);\nproducer.initTransactions();\n\ntry {\n    producer.beginTransaction();\n    producer.send(new ProducerRecord<>(\"orders\", key, value));\n    producer.sendOffsetsToTransaction(offsets, new ConsumerGroupMetadata(groupId));\n    producer.commitTransaction();\n} catch (ProducerFencedException e) {\n    producer.close();\n} catch (KafkaException e) {\n    producer.abortTransaction();\n}",
+      "language": "java",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Dead Letter Queues — poison message handling, retry strategies with backoff",
+      "status": "done",
+      "title": "Kafka Dead Letter Queues — Poison Message Handling and Backoff Retry",
+      "body": "Kafka has no native DLQ, so you build one. When a consumer fails to process a message, the naive approach is to `seek` back and retry in a tight loop — this blocks the partition and starves other consumers. The production pattern: use a retry topic chain (`topic.retry-1`, `topic.retry-2`, `topic.dlq`) with exponential backoff encoded as a header.\n\nPublish the failed record to `topic.retry-1` with a `retry-count` and `next-process-after` header (epoch ms). A separate consumer group polls the retry topic but skips records where `next-process-after > System.currentTimeMillis()`, calling `consumer.pause()` + `consumer.seek()` to hold position without spinning. After max retries (e.g. 3), route to the DLQ topic.\n\nSpring Kafka's `DefaultErrorHandler` with `ExponentialBackOffWithMaxRetries` automates this via `SeekToCurrentErrorHandler` under the hood, wiring retry topics through `DeadLetterPublishingRecoverer`. For non-Spring consumers, implement `ConsumerRebalanceListener` to replay DLQ messages on demand — never auto-consume the DLQ, treat it as an audit log first.",
+      "code_snippet": "@Bean\npublic DefaultErrorHandler errorHandler(KafkaTemplate<Object, Object> template) {\n    var recoverer = new DeadLetterPublishingRecoverer(template,\n        (rec, ex) -> new TopicPartition(rec.topic() + \".dlq\", rec.partition()));\n\n    var backoff = new ExponentialBackOffWithMaxRetries(3);\n    backoff.setInitialInterval(1_000L);\n    backoff.setMultiplier(2.0);\n    backoff.setMaxInterval(10_000L);\n\n    return new DefaultErrorHandler(recoverer, backoff);\n}",
+      "language": "kotlin",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Idempotency — designing consumers to safely handle duplicate messages",
+      "status": "done",
+      "title": "Kafka Idempotent Consumers — Safely Handling Duplicate Messages",
+      "body": "Kafka's at-least-once delivery guarantee means your consumer will occasionally process the same message twice — during rebalances, broker failovers, or after a crash before offsets are committed. The safest pattern is to make your processing logic idempotent at the storage layer, not just in memory.\n\nUse the message's topic + partition + offset as a natural idempotency key. Before processing, check a deduplication store (Redis with a short TTL, or a `processed_offsets` Postgres table) for that key. If present, skip and commit. If absent, process and record atomically.\n\nFor exactly-once semantics within Kafka itself, enable the transactional API: set `enable.idempotence=true` and `transactional.id` on the producer, then use `beginTransaction()` / `sendOffsetsToTransaction()` / `commitTransaction()` to atomically write output records and commit input offsets in a single transaction. This prevents zombie producers from re-emitting during leader epoch changes.\n\nAvoid relying on `auto.offset.reset=earliest` as a safety net — it's a recovery knob, not an idempotency strategy. Always pair offset management with a durable dedup check.",
+      "code_snippet": "producer.initTransactions();\ntry {\n  producer.beginTransaction();\n  producer.send(new ProducerRecord<>(\"output-topic\", key, value));\n  producer.sendOffsetsToTransaction(\n    Map.of(new TopicPartition(record.topic(), record.partition()),\n      new OffsetAndMetadata(record.offset() + 1)),\n    consumer.groupMetadata()\n  );\n  producer.commitTransaction();\n} catch (ProducerFencedException e) {\n  producer.close(); // zombie producer — another instance took over\n} catch (KafkaException e) {\n  producer.abortTransaction();\n}",
+      "language": "java",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Kafka — partitions, consumer groups, offset management, log compaction",
+      "status": "done",
+      "title": "Kafka Internals — Partitions, Consumer Groups, and Log Compaction Explained",
+      "body": "Each Kafka topic is split into partitions — the unit of parallelism. A partition is an ordered, immutable log; producers append to the tail, consumers read from an offset. Within a consumer group, Kafka assigns each partition to exactly one member, so adding consumers up to the partition count scales throughput linearly. Beyond that, extra consumers sit idle. Offsets are committed to the internal `__consumer_offsets` topic. Use `enable.auto.commit=false` and commit after processing to avoid losing or double-processing messages on rebalance. For at-least-once guarantees, commit post-process; for at-most-once, pre-process. Log compaction (`cleanup.policy=compact`) changes retention semantics: instead of time- or size-based deletion, Kafka retains only the latest record per key, making it ideal for changelog or materialized-view use cases (e.g., Kafka Streams state stores). The cleaner thread runs in the background — `min.cleanable.dirty.ratio` controls how aggressively it compacts. Combine compaction with `delete` policy (`compact,delete`) to support both tombstone deletion and size caps.",
+      "code_snippet": "import { Kafka } from 'kafkajs';\n\nconst kafka = new Kafka({ brokers: ['localhost:9092'] });\nconst consumer = kafka.consumer({ groupId: 'inventory-service' });\n\nawait consumer.connect();\nawait consumer.subscribe({ topic: 'product-updates', fromBeginning: false });\n\nawait consumer.run({\n  eachMessage: async ({ topic, partition, message }) => {\n    // Process first, then commit — at-least-once semantics\n    await processUpdate(message.value?.toString());\n    await consumer.commitOffsets([{\n      topic,\n      partition,\n      offset: (BigInt(message.offset) + 1n).toString(),\n    }]);\n  },\n});",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "RabbitMQ — exchanges, routing keys, acknowledgements, prefetch count",
+      "status": "done",
+      "title": "Kafka Dev's Guide to RabbitMQ: Exchanges, Routing Keys, Acks, and Prefetch",
+      "body": "RabbitMQ's mental model diverges sharply from Kafka's. Where Kafka routes via topic partitions, RabbitMQ splits routing into exchanges and queues. A direct exchange matches exact routing keys; a topic exchange uses wildcard patterns (`logs.*`, `logs.#`). Unlike Kafka's durable, replayable log, messages are consumed-and-gone unless you wire a dead-letter exchange (DLX) for failures.\n\nAcknowledgements are per-message, not offset-based. `basic_ack` permanently removes the message from the broker; `basic_nack(requeue=True)` re-enqueues it. There is no offset rewind — once acked, it's gone. This makes idempotent consumers mandatory in ways Kafka's consumer group offset replay lets you avoid.\n\nPrefetch count (`basic_qos`) caps unacked in-flight messages per consumer — conceptually similar to `max.poll.records`, but enforced broker-side at push time rather than client-side at poll time. Set it too high and a slow consumer buffers a backlog locally; too low and you serialize delivery. For CPU-bound workers, 10–50 is a practical baseline.\n\nThe structural shift: Kafka consumers pull on their schedule; RabbitMQ pushes. Prefetch count is your primary backpressure lever.",
+      "code_snippet": "import pika\n\nconnection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))\nchannel = connection.channel()\n\nchannel.exchange_declare(exchange='events', exchange_type='topic')\nchannel.queue_declare(queue='tasks', durable=True)\nchannel.queue_bind(exchange='events', queue='tasks', routing_key='task.*')\nchannel.basic_qos(prefetch_count=10)\n\ndef on_message(ch, method, properties, body):\n    process(body)  # idempotent handler\n    ch.basic_ack(delivery_tag=method.delivery_tag)\n\nchannel.basic_consume(queue='tasks', on_message_callback=on_message)\nchannel.start_consuming()",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Redis as Queue — pub/sub vs streams vs lists, persistence trade-offs",
+      "status": "done",
+      "title": "Kafka Developer's Guide to Redis Queues — Lists, Pub/Sub, and Streams",
+      "body": "Coming from Kafka, Redis queue primitives can feel stripped-down — but each targets a distinct delivery contract.\n\n**Lists** (`LPUSH`/`BRPOP`) are the simplest: single consumer race, no ACK, no replay. Think Kafka with no consumer groups and retention set to zero. Acceptable for at-most-once job queues where loss is tolerable.\n\n**Pub/Sub** is pure fire-and-forget. No persistence, no buffering — disconnected subscribers simply miss messages. Unlike Kafka's durable commit log, there's no offset to seek. Reserve it for ephemeral signals: cache invalidation, live presence, real-time dashboards.\n\n**Streams** (`XADD`/`XREADGROUP`/`XACK`) are the closest Redis analog to a Kafka topic: named consumer groups, per-consumer pending lists, `XPENDING` to reclaim unacked messages, and `MAXLEN` for bounded retention. The critical difference: Redis Streams persist via AOF/RDB, not a replicated log. Without `appendonly yes`, a broker crash drops your queue entirely — there's no ISR failover. With AOF `always` mode you get near-durable writes at the cost of throughput.\n\n**Rule:** Use Streams when you need consumer groups or replay. Use Lists for simple worker queues. Never use Pub/Sub for anything requiring delivery guarantees.",
+      "code_snippet": "import redis\n\nr = redis.Redis(decode_responses=True)\n\n# Producer\nr.xadd(\"events\", {\"type\": \"user.signup\", \"user_id\": \"42\"})\n\n# Create consumer group (analog to Kafka consumer group)\nr.xgroup_create(\"events\", \"processors\", id=\"0\", mkstream=True)\n\n# Read up to 10 undelivered messages for this worker\nmsgs = r.xreadgroup(\"processors\", \"worker-1\", {\"events\": \">\"}, count=10, block=5000)\nfor _stream, entries in (msgs or []):\n    for msg_id, data in entries:\n        process(data)\n        r.xack(\"events\", \"processors\", msg_id)  # explicit ACK — like committing an offset",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 7,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Redis as Cache — TTL, eviction policies, cache-aside vs write-through vs write-behind",
+      "status": "done",
+      "title": "Kafka Consumer Enrichment with Redis — Cache-Aside, Write-Through, and Eviction Policies",
+      "body": "When Kafka consumers enrich events with external data — user profiles, product metadata, feature flags — hitting PostgreSQL on every message creates backpressure and lag. Redis absorbs that load, but the pattern you choose matters.\n\nCache-aside is the default for Kafka enrichment pipelines: on each polled message, check Redis first. On a miss, fetch from the DB and SET with a TTL (ex=300). Consumers stay stateless; stale reads are bounded by TTL. This is the right default for read-heavy, eventually-consistent enrichment.\n\nWrite-through makes sense when your Kafka topic is itself a mutation stream (e.g., user.updated, inventory.changed). The consumer writes to both DB and Redis synchronously inside the same message handler — cache stays warm, but you pay write latency on every event.\n\nWrite-behind buffers writes in Redis and flushes async. Dangerous with Kafka's at-least-once semantics: a rebalance or consumer crash before the async flush means replayed messages re-insert already-written data. You need idempotent DB writes to survive this.\n\nEviction policy: always run allkeys-lru on enrichment caches. noeviction will stall your consumer when Redis hits maxmemory — a silent throughput killer. Pair with consumer-group lag alerts to catch TTL-driven miss storms under high reprocessing load.",
+      "code_snippet": "from confluent_kafka import Consumer\nimport redis, json\n\nr = redis.Redis(host=\"localhost\", decode_responses=True)\nconsumer = Consumer({\"bootstrap.servers\": \"localhost:9092\", \"group.id\": \"enrichment-svc\", \"auto.offset.reset\": \"earliest\"})\nconsumer.subscribe([\"order.created\"])\n\ndef get_user_cached(user_id: str) -> dict:\n    hit = r.get(f\"user:{user_id}\")\n    if hit:\n        return json.loads(hit)\n    user = db_fetch(user_id)  # PostgreSQL call\n    r.set(f\"user:{user_id}\", json.dumps(user), ex=300)  # cache-aside, 5min TTL\n    return user\n\nwhile True:\n    msg = consumer.poll(timeout=1.0)\n    if msg and not msg.error():\n        event = json.loads(msg.value())\n        user = get_user_cached(event[\"user_id\"])\n        process_order(event, user)",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 7,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Why Caching — reducing DB load, latency, cache-aside pattern",
+      "status": "done",
+      "title": "Kafka Consumers and Cache-Aside — Eliminating Per-Message DB Lookups",
+      "body": "Every Kafka consumer that enriches messages with reference data — user tiers, config flags, product metadata — faces a choice: query Postgres on every poll() or cache aggressively. At 50k messages/sec, uncached lookups saturate your DB connection pool in seconds.\n\nCache-aside is the right pattern here. On each consumed message, check Redis first. On a miss, query Postgres, write to Redis with a TTL, and continue. On a hit, zero DB traffic. With a 300-second TTL and a user base of 100k, your DB sees at most ~333 queries/min for user lookups instead of 3M+.\n\nKey Kafka-specific consideration: consumer group rebalances don't invalidate your external Redis cache — it holds state independently of partition assignment, so a rebalance won't trigger a thundering herd. Contrast this with Kafka Streams' built-in KeyValueStore (RocksDB-backed), which is partition-local and changelog-replicated — better for stateful stream processing but overkill for simple enrichment.\n\nTune your cache TTL against message lag tolerance. A 5-min TTL on user tier data is safe if tier changes propagate through a separate user-updates topic that your consumer also subscribes to.",
+      "code_snippet": "from confluent_kafka import Consumer\nimport redis, json\n\ncache = redis.Redis(host=\"localhost\", port=6379, decode_responses=True)\nconsumer = Consumer({\"bootstrap.servers\": \"broker:9092\", \"group.id\": \"order-enricher\"})\nconsumer.subscribe([\"raw-orders\"])\n\nwhile True:\n    msg = consumer.poll(timeout=1.0)\n    if not msg or msg.error(): continue\n    order = json.loads(msg.value())\n    uid = order[\"user_id\"]\n    if not (user := cache.get(f\"user:{uid}\")):\n        user = fetch_from_postgres(uid)           # SELECT name, tier FROM users\n        cache.setex(f\"user:{uid}\", 300, user)     # 5-min TTL, cache-aside write\n    enrich_and_forward(order, json.loads(user))",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 8,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "NATS — JetStream, subject-based routing, at-least-once delivery",
+      "status": "done",
+      "title": "Kafka to NATS JetStream — Subjects, Durables, and At-Least-Once Delivery",
+      "body": "Kafka veterans will find NATS JetStream familiar in intent but different in mechanics. Where Kafka uses topics with partitions, NATS uses subjects — dot-delimited strings like `orders.created` or `payments.failed`. JetStream streams are the persistence layer: you bind subject wildcards (`orders.>` captures any depth, `orders.*` captures one token) to a stream, analogous to a Kafka topic absorbing all partition writes.\n\nAt-least-once delivery maps directly to JetStream's `AckExplicit` policy — messages redeliver if unacknowledged within `AckWait`, equivalent to Kafka's `enable.auto.commit=false` with manual `commitSync()`. Durable consumers are the JetStream analog of Kafka consumer groups: they track sequence numbers (not byte offsets) and survive client restarts.\n\nThe sharpest difference: no partition concept. NATS scales via stream replicas (`Replicas: 3`) and subject filtering rather than sharding. Push consumers handle fan-out; pull consumers give you Kafka-style poll-loop semantics via `Fetch(batch, timeout)` for explicit backpressure control — useful when your downstream processor is rate-limited and you can't absorb unbounded push delivery.",
+      "code_snippet": "nc, _ := nats.Connect(nats.DefaultURL)\njs, _ := nc.JetStream()\n\n// Equivalent to Kafka CreateTopic — stream binds subject wildcards\njs.AddStream(&nats.StreamConfig{\n    Name:     \"ORDERS\",\n    Subjects: []string{\"orders.>\"},\n    Replicas: 3,\n})\n\n// Durable = Kafka consumer group; AckExplicit = auto.commit false\njs.Subscribe(\"orders.>\", func(msg *nats.Msg) {\n    process(msg.Data)\n    msg.Ack() // skipping Ack → redelivery after AckWait\n}, nats.Durable(\"order-processor\"), nats.AckExplicit())",
+      "language": "go",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Backpressure — what happens when consumers lag, preventing memory blowout",
+      "status": "done",
+      "title": "Kafka Backpressure — Using pause() and resume() to Stop Consumer Memory Blowout",
+      "body": "When your Kafka consumer processes messages slower than the broker delivers them, unbounded in-memory buffering causes heap exhaustion. Lowering `max.poll.records` reduces per-batch size but doesn't stop a slow downstream from accumulating pressure over time.\n\nThe idiomatic Kafka solution is `KafkaConsumer.pause(Collection<TopicPartition>)`. Calling it on overloaded partitions causes the next `poll()` to return empty results for those partitions — critically, it still sends heartbeats, keeping you in the consumer group and avoiding a rebalance. When your downstream drains, call `resume(partitions)` to re-enable fetching.\n\nPair this with a bounded in-memory queue and two thresholds: a high-water mark (pause) and a low-water mark (resume). Hysteresis between the two prevents thrashing.\n\nAlso tune `max.poll.interval.ms` (default 5 min) to exceed your worst-case processing time. Breach it and the broker marks you dead, triggering a rebalance mid-batch.\n\nMonitor consumer lag with `kafka-consumer-groups.sh --describe` or the `AdminClient` `listConsumerGroupOffsets` API — lag is your early warning before memory pressure becomes a crash.",
+      "code_snippet": "from confluent_kafka import Consumer\nfrom queue import Queue\n\nBUFFER_HIGH, BUFFER_LOW = 500, 100\nbuffer: Queue = Queue(maxsize=BUFFER_HIGH + 100)\npaused = False\n\nconsumer = Consumer({\"bootstrap.servers\": \"localhost:9092\", \"group.id\": \"svc-A\"})\nconsumer.subscribe([\"events\"])\n\nwhile True:\n    msg = consumer.poll(timeout=1.0)\n    if msg and not msg.error():\n        buffer.put(msg)\n\n    if not paused and buffer.qsize() >= BUFFER_HIGH:\n        consumer.pause(consumer.assignment())\n        paused = True\n    elif paused and buffer.qsize() <= BUFFER_LOW:\n        consumer.resume(consumer.assignment())\n        paused = False",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "BullMQ — job priorities, rate limiting, repeatable jobs, job dependencies",
+      "status": "done",
+      "title": "Kafka vs BullMQ — Offload Scheduled & Prioritized Jobs to Redis Instead",
+      "body": "Kafka excels at high-throughput event streaming, but it has no native concept of job priorities, per-consumer rate limits, or job-level dependencies — patterns that task queues need daily. BullMQ fills that gap using Redis as its backbone.\n\nPriorities let you queue a 'critical' job at level 1 and a background report at level 10 — workers always drain higher-priority buckets first. Rate limiters throttle worker concurrency to N jobs per interval, ideal for wrapping third-party APIs behind your Kafka consumers without backpressure spilling upstream.\n\nRepeatable jobs use a cron expression stored in Redis; unlike a Kafka topic with a retention window, they self-reschedule and skip missed runs cleanly. Job dependencies (parent/child flows) let you model pipelines: a parent job completes only when all its children succeed, giving you DAG semantics without a separate orchestrator.\n\nWhen your Kafka consumer triggers work that needs retries, scheduling, or fan-out coordination, hand that work off to a BullMQ queue rather than re-publishing to another topic.",
+      "code_snippet": "import { Queue, Worker, FlowProducer } from 'bullmq';\n\nconst queue = new Queue('reports', { connection: { host: 'localhost', port: 6379 } });\n\n// Priority job — lower number = higher priority\nawait queue.add('generate-pdf', { userId: 42 }, { priority: 1 });\n\n// Rate-limited worker: max 5 jobs per 10 seconds\nconst worker = new Worker('reports', async job => {\n  console.log('Processing', job.name, job.data);\n}, { limiter: { max: 5, duration: 10_000 }, connection: { host: 'localhost', port: 6379 } });\n\n// Repeatable job via cron\nawait queue.add('weekly-digest', {}, { repeat: { pattern: '0 9 * * MON' } });\n\n// Parent/child dependency flow\nconst flow = new FlowProducer({ connection: { host: 'localhost', port: 6379 } });\nawait flow.add({ name: 'send-report', queueName: 'reports', data: {},\n  children: [{ name: 'fetch-data', queueName: 'reports', data: { source: 'db' } }] });",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 6,
+      "relevance": 7,
+      "overall": 7
+    },
+    {
+      "topic": "Ordering — when order matters, partitioning strategy for ordered processing",
+      "status": "done",
+      "title": "Kafka Ordering — Partition Keys Are Your Only Guarantee",
+      "body": "Kafka guarantees message order strictly within a single partition — never across them. Consumers processing different partitions operate independently with no cross-partition sequencing. To enforce ordered processing for a logical entity (an order, a user session, a device), set that entity's ID as the message key. The producer runs the key through murmur2 and consistently routes it to the same partition: same key → same partition → FIFO delivery.\n\nWatch for partition skew: a high-cardinality hotspot key (e.g., a power user) can starve other consumers. Use a compound key like `userId:shardBucket` and mod the bucket count to spread load while preserving intra-entity order.\n\nFor global ordering, use a single partition — but you sacrifice all consumer parallelism. That tradeoff almost never makes sense at scale. Instead, model your domain around per-entity ordering: order state machines, device telemetry, and user event streams all fit naturally.\n\nCritically, set `enable.idempotence=true` and `max.in.flight.requests.per.connection=1` on the producer. Without idempotence, a retry on a failed batch can reorder messages within the same partition — silently breaking your ordering guarantee.",
+      "code_snippet": "from confluent_kafka import Producer\n\nproducer = Producer({\n    \"bootstrap.servers\": \"localhost:9092\",\n    \"enable.idempotence\": \"true\",\n    \"max.in.flight.requests.per.connection\": \"1\",\n    \"acks\": \"all\",\n})\n\ndef publish_order_event(order_id: str, payload: bytes) -> None:\n    # murmur2(order_id) → deterministic partition assignment\n    producer.produce(topic=\"order-events\", key=order_id.encode(), value=payload)\n    producer.flush()",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Monitoring — queue depth alerts, consumer lag, dead letter queue alerts",
+      "status": "done",
+      "title": "Kafka Monitoring — Consumer Lag, Queue Depth, and Dead Letter Alerts That Actually Matter",
+      "body": "Consumer lag is the most critical Kafka metric: it's the delta between the latest offset in a partition and the last committed offset of a consumer group. Fetch it via `kafka.consumer:type=consumer-fetch-manager-metrics,client-id=*` JMX beans, or use the AdminClient API with `listConsumerGroupOffsets()` diff'd against `listOffsets()` for each partition. Alert when lag exceeds your SLA buffer — typically 2–5× your normal processing throughput. For queue depth (log-end-offset), the AdminClient `listOffsets()` with `OffsetSpec.latest()` gives per-partition depth without consuming messages. Dead letter queues in Kafka are conventionally suffixed `.DLT` (Spring Kafka) or `-dlq`. Monitor DLT consumer lag separately — a growing DLT lag means poison pills are accumulating unprocessed. Wire these three signals into Prometheus via `kafka_exporter` (JMX exporter) and set Grafana alerts: lag > threshold for > 2 minutes triggers PagerDuty. Never alert on instantaneous spikes — use a sustained window to avoid noise from rebalances.",
+      "code_snippet": "// Fetch consumer group lag per partition using AdminClient\ntry (AdminClient admin = AdminClient.create(props)) {\n    Map<TopicPartition, OffsetAndMetadata> committed =\n        admin.listConsumerGroupOffsets(\"my-group\")\n             .partitionsToOffsetAndMetadata().get();\n\n    Map<TopicPartition, OffsetSpec> latestReq = committed.keySet().stream()\n        .collect(Collectors.toMap(tp -> tp, tp -> OffsetSpec.latest()));\n\n    Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> endOffsets =\n        admin.listOffsets(latestReq).all().get();\n\n    committed.forEach((tp, meta) -> {\n        long lag = endOffsets.get(tp).offset() - meta.offset();\n        System.out.printf(\"Partition %s lag: %d%n\", tp, lag);\n    });\n}",
+      "language": "kotlin",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Scaling — horizontal consumer scaling, partition count, rebalancing",
+      "status": "done",
+      "title": "Kafka Scaling — Partitions, Consumer Groups, and Rebalancing",
+      "body": "Kafka's parallelism ceiling is your partition count. A consumer group assigns one partition per consumer — if you have 12 partitions and spin up 15 consumers, 3 sit idle. Plan partition count at topic creation; shrinking is unsupported and expanding triggers rebalancing. Rebalancing is Kafka's Achilles heel at scale: every time a consumer joins, leaves, or crashes, the group coordinator pauses all consumption, revokes assignments, and redistributes. With the default `RangeAssignor` and eager protocol, this causes a full stop-the-world pause. Switch to `CooperativeStickyAssignor` and the incremental cooperative rebalancing protocol — only partitions that need to move are revoked, keeping the rest consuming. Tune `max.poll.interval.ms` to match your actual processing time; exceeding it marks the consumer dead and triggers a rebalance. Use `session.timeout.ms` (default 45s) to control how quickly a crashed consumer is detected. For large groups, increase `group.initial.rebalance.delay.ms` so Kafka waits for all consumers to join before assigning, avoiding cascading rebalances at startup.",
+      "code_snippet": "const { Kafka } = require('kafkajs');\n\nconst kafka = new Kafka({ clientId: 'app', brokers: ['broker:9092'] });\n\nconst consumer = kafka.consumer({\n  groupId: 'orders-group',\n  sessionTimeout: 30000,\n  rebalanceTimeout: 60000,\n  maxWaitTimeInMs: 5000,\n});\n\nawait consumer.connect();\nawait consumer.subscribe({ topic: 'orders', fromBeginning: false });\n\n// CooperativeStickyAssignor requires kafkajs >= 2.x\n// Set partitionAssigners in kafka-configs for broker-side\nawait consumer.run({\n  partitionsConsumedConcurrently: 3,\n  eachMessage: async ({ topic, partition, message }) => {\n    console.log(`[${partition}] ${message.value?.toString()}`);\n  },\n});",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Celery — task routing, beat scheduler, result backends, task chaining",
+      "status": "done",
+      "title": "Kafka Task Patterns — Routing, Beat Scheduling, Result Backends, and Chaining Without Celery",
+      "body": "Kafka replaces Celery's task abstractions with explicit topic-per-concern design. For task routing, dedicate a topic per task type (`email-tasks`, `report-tasks`) and assign separate consumer groups per worker pool — mirrors `task_routes` but gives partition-level parallelism you can scale without redeploying.\n\nCelery Beat has no Kafka native equivalent. Use a Kubernetes CronJob that produces a trigger message to a `scheduled-tasks` topic on schedule. For in-stream scheduling, Kafka Streams' `punctuate()` API fires periodic logic inside a processor topology without an external scheduler.\n\nResult backends: skip Redis. Produce results to a `task-results` topic keyed by `correlation_id`. Use a log-compacted topic so only the latest result per key is retained — callers poll by key with `auto.offset.reset=latest`. No TTL configuration needed.\n\nTask chaining is Kafka's native strength: each processor consumes from one topic, transforms, and produces to the next, forming a linear DAG. With `enable.idempotence=true` and `acks=all`, every hop commits durably before the downstream consumer starts — stronger delivery guarantees than Celery's `chain()` primitive, which can silently drop on broker restart.",
+      "code_snippet": "from confluent_kafka import Producer, Consumer\nimport json, uuid\n\np = Producer({'bootstrap.servers': 'localhost:9092', 'enable.idempotence': True, 'acks': 'all'})\n\ndef dispatch(task_type: str, payload: dict) -> str:\n    cid = str(uuid.uuid4())\n    p.produce(f\"{task_type}-tasks\", key=cid, value=json.dumps(payload))\n    p.flush()\n    return cid  # correlation_id — poll task-results topic by this key\n\ndef chain_worker(src: str, dst: str, fn):\n    c = Consumer({'bootstrap.servers': 'localhost:9092',\n                  'group.id': f'{src}-group', 'auto.offset.reset': 'earliest'})\n    c.subscribe([src])\n    while True:\n        msg = c.poll(1.0)\n        if msg and not msg.error():\n            p.produce(dst, key=msg.key(), value=json.dumps(fn(json.loads(msg.value()))))\n            p.flush()",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Security — broker authentication, TLS, network isolation",
+      "status": "done",
+      "title": "Kafka Security — SASL, TLS, and Listener Isolation Done Right",
+      "body": "Kafka brokers support four SASL mechanisms: PLAIN, SCRAM-SHA-256/512, GSSAPI (Kerberos), and OAUTHBEARER. For most cloud deployments, SCRAM-SHA-512 over SASL_SSL is the practical default — it avoids plaintext credential exposure without Kerberos infrastructure complexity. TLS requires ssl.keystore.location and ssl.truststore.location on both brokers and clients; use PEM-formatted certs with ssl.keystore.type=PEM (Kafka 2.7+) to skip JKS entirely.\n\nListener isolation is non-negotiable: define separate listeners for internal broker-to-broker traffic and external client traffic. Set listeners=INTERNAL://0.0.0.0:9093,EXTERNAL://0.0.0.0:9094 with listener.security.protocol.map=INTERNAL:PLAINTEXT,EXTERNAL:SASL_SSL. Advertised listeners must match listener names exactly or clients will fail to bootstrap with a confusing \"Broker not available\" error.\n\nPair authentication with ACLs: kafka-acls.sh --add --allow-principal User:service-account --operation Read --topic payments grants topic-level access. Set authorizer.class.name=kafka.security.authorizer.AclAuthorizer and super.users=User:admin in server.properties. Without ACLs, authenticated users can still read any topic — SASL proves identity, ACLs enforce access. One without the other is half a lock.",
+      "code_snippet": "from confluent_kafka import Producer\n\nconf = {\n    'bootstrap.servers': 'broker:9094',\n    'security.protocol': 'SASL_SSL',\n    'sasl.mechanism': 'SCRAM-SHA-512',\n    'sasl.username': 'service-account',\n    'sasl.password': 's3cr3t',\n    'ssl.ca.location': '/etc/kafka/certs/ca.pem',\n    'ssl.endpoint.identification.algorithm': 'https',\n}\n\nproducer = Producer(conf)\nproducer.produce('payments', key='txn-1', value='{\"amount\": 100}')\nproducer.flush()",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Testing — testing consumers in isolation, mocking brokers in tests",
+      "status": "done",
+      "title": "Kafka MockConsumer — Testing Consumers Without a Running Broker",
+      "body": "Testing Kafka consumers in isolation avoids broker overhead and keeps tests deterministic. The `kafka-clients` library ships a `MockConsumer<K, V>` that implements the full `Consumer<K, V>` interface — inject it instead of `KafkaConsumer` and control exactly what records your consumer sees.\n\nKey setup: call `assign()` to bind partitions manually, seed offsets with `updateBeginningOffsets()`, then push records via `addRecord(new ConsumerRecord<>(topic, partition, offset, key, value))`. No ZooKeeper, no broker, sub-millisecond feedback.\n\nFor integration-level tests where real serialization, offset commits, and consumer group rebalancing matter, Spring Kafka's `@EmbeddedKafka` spins up an in-process broker on a random port. Annotate the test class with `@EmbeddedKafka(partitions = 1, topics = {\"orders\"})` and inject `EmbeddedKafkaBroker` to get the bootstrap address wired into your `KafkaTemplate` and listener containers.\n\nUnit tests with `MockConsumer` catch deserialization bugs and business logic errors fast. Integration tests with `@EmbeddedKafka` catch offset management gaps and serialization round-trip failures. The two layers cover non-overlapping failure modes — run both.",
+      "code_snippet": "val mockConsumer = MockConsumer<String, String>(OffsetResetStrategy.EARLIEST)\nval partition = TopicPartition(\"orders\", 0)\nmockConsumer.assign(listOf(partition))\nmockConsumer.updateBeginningOffsets(mapOf(partition to 0L))\nmockConsumer.addRecord(\n    ConsumerRecord(\"orders\", 0, 0L, \"k1\", \"\"\"{\"id\":1,\"amount\":99}\"\"\")\n)\n\nval orderService = mockk<OrderService>()\nOrderConsumer(mockConsumer, orderService).pollOnce()\n\nverify { orderService.process(match { it.id == 1 && it.amount == 99 }) }",
+      "language": "kotlin",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "When to Use What — Redis vs Kafka vs RabbitMQ decision framework",
+      "status": "done",
+      "title": "Kafka vs RabbitMQ vs Redis — A Decision Framework Built Around Kafka's Strengths",
+      "body": "Kafka wins when you need replayability and fan-out: multiple independent consumer groups each maintain their own offsets in the internal `__consumer_offsets` topic, so a billing service and an analytics pipeline can independently consume the same `order-created` topic without interfering. RabbitMQ deletes messages after acknowledgment — no replay, no audit trail. Redis Pub/Sub drops messages entirely if no subscriber is connected at publish time.\n\nChoose RabbitMQ when your workload is task-queue shaped — short-lived jobs, complex routing via exchanges (direct, topic, fanout, headers), and per-message TTL or dead-letter queues without manual Kafka topic plumbing.\n\nChoose Redis Streams when latency is critical (sub-millisecond), data is ephemeral, and throughput fits in memory. `XADD`/`XREADGROUP` gives consumer-group semantics without broker overhead, but durability is limited to your Redis persistence config.\n\nKafka is the right call for high-throughput event sourcing: set `retention.ms=-1` for infinite log retention, `log.cleanup.policy=compact` for stateful key-based topics, and `enable.idempotence=true` on the producer for exactly-once delivery per partition. Partition count is your parallelism lever — size it to your peak consumer group concurrency.",
+      "code_snippet": "from confluent_kafka import Consumer, Producer\n\n# Idempotent producer: exactly-once delivery per partition\nproducer = Producer({\n    \"bootstrap.servers\": \"localhost:9092\",\n    \"enable.idempotence\": True,\n    \"acks\": \"all\",\n})\n\n# Independent consumer group: replay without affecting other services\nconsumer = Consumer({\n    \"bootstrap.servers\": \"localhost:9092\",\n    \"group.id\": \"billing-service\",\n    \"auto.offset.reset\": \"earliest\",   # replay from log start\n    \"enable.auto.commit\": False,        # manual commit for at-least-once\n})\n\nconsumer.subscribe([\"order-created\"])\nmsg = consumer.poll(1.0)\nif msg and not msg.error():\n    process(msg.value())\n    consumer.commit()  # persisted to __consumer_offsets",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    }
+  ]
 }

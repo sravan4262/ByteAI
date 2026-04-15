@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: cross_platform
 domain: mobile
-tech_stacks: [react_native, flutter, expo, ionic, capacitor]
+tech_stacks: [react_native, flutter]
 byte_type_default: article
 
 ## Topics to Seed

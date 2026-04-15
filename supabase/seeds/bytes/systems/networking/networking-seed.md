@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: networking
 domain: systems
-tech_stacks: [tcp_ip, quic, dpdk]
+tech_stacks: [tcp_ip, quic]
 byte_type_default: article
 
 ## Topics to Seed

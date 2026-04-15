@@ -2,5 +2,134 @@
   "tech_stack": "the_graph",
   "subdomain": "web3_tools",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "The Graph — subgraphs, indexing blockchain events, GraphQL queries, hosted vs decentralized",
+      "status": "done",
+      "title": "The Graph — Indexing Blockchain Events with Subgraphs",
+      "body": "The Graph's subgraphs enable efficient indexing of blockchain events. By defining a subgraph schema, you can specify which events to index and how to store them. The Graph's `graph-cli` tool allows you to deploy and manage subgraphs. When a new block is added to the blockchain, The Graph's indexer updates the subgraph, making the data available for querying via GraphQL. Hosted service providers like The Graph Hosted Service or decentralized options like the_graph's own decentralized network can be used to deploy subgraphs.",
+      "code_snippet": "const { createClient } = require('@graphprotocol/client');\nconst client = createClient('https://api.thegraph.com/subgraphs/name/my-subgraph');\nconst query = `{ events { id, blockNumber, timestamp } }`;\nclient.query(query).then(result => console.log(result.data.events));",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "IPFS — content addressing, DHT, pinning, IPFS vs Filecoin, CIDs",
+      "status": "done",
+      "title": "the_graph: Leveraging IPFS for Decentralized Data Storage",
+      "body": "When building subgraphs with the_graph, decentralized data storage is crucial. IPFS (InterPlanetary File System) provides a solution through content addressing, allowing data to be stored and retrieved based on its content rather than location. The_graph can utilize IPFS to store and manage data, ensuring data integrity and availability. IPFS's DHT (Distributed Hash Table) enables efficient data retrieval, while pinning ensures data persistence. Notably, IPFS differs from Filecoin, which is a decentralized storage network that incentivizes storage providers. In the_graph, developers can use CIDs (Content Identifiers) to reference IPFS-stored data, enabling seamless integration with subgraphs.",
+      "code_snippet": "const ipfs = require('ipfs-http-client'); const cid = await ipfs.add('Hello World'); console.log(cid);",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "ethers.js — providers, signers, contract interaction, event listening",
+      "status": "done",
+      "title": "the_graph Web3 Essentials: Ethers.js with Providers, Signers, and Contract Interaction",
+      "body": "When working with the_graph, you often need to interact with Ethereum contracts. Ethers.js is a popular library for this purpose. To use it with the_graph, you'll need to create a provider instance, passing the GraphQL endpoint and a signatory. A provider is responsible for fetching data from the blockchain. You can create a provider with ` ethers.getDefaultProvider() ` or ` ethers.providers.JsonRpcProvider() `. For example, to use the Infura provider with the_graph's default endpoint, you'd do: `const provider = new ethers.providers.JsonRpcProvider('https://api.thegraph.com/subgraphs/name/your-subgraph-name');`. A signer is required to send transactions. You can create a signer with a private key or a hardware wallet. Once you have a provider and signer, you can interact with contracts using ` ethers.Contract() `. You can also listen to events emitted by contracts using ` ethers.Contract.getEvent().getFilter() `. The event listener will notify you when an event is emitted.",
+      "code_snippet": "import { ethers } from 'ethers';\nconst provider = new ethers.providers.JsonRpcProvider('https://api.thegraph.com/subgraphs/name/your-subgraph-name');\nconst contract = new ethers.Contract('0xYourContractAddress', ['YourContractABI'], provider);\ncontract.on('YourEvent', (event) => {\n  console.log(event);\n});",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "wagmi — React hooks for Ethereum, connector system, TanStack Query integration",
+      "status": "done",
+      "title": "the_graph & Wagmi: Seamlessly Integrating TanStack Query",
+      "body": "When building Ethereum applications on the_graph, you can leverage the power of React hooks and TanStack Query with Wagmi. This library provides a connector system that simplifies data fetching and caching. To use it, create a connector instance and pass it to the `useQuery` hook from TanStack Query. For example, you can fetch user data from the graph API like this:\n```typescript\nimport { useQuery, useMutation } from '@tanstack/query-react-query';\nimport { useAccount, useContractRead } from '@wagmi/core';\n\nconst { data, isLoading, error } = useQuery(\n  ['user'],\n  async () => {\n    const account = useAccount();\n    const userData = await useContractRead(\n      account.connect().address,\n      'userData'\n    );\n    return userData;\n  },\n  { refetchOnWindowFocus: false, staleTime: 1000 * 60 * 5 }\n);\n```\nThis code snippet fetches user data from the graph API when the component mounts and updates it every 5 minutes. You can customize the fetcher function to suit your specific use case.",
+      "code_snippet": "typescript",
+      "language": null,
+      "clarity": 9,
+      "specificity": 8,
+      "relevance": 9,
+      "overall": 8.6
+    },
+    {
+      "topic": "viem — TypeScript-first, lightweight, low-level, replacing ethers in modern stacks",
+      "status": "done",
+      "title": "the_graph: Migrate from Ethers to Viem for Modern Web3 Stacks",
+      "body": "When building on the_graph, you can now replace Ethers with Viem, a TypeScript-first, lightweight, and low-level library. Viem provides better performance and a more concise API. To migrate, you'll need to update your queries to use Viem's `createClient` function, which accepts the same options as `the_graph's` `graphqlClient`.\n\nconst viemClient = createClient({ url: 'https://api.thegraph.com/subgraphs/name/your-subgraph' });\nconst query = gql` query { ... } `;\nviejClient.query({ query });\n\nViem's query builder is designed for complex queries, so you may need to refactor your existing queries to take advantage of its features.",
+      "code_snippet": "const viemClient = createClient({ url: 'https://api.thegraph.com/subgraphs/name/your-subgraph' });\nconst query = gql` query { ... } `;\nviejClient.query({ query });",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "Wallet Connection — WalletConnect, MetaMask, Coinbase Wallet, wallet abstraction",
+      "status": "done",
+      "title": "the_graph — Wallet Connection with WalletConnect, MetaMask, Coinbase Wallet, and Wallet Abstraction",
+      "body": "To connect a user's wallet in the_graph, you can use the WalletConnect library, MetaMask, Coinbase Wallet, or leverage wallet abstraction via the Graph SDK. First, install the required libraries using `graph-cli`. Then, use the `connectWallet` method from the Graph SDK to connect the user's wallet. This method returns a promise that resolves to a `Wallet` object. You can also use wallet abstraction to connect multiple wallets, allowing users to switch between them easily.",
+      "code_snippet": "import { Graph } from 'graph';\n   import { WalletConnect } from 'walletconnect';\n   const graph = new Graph({\n     url: 'https://thegraph.com/implementer/your-subgraph-url'\n   });\n   const wallet = await graph.connectWallet({\n     provider: WalletConnect,\n     options: {\n       rpcUrl: 'https://mainnet.infura.io/v3/YOUR_PROJECT_ID'\n     }\n   });\n   console.log(wallet);",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Reading On-chain Data — eth_call, getLogs, event filtering, batch requests",
+      "status": "done",
+      "title": "the_graph Tip: Efficient On-chain Data Retrieval",
+      "body": "To retrieve on-chain data using the_graph, you can leverage eth_call or getLogs. eth_call allows you to execute a single read-only call on a contract, while getLogs fetches a batch of logs. event filtering can be applied to getLogs to narrow down the results. Additionally, you can use batch requests to optimize data retrieval by combining multiple getLogs queries into a single request. the_graph's GraphQL API enables you to construct complex queries to fetch specific data efficiently.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "ENS — name resolution, avatar, records, reverse resolution",
+      "status": "done",
+      "title": "the_graph: Leveraging ENS for Efficient Name Resolution and Avatar Management",
+      "body": "When working with the_graph, ENS (Ethereum Name Service) enables efficient name resolution and avatar management. You can utilize the `getResolver` function from the `@the_graph/graphql-api` package to fetch a resolver for a specific ENS name. For example, to retrieve the resolver for the ENS name `example.eth`, you can use the following code snippet:\n```typescript\nimport { getResolver } from '@the_graph/graphql-api';\n\nconst resolver = await getResolver('example.eth');\nconsole.log(resolver);\n```\nAdditionally, you can leverage the `getAvatar` function to retrieve the avatar associated with an ENS name. The following code snippet demonstrates how to fetch the avatar for the ENS name `example.eth`:\n```typescript\nimport { getAvatar } from '@the_graph/graphql-api';\n\nconst avatar = await getAvatar('example.eth');\nconsole.log(avatar);\n```\nTo store and manage ENS records, you can utilize the `createRecord` and `updateRecord` functions. For instance, to create a new record for the ENS name `example.eth`, you can use the following code snippet:\n```typescript\nimport { createRecord } from '@the_graph/graphql-api';\n\nconst record = await createRecord('example.eth', { foo: 'bar' });\nconsole.log(record);\n```\nFor reverse resolution, you can use the `resolve` function from the `@the_graph/graphql-api` package. The following code snippet demonstrates how to resolve the ENS name associated with a given Ethereum address:\n```typescript\nimport { resolve } from '@the_graph/graphql-api';\n\nconst ensName = await resolve('0x...');\nconsole.log(ensName);\n```\n",
+      "code_snippet": null,
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Writing Transactions — signing, gas estimation, nonce management, transaction monitoring",
+      "status": "done",
+      "title": "the_graph Transaction Writing Best Practices",
+      "body": "When writing transactions with the_graph, managing gas estimation and nonces is crucial. Use the `estimateGas` method to predict gas usage before executing a transaction. The_graph's `eth_estimateGas` function returns a `GasEstimate` object with a `gas` property and an `error` property. For nonce management, use the `getTransactionCount` method to retrieve the current nonce value. Remember to update the nonce when retrying transactions. Monitor transactions with the_graph's `eth_getTransactionReceipt` function.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "IPFS Pinning — Pinata, web3.storage, NFT.Storage, self-hosted nodes",
+      "status": "done",
+      "title": "Pinning NFTs with the_graph and IPFS",
+      "body": "When working with NFTs on the_graph, it's essential to pin them to IPFS to ensure persistence. You can use Pinata, web3.storage, or NFT.Storage for this purpose. For a more customized solution, consider self-hosting an IPFS node. To pin an NFT, first, upload it to the storage service of your choice using the_graph's `ipfs.add()` method. Then, use the service's API to retrieve the CID and pin it to IPFS.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Contract ABIs — what ABIs are, encoding/decoding, generating typed ABIs",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

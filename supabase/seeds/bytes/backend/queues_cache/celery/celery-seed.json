@@ -2,5 +2,222 @@
   "tech_stack": "celery",
   "subdomain": "queues_cache",
   "domain": "backend",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Idempotency — designing consumers to safely handle duplicate messages",
+      "status": "done",
+      "title": "Celery Idempotency — Designing Tasks to Survive Duplicate Execution",
+      "body": "Celery's at-least-once delivery guarantee means your tasks will occasionally run more than once — on worker crashes, broker restarts, or visibility timeout expiry with acknowledgment mode `acks_late=True`. Without idempotency, duplicates corrupt state.\n\nThe core pattern: make your task's side effects conditional on state you persist externally. Use Redis or your database as a deduplication store keyed on `self.request.id` (the task UUID). Before doing any work, check if that ID has already been processed; if so, return early.\n\nFor database-backed tasks, a unique constraint on a `task_id` column is often cleaner than a separate Redis key — the INSERT itself becomes the idempotency check via `ON CONFLICT DO NOTHING`.\n\nSet `acks_late=True` with `reject_on_worker_lost=True` so tasks are re-queued on hard crashes, but always pair this with idempotent logic — not instead of it. For tasks with external side effects (emails, webhooks), store a `sent_at` timestamp and skip if already set. Celery's `task_always_eager` in tests makes it easy to validate re-execution behavior without a real broker.",
+      "code_snippet": "import redis\nfrom celery import shared_task\n\nr = redis.Redis()\n\n@shared_task(bind=True, acks_late=True, reject_on_worker_lost=True)\ndef send_welcome_email(self, user_id: int):\n    dedup_key = f\"task:done:{self.request.id}\"\n    if r.get(dedup_key):\n        return {\"status\": \"skipped\", \"reason\": \"duplicate\"}\n\n    # perform side effect\n    _dispatch_email(user_id)\n\n    # mark complete with TTL matching your visibility window\n    r.set(dedup_key, 1, ex=86400)\n    return {\"status\": \"sent\"}",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Dead Letter Queues — poison message handling, retry strategies with backoff",
+      "status": "done",
+      "title": "Celery Dead Letter Queues — Poison Message Handling and Retry Backoff",
+      "body": "Celery has no built-in dead-letter queue — you construct one via Kombu's `Queue` with `x-dead-letter-exchange` and `x-message-ttl` arguments on RabbitMQ. Without `task_acks_late = True` and `task_reject_on_worker_lost = True`, messages disappear silently on worker crashes instead of being requeued or dead-lettered. For poison message handling, `autoretry_for` drives retries automatically; pair it with `retry_backoff=2` (doubles each attempt), `retry_backoff_max=300` (caps at 5 minutes), and `retry_jitter=True` to scatter retry storms across workers. Once `max_retries` is exhausted, Celery raises `MaxRetriesExceededError` — override `on_failure` to capture the final exception and payload for manual inspection or re-routing. On RabbitMQ, messages that exceed TTL or are explicitly rejected flow to the configured DLX automatically, no extra code needed. Watch DLQ depth in Flower or via `celery inspect reserved`; a growing queue signals a deterministic bug in your task logic, not transient infrastructure noise.",
+      "code_snippet": "from celery import Celery\nfrom kombu import Queue\n\napp = Celery('tasks')\napp.conf.update(\n    task_acks_late=True,\n    task_reject_on_worker_lost=True,\n    task_queues=[\n        Queue('jobs', queue_arguments={'x-dead-letter-exchange': 'dlx', 'x-message-ttl': 60000}),\n    ],\n)\n\n@app.task(bind=True, autoretry_for=(Exception,),\n          retry_backoff=2, retry_backoff_max=300, retry_jitter=True, max_retries=5)\ndef process_event(self, payload: dict): ...",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Redis as Cache — TTL, eviction policies, cache-aside vs write-through vs write-behind",
+      "status": "done",
+      "title": "Celery + Redis Cache — TTL, Eviction Policies, and Caching Strategies in Tasks",
+      "body": "Celery uses Redis as both broker and result backend — but tasks often need Redis as a cache too. Mixing roles on one instance creates an eviction trap: `allkeys-lru` will evict task results under memory pressure, silently breaking `AsyncResult` state lookups. Use a dedicated Redis db (e.g., db=2 for cache) or switch to `volatile-lru` so only keys with explicit TTLs are evicted — Celery result keys carry TTLs via `result_expires` (default: 86400s).\n\nCache-aside is the safest pattern inside a Celery task: check Redis, on miss compute and write back with `ex=`. It keeps the task stateless and retryable. Write-through writes cache and DB atomically in the same task body — consistent but adds latency to every execution. Write-behind chains the DB write as a follow-up task via `.apply_async()`, cutting perceived latency but risking data loss if the worker crashes before the chain runs.\n\nSet `result_expires` intentionally: short for fire-and-forget tasks, longer for polling flows using `AsyncResult.get()`. Never rely solely on eviction for cache invalidation — under peak load, evictions are non-deterministic.",
+      "code_snippet": "import json\nimport redis\nfrom celery import Celery\n\napp = Celery(\"tasks\", broker=\"redis://localhost:6379/0\", backend=\"redis://localhost:6379/1\")\napp.conf.result_expires = 3600  # 1h TTL on task results\n\ncache = redis.Redis(host=\"localhost\", port=6379, db=2, decode_responses=True)\n\n@app.task(bind=True, max_retries=3)\ndef get_user_stats(self, user_id: int) -> dict:\n    key = f\"user:stats:{user_id}\"\n    hit = cache.get(key)\n    if hit:\n        return json.loads(hit)\n    stats = expensive_db_query(user_id)\n    cache.set(key, json.dumps(stats), ex=300)  # 5-min TTL, cache-aside\n    return stats",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Redis as Queue — pub/sub vs streams vs lists, persistence trade-offs",
+      "status": "done",
+      "title": "Celery + Redis Broker — Lists vs Streams vs Pub/Sub and What Actually Persists",
+      "body": "Celery's Redis broker uses Lists by default — tasks are pushed with LPUSH and consumed via BRPOP. This is fast and battle-tested, but comes with a critical gotcha: if a worker dies mid-execution, the task disappears unless you tune `visibility_timeout` in `BROKER_TRANSPORT_OPTIONS`. Celery re-queues tasks only if the timeout expires before an ACK, so set it longer than your longest task.\n\nRedis Pub/Sub is a hard no for Celery task queues — it's fire-and-forget with zero persistence. Any message published while a worker is down is gone permanently. Celery has no pub/sub broker transport for good reason.\n\nRedis Streams (XADD/XREADGROUP) aren't natively supported as a Celery broker transport, but the List-based transport approximates stream semantics via `BRPOP` blocking reads. For true durability, the real lever is Redis persistence config: AOF with `appendfsync everysec` gives you near-zero data loss on crash; RDB snapshots alone can lose minutes of tasks. Pair AOF with `CELERY_TASK_ACKS_LATE = True` to ensure tasks aren't ACK'd until the worker finishes, not just when received.",
+      "code_snippet": "# celery_config.py\napp.config_from_object({\n    'broker_url': 'redis://localhost:6379/0',\n    'result_backend': 'redis://localhost:6379/1',\n\n    # Re-queue task if worker dies before this window expires\n    # Must be > your longest-running task duration\n    'broker_transport_options': {\n        'visibility_timeout': 7200,  # 2 hours\n    },\n\n    # ACK only after task completes — safer with AOF persistence\n    'task_acks_late': True,\n    'task_reject_on_worker_lost': True,\n})",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Kafka — partitions, consumer groups, offset management, log compaction",
+      "status": "done",
+      "title": "Celery + Kafka — Partitions, Consumer Groups, and Why You Should Avoid Log Compaction",
+      "body": "Celery's Kafka transport (via Kombu) maps each task queue to a Kafka topic. Workers sharing the same `group_id` in `broker_transport_options` form a Kafka consumer group — partitions are distributed across them, so parallelism is hard-capped at partition count. Spin up 8 Celery workers against a 4-partition topic and 4 sit idle regardless of load.\n\nOffset management is where most teams get burned: set `enable_auto_commit: False` alongside `task_acks_late=True`. This delays Kombu's offset commit until after the `@app.task` handler returns. With auto-commit, Kafka marks the message consumed the moment it's fetched — before your task body runs — so a worker crash silently drops work.\n\nPair this with `task_reject_on_worker_lost=True` to ensure the message is re-queued on an unexpected worker exit rather than acknowledged and lost.\n\n`auto_offset_reset: 'latest'` is correct for fresh consumer groups on live queues. Use `'earliest'` only for deliberate replay, or every backlogged task gets reprocessed on deploy.\n\nSkip log compaction on Celery task topics entirely. Celery publishes each task with a UUID key — compaction's key-deduplication logic is a no-op here, adding broker overhead with zero benefit. Use time-based `retention.ms` instead.",
+      "code_snippet": "# celery_config.py\nfrom celery import Celery\n\napp = Celery(\"tasks\", broker=\"kafka://localhost:9092\")\n\napp.conf.update(\n    broker_transport_options={\n        \"group_id\": \"celery-prod\",       # Kafka consumer group ID\n        \"auto_offset_reset\": \"latest\",   # Don't replay backlog on new group\n        \"enable_auto_commit\": False,     # Kombu commits offset after task ack\n        \"consumer_timeout\": 1000,\n    },\n    task_acks_late=True,                 # Ack only after task body completes\n    task_reject_on_worker_lost=True,     # Re-queue on crash, never drop\n)",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "RabbitMQ — exchanges, routing keys, acknowledgements, prefetch count",
+      "status": "done",
+      "title": "Celery + RabbitMQ — Exchanges, Routing Keys, and Prefetch Done Right",
+      "body": "Celery abstracts RabbitMQ's exchange model, but understanding it unlocks precise routing and backpressure control. By default, Celery uses a direct exchange — each queue binds to a routing key matching its name. You can override this with `task_queues` and `task_routes` to fan tasks across topic exchanges.\n\nAcknowledgements matter: Celery sets `acks_late=False` by default, ACKing before the task runs. Flip to `acks_late=True` on your task (or globally via `task_acks_late`) so the message is only removed from RabbitMQ after successful execution — critical for idempotency.\n\nPrefetch is where most teams get burned. Celery sets `worker_prefetch_multiplier=4`, meaning each worker prefills 4 × concurrency messages. For long-running tasks this starves other workers. Set it to `1` to enforce fair dispatch — each worker only takes a new message when it finishes the current one. Combine with `task_acks_on_failure_or_timeout=False` to guarantee requeue on crash.",
+      "code_snippet": "# celeryconfig.py\nfrom kombu import Exchange, Queue\n\ntask_queues = (\n    Queue('default', Exchange('default', type='direct'), routing_key='default'),\n    Queue('critical', Exchange('critical', type='direct'), routing_key='critical'),\n)\ntask_default_queue = 'default'\ntask_default_exchange = 'default'\ntask_default_routing_key = 'default'\n\n# Fair dispatch — one message per worker slot\nworker_prefetch_multiplier = 1\n\n# ACK only after task completes successfully\ntask_acks_late = True\ntask_acks_on_failure_or_timeout = False",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "BullMQ — job priorities, rate limiting, repeatable jobs, job dependencies",
+      "status": "done",
+      "title": "Celery — Priorities, Rate Limits, Beat Schedules, and Canvas vs BullMQ",
+      "body": "BullMQ's four power features map directly to Celery primitives, but the APIs differ enough to trip you up.\n\n**Priorities**: Use `apply_async(priority=0–9)` where 9 is highest — opposite of BullMQ's lower-number-wins default. Only works with Redis broker and `task_queue_max_priority` set in settings; RabbitMQ requires `x-max-priority` on the queue declaration.\n\n**Rate limiting**: Decorate with `@app.task(rate_limit='10/m')` for per-task limits. Critically, limits are enforced per-worker process — four workers means 40 req/min effective throughput, not 10.\n\n**Repeatable jobs**: Celery Beat owns this. Define `beat_schedule` entries with `crontab()` or `timedelta` intervals. Unlike BullMQ's `repeat` option, Beat doesn't deduplicate — a slow task and the next scheduled run can overlap if execution exceeds the interval.\n\n**Job dependencies**: Canvas is your toolkit. `chain()` for sequential deps (fail-fast — an exception skips remaining tasks), `group()` for parallel fans, and `chord()` when you need a single callback after parallel tasks complete. Wire `link_error` handlers to catch chain failures without silently dropping work.",
+      "code_snippet": "from celery import chain, group, chord\nfrom myapp import app\n\n@app.task(rate_limit='10/m')\ndef fetch_data(url): ...\n\n@app.task\ndef aggregate(results): ...\n\n# Sequential dep — chain is fail-fast; use link_error for recovery\nchain(fetch_data.s(url), aggregate.s()).delay()\n\n# Parallel fan-in: all fetch_data tasks must finish before aggregate runs\nchord(group(fetch_data.s(u) for u in urls), aggregate.s())()\n\n# High-priority dispatch (Redis broker + task_queue_max_priority=10 required)\nfetch_data.apply_async(args=[url], priority=9)",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Celery — task routing, beat scheduler, result backends, task chaining",
+      "status": "done",
+      "title": "Celery — Task Routing, Beat, Result Backends, and Chaining in Production",
+      "body": "Celery's routing system lets you direct tasks to specific queues using `task_routes` in your config. Define queues explicitly and bind workers to them with `-Q queue_name` — this keeps CPU-heavy tasks off your I/O queues. Celery Beat handles periodic tasks via `beat_schedule`, storing the schedule state in a database backend (use `django-celery-beat` for DB-backed schedules instead of the default file-based `shelve`). Result backends matter more than most teams realize: Redis is fast but volatile; use `result_expires` to avoid memory bloat. PostgreSQL via `django-celery-results` gives you durable, queryable results. Task chaining with `chain()` links tasks so each result feeds the next — combine with `group()` and `chord()` for fan-out/fan-in patterns. A `chord` executes a callback only after all grouped tasks complete, making it ideal for map-reduce workflows. Always set `task_acks_late=True` and `task_reject_on_worker_lost=True` together — without both, a worker crash silently drops in-flight tasks.",
+      "code_snippet": "from celery import chain, group, chord\nfrom myapp.celery import app\n\napp.conf.update(\n    task_routes={\n        'myapp.tasks.render_video': {'queue': 'heavy'},\n        'myapp.tasks.send_email': {'queue': 'io'},\n    },\n    task_acks_late=True,\n    task_reject_on_worker_lost=True,\n    result_expires=3600,\n)\n\n# Chain: compress → upload → notify\npipeline = chain(\n    compress_file.s('input.mp4'),\n    upload_to_cdn.s(),\n    notify_user.s(user_id=42),\n)\npipeline.delay()\n\n# Chord: process N chunks, then aggregate\nresult = chord(\n    group(process_chunk.s(chunk) for chunk in chunks)\n)(aggregate_results.s())",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "NATS — JetStream, subject-based routing, at-least-once delivery",
+      "status": "done",
+      "title": "Celery + NATS JetStream — Subject Routing and At-Least-Once Delivery Without RabbitMQ",
+      "body": "Celery's `task_routes` maps tasks to named queues; with RabbitMQ you get exchange/routing-key semantics, but maintaining that broker is operationally heavy. NATS JetStream replaces it with subject-based routing (`tasks.email.send`, `tasks.reports.*`) and durable, at-least-once delivery — no exchange configuration needed.\n\nA JetStream stream bound to a subject wildcard (`tasks.>`) replaces your Celery queue declarations. Pull consumers mirror Celery's `--concurrency` workers: each consumer acks explicitly (`msg.ack()`), and unacked messages redeliver after the stream's `ack_wait` timeout — the same guarantee Celery achieves with `acks_late=True` on RabbitMQ.\n\nUnlike Redis (where Celery uses BRPOP — the message is gone the moment a worker pops it), JetStream persists messages on disk and replays on worker crash. This makes NATS a natural upgrade when your Redis broker becomes a SPOF.\n\nThe catch: there's no production-grade Celery broker transport for NATS. You either wrap `nats-py` directly, dropping Celery's task DSL, or use the experimental `celery-nats` community package. Evaluate JetStream for greenfield services where NATS is already in your stack and subject-based fan-out beats Celery's queue-per-task routing.",
+      "code_snippet": "import asyncio\nimport nats\nfrom nats.js.api import StreamConfig\n\nasync def main():\n    nc = await nats.connect(\"nats://localhost:4222\")\n    js = nc.jetstream()\n\n    # Stream bound to wildcard — mirrors Celery queue declaration\n    await js.add_stream(StreamConfig(name=\"TASKS\", subjects=[\"tasks.>\"]))\n\n    # Publish — equivalent to send_email.apply_async(queue=\"email\")\n    await js.publish(\"tasks.email.send\", b'{\"user_id\": 42}')\n\n    # Pull consumer with explicit ack — mirrors Celery acks_late=True\n    sub = await js.pull_subscribe(\"tasks.email.send\", durable=\"email-worker\")\n    msgs = await sub.fetch(1, timeout=5)\n    for msg in msgs:\n        print(f\"Processing: {msg.data}\")\n        await msg.ack()  # Redelivers after ack_wait if not acked\n\n    await nc.close()\n\nasyncio.run(main())",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 8,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Backpressure — what happens when consumers lag, preventing memory blowout",
+      "status": "done",
+      "title": "Celery Backpressure — Preventing Worker Memory Blowout When Consumers Lag",
+      "body": "When Celery workers fall behind, brokers keep accepting tasks — your Redis or RabbitMQ queue grows unbounded while workers churn through a backlog, consuming increasing memory. Celery has no built-in backpressure, so you must engineer it explicitly.\n\nThe primary lever is `CELERYD_PREFETCH_MULTIPLIER`. It defaults to 4, meaning each worker prefetches 4× its concurrency count. A worker with 8 processes holds 32 tasks in memory simultaneously. Set it to 1 so each child process holds exactly one task — drastically reducing in-process queue depth.\n\nPair this with `worker_max_tasks_per_child` to reclaim memory after long-running tasks cause RSS bloat. For truly large payloads, avoid embedding data in task args — store in Redis/S3 and pass a key instead.\n\nOn the broker side, use RabbitMQ's `x-max-length` queue argument or Redis's `MAXMEMORY` + `noeviction` policy to reject tasks at source when the queue is full, forcing producers to slow down — actual backpressure at the protocol level.",
+      "code_snippet": "# celeryconfig.py\n\n# Each worker child holds exactly 1 task — minimizes prefetch memory\nworker_prefetch_multiplier = 1\n\n# Recycle worker after 500 tasks to prevent RSS memory creep\nworker_max_tasks_per_child = 500\n\n# Cap queue length in RabbitMQ (declare via Kombu)\nfrom kombu import Queue\n\ntask_queues = (\n    Queue(\n        'default',\n        queue_arguments={'x-max-length': 10000, 'x-overflow': 'reject-publish'}\n    ),\n)\n\n# Producer now gets a 'basic.nack' when queue is full — backpressure achieved",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Ordering — when order matters, partitioning strategy for ordered processing",
+      "status": "done",
+      "title": "Celery Ordering — Partitioning Strategies for Sequential Task Processing",
+      "body": "Celery provides no global ordering guarantees — brokers like Redis deliver tasks roughly FIFO, but multiple workers destroy sequencing instantly. When order matters (e.g., processing user events, ledger entries, document revisions), the only reliable strategy is partition-by-key routing combined with single-concurrency workers.\n\nRoute tasks to a queue derived from a stable partition key (user ID, tenant ID, entity ID) using `task_routes` or the `queue` argument directly. Each logical partition maps to one queue; each queue is consumed by a worker running `--concurrency=1`. This serializes processing within a partition while preserving parallelism across partitions.\n\nAvoid Celery's built-in `priority` field for ordering — it's advisory, broker-dependent, and collapses under concurrent workers. Don't use `chain()` for ordering across independent producers; chains are tightly coupled and a single failure stalls the sequence. Partition queues are stateless, horizontally scalable, and failure-isolated. The tradeoff: queue proliferation. Cap partitions with modulo bucketing (`user_id % NUM_BUCKETS`) to keep queue count bounded.",
+      "code_snippet": "from celery import Celery\n\napp = Celery('tasks', broker='redis://localhost:6379/0')\n\nNUM_BUCKETS = 16\n\n@app.task\ndef process_user_event(user_id: int, payload: dict):\n    # Business logic — guaranteed sequential per bucket\n    print(f\"Processing event for user {user_id}: {payload}\")\n\ndef enqueue_user_event(user_id: int, payload: dict):\n    bucket = user_id % NUM_BUCKETS\n    queue_name = f\"ordered_user_{bucket}\"\n    process_user_event.apply_async(\n        args=[user_id, payload],\n        queue=queue_name\n    )\n\n# Start workers: celery -A tasks worker -Q ordered_user_0 --concurrency=1",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Scaling — horizontal consumer scaling, partition count, rebalancing",
+      "status": "done",
+      "title": "Celery — Scaling Workers Horizontally Without Dropping Tasks",
+      "body": "Celery scales horizontally by running multiple worker processes, each consuming from the same broker queue. The critical knob is `--concurrency`, which controls the number of child processes (or threads/coroutines) per worker. By default it matches CPU count — fine for CPU-bound tasks, wrong for I/O-bound ones where you want higher concurrency via `--pool=gevent` or `--pool=eventlet`.\n\nWith Redis as broker, all workers compete on the same list key — no concept of partitions. With RabbitMQ, you can use `x-max-priority` or separate named queues to control routing. With Kafka via `celery-kafka` or Confluent backends, partition count directly limits parallelism: more partitions = more workers can consume independently without stepping on each other.\n\nRebalancing in Celery is implicit — workers just stop polling when shut down. Use `--max-tasks-per-child` to recycle workers that leak memory. For graceful scaling, send `SIGTERM` and let in-flight tasks finish (`--without-gossip --without-mingle` reduces overhead in large fleets). Use `celery inspect active` to confirm drain before terminating.",
+      "code_snippet": "# Launch workers targeting specific queues with tuned concurrency\n# High-throughput I/O queue: gevent pool, high concurrency\ncelery -A myapp worker -Q io_tasks --pool=gevent --concurrency=500 --loglevel=info &\n\n# CPU-bound queue: prefork pool, one worker per core\ncelery -A myapp worker -Q cpu_tasks --pool=prefork --concurrency=8 --max-tasks-per-child=100 &\n\n# Inspect active tasks across all workers before scaling down\ncelery -A myapp inspect active\n\n# Graceful shutdown — waits for in-flight tasks\ncelery -A myapp control shutdown",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Monitoring — queue depth alerts, consumer lag, dead letter queue alerts",
+      "status": "done",
+      "title": "Celery Monitoring — Queue Depth, Consumer Lag, and Dead Letter Alerts",
+      "body": "Celery exposes queue depth via the broker backend. With Redis, `app.control.inspect().active()` and `app.control.inspect().reserved()` reveal in-flight and queued tasks per worker, but for raw queue depth you query Redis directly: `redis_client.llen('celery')`. Consumer lag emerges when producers outpace workers — track it by comparing enqueue rate against `inspect().stats()['total']` throughput over time.\n\nFor dead letter queues, Celery doesn't natively route failed tasks to a DLQ, but you can simulate one using `task_acks_late = True` combined with a custom `on_failure` handler or `after_return` signal that re-publishes to a `celery.dead` queue. Alternatively, configure Kombu's dead-letter exchange directly on the broker queue declaration.\n\nFor alerting, instrument `task_failure` and `task_retry` signals with counters pushed to Prometheus via `prometheus_client`. Set alert rules: queue depth > 500 for 5 minutes, retry rate > 10/min, or any task landing in `celery.dead`. Use Flower's REST API (`/api/queues/length`) for a quick dashboard integration without custom instrumentation.",
+      "code_snippet": "from celery.signals import task_failure, task_retry\nfrom prometheus_client import Counter\n\nTASK_FAILURES = Counter('celery_task_failures_total', 'Total task failures', ['task_name'])\nTASK_RETRIES = Counter('celery_task_retries_total', 'Total task retries', ['task_name'])\n\n@task_failure.connect\ndef on_task_failure(sender=None, task_id=None, exception=None, **kwargs):\n    TASK_FAILURES.labels(task_name=sender.name).inc()\n\n@task_retry.connect\ndef on_task_retry(sender=None, reason=None, **kwargs):\n    TASK_RETRIES.labels(task_name=sender.name).inc()\n\n# Queue depth check via Redis\nimport redis\nr = redis.Redis()\ndepth = r.llen('celery')  # alert if depth > threshold",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Testing — testing consumers in isolation, mocking brokers in tests",
+      "status": "done",
+      "title": "Celery — Testing Tasks in Isolation Without a Real Broker",
+      "body": "Celery tasks are just callables — the broker is infrastructure, not business logic. The cleanest way to test a consumer in isolation is `task.apply()`, which executes the task synchronously in the current process, bypassing Redis or RabbitMQ entirely. No broker, no worker, no network.\n\nFor pytest, set `task_always_eager = True` and `task_eager_propagates = True` in a `celery_config` fixture. `task_always_eager` makes every `.delay()` and `.apply_async()` call behave like `.apply()`. `task_eager_propagates` ensures exceptions raised inside the task surface immediately rather than being swallowed into the result backend.\n\nUse the `celery_app` fixture from `pytest-celery` to get a properly scoped Celery instance that respects your test config overrides — avoid importing your production `app` object directly, since it carries real broker URLs. For tasks with side effects (DB writes, HTTP calls), mock those at the function boundary. Your test should assert on the task's return value and any mock call counts, not on whether a message landed in a queue.",
+      "code_snippet": "# conftest.py\nimport pytest\n\n@pytest.fixture\ndef celery_config():\n    return {\n        \"task_always_eager\": True,\n        \"task_eager_propagates\": True,\n        \"broker_url\": \"memory://\",\n        \"result_backend\": \"cache+memory://\",\n    }\n\n# test_tasks.py\nfrom unittest.mock import patch\nfrom myapp.tasks import send_welcome_email\n\ndef test_send_welcome_email(celery_app):\n    with patch(\"myapp.tasks.mailer.send\") as mock_send:\n        result = send_welcome_email.apply(args=[\"user@example.com\"])\n        assert result.successful()\n        mock_send.assert_called_once_with(\"user@example.com\")",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Security — broker authentication, TLS, network isolation",
+      "status": "done",
+      "title": "Celery Broker Security — TLS, Authentication, and Network Isolation",
+      "body": "Leaving your Celery broker open on a default port with no auth is handing attackers a remote code execution primitive — tasks serialize with pickle by default. Lock it down at three layers.\n\nBroker authentication: For RabbitMQ, create a dedicated vhost and user with minimal permissions (`configure=''`, `write=task_queue`, `read=task_queue`). For Redis, set `requirepass` and use ACLs to restrict the Celery user to only `LPUSH`, `BRPOP`, `SUBSCRIBE`, and key patterns matching your queue names.\n\nTLS in transit: Pass `ssl_cert_reqs`, `ssl_ca_certs`, `ssl_certfile`, and `ssl_keyfile` via `broker_use_ssl` in your Celery config. For Redis this maps directly to `rediss://` scheme. Never use `ssl_cert_reqs=ssl.CERT_NONE` in production — that silently disables verification.\n\nNetwork isolation: Bind the broker to a private subnet interface only (`bind 10.0.0.x`). Use firewall rules (iptables/security groups) to allow inbound on port 5672/6379 exclusively from your worker and producer CIDRs. Avoid exposing broker ports publicly under any circumstances — no auth scheme fully compensates for a publicly reachable broker.",
+      "code_snippet": "# celeryconfig.py\nimport ssl\n\n# Redis over TLS with password\nbroker_url = \"rediss://:your_strong_password@10.0.1.10:6379/0\"\nresult_backend = \"rediss://:your_strong_password@10.0.1.10:6379/1\"\n\nbroker_use_ssl = {\n    \"ssl_cert_reqs\": ssl.CERT_REQUIRED,\n    \"ssl_ca_certs\": \"/etc/ssl/certs/ca-bundle.crt\",\n    \"ssl_certfile\": \"/etc/celery/client.crt\",\n    \"ssl_keyfile\": \"/etc/celery/client.key\",\n}\n\n# Disable pickle; use json to shrink the attack surface\ntask_serializer = \"json\"\nresult_serializer = \"json\"\naccept_content = [\"json\"]",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "When to Use What — Redis vs Kafka vs RabbitMQ decision framework",
+      "status": "done",
+      "title": "Celery Broker Showdown — Redis vs RabbitMQ vs Kafka Decision Framework",
+      "body": "Celery's broker isn't just a queue — it's the contract your workers rely on. Choose wrong and you'll fight your broker instead of your business logic.\n\nUse Redis when you need fast, fire-and-forget tasks with short TTLs. It's the default for good reason: dead-simple setup, Celery's result backend lives there too, and `CELERY_BROKER_URL = 'redis://localhost:6379/0'` just works. Drawback: no message durability by default — a Redis restart can lose queued tasks unless you enable AOF/RDB persistence.\n\nUse RabbitMQ when delivery guarantees matter. AMQP gives you acks, dead-letter exchanges (`x-dead-letter-exchange`), and priority queues natively. Celery's `task_acks_late = True` combined with RabbitMQ's DLX creates a reliable retry pipeline without custom logic. Ideal for billing, notifications, or anything where losing a message is unacceptable.\n\nAvoid Kafka as a Celery broker in production. The `confluent-kafka` transport exists but Celery's execution model (one task = one message consumed) fights Kafka's consumer-group partitioning semantics. Kafka shines for event streaming, not discrete task dispatch. Use it upstream to feed tasks into Celery, not as the broker itself.",
+      "code_snippet": "# settings.py — broker selection by environment\nimport os\n\n# Dev/low-stakes: Redis (fast, simple)\nCELERY_BROKER_URL = os.getenv('BROKER_URL', 'redis://localhost:6379/0')\nCELERY_RESULT_BACKEND = os.getenv('RESULT_BACKEND', 'redis://localhost:6379/1')\n\n# Prod/critical tasks: RabbitMQ with late acks + DLX\n# CELERY_BROKER_URL = 'amqp://user:pass@rabbit:5672//'\n# CELERY_TASK_ACKS_LATE = True\n# CELERY_TASK_REJECT_ON_WORKER_LOST = True\n\n# Dead-letter queue via RabbitMQ policy (set on broker, not in code):\n# rabbitmqctl set_policy DLX '.*' '{\"dead-letter-exchange\":\"celery.dlx\"}' --apply-to queues",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Message Delivery Guarantees — at-least-once vs at-most-once vs exactly-once",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Why Caching — reducing DB load, latency, cache-aside pattern",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Why Queues — decoupling, async processing, load leveling",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

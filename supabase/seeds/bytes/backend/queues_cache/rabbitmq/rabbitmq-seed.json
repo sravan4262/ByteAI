@@ -2,5 +2,386 @@
   "tech_stack": "rabbitmq",
   "subdomain": "queues_cache",
   "domain": "backend",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Message Delivery Guarantees — at-least-once vs at-most-once vs exactly-once",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Idempotency — designing consumers to safely handle duplicate messages",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Dead Letter Queues — poison message handling, retry strategies with backoff",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Why Caching — reducing DB load, latency, cache-aside pattern",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Why Queues — decoupling, async processing, load leveling",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Redis as Cache — TTL, eviction policies, cache-aside vs write-through vs write-behind",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Redis as Queue — pub/sub vs streams vs lists, persistence trade-offs",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Kafka — partitions, consumer groups, offset management, log compaction",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "RabbitMQ — exchanges, routing keys, acknowledgements, prefetch count",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "BullMQ — job priorities, rate limiting, repeatable jobs, job dependencies",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Celery — task routing, beat scheduler, result backends, task chaining",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Backpressure — what happens when consumers lag, preventing memory blowout",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Ordering — when order matters, partitioning strategy for ordered processing",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "NATS — JetStream, subject-based routing, at-least-once delivery",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Scaling — horizontal consumer scaling, partition count, rebalancing",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Security — broker authentication, TLS, network isolation",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Use What — Redis vs Kafka vs RabbitMQ decision framework",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Testing — testing consumers in isolation, mocking brokers in tests",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Monitoring — queue depth alerts, consumer lag, dead letter queue alerts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Idempotency — designing consumers to safely handle duplicate messages",
+      "status": "done",
+      "title": "RabbitMQ Idempotency — Designing Consumers to Safely Handle Duplicate Messages",
+      "body": "RabbitMQ can redeliver messages when a consumer crashes before sending `basic.ack`, or when a channel is closed mid-processing. This means your consumer logic must be idempotent — running it twice must produce the same outcome as running it once.\n\nThe safest pattern is a deduplication store keyed on the message's `messageId` property (set by the publisher via `IBasicProperties.MessageId`). Before processing, check a Redis SET or a DB unique constraint for that ID. If it exists, `basic.ack` immediately and return. If not, process and persist the ID atomically — ideally in the same DB transaction as your business write.\n\nAvoid relying on RabbitMQ's built-in `redelivered` flag (`ea.Redelivered`). It's `true` only when the *same channel* redelivers; after a broker restart or queue failover the flag resets to `false`, giving you a false sense of safety.\n\nFor at-least-once delivery with quorum queues, also set `x-delivery-limit` to cap runaway redeliveries and pair it with a dead-letter exchange so poison messages don't loop forever.",
+      "code_snippet": "channel.BasicConsume(queue: \"orders\", autoAck: false, consumer: consumer);\n\nconsumer.Received += async (_, ea) =>\n{\n    var msgId = ea.BasicProperties.MessageId;\n\n    if (await dedupeStore.ExistsAsync(msgId))\n    {\n        channel.BasicAck(ea.DeliveryTag, multiple: false);\n        return;\n    }\n\n    await using var tx = await db.BeginTransactionAsync();\n    await ProcessOrderAsync(ea.Body.ToArray(), tx);\n    await dedupeStore.SetAsync(msgId, ttl: TimeSpan.FromHours(24));\n    await tx.CommitAsync();\n\n    channel.BasicAck(ea.DeliveryTag, multiple: false);\n};",
+      "language": "csharp",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Why Queues — decoupling, async processing, load leveling",
+      "status": "done",
+      "title": "RabbitMQ — Why Queues Beat Direct Calls for Backend Workloads",
+      "body": "When your API handler calls a downstream service synchronously, you inherit its latency, failure modes, and throughput limits. RabbitMQ breaks that coupling by placing an AMQP exchange between producer and consumer. The producer publishes to an exchange, routing keys determine which queues receive the message, and consumers pull independently — neither side knows the other exists at runtime.\n\nThis unlocks three concrete wins. First, decoupling: redeploy or scale your email service without touching your order API. Second, async processing: a POST /orders returns 202 immediately after publishing to the `orders.created` topic exchange; the fulfillment worker processes at its own pace. Third, load leveling: a queue with `x-max-length` or a classic mirrored queue absorbs traffic spikes that would otherwise cascade into 503s — consumers drain at a steady rate while RabbitMQ buffers the burst.\n\nPrefetch count (`basic.qos`) is the knob that prevents a single consumer from being overwhelmed: set `prefetchCount: 1` to guarantee fair dispatch across worker instances, ensuring no consumer holds unacknowledged messages it can't process.",
+      "code_snippet": "import amqp from 'amqplib';\n\nconst conn = await amqp.connect('amqp://localhost');\nconst ch = await conn.createChannel();\n\nawait ch.assertExchange('orders', 'topic', { durable: true });\nawait ch.assertQueue('orders.fulfillment', { durable: true });\nawait ch.bindQueue('orders.fulfillment', 'orders', 'orders.created');\n\n// Producer: fire-and-forget, API returns immediately\nch.publish('orders', 'orders.created', Buffer.from(JSON.stringify({ orderId: 'abc123' })), { persistent: true });\n\n// Consumer: process at controlled rate\nawait ch.prefetch(1);\nch.consume('orders.fulfillment', async (msg) => {\n  if (!msg) return;\n  await fulfillOrder(JSON.parse(msg.content.toString()));\n  ch.ack(msg);\n});",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Dead Letter Queues — poison message handling, retry strategies with backoff",
+      "status": "done",
+      "title": "RabbitMQ Dead Letter Queues — Poison Message Handling and Backoff Retry",
+      "body": "When a message is rejected (basic.nack with requeue=false), exceeds its TTL, or hits a queue's x-max-length limit, RabbitMQ routes it to the Dead Letter Exchange (DLX) declared on that queue. The DLX then routes via normal exchange semantics to your dead letter queue (DLQ), preserving original headers plus x-death metadata — including the death count, reason, and source queue.\n\nFor retry-with-backoff, avoid a polling loop. Instead, create a series of per-delay queues (e.g. retry-5s, retry-30s, retry-2m), each with x-message-ttl and their own DLX pointing back to the primary exchange. On nack, set x-delay-level in a header and route to the appropriate retry queue. When TTL expires, RabbitMQ dead-letters the message back to the original queue automatically.\n\nPoison message detection: read x-death[0].count from the headers. If count exceeds your threshold (e.g. 5), publish directly to a permanent DLQ and ack the message — never requeue it. Failing to ack poisons will cause infinite redelivery loops and block the channel's prefetch window.",
+      "code_snippet": "// Node.js amqplib — declare queue with DLX and check x-death count\nconst channel = await connection.createChannel();\n\nawait channel.assertExchange('dlx', 'direct', { durable: true });\nawait channel.assertQueue('jobs.dlq', { durable: true });\nawait channel.bindQueue('jobs.dlq', 'dlx', 'jobs');\n\nawait channel.assertQueue('jobs', {\n  durable: true,\n  arguments: {\n    'x-dead-letter-exchange': 'dlx',\n    'x-dead-letter-routing-key': 'jobs',\n  },\n});\n\nchannel.consume('jobs', (msg) => {\n  const deaths = msg.properties.headers['x-death'];\n  const deathCount = deaths?.[0]?.count ?? 0;\n\n  if (deathCount >= 5) {\n    // Poison message — send to permanent graveyard and ack\n    channel.publish('', 'jobs.graveyard', msg.content, { persistent: true });\n    channel.ack(msg);\n    return;\n  }\n\n  try {\n    process(msg);\n    channel.ack(msg);\n  } catch {\n    channel.nack(msg, false, false); // requeue=false → triggers DLX\n  }\n});",
+      "language": "javascript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Message Delivery Guarantees — at-least-once vs at-most-once vs exactly-once",
+      "status": "done",
+      "title": "RabbitMQ Delivery Guarantees — at-most-once, at-least-once, and faking exactly-once",
+      "body": "RabbitMQ delivery semantics are controlled by how you configure acks, confirms, and durability — not a single flag.\n\n**At-most-once**: Set `auto_ack=True` on `basic_consume`. The broker drops the message the instant it's delivered. Zero re-delivery on consumer crash. Acceptable for fire-and-forget telemetry; never for financial or order data.\n\n**At-least-once**: The production default. Declare queues as `durable=True`, publish with `delivery_mode=2` (persistent), enable publisher confirms via `confirm_delivery()`, and call `basic_ack` only after successful processing. If your consumer dies mid-flight, RabbitMQ requeues the unacked message. Duplicate delivery is guaranteed under failure — your handler must be idempotent.\n\n**Exactly-once** has no native RabbitMQ primitive. Approximate it by setting a unique `message_id` in `BasicProperties` and checking it against a Redis SET or a Postgres `INSERT ... ON CONFLICT DO NOTHING` before processing. The community plugin `rabbitmq-message-deduplication` handles window-based dedup at the broker level but adds latency.\n\nFor most systems: at-least-once + idempotent consumers is the right default. Exactly-once is an application-layer concern.",
+      "code_snippet": "import pika\n\nconn = pika.BlockingConnection(pika.ConnectionParameters('localhost'))\nch = conn.channel()\nch.queue_declare(queue='orders', durable=True)\nch.confirm_delivery()  # raises UnroutableError or NackError on failure\n\nch.basic_publish(\n    exchange='', routing_key='orders',\n    body=b'{\"order_id\": \"uuid-123\"}',\n    properties=pika.BasicProperties(delivery_mode=2, message_id='uuid-123')\n)\n\ndef handle(ch, method, props, body):\n    # idempotency: skip if props.message_id already in processed set\n    ch.basic_ack(delivery_tag=method.delivery_tag)\n\nch.basic_qos(prefetch_count=1)\nch.basic_consume('orders', handle)\nch.start_consuming()",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Redis as Queue — pub/sub vs streams vs lists, persistence trade-offs",
+      "status": "done",
+      "title": "RabbitMQ Developer's Guide to Redis Queues — Pub/Sub vs Streams vs Lists",
+      "body": "Redis offers three queue-like primitives, each mapping differently to RabbitMQ concepts. Lists (LPUSH/BRPOP) mimic a basic queue but lack RabbitMQ's acknowledgement model — a crashed consumer loses the message entirely. Pub/Sub (PUBLISH/SUBSCRIBE) is fire-and-forget, equivalent to a fanout exchange with no durable queue binding; messages vanish if no subscriber is listening at publish time. Neither persists reliably by default.\n\nStreams (XADD/XREADGROUP) are the closest analog to RabbitMQ's durable queues with consumer groups. You get explicit ACKs (XACK), per-consumer group offsets analogous to independent queue consumers, and a pending entry list (PEL) as a dead-letter equivalent for unacked messages. With appendonly yes in redis.conf, Streams survive restarts — unlike Lists, which lose in-flight messages even with RDB snapshots enabled.\n\nFor RabbitMQ migrations: if your consumers rely on basic.ack / basic.nack with requeue semantics, Redis Streams is the only viable path. Pub/Sub works for fanout exchange patterns where durability isn't required. Never use Lists for at-least-once delivery — there's no equivalent to RabbitMQ's unacked message redelivery on disconnect.",
+      "code_snippet": "import redis\n\nr = redis.Redis()\n\n# Producer: equivalent to basic.publish to a durable queue\nr.xadd(\"tasks\", {\"job\": \"resize_image\", \"id\": \"42\"})\n\n# Consumer group: equivalent to RabbitMQ consumer with manual ack\nr.xgroup_create(\"tasks\", \"workers\", id=\"0\", mkstream=True)\n\nmessages = r.xreadgroup(\"workers\", \"consumer-1\", {\"tasks\": \">\"}, count=1, block=5000)\nfor stream, entries in messages:\n    for msg_id, data in entries:\n        print(f\"Processing {data}\")\n        r.xack(\"tasks\", \"workers\", msg_id)  # explicit ACK — like basic.ack in AMQP",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "RabbitMQ — exchanges, routing keys, acknowledgements, prefetch count",
+      "status": "done",
+      "title": "RabbitMQ — Exchanges, Routing Keys, Acks, and Prefetch Tuning",
+      "body": "RabbitMQ never delivers messages directly to queues — producers publish to exchanges, which route via binding rules. A `direct` exchange matches exact routing keys; `topic` supports wildcards (`logs.#`, `order.*.created`); `fanout` ignores the key entirely and broadcasts to all bound queues.\n\nAcknowledgements are where most production bugs hide. With `autoAck: false`, the broker holds the message unacked until your consumer calls `channel.ack(msg)`. Crash before acking? The message requeues. Call `channel.nack(msg, false, false)` to dead-letter it instead of looping forever.\n\nPrefetch count (`channel.prefetch(n)`) is the lever for throughput vs. fairness. With `prefetch(1)`, a slow consumer won't starve the queue but limits parallelism. With `prefetch(50)`, a fast consumer batches more in-flight messages but risks losing 50 on crash if acks are deferred. Set per-channel, not per-connection — per-connection prefetch (`global: true`) applies across all consumers on that connection and is rarely what you want.",
+      "code_snippet": "import amqplib from 'amqplib';\n\nconst conn = await amqplib.connect('amqp://localhost');\nconst ch = await conn.createChannel();\n\nawait ch.prefetch(10); // per-consumer, not global\n\nawait ch.assertExchange('orders', 'topic', { durable: true });\nawait ch.assertQueue('order.payments', { durable: true });\nawait ch.bindQueue('order.payments', 'orders', 'order.*.created');\n\nch.consume('order.payments', (msg) => {\n  if (!msg) return;\n  try {\n    processOrder(JSON.parse(msg.content.toString()));\n    ch.ack(msg);\n  } catch {\n    ch.nack(msg, false, false); // dead-letter, don't requeue\n  }\n}, { noAck: false });",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Redis as Cache — TTL, eviction policies, cache-aside vs write-through vs write-behind",
+      "status": "done",
+      "title": "RabbitMQ + Redis Cache-Aside — Cutting DB Load in High-Throughput Consumers",
+      "body": "When RabbitMQ consumers process thousands of messages per second, a DB round-trip per message kills throughput. Pair Redis as a cache layer using cache-aside: before hitting the DB, check Redis. On a miss, fetch from DB, write to Redis with `SETEX` (TTL-bounded), then process. Cache-aside is the right default for RabbitMQ consumer workers — they're read-heavy and lazy population fits the pull model naturally.\n\nWrite-through works when your producer controls data writes and needs read consistency, but adds latency to the publish path. Write-behind suits consumers that aggregate state (e.g. view counters) — buffer in Redis, flush to DB asynchronously via a separate worker or a second queue.\n\nFor RabbitMQ deduplication — critical when using `basic.deliver` with `redelivered=true` — use `SET msg:{message_id} 1 NX EX 60` before processing. If the key exists, ack and skip. This prevents double-processing without a DB write.\n\nEviction policy matters: `allkeys-lru` is safest for consumer caches where all keys are equally hot. Avoid `noeviction` under memory pressure — it will block Redis writes and stall your consumers.",
+      "code_snippet": "import pika, redis, json\n\nr = redis.Redis(host='localhost', decode_responses=True)\n\ndef on_message(ch, method, props, body):\n    msg = json.loads(body)\n    uid = msg['user_id']\n\n    # Deduplication via Redis NX\n    if not r.set(f\"dedup:{props.message_id}\", 1, nx=True, ex=60):\n        ch.basic_ack(delivery_tag=method.delivery_tag)\n        return\n\n    user = r.get(f\"user:{uid}\")\n    if not user:\n        user = db.fetch_user(uid)\n        r.setex(f\"user:{uid}\", 300, json.dumps(user))\n\n    process(json.loads(user))\n    ch.basic_ack(delivery_tag=method.delivery_tag)",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 7,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Kafka — partitions, consumer groups, offset management, log compaction",
+      "status": "done",
+      "title": "RabbitMQ Streams vs Kafka — Partitions, Offsets, and Log Retention Mapped",
+      "body": "RabbitMQ Streams (introduced in 3.9) bring Kafka-style semantics to RabbitMQ — append-only logs, offset-based replay, and durable retention. Unlike classic or quorum queues where messages vanish after ack, streams retain messages up to a configured `max-age` or `max-length-bytes`.\n\nKafka partitions map to RabbitMQ Super Streams — a partitioned stream that shards across multiple underlying streams by routing key, each with single-active-consumer semantics enforced by RabbitMQ.\n\nFor consumer groups, streams use named consumers via `consumer_name`. RabbitMQ tracks the last committed offset per name server-side — no Zookeeper, no client-side offset store. Multiple processes sharing the same `consumer_name` with SAC enabled replicate Kafka consumer group failover behavior exactly.\n\nRabbitMQ has no native log compaction. Use `max-age` for time-based retention or `max-length-bytes` for size-based head-truncation. For key-based deduplication (compaction's real use case), apply idempotency at the consumer or use the `rabbitmq-message-deduplication` plugin with an AMQP header.\n\nCritical gotcha: streams run on port 5552, not AMQP 5672. Use the dedicated stream client library — the standard AMQP client can declare a stream queue but cannot consume with offset semantics.",
+      "code_snippet": "import asyncio\nfrom rstream import AMQPMessage, Consumer, OffsetSpecification, OffsetType\n\nasync def on_message(msg: AMQPMessage, message_context):\n    offset = message_context.offset\n    print(f\"[offset={offset}] {msg.body}\")\n    await message_context.consumer.store_offset(\n        stream=\"tech-events\",\n        offset=offset,\n    )\n\nasync def main():\n    async with Consumer(host=\"localhost\", port=5552,\n                        username=\"guest\", password=\"guest\") as consumer:\n        await consumer.subscribe(\n            stream=\"tech-events\",\n            callback=on_message,\n            offset_specification=OffsetSpecification(OffsetType.LAST, None),\n            consumer_name=\"payments-svc\",  # server-side offset tracking per group\n        )\n        await asyncio.sleep(60)\n\nasyncio.run(main())",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 7,
+      "overall": 8
+    },
+    {
+      "topic": "Why Caching — reducing DB load, latency, cache-aside pattern",
+      "status": "done",
+      "title": "RabbitMQ Fanout Exchanges — Cache Invalidation Across Every Service Instance",
+      "body": "Cache-aside keeps DB load low: on a miss, fetch from DB, write to Redis, serve from cache on subsequent hits. The vulnerability is invalidation — when data changes, stale entries silently serve wrong responses, and TTL-based expiry introduces jitter under write-heavy load. RabbitMQ's fanout exchange solves this precisely. On every DB write, publish a `cache.invalidate` message to the exchange. Each service instance declares an exclusive, auto-delete queue at startup and binds it to that exchange — AMQP guarantees every bound queue receives its own copy of the event. Crashed instances leave no orphaned queues; new instances auto-subscribe without config changes. For granular invalidation, swap to a topic exchange with routing key `cache.invalidate.user.{id}` so only the affected entity is evicted across all nodes, not the entire cache. `basic_ack` only after the local flush ensures no silent eviction failure. End result: cache-aside with strong consistency guarantees, DB reads reserved for true misses, latency sub-millisecond on cached paths.",
+      "code_snippet": "import pika, json\n\nconnection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))\nchannel = connection.channel()\n\nchannel.exchange_declare(exchange='cache.invalidate', exchange_type='fanout')\n\nresult = channel.queue_declare(queue='', exclusive=True)  # auto-delete on disconnect\nqueue_name = result.method.queue\nchannel.queue_bind(exchange='cache.invalidate', queue=queue_name)\n\ndef on_invalidate(ch, method, properties, body):\n    key = json.loads(body)['key']\n    local_cache.delete(key)\n    ch.basic_ack(method.delivery_tag)  # ack only after successful eviction\n\nchannel.basic_consume(queue_name, on_invalidate, auto_ack=False)\nchannel.start_consuming()",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Ordering — when order matters, partitioning strategy for ordered processing",
+      "status": "done",
+      "title": "RabbitMQ Ordering — Partitioning Strategy for Ordered Message Processing",
+      "body": "RabbitMQ guarantees message ordering within a single queue, but only one consumer can process sequentially — scale out and you lose order. The solution: partition by a natural key (user ID, tenant ID, order ID) into dedicated queues, so each partition maintains strict ordering while consumers scale horizontally.\n\nUse a consistent hashing exchange (`x-consistent-hash` plugin) to route messages deterministically. Publish with a routing key derived from your partition key (e.g., `user:42`). The exchange maps the hash to one of N queues, each bound with a weight. Every message for `user:42` lands in the same queue, processed by exactly one consumer.\n\nCritical caveats: consumer prefetch (`basic.qos`) must be set to 1 per channel if strict ordering is required — higher prefetch allows out-of-order delivery during slow processing. Also, queue count is fixed at bind time; repartitioning requires draining existing queues first. For dynamic partitioning, use quorum queues with per-queue consumers and a routing topology you control explicitly via a `headers` exchange.",
+      "code_snippet": "// Node.js amqplib — consistent-hash partitioned publish\nconst conn = await amqp.connect('amqp://localhost');\nconst ch = await conn.createChannel();\n\nawait ch.assertExchange('orders.partitioned', 'x-consistent-hash', { durable: true });\n\n// Bind 4 ordered queues with equal weight\nfor (let i = 0; i < 4; i++) {\n  await ch.assertQueue(`orders.q${i}`, { durable: true });\n  await ch.bindQueue(`orders.q${i}`, 'orders.partitioned', '25'); // weight\n}\n\n// Publish: routing key = partition key → deterministic queue\nconst userId = '42';\nch.publish('orders.partitioned', `user:${userId}`,\n  Buffer.from(JSON.stringify({ orderId: 'abc', userId })),\n  { persistent: true }\n);\n\n// Consumer: prefetch=1 enforces per-queue ordering\nawait ch.prefetch(1);\nch.consume('orders.q0', msg => {\n  processInOrder(msg);\n  ch.ack(msg);\n});",
+      "language": "javascript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Backpressure — what happens when consumers lag, preventing memory blowout",
+      "status": "done",
+      "title": "RabbitMQ Backpressure — Taming Consumer Lag Before the Broker Runs Out of Memory",
+      "body": "When consumers fall behind, RabbitMQ buffers undelivered messages in-memory per queue. Without constraints, a fast publisher can exhaust the broker's RAM, triggering the memory alarm (`vm_memory_high_watermark`, default 40% of system RAM). At that point RabbitMQ blocks all publishing connections via the `connection.blocked` AMQP mechanism — a hard, reactive stop instead of graceful backpressure.\n\nThe first line of defense is `basic.qos` with `prefetch_count`. Setting it to a small integer (e.g. 10) means the broker won't push more than 10 unacknowledged messages per channel. The consumer pulls the next batch only after acking the current one, naturally rate-limiting ingestion without any polling loop.\n\nPair that with queue-level overflow policy. Declare the queue with `x-max-length` and `x-overflow: reject-publish-dlx` to dead-letter excess messages rather than silently dropping them, giving you an audit trail.\n\nFor durable workloads, enable lazy queues (`x-queue-mode: lazy`) so messages are flushed to disk immediately, keeping the broker heap small regardless of queue depth. Monitor `rabbitmq_queue_messages_unacknowledged` in Prometheus — a rising unacked count is the earliest warning of a lagging consumer before memory pressure materializes.",
+      "code_snippet": "import pika\n\nconn = pika.BlockingConnection(pika.ConnectionParameters('localhost'))\nch = conn.channel()\n\n# Declare a bounded, lazy queue with DLX overflow\nch.queue_declare(\n    queue='jobs',\n    durable=True,\n    arguments={\n        'x-max-length': 50_000,\n        'x-overflow': 'reject-publish-dlx',\n        'x-queue-mode': 'lazy',\n        'x-dead-letter-exchange': 'jobs.dlx',\n    },\n)\n\n# Pull at most 10 unacked messages per channel — core backpressure knob\nch.basic_qos(prefetch_count=10)\n\ndef on_message(ch, method, props, body):\n    process(body)\n    ch.basic_ack(method.delivery_tag)\n\nch.basic_consume('jobs', on_message)\nch.start_consuming()",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Celery — task routing, beat scheduler, result backends, task chaining",
+      "status": "done",
+      "title": "RabbitMQ + Celery — Task Routing, Beat Scheduling, and Chaining Internals",
+      "body": "Celery maps directly onto RabbitMQ's exchange/queue model. When you define `task_routes`, Celery binds each task to a named queue via the default direct exchange — workers started with `--queues gpu` only consume that queue, giving you hard workload isolation without extra brokers.\n\nFor result backends, never use `rpc://` in production. It spins up a per-task reply queue in RabbitMQ and never cleans them up reliably, flooding your vhost with thousands of ephemeral queues. Use `redis://` or `db+postgresql://` instead.\n\nThe beat scheduler is just a Celery producer that publishes tasks to RabbitMQ at the configured interval — pipe those through `task_routes` so periodic jobs don't compete with your hot path.\n\nWith `chain(a.s(), b.s(), c.s())`, each completed subtask publishes its return value to a RabbitMQ reply queue; the next task in the chain consumes it. If a step raises mid-chain, downstream tasks are silently abandoned. Protect against this with `task_acks_late=True` and a dead-letter exchange (`x-dead-letter-exchange`) on your queue — unacknowledged messages reroute there instead of disappearing.",
+      "code_snippet": "from celery import Celery, chain\n\napp = Celery(\"myapp\", broker=\"amqp://guest:guest@localhost//\", backend=\"redis://localhost/0\")\n\napp.conf.update(\n    task_routes={\n        \"tasks.encode_video\": {\"queue\": \"gpu\"},\n        \"tasks.send_email\":   {\"queue\": \"io\"},\n    },\n    beat_schedule={\n        \"hourly-digest\": {\"task\": \"tasks.digest\", \"schedule\": 3600.0, \"options\": {\"queue\": \"io\"}},\n    },\n    task_acks_late=True,\n    task_reject_on_worker_lost=True,\n)\n\n# Each step publishes its result to a RabbitMQ reply queue consumed by the next task\npipeline = chain(download_asset.s(url), encode_video.s(), notify_user.s())\npipeline.delay()",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "NATS — JetStream, subject-based routing, at-least-once delivery",
+      "status": "done",
+      "title": "RabbitMQ to NATS JetStream — Subject Routing and At-Least-Once Delivery Compared",
+      "body": "RabbitMQ developers will find NATS JetStream's model familiar but flatter. Where RabbitMQ requires an exchange → binding → queue pipeline for topic routing, NATS subjects are first-class: `orders.created.us-east` routes natively via wildcard consumers (`orders.created.*`). No exchange declaration, no binding step.\n\nJetStream replaces durable queues. A Stream captures published messages on a subject set; a Consumer defines delivery behavior. For at-least-once semantics — RabbitMQ's `basicAck`/`basicNack` equivalent — set `AckPolicy: AckExplicit`. Unacknowledged messages redeliver up to `MaxDeliver`. Unlike RabbitMQ's per-channel prefetch via `basic.qos`, JetStream throttles via `MaxAckPending` on the consumer config itself.\n\nDead-lettering maps loosely to `MaxDeliver` exhaustion: messages trigger advisories on `$JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES.>` rather than routing to an `x-dead-letter-exchange`. More manual than RabbitMQ's declarative DLX headers.\n\nFor throughput, prefer pull consumers — they batch-fetch like `basic.get` but with proper flow control. Push consumers resemble `basic.consume` but lack per-message backpressure, making them risky under load spikes RabbitMQ handles gracefully with prefetch count.",
+      "code_snippet": "nc, _ := nats.Connect(nats.DefaultURL)\njs, _ := nc.JetStream()\n\n// RabbitMQ equiv: declare durable queue bound to topic exchange\njs.AddStream(&nats.StreamConfig{\n    Name:     \"ORDERS\",\n    Subjects: []string{\"orders.>\"},\n})\n\nsub, _ := js.PullSubscribe(\"orders.created.*\", \"order-processor\",\n    nats.AckExplicit(),\n    nats.MaxDeliver(5),\n)\n\nmsgs, _ := sub.Fetch(10)\nfor _, msg := range msgs {\n    process(msg)\n    msg.Ack() // equiv: channel.basicAck(deliveryTag, false)\n}",
+      "language": "go",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "BullMQ — job priorities, rate limiting, repeatable jobs, job dependencies",
+      "status": "done",
+      "title": "RabbitMQ — Matching BullMQ's Priorities, Rate Limits, Repeatable Jobs, and Dependencies",
+      "body": "RabbitMQ supports priority queues natively via the `x-max-priority` queue argument (values 0–255). Declare the queue with that argument, then set `priority` in `sendToQueue` options — higher values are dequeued first within the same queue. For rate limiting, `channel.prefetch(n)` is your lever: it caps unacknowledged in-flight messages per consumer, throttling throughput at the protocol level without an external scheduler. Repeatable jobs require the `rabbitmq_delayed_message_exchange` plugin — declare an `x-delayed-message` exchange, publish with an `x-delay` header in milliseconds, and the broker holds the message until the delay elapses; re-publishing on consume simulates recurrence. For job dependencies, RabbitMQ has no native DAG support. You need a fan-in pattern: each completed job publishes to a coordination queue; a supervisor consumer decrements a counter (tracked in Redis or PostgreSQL) and only releases the dependent message when the count hits zero. Unlike BullMQ's `Job.addDependencies()`, this requires explicit orchestration. The tradeoff: RabbitMQ gives AMQP-level durability and routing flexibility; BullMQ gives richer scheduling primitives at the cost of Redis as a hard dependency.",
+      "code_snippet": "import amqplib from 'amqplib';\n\nconst conn = await amqplib.connect('amqp://localhost');\nconst ch = await conn.createChannel();\n\n// Priority queue: 0–10, higher value = dequeued first\nawait ch.assertQueue('jobs', { arguments: { 'x-max-priority': 10 } });\n\n// Rate limiting: max 5 unacked messages in-flight per consumer\nch.prefetch(5);\n\n// High-priority publish\nch.sendToQueue('jobs', Buffer.from(JSON.stringify({ task: 'critical' })), {\n  priority: 9,\n  persistent: true,\n});\n\n// Repeatable jobs via delayed exchange plugin\nawait ch.assertExchange('delayed', 'x-delayed-message', {\n  arguments: { 'x-delayed-type': 'direct' },\n});\nch.publish('delayed', 'jobs', Buffer.from(JSON.stringify({ task: 'poll' })), {\n  headers: { 'x-delay': 30000 }, // re-publish inside consumer to repeat\n});",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Monitoring — queue depth alerts, consumer lag, dead letter queue alerts",
+      "status": "done",
+      "title": "RabbitMQ Monitoring — Queue Depth, Consumer Lag, and DLQ Alerts That Actually Matter",
+      "body": "RabbitMQ exposes three critical signals via its HTTP Management API that every production setup should alert on. Queue depth (`messages_ready`) reveals backpressure — if it climbs without consumers keeping pace, you're heading toward memory alarms or publisher blocks. Consumer lag is derived: divide `messages_ready` by `message_stats.deliver_get` rate to estimate drain time. No built-in metric exposes this directly, so poll `/api/queues/%2F/<queue>` and compute it yourself. Dead letter queues are your canary — a non-zero `messages_ready` on any `.dlq` or `.dead` suffixed queue means messages are failing silently. Wire all three into Prometheus via `rabbitmq_prometheus` plugin (enabled by default since 3.8). Key metrics: `rabbitmq_queue_messages_ready`, `rabbitmq_queue_messages_unacked`, and `rabbitmq_queue_messages` per queue. Set Alertmanager rules: fire if `messages_ready > 10000` for 5m, or if DLQ depth increases by any amount. Avoid alerting on `messages_unacked` alone — it spikes normally during processing bursts.",
+      "code_snippet": "groups:\n  - name: rabbitmq.rules\n    rules:\n      - alert: RabbitMQQueueDepthHigh\n        expr: rabbitmq_queue_messages_ready{queue!~\".*\\.dlq\"} > 10000\n        for: 5m\n        labels:\n          severity: warning\n        annotations:\n          summary: \"Queue {{ $labels.queue }} depth > 10k for 5m\"\n\n      - alert: RabbitMQDLQNonEmpty\n        expr: rabbitmq_queue_messages_ready{queue=~\".*\\.dlq\"} > 0\n        for: 1m\n        labels:\n          severity: critical\n        annotations:\n          summary: \"DLQ {{ $labels.queue }} has {{ $value }} unprocessed messages\"",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Testing — testing consumers in isolation, mocking brokers in tests",
+      "status": "done",
+      "title": "RabbitMQ Consumer Testing — Isolating Handlers Without a Running Broker",
+      "body": "Testing RabbitMQ consumers doesn't require a live broker. The key is separating your message handler logic from the AMQP transport layer. In the .NET RabbitMQ.Client, your consumer typically inherits from `AsyncEventingBasicConsumer` or implements `IBasicConsumer`. Extract the handler body into a pure function or service that accepts `BasicDeliverEventArgs` — then unit-test that function directly, constructing `IBasicProperties` and the raw byte payload yourself.\n\nFor integration tests, use `EasyNetQ`'s `IBus` abstraction or inject a fake `IModel` via `NSubstitute`/`Moq`. Intercept `BasicAck`, `BasicNack`, and `BasicReject` calls to assert exactly what your consumer does on success, deserialization failure, or a domain exception. This validates your dead-letter and retry logic — the parts most likely to silently break.\n\nFor full-stack tests, `Testcontainers.RabbitMQ` spins up a real broker in Docker. Publish to the actual exchange, consume via your registered queue binding, and assert side effects. Use `management` plugin endpoints (`/api/queues/{vhost}/{name}`) to inspect queue depth and message counts without coupling to your application code.",
+      "code_snippet": "// Unit-test the handler in isolation — no broker needed\nvar handler = new OrderMessageHandler(mockOrderService);\n\nvar props = new Mock<IBasicProperties>();\nprops.Setup(p => p.MessageId).Returns(\"msg-001\");\nprops.Setup(p => p.ContentType).Returns(\"application/json\");\n\nvar body = JsonSerializer.SerializeToUtf8Bytes(new OrderCreated { OrderId = 42 });\nvar args = new BasicDeliverEventArgs\n{\n    DeliveryTag = 1,\n    BasicProperties = props.Object,\n    Body = new ReadOnlyMemory<byte>(body)\n};\n\nawait handler.HandleAsync(args, CancellationToken.None);\n\nmockOrderService.Verify(s => s.ProcessAsync(It.Is<OrderCreated>(o => o.OrderId == 42)), Times.Once);",
+      "language": "csharp",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Security — broker authentication, TLS, network isolation",
+      "status": "done",
+      "title": "RabbitMQ Security — TLS, Certificate Auth, and vhost Isolation",
+      "body": "RabbitMQ's default `guest` user is intentionally restricted to `localhost` — but production hardening goes further. Enable the `EXTERNAL` SASL mechanism to authenticate via x509 client certificates, mapping the cert's CN to a RabbitMQ username via `ssl_cert_login_from = common_name` in `rabbitmq.conf`. This eliminates password-based credentials entirely for service-to-service connections.\n\nFor TLS, set `listeners.ssl.default = 5671`, point `ssl_options.cacertfile`, `certfile`, and `keyfile` to your CA chain and broker cert, and enforce `ssl_options.verify = verify_peer` with `ssl_options.fail_if_no_peer_cert = true`. Disable SSLv3/TLSv1.0 via `ssl_options.versions.1 = tlsv1.3`.\n\nVirtual hosts are RabbitMQ's primary isolation boundary — not just namespaces. Grant users per-vhost permissions with `rabbitmqctl set_permissions -p /payments svc-payments '.*' '.*' '.*'`, scoping configure/write/read separately. For network isolation, bind the AMQP listener to internal interfaces only (`listeners.tcp.default = 10.0.0.5:5672`) and expose the management plugin (`15672`) exclusively behind an internal load balancer or VPN.",
+      "code_snippet": "import ssl\nimport pika\n\nssl_context = ssl.create_default_context(\n    cafile=\"/etc/rabbitmq/ca_certificate.pem\"\n)\nssl_context.load_cert_chain(\n    certfile=\"/etc/rabbitmq/client_cert.pem\",\n    keyfile=\"/etc/rabbitmq/client_key.pem\"\n)\nssl_context.verify_mode = ssl.CERT_REQUIRED\n\nparams = pika.ConnectionParameters(\n    host=\"rabbitmq.internal\",\n    port=5671,\n    virtual_host=\"/payments\",\n    credentials=pika.ExternalCredentials(),\n    ssl_options=pika.SSLOptions(ssl_context, \"rabbitmq.internal\")\n)\nconnection = pika.BlockingConnection(params)",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Scaling — horizontal consumer scaling, partition count, rebalancing",
+      "status": "done",
+      "title": "RabbitMQ Horizontal Scaling — Competing Consumers, Prefetch, and Super Streams",
+      "body": "RabbitMQ's competing consumers pattern scales horizontally by running N workers calling basic.consume on the same queue — the broker round-robins delivery automatically. The critical lever is basic.qos prefetch_count set at the channel level (global_qos=False). A prefetch of 1 gives perfect fairness but kills throughput; 10–50 is a practical range. Too high and a slow consumer hogs messages while others starve.\n\nFor ordered, partitioned scaling, RabbitMQ 3.11 introduced Super Streams — a special exchange backed by N stream partitions, each declared as a standard stream queue. Set x-single-active-consumer: true per partition and group consumers under a shared subscriber-name. When you scale up consumers, the broker automatically rebalances partition ownership, revoking and reassigning active-consumer leases. Offset tracking is per subscriber-name, so a rebalanced consumer resumes where its predecessor left off.\n\nChoose the right model: quorum queues for unordered work queues where any consumer should pull any message; Super Streams when per-key ordering is required and you need Kafka-style partition affinity. Mixing both in one topology is valid — quorum for fire-and-forget jobs, Super Streams for ordered event pipelines.",
+      "code_snippet": "import pika\n\nparams = pika.ConnectionParameters(\"localhost\")\nconnection = pika.BlockingConnection(params)\nchannel = connection.channel()\n\nchannel.queue_declare(\n    queue=\"orders\",\n    durable=True,\n    arguments={\"x-queue-type\": \"quorum\"},\n)\n# Per-channel prefetch — each consumer holds at most 20 unacked messages\nchannel.basic_qos(prefetch_count=20, global_qos=False)\nchannel.basic_consume(queue=\"orders\", on_message_callback=process_order, auto_ack=False)\nchannel.start_consuming()",
+      "language": "python",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "When to Use What — Redis vs Kafka vs RabbitMQ decision framework",
+      "status": "done",
+      "title": "RabbitMQ vs Redis vs Kafka — A Decision Framework Built Around AMQP Strengths",
+      "body": "RabbitMQ wins when your system needs smart routing and guaranteed delivery semantics — not raw throughput. If you're dispatching tasks to specific workers via routing keys (e.g., `orders.critical` vs `orders.bulk`), a topic exchange with `basicAck`/`basicNack` plus dead-letter queues gives you control Redis pub/sub simply can't match.\n\nUse Redis Streams (`XADD`/`XREADGROUP`) when you need sub-millisecond latency, you're already on Redis, and fan-out is simple. It lacks AMQP's routing primitives and per-message TTL semantics.\n\nUse Kafka when you need offset-based replay across days of events, log compaction, or millions of messages per second. Kafka's partition model is purpose-built for immutable event logs — not task dispatch.\n\nRabbitMQ's sweet spot: moderate throughput (10k–100k msg/s), heterogeneous consumers, complex topologies using direct, topic, fanout, or headers exchanges, and workloads requiring `x-message-ttl`, priority queues, or quorum queues for HA without ZooKeeper overhead.\n\nIf you find yourself fighting AMQP's ack model to build event sourcing, stop — that's Kafka's domain.",
+      "code_snippet": "import pika\n\nconn = pika.BlockingConnection(pika.ConnectionParameters('localhost'))\nch = conn.channel()\n\nch.exchange_declare(exchange='tasks', exchange_type='topic', durable=True)\nch.queue_declare(queue='critical_tasks', durable=True, arguments={\n    'x-dead-letter-exchange': 'tasks.dlx',\n    'x-message-ttl': 30000\n})\nch.queue_bind(queue='critical_tasks', exchange='tasks', routing_key='orders.critical.*')\n\nch.basic_publish(\n    exchange='tasks',\n    routing_key='orders.critical.payment',\n    body=b'{\"order_id\": 42}',\n    properties=pika.BasicProperties(delivery_mode=2)\n)\nconn.close()",
+      "language": "python",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    }
+  ]
 }

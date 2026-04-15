@@ -2,5 +2,110 @@
   "tech_stack": "viem",
   "subdomain": "web3_tools",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "IPFS — content addressing, DHT, pinning, IPFS vs Filecoin, CIDs",
+      "status": "done",
+      "title": "viem — Integrating IPFS for Decentralized Content Storage",
+      "body": "When building Web3 applications with viem, content addressing via IPFS enables decentralized and persistent data storage. viem's API allows for seamless integration with IPFS, utilizing content identifiers (CIDs) to address and retrieve content. The InterPlanetary File System (IPFS) uses a distributed hash table (DHT) for efficient content discovery. To ensure content availability, pinning is crucial. While IPFS focuses on content storage, Filecoin is designed for decentralized storage networking. In viem, IPFS can be integrated using the `ipfs-http-client` library, enabling developers to create, manage, and retrieve IPFS content.",
+      "code_snippet": "const ipfsClient = require('ipfs-http-client');\nconst ipfs = ipfsClient.create({ host: 'localhost', port: '5001', protocol: 'http' });\n\n// Add file to IPFS\nipfs.add('Hello World!', (err, result) => {\n  if (err) {\n    console.error(err)\n  } else {\n    console.log(result)\n  }\n})",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "The Graph — subgraphs, indexing blockchain events, GraphQL queries, hosted vs decentralized",
+      "status": "done",
+      "title": "Viem: Unlocking Blockchain Events with The Graph and Subgraphs",
+      "body": "The Graph is a powerful tool for indexing blockchain events, enabling efficient querying via GraphQL. In viem, you can leverage The Graph's hosted service or run a decentralized node. To get started, define a subgraph using the Graph Protocol's schema language, then deploy it to a hosted service like The Graph Hosted Service or a decentralized network. In viem, use the `@graphprotocol/graph-cli` package to scaffold and deploy your subgraph. Once deployed, query your subgraph using GraphQL, taking advantage of viem's built-in support for GraphQL queries.",
+      "code_snippet": "const { GraphCLI } = require('@graphprotocol/graph-cli');\nconst graphCLI = new GraphCLI();\ngraphCLI.init().then(() => {\n  graphCLI.deploy('my-subgraph');\n});",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "ethers.js — providers, signers, contract interaction, event listening",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "wagmi — React hooks for Ethereum, connector system, TanStack Query integration",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "wagmi — React hooks for Ethereum, connector system, TanStack Query integration",
+      "status": "done",
+      "title": "viem: Seamlessly Integrating wagmi with TanStack Query",
+      "body": "To use wagmi with TanStack Query in a viem project, create a `useQuery` hook that fetches data from the Ethereum blockchain. First, import `useQuery` from `@tanstack/query` and `useContract` from `@wagmi/client`. Then, create a `useQuery` hook that combines `useContract` with `useQuery`. The `key` function should return the contract address to ensure caching works correctly. The `queryKey` function returns an array with the contract address and the query name. For example, in TypeScript, you can define the `useContractData` hook as follows:\n```typescript\nimport { useQuery, useQueryClient } from '@tanstack/query';\nimport { useContract, useContractRead } from '@wagmi/client';\n\nconst useContractData = (contractAddress: string, queryName: string) => {\n  const queryClient = useQueryClient();\n  const contract = useContract(contractAddress);\n  const { data, error, isLoading } = useContractRead(\n    contract,\n    queryName,\n    {\n      enabled: true,\n    }\n  );\n  return { data, error, isLoading };\n};\n\nexport default useContractData;\n```",
+      "code_snippet": "typescript",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "ethers.js — providers, signers, contract interaction, event listening",
+      "status": "done",
+      "title": "Viem Essentials: Efficiently Interacting with Ethers.js Contracts",
+      "body": "When working with ethers.js in a viem context, it's essential to understand the difference between a provider and a signer. A provider is used to fetch data from a blockchain, while a signer is used for sending transactions. To interact with a contract, create an instance of the contract using the ethers.Contract function, passing the contract's ABI and the provider. To listen for events, use the contract's on event method. viem's async iteration allows for efficient processing of events.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "viem — TypeScript-first, lightweight, low-level, replacing ethers in modern stacks",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Wallet Connection — WalletConnect, MetaMask, Coinbase Wallet, wallet abstraction",
+      "status": "done",
+      "title": "viem — Wallet Connection: WalletConnect, MetaMask, Coinbase Wallet, and Wallet Abstraction",
+      "body": "To connect a wallet with your viem application, you can use the `viem.connectors` module, which provides functions for integrating WalletConnect, MetaMask, and Coinbase Wallet. You can also create a custom wallet connector using the `WalletConnector` class. When a user connects their wallet, viem emits the `wallet:connected` event, which you can listen to with `viem.onEvents().walletConnected.on()`. This event returns the connected wallet instance, which you can use to interact with the user's wallet.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "viem — TypeScript-first, lightweight, low-level, replacing ethers in modern stacks",
+      "status": "done",
+      "title": "viem — Replacing Ethers in Modern Blockchain Stacks",
+      "body": "When building web3 applications, developers often rely on Ethers. However, viem provides a more lightweight and TypeScript-first alternative. viem's `Provider` API enables developers to connect to blockchain networks, while its `Transaction` API simplifies transaction management. For instance, to send a transaction using viem, you can use the `sendTransaction` method: `const tx = provider.getTransaction('0x...'); const receipt = await provider.sendTransaction(tx);`. This approach reduces boilerplate code and improves developer experience.",
+      "code_snippet": "const provider = new viem.Provider('https://...');\nconst tx = provider.getTransaction('0x...');\nconst receipt = await provider.sendTransaction(tx);",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Reading On-chain Data — eth_call, getLogs, event filtering, batch requests",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

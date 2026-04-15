@@ -2,5 +2,130 @@
   "tech_stack": "solidity",
   "subdomain": "smart_contracts",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Solidity Fundamentals — types, visibility, state variables, functions, modifiers",
+      "status": "done",
+      "title": "Solidity Fundamentals: Understanding State Variables and Visibility",
+      "body": "Solidity state variables can be declared as public, internal, external, or private. Public state variables automatically generate getter functions, while internal and external variables are restricted to the contract or its derived contracts. Private variables are restricted to the contract itself. State variables can also be declared as immutable or constant to restrict their modification. The `view` and `pure` modifiers can be used to restrict the functionality of functions, with `view` allowing read access to state variables and `pure` disallowing any state variable access.",
+      "code_snippet": "contract Example { uint public publicVar; uint internal internalVar; function getPublicVar() public view returns (uint) { return publicVar; } }",
+      "language": "solidity",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Contract Architecture — upgradeable patterns (proxy), libraries, interfaces, abstract contracts",
+      "status": "done",
+      "title": "Solidity: Implementing Upgradeable Contracts using Proxy Pattern",
+      "body": "Upgradeable contracts in Solidity enable modifications to existing contracts without redeploying them. The proxy pattern is a widely-used approach to achieve this. It involves creating a proxy contract that delegates calls to the implementation contract. The implementation contract contains the logic, while the proxy contract holds the storage. To upgrade the contract, you simply deploy a new implementation contract and update the proxy to point to it. This approach ensures that the contract's storage and state remain intact. Solidity's OpenZeppelin library provides a set of pre-built contracts for creating upgradeable contracts, including the `Proxy` and `Upgradeable` contracts.",
+      "code_snippet": "contract MyContract is Upgradeable {\n    function initialize() public {\n        // initialization code\n    }\n    function myFunction() public {\n        // function logic\n    }\n}",
+      "language": "solidity",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Storage Layout — slots, packing, SLOAD/SSTORE cost, avoiding storage collisions",
+      "status": "done",
+      "title": "Solidity Storage Layout — Minimizing SLOAD/SSTORE Costs",
+      "body": "When using storage variables in Solidity, it's essential to consider the layout of their slots to minimize SLOAD and SSTORE costs. Solidity stores variables in contiguous slots, starting from index 0. Unpacked bools and uints occupy a single slot, while packed structs occupy a single slot per member. To avoid storage collisions, ensure that the storage layout doesn't overlap between different variables. This is particularly crucial for large storage arrays. Consider using packed arrays instead of dynamic arrays to reduce gas costs.",
+      "code_snippet": "pragma solidity ^0.8.0;\ncontract StorageExample {\n    uint public x;\n    // Avoid overlapping storage slots\n    // uint public y; // Commented out to avoid collision\n    // Packed array instead of dynamic array\n    uint[] public packedArray;\n}",
+      "language": "solidity",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "Gas Optimization — storage vs memory vs calldata, packing structs, avoiding loops",
+      "status": "done",
+      "title": "Solidity: Optimize Gas with Storage vs Memory vs Calldata",
+      "body": "When storing data in Solidity, use `calldata` for function parameters, `memory` for temporary values, and `storage` for persistent data. `calldata` is cheaper because it's read-only and doesn't occupy storage space. `memory` is faster but more expensive than `storage`. Use the `packed` keyword to reduce storage costs by packing structs. Avoid using loops when possible, as they can be expensive. Instead, use array operations or recursion. For example, to iterate over an array, use `for (uint i = 0; i < array.length; i++) ...`. To calculate the sum of an array, use `uint sum = 0; for (uint i = 0; i < array.length; i++) sum += array[i];`",
+      "code_snippet": "pragma solidity ^0.8.0;\ncontract Optimized {\nuint[] public array;\nfunction calculateSum() public view returns (uint) {\nuint sum = 0;\nfor (uint i = 0; i < array.length; i++) sum += array[i];\nreturn sum;\n}\n}",
+      "language": "solidity",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Hardhat — tasks, plugins, testing with ethers.js, local node, forking",
+      "status": "done",
+      "title": "Solidity: Efficient Testing with Hardhat, Ethers.js, and Local Node Forking",
+      "body": "Hardhat tasks and plugins streamline testing and deployment of Solidity smart contracts. To test a contract, use `npx hardhat test` and leverage plugins like `@nomicfoundation/hardhat-ethers` for seamless interaction with Ethers.js. For local node forking, enable `hardhat-network-helpers` and employ `hre.network.provider.fork()` to simulate a specific blockchain state. This setup allows for deterministic testing and debugging of complex contract interactions. Ensure to configure your `hardhat.config.js` file to include the necessary plugins and task configurations.",
+      "code_snippet": "const { ethers } = require('ethers');\nconst hre = require('hardhat');\nhre.network.provider.fork('https://mainnet.infura.io/v3/YOUR_PROJECT_ID').then((provider) => {\n  const contract = new ethers.Contract('CONTRACT_ADDRESS', ['interface'], provider);\n  // Test contract interactions using Ethers.js\n});",
+      "language": "javascript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Foundry — Forge tests in Solidity, fuzz testing, cast for interactions, anvil for local node",
+      "status": "done",
+      "title": "Solidity - Mastering Forge Tests with Fuzzing and Casts",
+      "body": "Forge tests are a crucial aspect of smart contract development in Solidity. Fuzz testing, a technique used in Forge tests, involves feeding random inputs to a contract to identify potential exploits. The `cast` keyword is used to interact with contracts in different environments, such as localnodes and EVMs. For local testing, Anvil provides a convenient way to spin up a local node, allowing you to test your contracts in a controlled environment. To use Anvil with Forge, simply import it at the beginning of your test file and use its functions to create a local node.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Testing Smart Contracts — unit tests, fork tests, invariant testing, fuzzing",
+      "status": "done",
+      "title": "Solidity Smart Contracts — Testing with Unit Tests, Fork Tests, Invariant Testing, and Fuzzing",
+      "body": "Solidity smart contracts require rigorous testing to ensure their correctness. Unit tests, fork tests, invariant testing, and fuzzing are essential testing techniques. Unit tests, implemented using the `test` keyword, verify individual functions. Fork tests, utilizing the `create` function from the `console` contract, create a temporary fork of the blockchain. Invariant testing, using the `require` keyword, enforces specific conditions. Fuzzing, leveraging libraries like `test-fuzz`, generates random inputs to test edge cases.",
+      "code_snippet": null,
+      "language": "solidity",
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Security Patterns — checks-effects-interactions, reentrancy guard, pull over push",
+      "status": "done",
+      "title": "Solidity Smart Contracts: Avoid Reentrancy with Checks-Effects-Interactions",
+      "body": "Reentrancy attacks occur when a contract function calls another contract function, which then calls back into the original contract, creating an infinite loop. To prevent this, use the Checks-Effects-Interactions (CEI) pattern. First, perform checks (e.g., ensuring sufficient balance). Then, execute the effects (e.g., transferring funds). Finally, interact with other contracts or functions. This order ensures that reentrancy is not possible. Another approach is to use a reentrancy guard, which temporarily locks the contract while operations are in progress.",
+      "code_snippet": null,
+      "language": "solidity",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "Common Vulnerabilities — reentrancy, integer overflow, access control, oracle manipulation",
+      "status": "done",
+      "title": "Solidity Smart Contracts - 4 Common Vulnerabilities to Watch Out For",
+      "body": "Reentrancy attacks occur when a contract calls another contract's function, but the called contract's function does not check if the calling contract has sufficient balance. This can lead to unintended transfers. To prevent reentrancy, use the `require` keyword to check the balance before making transfers. Integer overflows can occur when the result of an operation exceeds the maximum value that can be stored in a variable. Use the `safeMath` library to prevent overflows. Access control is crucial in smart contracts. Use modifier functions to restrict access to certain functions. Oracle manipulation is a type of attack where an attacker manipulates the data provided by an oracle, leading to incorrect calculations. Use trusted oracles and validate data before using it in calculations.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Upgradeable Contracts — transparent proxy, UUPS, diamond pattern, storage collision risks",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Events & Logs — why events, indexing, off-chain consumption, log-based state reconstruction",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

@@ -2,5 +2,134 @@
   "tech_stack": "cosmos",
   "subdomain": "non_evm",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Bitcoin — UTXO model, Script, PoW, block structure, Lightning Network",
+      "status": "done",
+      "title": "Cosmos — Integrating Bitcoin UTXO Model with Cosmos-SDK",
+      "body": "Cosmos developers can leverage the Bitcoin UTXO model by utilizing the Cosmos-SDK's AnteHandler to simulate UTXO transactions. The AnteHandler allows for custom transaction handling, enabling the integration of UTXO-based logic. To achieve this, developers can create a custom AnteHandler that checks for UTXO-specific conditions, such as input/output validation and transaction sequencing. The Cosmos-SDK's banking module can then be used to manage the UTXO-based transactions, ensuring seamless interaction with the Cosmos blockchain. By integrating the UTXO model, Cosmos developers can expand their blockchain's functionality and interoperability with other UTXO-based chains, such as Bitcoin.",
+      "code_snippet": "const { AnteHandler } = require('@cosmos/sdk-tx');\nconst { BankingModule } = require('@cosmos/sdk-bank');\n\nclass UTXOAnteHandler extends AnteHandler {\n  async checkTx() {\n    // UTXO-specific validation logic\n  }\n}",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Solana — account model, PoH + PoS, Sealevel parallel execution, programs vs accounts",
+      "status": "done",
+      "title": "Cosmos Developers: Mastering Solana's Account Model and Parallel Execution",
+      "body": "Solana's account model is based on a simple key-value store, where each account has a unique address and can store data. The network uses a combination of Proof of History (PoH) and Proof of Stake (PoS) consensus algorithms to secure the network. Sealevel parallel execution enables the network to process multiple transactions in parallel, increasing throughput. In Solana, programs and accounts are distinct concepts: programs are stateless and execute transactions, while accounts store data. Developers can use the Solana Web3.js library to interact with the network and build custom applications.",
+      "code_snippet": "const { Connection, SystemProgram, Keypair } = require('@solana/web3.js');\nconst connection = new Connection('https://api.devnet.solana.com');\nconst keypair = Keypair.generate();\nconst account = await connection.getAccountInfo(keypair.publicKey);",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Cosmos — Tendermint consensus, IBC protocol, app-specific chains, ABCI",
+      "status": "done",
+      "title": "Cosmos - Tendermint Consensus: Understanding Height and Block Proposal",
+      "body": "Tendermint consensus in Cosmos relies on a leader-based protocol where each validator node proposes a block. The proposed block undergoes validation and is committed to the blockchain once a majority of validators agree. Height, represented by the `Height` struct in `tendermint/types`, is the primary identifier for a block. It's a 64-bit integer incremented after each block proposal. The `Height` struct also contains a `ChainID` field, which helps identify the specific Cosmos chain. When creating a block proposal, use the `CreateBlock` function from `cosmos-sdk/types` to specify the block's height and chain ID. This ensures the proposal is valid and can be committed to the blockchain.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Polkadot — relay chain, parachains, XCM cross-chain messaging, parachain slots",
+      "status": "done",
+      "title": "Cosmos: Harnessing Polkadot's Parachains with IBC",
+      "body": "Polkadot's relay chain and parachains enable interchain communication via XCM. To integrate Polkadot parachains with Cosmos, use the Inter-Blockchain Communication (IBC) protocol. The Cosmos SDK provides the necessary IBC modules, such as `ibc-transfer` and `ibc-lightclients-polkadot`. When creating a Cosmos chain that interacts with Polkadot parachains, ensure you have the `ibc` CLI installed and configured. Then, use the `ibc-client` to establish a connection with the Polkadot relay chain. To send a message across chains, you can use the `x/cosmos_ibc_transfer` module. For example:\n```typescript\nconst { Chain } = require('@cosmjs/launchpad');\nconst chain = Chain.fromSeeds(['your_seeds']);\nconst ibcClient = chain.getIBCClient('polkadotrelaychain');\nibcClient.sendTransfer('your_address', 'asset_denom', 10);\n```\n",
+      "code_snippet": "typescript",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "UTXO vs Account Model — how Bitcoin and Ethereum differ fundamentally",
+      "status": "done",
+      "title": "Cosmos UTXO vs Account Model: A Tale of Two Blockchains",
+      "body": "Cosmos SDK's Tendermint Core implementation supports both UTXO (Unspent Transaction Output) and Account models, inspired by Bitcoin and Ethereum respectively. The key difference lies in how transactions are processed. In UTXO, transactions are verified by checking if the sender has sufficient unspent outputs, whereas in Account, balances are updated directly. To illustrate this, consider a sample transaction in Go where we create a UTXO transaction:\n```go\nimport (\n    sdk \"github.com/cosmos/cosmos-sdk/types\"\n)\nfunc main() {\n    // Create a UTXO transaction\n    tx := sdk.NewTransaction()\n    // ... add inputs and outputs ...\n    fmt.Println(tx.GetID())\n}\n```\nThis code snippet showcases the UTXO model's focus on unspent outputs.",
+      "code_snippet": "go",
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Consensus Mechanisms — PoW, PoS, PoH, BFT variants, trade-offs",
+      "status": "done",
+      "title": "Cosmos Consensus — Choosing the Right Mechanism for Your Chain",
+      "body": "Cosmos SDK chains use either Tendermint Core's Proof of Stake (PoS) or Proof of History (PoH) consensus mechanisms. PoS, used in most Cosmos chains, selects validators based on their stake in the network, while PoH uses a leader-based approach. For a PoS chain, you'll configure the `BaseApp` with a `ValidatorSet` and use the `TmConfig` to enable staking. For PoH, use the `PoHConfig` to specify the leader election algorithm. When choosing between PoS and PoH, consider the trade-offs: PoS prioritizes security, while PoH offers faster finality times.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Solana Development — programs in Rust, Anchor framework, PDAs, CPIs",
+      "status": "done",
+      "title": "Cosmos: Building Solana Programs with Rust and Anchor",
+      "body": "To build Solana programs, you'll use the Rust programming language. Anchor is a framework that simplifies the development process by providing a set of pre-built modules and functions. Programs can interact with each other using CosmWasm's Callable Interface (CPI). When creating a program, you must define a Program Derived Address (PDA) using the `pub fn init()` function.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Solana Performance — parallel execution, Gulf Stream, Turbine, Sealevel",
+      "status": "done",
+      "title": "Cosmos: Optimizing Solana Performance with Parallel Execution and Gulf Stream",
+      "body": "Cosmos applications can benefit from Solana's parallel execution feature, which enables concurrent execution of transactions. To leverage this feature, create a custom handler with the `@cosmos/parallel-execution` decorator. This allows your application to utilize multiple CPU cores, improving overall performance. Additionally, the Gulf Stream SDK provides a high-performance, parallelized implementation of the Solana protocol. To integrate it into your Cosmos application, inject the `gulfstream` provider into the `injector` instance. This enables the use of Gulf Stream's optimized APIs, such as `gulfstream.Turbine` and `gulfstream.Sealevel`, which provide further performance boosts.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Bitcoin Script — stack-based, intentionally limited, P2PKH, P2SH, multisig",
+      "status": "done",
+      "title": "Cosmos: Mastering Bitcoin Script for Secure Non-EVM Transactions",
+      "body": "Bitcoin Script is a stack-based, intentionally limited scripting language used for transaction verification. In Cosmos' non-EVM chains, it's crucial to understand its fundamentals. Two primary types of transactions are P2PKH (Pay-to-Public-Key-Hash) and P2SH (Pay-to-Script-Hash). P2PKH involves directly sending funds to a public key, while P2SH sends funds to a hash of a script, providing an additional layer of security. Multisignature transactions, which require multiple signatures to authorize transactions, are also supported. To create a secure P2SH transaction in Cosmos, you'll need to create a redeem script and hash it. The redeem script can include multiple signatures, ensuring that multiple parties must sign off before the funds can be spent.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Lightning Network — payment channels, routing, HTLC, liquidity management",
+      "status": "done",
+      "title": "Cosmos: Optimizing Payment Channels with Liquid Staking",
+      "body": "To enhance liquidity management on Cosmos' IBC-based network, developers can leverage liquid staking. This involves creating a payment channel and using the staked tokens as collateral. When a payment is made, the channel is updated, and the collateral is released. However, to prevent the liquid staker from manipulating the payment channel, a Hashed Time-Locked Contract (HTLC) is used. The HTLC requires a timeout period to be met before the payment is released.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "IBC — Inter-Blockchain Communication, packet relaying, channel/port model",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

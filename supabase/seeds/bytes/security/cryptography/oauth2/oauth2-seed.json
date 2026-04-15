@@ -2,5 +2,242 @@
   "tech_stack": "oauth2",
   "subdomain": "cryptography",
   "domain": "security",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Cryptography Fundamentals — symmetric vs asymmetric, hashing vs encryption",
+      "status": "done",
+      "title": "Oauth2 Token Encryption: Symmetric vs Asymmetric Keys",
+      "body": "Oauth2 token encryption relies on symmetric or asymmetric encryption. Symmetric encryption (e.g., AES) uses the same key for encryption and decryption. Asymmetric encryption (e.g., RSA) uses a public key for encryption and a private key for decryption. Oauth2 token encryption typically uses symmetric keys. For example, the OAuth 2.0 Token Endpoint Response (RFC 6749, Section 5.1) specifies using symmetric encryption for token encryption. When choosing symmetric keys, ensure they are randomly generated and securely stored.",
+      "code_snippet": "const crypto = require('crypto');\nconst key = crypto.randomBytes(32);\nconst encryptedToken = crypto.createCipheriv('aes-256-cbc', key, Buffer.alloc(16)).update('your_token', 'utf8', 'hex');\nconst decryptedToken = crypto.createDecipheriv('aes-256-cbc', key, Buffer.alloc(16)).update(encryptedToken, 'hex', 'utf8');",
+      "language": "javascript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Certificate Management — CA, self-signed vs CA-signed, renewal automation (Let's Encrypt)",
+      "status": "done",
+      "title": "oauth2 Certificate Management - CA vs Self-Signed with Let's Encrypt",
+      "body": "When using OAuth2, certificate management is crucial for maintaining the security and integrity of your authentication flow. OAuth2 relies on TLS to encrypt client-server communication. You can obtain certificates from a Certificate Authority (CA) or create self-signed certificates. However, self-signed certificates are not trusted by default and may lead to client-side errors. Let's Encrypt is a popular CA that offers free certificates, which can be automated for renewal using ACME protocol. To obtain a certificate from Let's Encrypt, you'll need to implement an ACME client, which will handle the certificate renewal process for you.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "OAuth 2.0 — authorization code flow, PKCE, implicit flow deprecation, scopes",
+      "status": "done",
+      "title": "OAuth 2.0: Authorization Code Flow with PKCE, Implicit Flow Deprecation, and Scopes",
+      "body": "When using the Authorization Code Flow with OAuth 2.0, it's essential to implement Proof Key for Code Exchange (PKCE) for enhanced security. PKCE generates a secret key, called the challenge code, to verify the authorization request. To implement PKCE, you'll need to add the 'code_challenge' and 'code_challenge_method' parameters to your authorization request. For example, in a TypeScript client, you can use the 'axios' library to send an authorization request with PKCE:\n\nconst axios = require('axios');\nconst params = {\n  client_id: 'your_client_id',\n  redirect_uri: 'your_redirect_uri',\n  response_type: 'code',\n  code_challenge: 'your_challenge_code',\n  code_challenge_method: 'S256'\n};\nconst authUrl = `https://your-oauth-server.com/oauth2/authorize?${new URLSearchParams(params).toString()}`;\naxios.get(authUrl).then((response) => {\n  console.log(response.data);\n});",
+      "code_snippet": null,
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "TLS — handshake, certificates, cipher suites, TLS 1.2 vs 1.3",
+      "status": "done",
+      "title": "oauth2 - TLS in OAuth 2.0 Resource Servers",
+      "body": "When a client initiates an OAuth 2.0 authorization request, the resource server responds with an HTTP redirect to the authorization endpoint. This redirect is secured with TLS (Transport Layer Security). To establish a secure connection, the client and resource server perform a TLS handshake, exchanging certificates and cipher suites. OAuth 2.0 specifies TLS 1.2 as the minimum version for secure connections, but TLS 1.3 is also supported. To ensure compatibility with older clients, some resource servers may still use TLS 1.2. When using the `bearer` token type, clients must use a secure transport layer, such as TLS, to prevent token interception.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Hashing vs Encryption — when to hash (passwords), when to encrypt (reversible data)",
+      "status": "done",
+      "title": "oauth2 - Hashing vs Encryption: When to Hash Passwords, When to Encrypt Reversible Data",
+      "body": "When using oauth2, it's essential to differentiate between hashing and encryption. Passwords are hashed using the `client_secret` parameter in the `authorization_code` flow to prevent unauthorized access. However, reversible data like refresh tokens are encrypted using the `refresh_token` endpoint. Hashing uses one-way functions like PBKDF2, while encryption uses symmetric keys like AES. Choose the right approach to secure your oauth2 implementation.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Key Management — generation, storage, rotation, HSMs",
+      "status": "done",
+      "title": "oauth2 — Secure Key Management for Client Credentials Flows",
+      "body": "oauth2 client credentials flows rely on symmetric keys for token encryption. To ensure security, these keys must be generated randomly and stored securely. OAuth2 servers like Keycloak and Okta recommend using a Hardware Security Module (HSM) for key storage and rotation. When implementing key management, consider using the RSA Key Generation and Management API to generate keys and the OAuth 2.0 Token Endpoint for token encryption.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "JWT — structure (header.payload.signature), signing algorithms (HS256 vs RS256), validation",
+      "status": "done",
+      "title": "oauth2: JWT Structure and Validation",
+      "body": "In an oauth2 JWT, the structure consists of a header, payload, and signature. The header contains the algorithm used for signing, payload contains claims like issuer, audience, and scopes, while the signature is a base64 encoded hash of the header and payload. oauth2 specifies two common signing algorithms: HS256 (HMAC SHA256) and RS256 (RSA SHA256). HS256 uses a shared secret key, whereas RS256 uses a public-private key pair. When validating a JWT, the client must verify the signature, check the issuer and audience, and ensure the token is not expired.",
+      "code_snippet": "import jwt from 'jsonwebtoken';\n\nconst token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';\n\ntry {\n  const decoded = jwt.verify(token, 'your-secret-key');\n  console.log(decoded);\n} catch (error) {\n  console.error(error);\n}",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "HTTPS — HSTS, certificate transparency, mixed content issues",
+      "status": "done",
+      "title": "oauth2 and HTTPS: Avoiding Mixed Content with TLS 1.2",
+      "body": "When using oauth2, it's essential to ensure a secure connection between your client and the authorization server. This includes leveraging HTTPS to prevent mixed content issues. However, oauth2 clients may still experience issues if the authorization server's TLS version is outdated. Specifically, clients configured to use TLS 1.0 or 1.1 may be vulnerable to security exploits. To address this, ensure your oauth2 client library uses TLS 1.2 or higher. For example, using the `http.request()` method in Node.js, you can set the TLS version to 1.2.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Token Storage — httpOnly cookies vs localStorage, XSS vs CSRF trade-offs",
+      "status": "done",
+      "title": "oauth2: Token Storage Dilemma — httpOnly Cookies vs LocalStorage",
+      "body": "When dealing with OAuth 2.0 tokens, securely storing them is a challenge. Two popular options are httpOnly cookies and LocalStorage. However, each has its trade-offs. httpOnly cookies are more secure against XSS attacks but vulnerable to CSRF. LocalStorage is less secure against XSS but provides an additional layer of protection against CSRF. In the OAuth 2.0 authorization flow, an authorization code or access token is exchanged for a refresh token, which is stored securely on the client-side. To mitigate CSRF, use the `state` parameter in the authorization request and validate it on the server-side. Consider using httpOnly cookies for refresh tokens and LocalStorage for access tokens.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "JWT Pitfalls — alg:none attack, expiry enforcement, storing tokens safely",
+      "status": "done",
+      "title": "oauth2: JWT Pitfalls — alg:none Attack, Expiry Enforcement, and Safe Token Storage",
+      "body": "When using JWT (JSON Web Tokens) in oauth2, be aware of the following pitfalls. The `alg:none` algorithm allows a malicious attacker to forge tokens, rendering token validation ineffective. To mitigate this, ensure that the `alg` parameter is set to a secure algorithm like RS256. Additionally, enforce token expiry by setting the `exp` claim to a short-lived value. Never store JWTs in a database or cache; instead, store the `access_token` and use the `refresh_token` to obtain a new token when it expires.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "OpenID Connect — ID token vs access token, userinfo endpoint, discovery",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Password Hashing — bcrypt vs Argon2 vs scrypt, never SHA-256 for passwords",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Common Mistakes — MD5/SHA1 for passwords, ECB mode, rolling your own crypto",
+      "status": "done",
+      "title": "oauth2 — Common Password Hashing Pitfalls in OAuth2 Servers",
+      "body": "When hashing passwords in OAuth2 servers, avoid using MD5 and SHA1 due to their low collision resistance. Instead, use stronger algorithms like Argon2, PBKDF2, or Bcrypt. Additionally, steer clear of ECB mode in OAuth2 token encryption, as it's vulnerable to padding oracle attacks. Finally, never roll your own crypto; stick to established libraries and frameworks like OAuth2's built-in support for encryption.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "mTLS — mutual authentication, client certificates, service mesh use cases",
+      "status": "done",
+      "title": "oauth2 in the Service Mesh: mTLS with Client Certificates",
+      "body": "When integrating oauth2 with a service mesh, mutual Transport Layer Security (mTLS) is crucial for secure communication between services. In oauth2, clients authenticate to the authorization server using client credentials (client ID and client secret). However, when using a service mesh, clients need to authenticate to the mesh's ingress gateway. This is where client certificates come in. The client certificate contains the client's public key and is used to authenticate the client to the ingress gateway. The ingress gateway verifies the client certificate and, if valid, grants access to the requested service. To implement mTLS with client certificates in oauth2, you can use the `client_secret_basic` flow with the `client_id` and `client_secret` replaced with the client certificate's private key and certificate chain.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "CORS — preflight, allowed origins, credentials flag, security implications",
+      "status": "done",
+      "title": "oauth2: CORS Security Implications for Authorization Servers",
+      "body": "When an oauth2 client initiates a request to the authorization server, it must include the Access-Control-Allow-Origin (ACAO) header. This header specifies the allowed origins for cross-origin resource sharing (CORS). The credentials flag determines whether cookies and authentication tokens are included with the request. A misconfigured credentials flag can lead to security vulnerabilities. For instance, setting the credentials flag to 'true' without proper validation can expose sensitive information to unauthorized clients.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Compliance — FIPS 140-2, PCI-DSS cryptography requirements",
+      "status": "done",
+      "title": "oauth2 and FIPS 140-2: Ensuring Cryptographic Compliance",
+      "body": "When implementing oauth2, ensuring compliance with FIPS 140-2 is crucial, especially for cryptographic operations. oauth2 clients and servers use symmetric encryption for token signing (e.g., HS256) and asymmetric encryption for token encryption (e.g., RSA-OAEP). To comply with FIPS 140-2, use an FIPS 140-2 validated module for encryption operations. Specifically, when using the oauth2 'token_endpoint' for client authentication, ensure that the symmetric encryption key used is FIPS 140-2 compliant. This includes using a 256-bit AES key with a 128-bit key wrapped with a FIPS 140-2 compliant wrapper.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 8.5
+    },
+    {
+      "topic": "API Authentication — API keys vs OAuth tokens vs JWTs, use cases per pattern",
+      "status": "done",
+      "title": "oauth2 - API Keys vs OAuth Tokens vs JWTs: Choosing the Right Pattern",
+      "body": "When authenticating APIs, developers often face a dilemma between using API keys, OAuth tokens, or JSON Web Tokens (JWTs). API keys are static, secret values associated with a client, while OAuth tokens are dynamic, access-granting credentials. JWTs, on the other hand, contain a payload, signature, and are self-contained. Use API keys for server-to-server communication, OAuth tokens for delegated access, and JWTs for token-based authentication.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Cryptographic Agility — designing systems to swap algorithms when they're broken",
+      "status": "done",
+      "title": "OAuth2's Cryptographic Agility: Updating Signature Algorithms with Ease",
+      "body": "When an OAuth2 signature algorithm like HMAC-SHA256 is compromised, the client (e.g., a mobile app) needs to seamlessly switch to a new algorithm like HMAC-SHA384 without disrupting the authorization flow. This is achieved by updating the `signatureAlgorithm` parameter in the client's `token request`. For instance, a Node.js client can use the `oauth2-client` library to update the algorithm as follows: \n```typescript\nconst { Client, JWT } = require('oauth2-client');\n\nconst client = new Client({\n  clientId: 'your_client_id',\n  clientSecret: 'your_client_secret',\n  tokenEndpoint: 'https://example.com/token'\n});\n\n// Update signature algorithm to HMAC-SHA384\nclient.update({ signatureAlgorithm: 'HS384' });\n\nclient.tokenRequest({ grantType: 'password', username: 'your_username', password: 'your_password' });",
+      "code_snippet": "typescript",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "OpenID Connect — ID token vs access token, userinfo endpoint, discovery",
+      "status": "done",
+      "title": "oauth2 — ID Tokens vs Access Tokens: A Userinfo Endpoint Guide",
+      "body": "When using OpenID Connect (OIDC) with oauth2, you'll encounter two types of tokens: ID tokens and access tokens. ID tokens contain user information and are signed with the client's secret key. Access tokens, on the other hand, grant access to protected resources. The userinfo endpoint provides an efficient way to retrieve user information from the ID token without requiring the client to store or manage user data. To use the userinfo endpoint, append the client ID and the ID token to the userinfo endpoint URL, as shown below.\n\nconst idToken = 'your_id_token_here';\nconst clientId = 'your_client_id_here';\nconst userinfoEndpoint = 'https://your-authority/oauth2/v2.0/userinfo';\n\nfetch(`${userinfoEndpoint}?client_id=${clientId}&id_token=${idToken}`)\n  .then(response => response.json())\n  .then(data => console.log(data))",
+      "code_snippet": "javascript",
+      "language": "javascript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Password Hashing — bcrypt vs Argon2 vs scrypt, never SHA-256 for passwords",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Password Hashing — bcrypt vs Argon2 vs scrypt, never SHA-256 for passwords",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: appsec
 domain: security
-tech_stacks: [owasp, burp_suite, snyk, sonarqube, semgrep]
+tech_stacks: [owasp, snyk]
 byte_type_default: article
 
 ## Topics to Seed

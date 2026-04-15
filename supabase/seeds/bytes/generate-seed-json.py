@@ -1,10 +1,10 @@
 """
 ByteAI — Byte Content Generator
-Reads each *-seed.md file, calls Claude Code CLI per (tech_stack × topic),
+Reads each *-seed.md file, calls Claude Code CLI or Groq per (tech_stack × topic),
 and fills bytes[] in each {tech_stack}-seed.json.
 
 Usage:
-    # All domains
+    # All domains (auto-routes: Groq for GROQ_DOMAINS, Claude CLI for the rest)
     python3 seeds/generate-seed-json.py
 
     # Single domain
@@ -16,8 +16,11 @@ Usage:
     # Single tech stack
     python3 seeds/generate-seed-json.py --domain frontend --subdomain ui_frameworks --tech_stack react
 
+    # Limit topics per stack (used for blockchain)
+    python3 seeds/generate-seed-json.py --domain blockchain --max-topics 2
+
 Resumable: already-generated topics (status=done) are skipped on rerun.
-Requires: claude CLI installed and authenticated (claude.ai/code).
+Requires: GROQ_API_KEY env var for Groq domains; claude CLI for the rest.
 """
 
 import argparse
@@ -26,22 +29,31 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ── Args ─────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
 parser.add_argument("--domain",     default=None)
 parser.add_argument("--subdomain",  default=None)
 parser.add_argument("--tech_stack", default=None)
+parser.add_argument("--max-topics", type=int, default=None,
+                    help="Max topics per stack (blockchain auto-sets to 2)")
 args = parser.parse_args()
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Config (Claude CLI) ───────────────────────────────────────────────────────
 SEEDS_BASE  = os.path.dirname(__file__)
 RETRY_LIMIT = 3
-RETRY_DELAY = 3   # seconds between retries
+RETRY_DELAY = 3
+CLAUDE_CMD  = "/Users/sravanravula/Library/Application Support/Claude/claude-code/2.1.92/claude.app/Contents/MacOS/claude"
 
-# Claude CLI — find the binary
-CLAUDE_CMD = "/Users/sravanravula/Library/Application Support/Claude/claude-code/2.1.92/claude.app/Contents/MacOS/claude"
+# ── Config (Groq) ─────────────────────────────────────────────────────────────
+GROQ_API_KEY          = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL            = "llama-3.1-8b-instant"
+GROQ_RPM              = 30
+GROQ_DOMAINS          = {"blockchain", "gaming", "mobile", "security", "systems"}
+BLOCKCHAIN_MAX_TOPICS = 2
 
 # ── Prompt ───────────────────────────────────────────────────────────────────
 def build_prompt(tech_stack: str, domain: str, subdomain: str, topic: str) -> str:
@@ -123,7 +135,7 @@ def call_claude(tech_stack: str, domain: str, subdomain: str, topic: str) -> dic
     for attempt in range(1, RETRY_LIMIT + 1):
         try:
             result = subprocess.run(
-                [CLAUDE_CMD, "-p", prompt, "--output-format", "text"],
+                [CLAUDE_CMD, "-p", prompt, "--model", "sonnet", "--output-format", "text"],
                 capture_output=True,
                 text=True,
                 timeout=60,
@@ -148,7 +160,135 @@ def call_claude(tech_stack: str, domain: str, subdomain: str, topic: str) -> dic
     return {}
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Groq: Rate Limiter ────────────────────────────────────────────────────────
+class _RateLimiter:
+    """Token-bucket rate limiter — thread-safe."""
+    def __init__(self, calls_per_minute: int):
+        self._interval = 60.0 / calls_per_minute
+        self._lock     = threading.Lock()
+        self._last     = 0.0
+
+    def acquire(self):
+        with self._lock:
+            wait = self._interval - (time.time() - self._last)
+            if wait > 0:
+                time.sleep(wait)
+            self._last = time.time()
+
+_groq_limiter = _RateLimiter(GROQ_RPM)
+
+
+# ── Groq: API Call ────────────────────────────────────────────────────────────
+def call_groq(tech_stack: str, domain: str, subdomain: str, topic: str) -> dict:
+    """Call Groq API (Llama 3.3 70B) and return parsed JSON. Rate-limited to GROQ_RPM."""
+    import urllib.request, urllib.error
+
+    _groq_limiter.acquire()
+    prompt  = build_prompt(tech_stack, domain, subdomain, topic)
+    payload = json.dumps({
+        "model":           GROQ_MODEL,
+        "messages":        [{"role": "user", "content": prompt}],
+        "temperature":     0.7,
+        "max_tokens":      1024,
+        "response_format": {"type": "json_object"},
+    }).encode()
+
+    for attempt in range(1, RETRY_LIMIT + 1):
+        try:
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=payload,
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type":  "application/json",
+                    "User-Agent":    "python-requests/2.31.0",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read())
+            raw = data["choices"][0]["message"]["content"].strip()
+            # Strip markdown fences
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$",          "", raw)
+            # Extract first JSON object if model adds surrounding text
+            m = re.search(r"\{.*\}", raw, re.DOTALL)
+            if m:
+                raw = m.group(0)
+            return json.loads(raw)
+        except urllib.error.HTTPError as e:
+            delay = 60 if e.code == 429 else RETRY_DELAY * attempt
+            print(f"    ✗ Groq attempt {attempt}/{RETRY_LIMIT}: HTTP {e.code} — waiting {delay}s", file=sys.stderr)
+            if attempt < RETRY_LIMIT:
+                time.sleep(delay)
+        except Exception as e:
+            print(f"    ✗ Groq attempt {attempt}/{RETRY_LIMIT}: {e}", file=sys.stderr)
+            if attempt < RETRY_LIMIT:
+                time.sleep(RETRY_DELAY * attempt)
+
+    return {}
+
+
+# ── Groq: Stack Processor ─────────────────────────────────────────────────────
+def process_tech_stack_groq(seed_meta: dict, ts: str, ts_json_path: str,
+                             max_topics: int = None):
+    """Generate bytes for one tech stack via Groq. Separate from Claude CLI flow."""
+    data = load_json(ts_json_path)
+
+    done_topics = {
+        b["topic"]
+        for b in data.get("bytes", [])
+        if b.get("status") == "done"
+    }
+
+    pending = [t for t in seed_meta["topics"] if t not in done_topics]
+    if max_topics:
+        pending = pending[:max_topics]
+
+    if not pending:
+        print(f"  [{ts}] All topics done — skipping")
+        return
+
+    print(f"  [{ts}] {len(done_topics)} done, {len(pending)} to generate via Groq")
+
+    lock      = threading.Lock()
+    completed = 0
+
+    def process_topic(topic: str):
+        result = call_groq(ts, seed_meta["domain"], seed_meta["subdomain"], topic)
+        if not result or not result.get("title") or not result.get("body"):
+            entry = {
+                "topic": topic, "status": "failed",
+                "title": None, "body": None, "code_snippet": None, "language": None,
+            }
+            label = "✗ FAILED"
+        else:
+            entry = {
+                "topic":        topic,
+                "status":       "done",
+                "title":        result.get("title"),
+                "body":         result.get("body"),
+                "code_snippet": result.get("code_snippet"),
+                "language":     result.get("language"),
+                "clarity":      result.get("clarity"),
+                "specificity":  result.get("specificity"),
+                "relevance":    result.get("relevance"),
+                "overall":      result.get("overall"),
+            }
+            label = f"✓ {result.get('title', '')[:50]}"
+        return topic, entry, label
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(process_topic, t): t for t in pending}
+        for future in as_completed(futures):
+            topic, entry, label = future.result()
+            with lock:
+                completed += 1
+                data["bytes"].append(entry)
+                save_json(ts_json_path, data)
+                print(f"    ({completed}/{len(pending)}) {label}")
+
+
+# ── Claude CLI: Stack Processor ───────────────────────────────────────────────
 def process_tech_stack(seed_meta: dict, ts: str, ts_json_path: str):
     """Generate bytes for one tech stack, skipping already-done topics."""
     data = load_json(ts_json_path)
@@ -168,23 +308,23 @@ def process_tech_stack(seed_meta: dict, ts: str, ts_json_path: str):
 
     print(f"  [{ts}] {len(done_topics)} done, {len(pending)} to generate")
 
-    for i, topic in enumerate(pending, 1):
-        print(f"    ({i}/{len(pending)}) {topic[:60]}...")
+    lock = threading.Lock()
+    completed = 0
 
+    def process_topic(topic: str):
         result = call_claude(ts, seed_meta["domain"], seed_meta["subdomain"], topic)
-
         if not result or not result.get("title") or not result.get("body"):
-            print(f"    ✗ FAILED — skipping topic, will retry on next run")
-            data["bytes"].append({
+            entry = {
                 "topic":        topic,
                 "status":       "failed",
                 "title":        None,
                 "body":         None,
                 "code_snippet": None,
                 "language":     None,
-            })
+            }
+            label = f"✗ FAILED"
         else:
-            data["bytes"].append({
+            entry = {
                 "topic":        topic,
                 "status":       "done",
                 "title":        result.get("title"),
@@ -195,11 +335,19 @@ def process_tech_stack(seed_meta: dict, ts: str, ts_json_path: str):
                 "specificity":  result.get("specificity"),
                 "relevance":    result.get("relevance"),
                 "overall":      result.get("overall"),
-            })
-            print(f"    ✓ {result.get('title', '')[:60]}")
+            }
+            label = f"✓ {result.get('title', '')[:50]}"
+        return topic, entry, label
 
-        # Save after every topic — safe to interrupt anytime
-        save_json(ts_json_path, data)
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(process_topic, t): t for t in pending}
+        for future in as_completed(futures):
+            topic, entry, label = future.result()
+            with lock:
+                completed += 1
+                data["bytes"].append(entry)
+                save_json(ts_json_path, data)
+                print(f"    ({completed}/{len(pending)}) {label}")
 
 
 def run():
@@ -242,7 +390,13 @@ def run():
                     print(f"  WARN: {ts_json} not found — run build step first")
                     continue
 
-                process_tech_stack(seed_meta, ts, ts_json)
+                use_groq = domain_dir in GROQ_DOMAINS and bool(GROQ_API_KEY)
+                if use_groq:
+                    max_t = BLOCKCHAIN_MAX_TOPICS if domain_dir == "blockchain" else args.max_topics
+                    process_tech_stack_groq(seed_meta, ts, ts_json, max_topics=max_t)
+                else:
+                    process_tech_stack(seed_meta, ts, ts_json)
+
                 total_stacks += 1
                 total_topics += len(seed_meta["topics"])
 

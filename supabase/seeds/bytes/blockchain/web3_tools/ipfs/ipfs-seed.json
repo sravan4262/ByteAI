@@ -2,5 +2,106 @@
   "tech_stack": "ipfs",
   "subdomain": "web3_tools",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "IPFS — content addressing, DHT, pinning, IPFS vs Filecoin, CIDs",
+      "status": "done",
+      "title": "IPFS — Understanding Content Addressing with CIDs",
+      "body": "IPFS uses Content-Addressed Storage, where files are addressed by their content, rather than their location. This is achieved through the use of Content Identifiers (CIDs), which are unique hashes of the file's contents. CIDs are used to identify and retrieve files from the IPFS network. The `ipfs add` command is used to add files to the network and generate a CID. The `ipfs get` command can then be used to retrieve a file by its CID. IPFS also uses a Distributed Hash Table (DHT) to store and retrieve CIDs, allowing for efficient lookup and retrieval of files. Pinning a file ensures it remains available on the network, even if the original node goes offline.",
+      "code_snippet": "const ipfs = require('ipfs-http-client');\nconst file = 'path/to/file';\nconst cid = await ipfs.add(file);\nconsole.log(cid.path);",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "The Graph — subgraphs, indexing blockchain events, GraphQL queries, hosted vs decentralized",
+      "status": "done",
+      "title": "ipfs — Indexing Blockchain Events with The Graph Subgraphs",
+      "body": "The Graph is a powerful tool for indexing blockchain events, and when combined with ipfs, it enables decentralized data storage and querying. By creating a subgraph, you can define the data you want to index from the blockchain, and then use GraphQL queries to retrieve it. ipfs provides a decentralized storage solution for the indexed data, allowing for censorship-resistant and persistent data storage. To get started, you'll need to install the `@graphprotocol/graph-cli` package and initialize a new subgraph project. Then, define your subgraph's schema and data sources using the `schema.graphql` and `subgraph.yaml` files.",
+      "code_snippet": "const { createClient } = require('@ipfs/http-client');\nconst ipfs = createClient('https://ipfs.infura.io:5001/api/v0');\nconst graphClient = new TheGraphClient('https://api.thegraph.com/subgraphs/name/your-subgraph');\nconst query = `{\\n  events {\\n    id\\n    blockNumber\\n  }\\n}`;\ngraphClient.query(query).then((data) => console.log(data));",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "ethers.js — providers, signers, contract interaction, event listening",
+      "status": "done",
+      "title": "IPFS + ethers.js: Event Listening for Smart Contract Interactions",
+      "body": "When interacting with IPFS-hosted smart contracts using ethers.js, you'll often need to listen for events emitted by the contract. ethers.js provides the `EventEmitter` class to handle event listeners. To create an event listener, use the `on()` method, passing the event name and a callback function. For example, to listen for the `Transfer` event on an Ethereum contract hosted on IPFS, use the following code: `const provider = new ethers.providers.IpfsInfuraProvider(); const contract = new ethers.Contract('ipfs://...'); contract.events.Transfer().on('data', (event) => { console.log(event); });`. The `on()` method returns an event listener that can be removed using the `off()` method.",
+      "code_snippet": "const provider = new ethers.providers.IpfsInfuraProvider();\nconst contract = new ethers.Contract('ipfs://...');\ncontract.events.Transfer().on('data', (event) => {\n  console.log(event);\n});",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "wagmi — React hooks for Ethereum, connector system, TanStack Query integration",
+      "status": "done",
+      "title": "ipfs + wagmi: Optimizing Ethereum Queries with TanStack Query",
+      "body": "When working with Ethereum data on IPFS, optimizing queries is crucial. wagmi's connector system and TanStack Query provide a powerful combination for caching and reducing network requests. By integrating TanStack Query with wagmi's connectors, you can efficiently manage and retrieve Ethereum data stored on IPFS. For example, use `wagmiClient.query` to fetch data and `tanstackQuery.setQuery` to cache the result, reducing unnecessary queries and improving performance. By leveraging this integration, you can create high-performance applications that efficiently interact with Ethereum data on IPFS.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "viem — TypeScript-first, lightweight, low-level, replacing ethers in modern stacks",
+      "status": "done",
+      "title": "ipfs: Migrating from Ethers to Viem for Efficient Interactions",
+      "body": "When working with IPFS-based decentralized applications, efficient interactions with the blockchain are crucial. Viem, a TypeScript-first, lightweight, and low-level library, has emerged as a promising alternative to Ethers. With Viem, you can leverage IPFS's content-addressed storage and retrieve blockchain data with reduced latency. Viem's focus on simplicity and performance makes it an attractive choice for modern stacks. To integrate Viem with IPFS, use the `ipfs.util` module to hash and retrieve data, and then utilize Viem's `Provider` to interact with the blockchain.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Wallet Connection — WalletConnect, MetaMask, Coinbase Wallet, wallet abstraction",
+      "status": "done",
+      "title": "IPFS › Wallet Connection: WalletConnect, MetaMask, Coinbase Wallet, and Abstraction",
+      "body": "To connect wallets with IPFS, use the `ipfs-core` API and WalletConnect's `wc-onboarding` module. Initialize the `IPFSNode` and `WalletConnect` instances. With `IPFSNode`, use the `add` method to publish the wallet's public key. For WalletConnect, call `connect` with the wallet's URI. You can also use MetaMask and Coinbase Wallet by injecting their respective injectors into the `WalletConnect` instance.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Reading On-chain Data — eth_call, getLogs, event filtering, batch requests",
+      "status": "done",
+      "title": "Optimizing IPFS Web3 Data Retrieval with eth_call, getLogs, and Event Filtering",
+      "body": "To efficiently read on-chain data using IPFS, you can leverage Ethereum's eth_call to retrieve specific state changes, getLogs to fetch events, and filter events based on specific criteria. IPFS enables decentralized storage and retrieval of blockchain data, making it an ideal solution for web3 applications. When working with large datasets, use batch requests to minimize API calls. For example, you can use the IPFS HTTP API to make batch requests to the Ethereum JSON-RPC API.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Writing Transactions — signing, gas estimation, nonce management, transaction monitoring",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "ENS — name resolution, avatar, records, reverse resolution",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

@@ -2,5 +2,366 @@
   "tech_stack": "bun",
   "subdomain": "be_languages",
   "domain": "backend",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Memory Management — GC vs ownership model, stack vs heap, memory safety",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Package Management — lock files, versioning, dependency auditing",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Concurrency Model — async/await, goroutines, threads, actors — how each language handles it",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Type Safety — static vs dynamic typing, type inference, generics across languages",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Error Handling — exceptions vs Result types, error propagation patterns per language",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Standard Library — what's built in vs what needs a third-party library",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Performance — benchmarking, profiling, runtime characteristics per language",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Testing — unit testing philosophy and test runner per language",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Security — memory safety, injection prevention, dependency vulnerability scanning",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Code Quality — linting, formatting, language-specific idioms",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Dev Tooling — REPL, debugger, language server protocol support",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Language-specific — Node.js event loop, Python GIL, Go channels, Rust ownership, Elixir OTP",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Scalability — horizontal scaling characteristics, thread model implications",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Deployment — binary size, containerization, runtime dependencies",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Ecosystem Maturity — library quality, community size, long-term viability",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Choose — use cases where each language excels vs where it struggles",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Package Management — lock files, versioning, dependency auditing",
+      "status": "done",
+      "title": "Bun's bun.lock — Lockfile Format, Integrity, and Dependency Auditing",
+      "body": "Bun uses a binary lockfile (`bun.lock`) by default, which is faster to parse than JSON-based alternatives. Run `bun install --save-text-lockfile` to generate a human-readable `bun.lockb`-equivalent in text format for easier diffs in PRs. The lockfile pins exact resolved versions and integrity hashes for every package in the dependency tree — including transitive ones.\n\nTo audit dependencies for known vulnerabilities, Bun integrates with the npm advisory database via `bun audit`. It outputs severity levels (critical, high, moderate, low) and affected package paths. For CI pipelines, `bun audit --level high` exits non-zero only on high/critical findings.\n\nVersion ranges in `package.json` follow semver as expected. Use `bun update <pkg>` to bump a specific package within its declared range, or `bun update` to update all. To lock a package to an exact version without the `^` prefix, pass `--exact` during install: `bun add --exact react`. Always commit `bun.lock` — it ensures reproducible installs across machines and CI runners.",
+      "code_snippet": "# Install deps and generate text lockfile for readable diffs\nbun install --save-text-lockfile\n\n# Audit for vulnerabilities; fail CI on high/critical only\nbun audit --level high\n\n# Add a package pinned to exact version (no ^ range)\nbun add --exact zod\n\n# Update a single package within its semver range\nbun update hono\n\n# Verify lockfile integrity without installing\nbun install --frozen-lockfile",
+      "language": "bash",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Concurrency Model — async/await, goroutines, threads, actors — how each language handles it",
+      "status": "done",
+      "title": "Bun's Concurrency Model — One Thread, Many Promises, Zero Goroutines",
+      "body": "Bun runs on JavaScriptCore's single-threaded event loop — no goroutines, no actor model, no shared-memory threads by default. Concurrency is cooperative: async/await suspends execution at every `await`, yielding control back to the event loop so other microtasks can proceed. Bun uses JavaScriptCore's JIT-compiled promise machinery, which is measurably faster than V8's for tight async workloads.\n\nFor true parallelism, Bun exposes the Web Workers API (`new Worker()`). Each worker runs in its own JSC isolate with its own event loop — no shared heap, communication only via `postMessage` and `SharedArrayBuffer` with `Atomics`. Bun.spawn() and Bun.spawnSync() offload work to child processes, not threads.\n\nBun's I/O (fetch, Bun.file, Bun.serve) is non-blocking under the hood via libuv/io_uring on Linux, so saturating the event loop with CPU work — not I/O — is the actual bottleneck. For CPU-heavy tasks, reach for Worker threads or Bun.spawn, not more awaits.",
+      "code_snippet": "// CPU-bound work offloaded to a Bun Worker\n// worker.ts\nself.onmessage = (e) => {\n  const result = heavyCompute(e.data);\n  self.postMessage(result);\n};\n\n// main.ts\nconst worker = new Worker(new URL(\"./worker.ts\", import.meta.url));\nworker.postMessage({ input: [1, 2, 3] });\nworker.onmessage = (e) => console.log(\"Result:\", e.data);\n\n// Non-blocking I/O — no worker needed, event loop handles it\nconst [a, b] = await Promise.all([\n  fetch(\"https://api.example.com/a\").then(r => r.json()),\n  Bun.file(\"./data.json\").json(),\n]);",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Type Safety — static vs dynamic typing, type inference, generics across languages",
+      "status": "done",
+      "title": "Bun's TypeScript-First Runtime — Type Safety Without the Build Step",
+      "body": "Bun executes TypeScript natively — no tsc, no ts-node, no transpile step. This means you get full static typing at authoring time while Bun strips types at runtime via its built-in transpiler (based on JavaScriptCore). The implication: type errors are caught in your editor and CI, not at runtime, but Bun itself never enforces them during execution. Use `bun --smol` or `bun typecheck` (wraps tsc with your tsconfig) to run a pure type-check pass without emitting files. Generics work as expected since they're erased pre-execution. Where Bun shines is inference-heavy APIs: `Bun.file()` returns a typed `BunFile`, `Bun.serve()` infers request/response shapes from your handler signature, and `$` from `bun:shell` is fully typed. For strict projects, pair `\"strict\": true` in tsconfig with `bun typecheck` in CI. You get the ergonomics of a dynamic runtime with the guarantees of a statically typed language — the key is understanding that the safety net is the toolchain, not the runtime.",
+      "code_snippet": "// bun typecheck catches this before execution — no build step needed\nimport { serve } from \"bun\";\n\ntype Handler = (req: Request) => Response | Promise<Response>;\n\nconst json = <T>(data: T, status = 200): Response =>\n  new Response(JSON.stringify(data), {\n    status,\n    headers: { \"Content-Type\": \"application/json\" },\n  });\n\nconst handler: Handler = async (req) => {\n  const body = await req.json<{ name: string }>();\n  return json({ hello: body.name.toUpperCase() }); // type-safe: name is string\n};\n\nserve({ port: 3000, fetch: handler });",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Error Handling — exceptions vs Result types, error propagation patterns per language",
+      "status": "done",
+      "title": "Bun Error Handling — throw/catch vs Result Types and Where Each Belongs",
+      "body": "Bun's runtime is pure throw/catch — no built-in Result type. But TypeScript lets you layer typed Results on top, and the distinction matters at scale. Thrown errors erase type information at call sites; a `Result<T, E>` union forces callers to handle failure explicitly.\n\nBun's I/O APIs (`Bun.file()`, `fetch()`, `Bun.connect()`) all throw on failure — treat these as the boundary. Wrap them in thin adapters that return `{ ok: true, data }` or `{ ok: false, error }` unions, keeping thrown errors confined to the edges. Inside your domain logic, propagate Results; never let a raw throw leak across a feature boundary.\n\nIn `Bun.serve()`, the `error` hook is your last-resort catch-all for unhandled throws escaping route handlers — log and return a 500 there, but don't rely on it for expected failure paths. For route handlers, typed Results are superior: a `Promise<Result<User, AuthError>>` return type is self-documenting and exhaustively checked by TypeScript. Use `neverthrow` or a simple two-line union — Bun's fast startup means the overhead is negligible.",
+      "code_snippet": "import { Bun } from 'bun';\n\ntype Result<T, E> = { ok: true; data: T } | { ok: false; error: E };\n\nasync function readConfig(path: string): Promise<Result<string, Error>> {\n  try {\n    const text = await Bun.file(path).text();\n    return { ok: true, data: text };\n  } catch (e) {\n    return { ok: false, error: e as Error };\n  }\n}\n\nBun.serve({\n  async fetch(req) {\n    const result = await readConfig('./config.json');\n    if (!result.ok) return new Response('Config missing', { status: 500 });\n    return new Response(result.data);\n  },\n  error(err) {\n    console.error('[unhandled]', err);\n    return new Response('Internal error', { status: 500 });\n  },\n});",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Performance — benchmarking, profiling, runtime characteristics per language",
+      "status": "done",
+      "title": "Bun's Built-In Benchmarking — Profiling Runtime Performance Without External Tools",
+      "body": "Bun ships a native `Bun.bench()` API that eliminates the need for tools like `benchmark.js` or `tinybench`. It integrates directly with the JavaScriptCore engine, meaning measurements reflect true JIT-warmed execution rather than cold V8 estimates.\n\nRun benchmarks with `bun bench ./perf.bench.ts` — Bun auto-discovers files matching `*.bench.{ts,js}`. Each `bench()` call runs thousands of iterations, reports ops/sec, and flags statistical outliers. Use `group()` to compare variants side-by-side under the same warmup conditions.\n\nFor CPU profiling, `bun --smol run script.ts` reduces heap size to surface memory-pressure bottlenecks. Pair with `bun --inspect` to attach the WebKit Inspector and capture flame graphs natively — no `--prof` V8 flags or `0x` post-processing needed.\n\nBun's HTTP server (`Bun.serve`) consistently benchmarks 3–4× faster than Node's `http` module in published results, largely due to uWebSockets under the hood. Profile your hot paths with `bench()` before assuming the bottleneck is I/O — JSC's optimizer can surprise you.",
+      "code_snippet": "import { bench, group, run } from \"bun:test\";\n\nconst data = Array.from({ length: 1000 }, (_, i) => i);\n\ngroup(\"array iteration\", () => {\n  bench(\"for loop\", () => {\n    let sum = 0;\n    for (let i = 0; i < data.length; i++) sum += data[i];\n  });\n\n  bench(\"reduce\", () => {\n    data.reduce((acc, val) => acc + val, 0);\n  });\n\n  bench(\"for...of\", () => {\n    let sum = 0;\n    for (const val of data) sum += val;\n  });\n});\n\nawait run();",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Standard Library — what's built in vs what needs a third-party library",
+      "status": "done",
+      "title": "Bun's Standard Library — What's Built In vs What You Still Need npm For",
+      "body": "Bun ships with a surprisingly complete standard library that eliminates many common npm dependencies. Built-in: `Bun.file()` for fast file I/O, `Bun.serve()` for HTTP servers, `Bun.hash()` (Wyhash/xxHash/CRC32), `Bun.password.hash()` and `Bun.password.verify()` for bcrypt/argon2, `Bun.TOML.parse()`, `Bun.Glob` for pattern matching, `Bun.sleep()`, `Bun.which()`, and a native `WebSocket` server baked into `Bun.serve()`. The `node:crypto`, `node:fs`, `node:path`, and `node:zlib` Node.js compatibility modules are also fully implemented.\n\nWhat you still need third-party packages for: complex JWT handling (jose, jsonwebtoken), ORMs (Drizzle, Prisma), schema validation (Zod), date manipulation (date-fns), and any framework-level routing beyond `Bun.serve()`'s basic `fetch` handler. Notably, `Bun.serve()` has no built-in middleware pipeline — reach for Hono or Elysia if you need composable middleware. Email sending, PDF generation, and queue clients also remain ecosystem territory.",
+      "code_snippet": "// All of this runs with zero npm installs\nconst file = Bun.file(\"./data.json\");\nconst json = await file.json();\n\nconst hashed = await Bun.password.hash(\"hunter2\", { algorithm: \"argon2id\" });\nconst valid = await Bun.password.verify(\"hunter2\", hashed);\n\nconst glob = new Bun.Glob(\"src/**/*.ts\");\nfor await (const path of glob.scan(\".\")) {\n  console.log(path);\n}\n\n// Still needs: npm install zod\nimport { z } from \"zod\";\nconst schema = z.object({ name: z.string() });",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Memory Management — GC vs ownership model, stack vs heap, memory safety",
+      "status": "done",
+      "title": "Bun Memory Management — JSC GC, Stack Pressure, and Zero-Copy Wins",
+      "body": "Bun runs on JavaScriptCore (JSC), not V8 — a meaningful difference for memory. JSC uses a generational, semi-space copying collector with a separate large object heap. Small objects get bumped into eden space; survivors are promoted. This means short-lived allocations are cheap, but large object churn (>32KB) hits the large heap and triggers slower full GCs.\n\nBun exposes `Bun.gc(true)` for synchronous collection — useful in benchmarks to baseline heap state. For heap inspection, `process.memoryUsage()` returns rss, heapUsed, and heapTotal consistent with Node's contract.\n\nThe real win is zero-copy I/O. `Bun.file()` returns a lazy `BunFile` — no bytes are read until you call `.text()`, `.json()`, or `.arrayBuffer()`. Piping via `Response` skips userspace entirely. For hot paths, prefer `TypedArray` slices over string concatenation — they live in the ArrayBuffer heap with predictable GC pressure. Avoid closing over large objects in long-lived callbacks; JSC's escape analysis won't help you if the closure root is reachable.",
+      "code_snippet": "// Observe heap before and after a GC cycle in Bun\nconst before = process.memoryUsage();\n\n// Allocate some short-lived objects\nconst blobs = Array.from({ length: 10_000 }, (_, i) => ({ id: i, data: new Uint8Array(64) }));\nvoid blobs;\n\n// Force synchronous GC (JSC) — useful in benchmarks, not production\nBun.gc(true);\n\nconst after = process.memoryUsage();\nconsole.log(\"heapUsed delta (KB):\", ((after.heapUsed - before.heapUsed) / 1024).toFixed(1));\n\n// Zero-copy file read — no heap allocation until consumed\nconst file = Bun.file(\"./large-dataset.json\");\nconst stream = file.stream(); // still lazy\nconst response = new Response(stream); // piped without userspace copy\nawait Bun.write(Bun.stdout, response);",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
+      "status": "done",
+      "title": "Bun's JavaScriptCore Engine — Why Cold Starts Are Near Zero",
+      "body": "Bun is built on JavaScriptCore (JSC), the same engine powering Safari — not V8. JSC uses a tiered JIT pipeline: LLInt (bytecode interpreter) → DFG (Data Flow Graph JIT) → FTL (Forth-Tier LLVM) JIT. On startup, Bun skips the slow baseline compilation step that Node.js/V8 performs, landing in LLInt immediately and letting JSC's JIT warm up mid-execution.\n\nBeyond JSC, Bun's runtime itself is compiled to native code via Zig, eliminating Node's libuv + JS-layer bootstrap overhead. The result: Bun consistently starts in ~5–10ms vs Node's ~80–150ms on identical scripts.\n\nBun also ships with a bundler that can output a single-file executable via `bun build --compile`, embedding the JSC engine and your JS into a native binary. This pre-parses and bytecode-caches your entry point at build time — cold start in production drops to near-native speeds, with no JIT warmup penalty on first request.\n\nFor serverless and edge workloads, this matters: you get JIT-optimized throughput without sacrificing cold-start latency.",
+      "code_snippet": "// Build a self-contained native binary — cold start ~5ms\n// bun build --compile ./src/server.ts --outfile server\n\nimport { serve } from \"bun\";\n\nserve({\n  port: 3000,\n  fetch(req) {\n    return new Response(\"ok\");\n  },\n});\n\n// Measure Bun vs Node cold start yourself:\n// time bun run server.ts\n// time node server.js",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Testing — unit testing philosophy and test runner per language",
+      "status": "done",
+      "title": "Bun's Built-in Test Runner — Zero Config, Full Speed",
+      "body": "Bun ships a native test runner (`bun:test`) that requires no external dependencies — no Jest, no Vitest, no config files. It's Jest-compatible by design, so `describe`, `it`, `expect`, `beforeEach`, and `afterEach` all work out of the box. Run your suite with `bun test` and Bun automatically discovers files matching `*.test.ts`, `*.spec.ts`, or files inside `__tests__/`.\n\nBun's test runner executes in the same runtime as your app code, so there's no transpilation step and no module resolution mismatch — what you import in tests is exactly what ships. This eliminates an entire class of \"passes in test, fails in prod\" bugs.\n\nFor mocking, use `mock()` from `bun:test` instead of `jest.fn()`. It supports spies, module mocks via `mock.module()`, and restore with `mock.restore()`. Snapshot testing works via `expect(value).toMatchSnapshot()` with snapshots stored in `__snapshots__/`.\n\nUnit test philosophy in Bun: keep tests co-located with source, lean on TypeScript types to narrow test surface, and use `--watch` mode during development for sub-10ms feedback loops.",
+      "code_snippet": "import { describe, it, expect, mock, beforeEach } from \"bun:test\";\nimport { fetchUser } from \"./user-service\";\n\nconst mockFetch = mock(() =>\n  Promise.resolve({ json: () => ({ id: 1, name: \"Alice\" }) })\n);\n\nbeforeEach(() => mockFetch.mockClear());\n\ndescribe(\"fetchUser\", () => {\n  it(\"returns parsed user from response\", async () => {\n    globalThis.fetch = mockFetch as typeof fetch;\n    const user = await fetchUser(1);\n    expect(user).toEqual({ id: 1, name: \"Alice\" });\n    expect(mockFetch).toHaveBeenCalledTimes(1);\n  });\n});",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Code Quality — linting, formatting, language-specific idioms",
+      "status": "done",
+      "title": "Bun's Built-In Linter and Formatter — Zero Config, Zero Overhead",
+      "body": "Bun ships with `bun lint` and `bun fmt` natively — no ESLint config files, no Prettier dependencies, no `node_modules` bloat. Both commands are backed by Bun's Rust-based toolchain, making them 10–100x faster than Node-era equivalents.\n\n`bun lint` runs a strict, opinionated ruleset by default — catching unused variables, implicit `any` in TypeScript, and unreachable code. Rules are configured via `bunfig.toml` under `[lint]`, not a separate `.eslintrc`. You can suppress individual rules inline with `// bun-ignore` comments.\n\n`bun fmt` enforces consistent style using the same formatter as Biome under the hood — 2-space indentation, double quotes, trailing commas in multiline. Override defaults in `bunfig.toml` under `[fmt]`.\n\nFor CI enforcement, run both with `--check` flags: they exit non-zero on violations without mutating files. Pair with `bun test --coverage` in the same pipeline for a lean, dependency-free quality gate built entirely on Bun's own toolchain.",
+      "code_snippet": "# bunfig.toml — centralized lint + fmt config\n[lint]\nrules = { noUnusedVariables = \"error\", noExplicitAny = \"warn\" }\n\n[fmt]\nindentWidth = 2\nsingleQuote = false\ntrailingComma = \"all\"\n\n# CI quality gate — no extra deps needed\n$ bun lint --check\n$ bun fmt --check\n$ bun test --coverage",
+      "language": "bash",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Deployment — binary size, containerization, runtime dependencies",
+      "status": "done",
+      "title": "Bun — Ship Tiny Containers with bun build --compile",
+      "body": "Bun's `--compile` flag bundles your entire app — source, dependencies, and the Bun runtime — into a single self-contained binary. No node_modules, no runtime installation, no package.json required at deploy time. The resulting binary typically lands between 50–90 MB depending on your code, because the Bun runtime itself is embedded. For containerization, this changes the game: you can use a `FROM scratch` or `FROM gcr.io/distroless/static` base image instead of a Node/Bun runtime image (which can exceed 400 MB). Cross-compile for Linux from macOS with `--target bun-linux-x64` or `--target bun-linux-arm64` before your Docker build step. The binary has zero runtime dependencies — no libc calls to worry about with the static target. For secrets and env vars, Bun still reads `process.env` at runtime, so your existing injection patterns work unchanged. Use `bun build --compile --minify --sourcemap=none ./src/index.ts --outfile server` in CI, then `COPY server /server` in your Dockerfile for a sub-100 MB production image.",
+      "code_snippet": "# Build a self-contained Linux binary from macOS/Windows CI\nbun build ./src/index.ts \\\n  --compile \\\n  --minify \\\n  --target bun-linux-x64-baseline \\\n  --outfile server\n\n# Minimal Dockerfile — no Bun or Node runtime needed\nFROM gcr.io/distroless/static-debian12\nCOPY --chown=nonroot:nonroot server /server\nUSER nonroot\nEXPOSE 3000\nENTRYPOINT [\"/server\"]",
+      "language": "bash",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Dev Tooling — REPL, debugger, language server protocol support",
+      "status": "done",
+      "title": "Bun's Built-in REPL and Debugger — Zero-Config Dev Tooling",
+      "body": "Bun ships a TypeScript-aware REPL out of the box — run `bun repl` and you get top-level `await`, full ESM imports, and live access to Bun APIs without any setup. Import a local module mid-session with `await import('./utils')` and start poking at it instantly.\n\nFor debugging, Bun implements the WebKit Inspector Protocol. Pass `--inspect` to start a WebSocket debug server on `ws://127.0.0.1:6499` by default. Open `chrome://inspect` or use VS Code's \"Attach\" launch config to connect. Use `--inspect-brk` to pause on the first line and wait for a client — essential for debugging startup logic.\n\nBun's VS Code extension hooks into this natively: add a launch config with `\"runtime\": \"bun\"` and `\"request\": \"launch\"` and F5 just works, with breakpoints, watch expressions, and call stacks. No `ts-node`, no `tsx`, no separate compile step. The extension also wraps `bun-types` to wire up accurate autocomplete for `Bun.serve`, `Bun.file`, and the full runtime surface.",
+      "code_snippet": "// .vscode/launch.json\n{\n  \"version\": \"0.2.0\",\n  \"configurations\": [\n    {\n      \"type\": \"bun\",\n      \"request\": \"launch\",\n      \"name\": \"Debug index.ts\",\n      \"program\": \"${workspaceFolder}/index.ts\",\n      \"stopOnEntry\": false,\n      \"watchMode\": false\n    }\n  ]\n}\n\n// Or from CLI — attach Chrome DevTools\n// bun --inspect-brk index.ts",
+      "language": "javascript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Language-specific — Node.js event loop, Python GIL, Go channels, Rust ownership, Elixir OTP",
+      "status": "done",
+      "title": "Bun's Event Loop — Why It Feels Faster Than Node.js",
+      "body": "Bun runs on JavaScriptCore (JSC) and uses a single-threaded event loop backed by uSockets — the same C library powering uWebSockets.js. Unlike Node.js (libuv), Bun's I/O layer is tightly integrated with JSC's microtask queue, meaning promise continuations and I/O callbacks are scheduled with less overhead.\n\nIn practice: `Bun.serve()` handles HTTP via native uSockets bindings, bypassing the Node.js stream abstraction entirely. Timers use JSC's built-in scheduler rather than libuv's timer wheel, which reduces timer jitter at high concurrency.\n\nCPU-bound work still blocks the event loop. Use `new Worker()` (Bun's Web Worker implementation, backed by real OS threads) to offload heavy computation. Data is transferred via `postMessage` with structured clone — Bun also supports `SharedArrayBuffer` + `Atomics` for zero-copy shared memory between workers.\n\nFor async I/O, lean on `Bun.file()`, `fetch()`, and `Bun.connect()` — all implemented natively in Zig, not JS wrappers — so you stay on the fast path without leaving the event loop.",
+      "code_snippet": "// CPU-bound work offloaded to a Bun Worker\nconst worker = new Worker(new URL('./heavy.ts', import.meta.url).href);\n\nworker.postMessage({ data: largeBuffer }, [largeBuffer.buffer]);\n\nworker.onmessage = (e) => {\n  console.log('Result from worker thread:', e.data.result);\n};\n\n// heavy.ts\nself.onmessage = (e) => {\n  const result = computeExpensiveThing(e.data.data);\n  self.postMessage({ result });\n};",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Security — memory safety, injection prevention, dependency vulnerability scanning",
+      "status": "done",
+      "title": "Bun Security — Shell Injection, SQL Safety, and bun audit",
+      "body": "Bun exposes three common attack surfaces that require explicit hardening. First, `Bun.spawn()` accepts both a string and an array — always use the array form. The string form is passed to a shell, making it trivially injectable; the array form bypasses the shell entirely, treating each element as a literal argument. Second, Bun's native postgres driver (`Bun.sql`) uses tagged template literals that automatically parameterize interpolated values — no manual escaping, no risk of SQLi. For SQLite, `bun:sqlite` prepared statements with `?` placeholders provide the same guarantee. Third, run `bun audit` to scan your lockfile against the GitHub Advisory Database for known CVEs. Unlike `npm audit`, it reads `bun.lockb` directly and skips network overhead from resolving the full dependency tree. Pair this with `bun audit --level high` in CI to fail builds on high-severity findings. None of these are Bun-specific concepts, but Bun's APIs make the safe path the ergonomic default — the template literal driver and array-spawn make it hard to do the wrong thing accidentally.",
+      "code_snippet": "// UNSAFE — string form invokes a shell; userInput can escape\n// Bun.spawn(`cat ${userInput}`);\n\n// SAFE — array form: no shell, each arg is literal\nBun.spawn([\"cat\", userInput]);\n\n// SQL injection prevention via tagged template (Bun.sql)\nconst rows = await Bun.sql`\n  SELECT * FROM posts WHERE author_id = ${authorId} LIMIT 20\n`;\n\n// SQLite prepared statement — same guarantee\nconst db = new Database(\"app.db\");\nconst stmt = db.prepare(\"SELECT * FROM posts WHERE author_id = ? LIMIT 20\");\nconst posts = stmt.all(authorId);\n\n// Audit lockfile for CVEs — run in CI\n// bun audit --level high",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
+      "status": "done",
+      "title": "Bun Runtime Metrics — Profiling and Monitoring in Production",
+      "body": "Bun exposes runtime internals through `Bun.gc()`, `process.memoryUsage()`, and the built-in `--smol` flag for memory-constrained environments. Unlike Node, Bun uses JavaScriptCore (JSC), which has a generational GC with distinct Eden and full heap collections — understanding this distinction matters for latency-sensitive services.\n\nTrack GC pressure by sampling `heapUsed` over time. A rising `heapUsed` with periodic drops signals full GC cycles; sustained growth without drops indicates a leak. Call `Bun.gc(true)` to force a synchronous collection — useful in health check endpoints to baseline actual retained heap.\n\nFor CPU profiling, Bun supports the V8 inspector protocol via `--inspect`. Attach Chrome DevTools or use `bun --inspect-brk` to capture flame graphs. In production, wrap hot paths with `performance.mark()` and `performance.measure()` — both are natively supported with microsecond resolution in Bun's JSC runtime, no polyfill needed.\n\nExpose a `/metrics` endpoint that streams these snapshots to Prometheus via a simple interval loop — no native Bun metrics SDK is required.",
+      "code_snippet": "import { serve } from \"bun\";\n\nfunction getRuntimeMetrics() {\n  const mem = process.memoryUsage();\n  Bun.gc(false); // async hint to JSC GC\n  return {\n    heapUsedMB: (mem.heapUsed / 1024 / 1024).toFixed(2),\n    heapTotalMB: (mem.heapTotal / 1024 / 1024).toFixed(2),\n    externalMB: (mem.external / 1024 / 1024).toFixed(2),\n    rss: (mem.rss / 1024 / 1024).toFixed(2),\n  };\n}\n\nserve({\n  port: 9091,\n  fetch(req) {\n    if (new URL(req.url).pathname === \"/metrics\") {\n      const m = getRuntimeMetrics();\n      const body = Object.entries(m)\n        .map(([k, v]) => `bun_${k} ${v}`)\n        .join(\"\\n\");\n      return new Response(body, { headers: { \"Content-Type\": \"text/plain\" } });\n    }\n    return new Response(\"not found\", { status: 404 });\n  },\n});",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Scalability — horizontal scaling characteristics, thread model implications",
+      "status": "done",
+      "title": "Bun Horizontal Scaling — reusePort, Workers, and the Share-Nothing Thread Model",
+      "body": "Bun's HTTP server runs one event loop per process on JavaScriptCore — same single-threaded model as Node, but with lower memory overhead and faster cold start. The key primitive for horizontal scaling is `reusePort: true` in `Bun.serve()`. This sets SO_REUSEPORT on the socket, letting multiple Bun processes bind to the same port simultaneously. The OS kernel distributes incoming connections across them — no cluster module, no primary/worker IPC overhead, no round-robin coordination in userspace.\n\nTo saturate all cores, spawn one Bun process per CPU and let the kernel load-balance. For CPU-bound work inside a process, `new Worker('./worker.ts')` creates a separate thread with its own JSC heap — communicate via `postMessage` with structured clone or transferable ArrayBuffers for zero-copy.\n\nThe critical implication: Bun's model is share-nothing. In-memory state (caches, counters, connection pools) is isolated per process. Design handlers to be stateless, push shared state to Redis or Postgres, and instantiate DB clients per-process — a single `Database` from `bun:sqlite` opened globally is not shared across `reusePort` siblings. Horizontal scaling in Bun rewards pure function handlers and external state stores.",
+      "code_snippet": "// server.ts — run one process per core, all bound to :3000\nimport { cpus } from \"os\";\n\nif (!process.env.IS_WORKER) {\n  for (let i = 0; i < cpus().length; i++) {\n    Bun.spawn([\"bun\", \"run\", \"server.ts\"], {\n      env: { ...process.env, IS_WORKER: \"1\" },\n      stdout: \"inherit\",\n    });\n  }\n} else {\n  Bun.serve({\n    port: 3000,\n    reusePort: true,\n    fetch(req) {\n      return new Response(`pid ${process.pid}`);\n    },\n  });\n}",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Ecosystem Maturity — library quality, community size, long-term viability",
+      "status": "done",
+      "title": "Bun Ecosystem Maturity — Built-ins That Kill npm Dependencies and Where Native Gaps Still Bite",
+      "body": "Bun targets full Node.js API compatibility, meaning most of npm's 2M+ packages run unmodified. The real gap: packages shipping precompiled `.node` bindings—`bcrypt`, older `sharp`, `canvas`—fail silently or hard. The fix is usually a WASM drop-in: swap `bcrypt` for `@node-rs/bcrypt`, use `sharp` v0.33+ which ships its own WASM path.\n\nBun's first-party modules eliminate entire dependency categories. `bun:sqlite` replaces `better-sqlite3` with near-identical API. `Bun.file()` and `Bun.write()` replace `fs-extra`. `bun:ffi` handles native calls without `node-ffi-napi`. The `bun:test` runner mirrors Jest's API—most `.test.ts` files migrate with zero edits.\n\nOven.sh ships aggressively: Node.js compat PRs land weekly, v1.1 brought stable Windows support marking a real maturity inflection. The GitHub star count (~75K) lags Node's by an order of magnitude, but issues close fast and the Discord is high signal. For greenfield backends, Bun's coverage is production-ready. For legacy codebases with deep native deps, run `bun install` on a branch and watch for `WARN failed to resolve native addon` before committing.",
+      "code_snippet": "// bun:sqlite — zero npm deps, replaces better-sqlite3\nimport { Database } from \"bun:sqlite\";\n\nconst db = new Database(\":memory:\");\ndb.run(\"CREATE TABLE events (id INTEGER PRIMARY KEY, name TEXT, ts INTEGER)\");\ndb.run(\"INSERT INTO events (name, ts) VALUES (?, ?)\", [\"deploy\", Date.now()]);\n\nconst recent = db.query(\"SELECT * FROM events WHERE ts > ?\").all(Date.now() - 60_000);\nconsole.log(recent);\n\n// Bun.file replaces fs + JSON.parse boilerplate\nconst config = await Bun.file(\"bun.config.json\").json<{ port: number }>();\nconsole.log(`Starting on port ${config.port}`);",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "When to Choose — use cases where each language excels vs where it struggles",
+      "status": "done",
+      "title": "Bun — When It's the Right Runtime and When It Isn't",
+      "body": "Bun wins when cold-start latency and throughput matter. Its JavaScriptCore engine starts ~4× faster than Node, making it ideal for CLI tools, edge-deployed API servers, and scripts that run constantly in CI. `Bun.serve()` handles HTTP with zero dependencies — no Express, no Fastify — and ships with native `bun:sqlite`, `Bun.file()` streaming, and a built-in test runner. TypeScript runs directly without a `tsc` step, so iteration is instant.\n\nBun struggles when your stack depends on native `.node` addons (e.g., `bcrypt`, `sharp` in some configs) — these require Node-ABI bindings Bun doesn't fully replicate. If you're on AWS Lambda with a Node 20 runtime, you can't swap Bun in without a custom layer. `reflect-metadata` for NestJS decorators has known edge cases. Bun also lacks Node's LTS guarantee — APIs evolve faster, which matters for regulated or long-lived production systems.\n\nBottom line: greenfield HTTP services, CLIs, and TypeScript monorepos — pick Bun. Existing Node apps with native bindings or platform-locked runtimes — stay on Node.",
+      "code_snippet": "// Bun-native HTTP server with SQLite — no npm installs needed\nimport { Database } from \"bun:sqlite\";\n\nconst db = new Database(\"app.db\");\ndb.run(\"CREATE TABLE IF NOT EXISTS hits (path TEXT, ts INTEGER)\");\n\nconst insert = db.prepare(\"INSERT INTO hits VALUES ($path, $ts)\");\n\nBun.serve({\n  port: 3000,\n  fetch(req) {\n    insert.run({ $path: new URL(req.url).pathname, $ts: Date.now() });\n    const count = db.query(\"SELECT COUNT(*) as n FROM hits\").get() as { n: number };\n    return Response.json({ hits: count.n });\n  },\n});",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    }
+  ]
 }

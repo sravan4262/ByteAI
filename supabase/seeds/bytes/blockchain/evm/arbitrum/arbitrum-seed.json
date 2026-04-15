@@ -2,5 +2,146 @@
   "tech_stack": "arbitrum",
   "subdomain": "evm",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "EVM Architecture — opcodes, gas model, stack-based execution, memory vs storage vs calldata",
+      "status": "done",
+      "title": "Mastering Arbitrum: EVM Architecture and Optimizations",
+      "body": "Arbitrum's EVM architecture relies on a stack-based execution model, utilizing opcodes to manipulate data. The gas model is crucial for optimizing transaction costs. Memory, storage, and calldata are distinct components: memory is temporary and reset after each transaction, storage persists across transactions, and calldata is used for function inputs. Understanding these components is vital for efficient smart contract development on Arbitrum. Developers can optimize gas costs by minimizing memory usage and leveraging storage effectively.",
+      "code_snippet": "contract Example { function optimizeGas() public { // Using storage instead of memory for large data uint[] storage data = new uint[](100); // ... } }",
+      "language": "solidity",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Ethereum — accounts, transactions, block structure, consensus (PoS post-merge)",
+      "status": "done",
+      "title": "Arbitrum — Optimizing Transaction Execution with Sequencer",
+      "body": "Arbitrum's sequencer plays a crucial role in optimizing transaction execution. By batching transactions and executing them in a specific order, the sequencer helps reduce transaction costs and increase throughput. On Arbitrum, transactions are executed in a two-step process: first, the sequencer batches and orders transactions, and then the aggregator executes them on the Ethereum Virtual Machine (EVM). This process allows for faster transaction processing and reduced latency. Developers can leverage the Arbitrum API to interact with the sequencer and optimize their transaction execution. The `eth_sendTransaction` method can be used to send transactions to the sequencer, which will then batch and execute them.",
+      "code_snippet": "const ethers = require('ethers');\nconst provider = new ethers.providers.JsonRpcProvider('https://arb1.arbitrum.io/rpc');\nconst tx = {\n  from: '0x...',\n  to: '0x...',\n  value: ethers.utils.parseEther('1.0')\n};\nprovider.sendTransaction(tx);",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Gas & Fees — gas limit, base fee, priority fee (EIP-1559), gas optimization",
+      "status": "done",
+      "title": "Optimize Gas Consumption on Arbitrum with EIP-1559",
+      "body": "Arbitrum's EVM implementation uses EIP-1559, which replaces the traditional gas pricing model with a base fee and priority fee. The base fee is the minimum amount paid per gas, while the priority fee is an additional fee paid for faster transaction processing. To optimize gas consumption, use the `baseFeePerGas` and `maxPriorityFeePerGas` functions from the `ethers.js` library. For example, set a reasonable base fee and priority fee to balance between low fees and fast transaction processing.\n\n```javascript\nconst { ethers } = require('ethers');\n\nconst provider = new ethers.providers.JsonRpcProvider('https://arb1.arbitrum.io/rpc');\n\nconst baseFee = await provider.getBaseFee();\nconst maxPriorityFee = ethers.utils.parseUnits('1', 'gwei');\n\nconst transaction = {\n  maxPriorityFeePerGas: maxPriorityFee,\n  maxFeePerGas: baseFee.mul(2),\n  ...otherTransactionOptions\n};\n```\n\nSet `maxPriorityFeePerGas` to a reasonable value, and `maxFeePerGas` to twice the base fee for a safe estimate.",
+      "code_snippet": "javascript",
+      "language": null,
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Layer 2 Scaling — why L1 is expensive, rollup approach, optimistic vs ZK",
+      "status": "done",
+      "title": "arbitrum — Optimistic Rollup vs zkEVM: Choosing the Right Layer 2 Scaling Solution",
+      "body": "Arbitrum's rollup approach offers two primary solutions for scaling: Optimistic Rollup and zkEVM. Optimistic Rollup uses off-chain transactions to bundle multiple on-chain transactions, reducing gas costs. However, it requires an external sequencer to order transactions, introducing a single point of failure. zkEVM, on the other hand, uses zk-SNARKs to verify transactions off-chain, providing a more secure alternative. When choosing between the two, consider the trade-off between security and scalability needs. Arbitrum's Optimistic Rollup is ideal for applications requiring fast settlement, while zkEVM offers a more secure solution for high-stakes transactions.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "Optimistic Rollups — fraud proofs, challenge period, withdrawal delay (Arbitrum, Optimism)",
+      "status": "done",
+      "title": "Arbitrum Optimistic Rollups: Fraud Proofs, Challenge Period, and Withdrawal Delay",
+      "body": "Arbitrum's Optimistic Rollups rely on fraud proofs to ensure the integrity of transactions. A fraud proof is generated when a malicious actor attempts to alter a previous transaction. This proof is submitted to the Optimism L2 network, which then triggers a challenge period. During this period, other validators can review the proof and verify its validity. If the proof is deemed valid, the transaction is reverted, and the attacker's stake is forfeited. However, if no challenge is submitted within the challenge period (currently set to 7 days on Arbitrum), the transaction is considered final, and the funds are withdrawn. To account for any potential delays, Arbitrum introduces a withdrawal delay of 7 days.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "Polygon — PoS chain, AggLayer, zkEVM, bridging assets",
+      "status": "done",
+      "title": "Arbitrum Optimism: Migrating Assets with AggLayer and zkEVM",
+      "body": "Arbitrum Optimism enables seamless bridging of assets between L1 and L2 using AggLayer. To migrate assets, deploy the AggLayer contract, and call `deposit()` to transfer assets from L1 to L2. On the L2 side, use the `zkEVM` to optimize execution of the `deposit()` function. To verify the migration, query the `balanceOf()` function on the AggLayer contract. For example, using the Arbitrum SDK in JavaScript:\n\nconst { AggLayer } = require('@arbitrum/sdk);\nconst aggLayer = new AggLayer('contractAddress');\nconst balance = await aggLayer.balanceOf('assetAddress');\nconsole.log(`Balance: ${balance}`);",
+      "code_snippet": "const { AggLayer } = require('@arbitrum/sdk);\nconst aggLayer = new AggLayer('contractAddress');\nconst balance = await aggLayer.balanceOf('assetAddress');\nconsole.log(`Balance: ${balance}`);",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Base — Coinbase's L2, OP Stack, Superchain vision",
+      "status": "done",
+      "title": "Arbitrum's Base Layer: Unlocking OP Stack and Superchain Vision",
+      "body": "Arbitrum's Base layer is the foundation of its Optimistic Rollup (OP) solution. It enables fast and low-cost transactions on Ethereum by leveraging the security of the Ethereum mainnet. The Base layer uses the Superchain protocol to connect multiple L2 chains, ensuring seamless communication and efficient data processing. Developers can interact with the Base layer through the Arbitrum SDK, which provides a simple and intuitive API for building L2 applications.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Bridges — locking/minting, canonical vs third-party bridges, bridge risks",
+      "status": "done",
+      "title": "Arbitrum Bridges — Locking/Minting, Canonical vs Third-Party",
+      "body": "Arbitrum uses the Arbitrum Bridge to transfer assets between Ethereum and its rollup blockchain. There are two types of bridges: canonical and third-party. Canonical bridges, like the Arbitrum Bridge, are built directly into the protocol, offering reliability and security. Third-party bridges, like Wormhole, are external contracts that handle bridge operations. When using third-party bridges, ensure they are audited and trusted. Locking and minting assets on the Arbitrum Bridge involves calling the `lock` function with the asset's address and amount, and then calling `mint` with the bridge's address and amount. This process is atomic, ensuring a secure transfer.",
+      "code_snippet": "",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "MEV — maximal extractable value, frontrunning, sandwich attacks, PBS",
+      "status": "done",
+      "title": "Arbitrum MEV: Understanding Frontrunning and Sandwich Attacks",
+      "body": "Arbitrum's Optimistic Rollup architecture relies on the L2 to L1 bridge, which can lead to frontrunning and sandwich attacks. Frontrunning occurs when a malicious actor submits a transaction to the L2 ahead of a legitimate transaction, ensuring their transaction is executed first. Sandwich attacks involve a malicious actor placing a transaction between two legitimate transactions, capturing the MEV. To mitigate this, Arbitrum uses the PBS (Priority Builder Service) mechanism to prioritize transactions based on their priority, gas price, and timestamp. Developers can use the `getTransactionCount` and `getTransactionPriority` APIs to monitor and manage transaction priority.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Transaction Lifecycle — mempool, ordering, finality, reorg risk",
+      "status": "done",
+      "title": "Arbitrum Transaction Lifecycle: Mempool, Ordering, Finality, and Reorg Risk",
+      "body": "On Arbitrum, a transaction is first submitted to the mempool, where it's validated and batched with other transactions. The batch is then ordered using the Optimistic Rollup protocol's ' optimistic' ordering mechanism. Once a batch is finalized, it's committed to the underlying Ethereum blockchain. However, if a reorg occurs on Ethereum, Arbitrum's finality gadget ensures that only the most recent state is maintained. This is achieved through a combination of the Optimistic Rollup's 'finalized' flag and the Ethereum blockchain's 'receipt' data.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "Account Abstraction — ERC-4337, smart wallets, gasless transactions, paymasters",
+      "status": "done",
+      "title": "Arbitrum Smart Wallets: Gasless Transactions with ERC-4337",
+      "body": "Arbitrum smart wallets enable gasless transactions using the ERC-4337 standard. When a user initiates a transaction, the wallet sends a delegate call to the user's account, which calls the paymaster contract. The paymaster then covers the gas costs. Arbitrum smart wallets use the `execute` method of the `ArbitrumContext` object to trigger the delegate call.\n\nIn the following example, the `smartWallet` contract calls the `paymaster` contract to execute a delegate call to the user's account, which in turn calls the `transfer` function of the `ERC20` token contract:\n\n```solidity\ncontract SmartWallet {\n  // ... \n  function execute(ArbitrumContext context) public {\n    // Delegate call to user's account\n    context.userAccount.delegatecall(abi.encodeWithSignature(\"transfer(address,uint256)\", paymaster, 100 ether));\n  }\n}\n\ncontract Paymaster {\n  // ... \n  function delegatecall(bytes memory data) external {\n    // Handle delegate call\n  }\n}\n\ncontract UserAccount {\n  // ... \n  function transfer(address recipient, uint256 amount) public {\n    // Handle transfer\n  }\n}",
+      "code_snippet": null,
+      "language": "solidity",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "EVM Compatibility — what it means, chains that run EVM bytecode, tooling reuse",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

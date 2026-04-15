@@ -2,5 +2,289 @@
   "tech_stack": "esp32",
   "subdomain": "embedded",
   "domain": "systems",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Embedded Fundamentals — microcontroller vs microprocessor, bare metal vs RTOS",
+      "status": "done",
+      "title": "esp32: Microcontroller vs Microprocessor - Bare Metal vs RTOS",
+      "body": "The esp32 contains a dual-core Xtensa LX6 microprocessor. However, when working at the hardware level, you interact with the microcontroller, which includes the CPU, peripherals, and memory. Bare-metal programming means writing code that directly interacts with hardware registers. This is useful for low-level tasks like interrupt handling and peripheral configuration. On the other hand, using a Real-Time Operating System (RTOS) like FreeRTOS provides a higher-level abstraction, allowing you to focus on application logic while the RTOS handles tasks scheduling and synchronization.",
+      "code_snippet": [
+        "#include <driver/gpio.h>",
+        "void setup() {",
+        "    gpio_pad_select_gpio(GPIO_NUM_2);",
+        "    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);",
+        "}",
+        "void loop() {",
+        "    gpio_set_level(GPIO_NUM_2, HIGH);",
+        "    delay(1000);",
+        "    gpio_set_level(GPIO_NUM_2, LOW);",
+        "    delay(1000);",
+        "}"
+      ],
+      "language": "c",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Hardware Abstraction — GPIO, UART, SPI, I2C, PWM — what they are and when to use them",
+      "status": "done",
+      "title": "Mastering GPIO, UART, SPI, I2C, and PWM on ESP32",
+      "body": "GPIO (General Purpose Input/Output) pins facilitate digital communication between the ESP32 and external components. Use `pinMode` to configure pins as inputs or outputs. UART (Universal Asynchronous Receiver-Transmitter) handles serial communication using `Serial.begin` and `Serial.print`. SPI (Serial Peripheral Interface) and I2C (Inter-Integrated Circuit) are for high-speed serial communication with peripherals like displays and sensors. SPI uses `SPI.begin` and `SPI.setDataMode`, while I2C utilizes `Wire.begin` and `Wire.requestFrom`. PWM (Pulse Width Modulation) generates analog signals through `analogWrite`.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Arduino — setup/loop model, libraries, shields, hardware vs software serial",
+      "status": "done",
+      "title": "ESP32 — Optimizing Arduino Setup/Loop with Serial Communication",
+      "body": "The ESP32's Arduino setup() function runs once at startup, while loop() runs continuously. In serial communication, choose between hardwareSerial and SoftwareSerial libraries. SoftwareSerial is slower and more prone to errors, but useful for multiple serial connections.",
+      "code_snippet": "const char* ssid = \"your_wifi_ssid\"; const char* password = \"your_wifi_password\"; void setup() { Serial.begin(115200); } void loop() { Serial.println(\"Hello World\"); delay(1000); }",
+      "language": "cpp",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Memory Constraints — RAM/flash limitations, stack sizing, heap fragmentation",
+      "status": "done",
+      "title": "esp32 RAM Optimization — Managing Stack and Heap",
+      "body": "The esp32 has 512 KB of flash and 80 KB of RAM. To optimize memory usage, it's crucial to understand the stack and heap. The stack is a region where local variables and function call information are stored. The esp32's stack size can be set using the `configSTACK_SIZE` macro in `sdkconfig`. The heap, on the other hand, is a region where dynamically allocated memory is stored. The esp32 uses a first-in, first-out (FIFO) approach for heap memory allocation. To avoid heap fragmentation, use `malloc()` with the `MALLOC_NOINITIALIZE` flag. For example, `malloc(1024, MALLOC_NOINITIALIZE)` allocates 1024 bytes of memory without initializing it.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "ESP32 — dual-core, WiFi/BT built-in, FreeRTOS integration, power modes",
+      "status": "done",
+      "title": "Leveraging ESP32's Dual-Core Architecture for Efficient IoT Applications",
+      "body": "The ESP32's dual-core architecture allows for simultaneous execution of tasks, improving overall system responsiveness. By utilizing the FreeRTOS API, developers can create and manage tasks, ensuring efficient utilization of CPU resources. To take advantage of this feature, initialize the FreeRTOS system by calling `xTaskCreate()` for each task. For instance, one task can handle WiFi connectivity, while another handles sensor data processing. Use the `xTaskResume()` function to resume tasks that have been suspended.",
+      "code_snippet": {
+        "language": "c",
+        "code": null
+      },
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Interrupts — ISR design, interrupt priorities, avoiding blocking in ISRs",
+      "status": "done",
+      "title": "esp32 - Mastering Interrupt Priorities and Avoiding Blocking in ISRs",
+      "body": "When using the esp32, interrupts are crucial for handling events asynchronously. The Interrupt Priority level (IPL) determines the order in which interrupts are serviced. Lower IPL values have higher priority. The esp32 supports up to 6 priority levels. It's essential to avoid blocking in Interrupt Service Routines (ISRs) as it prevents other interrupts from being serviced. Use the `delay()` function sparingly and opt for non-blocking APIs like `esp_task_wdt_new()` for watchdog timer management.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Real-time Constraints — deadlines, jitter, priority inversion, watchdog timers",
+      "status": "done",
+      "title": "esp32: Mastering Real-time Constraints with Deadlines, Jitter, and Watchdog Timers",
+      "body": "When implementing real-time systems on esp32, managing deadlines, jitter, and priority inversion is crucial. The esp32's FreeRTOS prioritizes tasks based on their configuration. Use `xTaskCreate()` with the `pxCurrentTCB` argument to assign a fixed priority. To combat jitter, enable the `configUSE_PORT_OPTIMISED_SCHEDULER` flag in `FreeRTOSConfig.h`. This flag optimizes the scheduler for esp32's port. Additionally, use watchdog timers with `esp_timer_create()` to enforce deadlines and detect task timeouts. For example:",
+      "code_snippet": "esp_timer_handle_t timer;\nvoid my_task(void *arg) {\n  esp_timer_create(&timer, NULL);\n  while (1) {\n    // Task logic\n    esp_timer_start_once(timer, 1000);\n  }\n}",
+      "language": "c",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Raspberry Pi — Linux on embedded, GPIO via Python/C, choosing Pi vs microcontroller",
+      "status": "done",
+      "title": "esp32 - GPIO via Python vs C: When to Choose Raspberry Pi",
+      "body": "When working with the esp32, developers often face a dilemma: whether to use a Raspberry Pi for Linux-based development or stick with microcontroller-specific code. esp32's built-in GPIO capabilities make it ideal for low-level I/O operations. However, complex tasks benefit from the power of Linux on a Raspberry Pi. For instance, consider using a Raspberry Pi for data logging or signal processing, where Linux's processing capabilities can be leveraged. In contrast, esp32's microcontroller nature is better suited for time-sensitive tasks like motor control or sensor readings.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "FreeRTOS — tasks, queues, semaphores, mutexes, interrupt service routines",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Power Management — sleep modes, wake sources, battery life optimization",
+      "status": "done",
+      "title": "esp32 Power Management: Maximizing Battery Life with Sleep Modes",
+      "body": "The esp32's power management system is designed to minimize power consumption. The `esp_sleep()` function is used to enter deep sleep modes, including `ESP_SLEEP_MODE_NONE`, `ESP_SLEEP_MODE_LIGHT`, `ESP_SLEEP_MODE_DEEP`, and `ESP_SLEEP_MODE_ULP`. To wake from deep sleep, use `esp_add_wake_source()` with a `WAKE_SOURCE_TOUCH` or `WAKE_SOURCE_EXT0` for touch or external pin wake, respectively. For example, to wake from deep sleep on touch, set `WAKE_SOURCE_TOUCH` and call `esp_sleep_enable_touch_wakeup()`. To optimize battery life, use `esp_deep_sleep()`, which disables peripherals, and set `ESP_SLEEP_MODE_DEEP` and `WAKE_SOURCE_TOUCH`.",
+      "code_snippet": "esp_err_t wakeSource = esp_add_wake_source(BIT2, 0, ESP_INTR_FLAG_DEFAULT);\nif (wakeSource == ESP_OK) {\n    esp_sleep_enable_touch_wakeup();\n    esp_deep_sleep();\n}",
+      "language": "c",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Zephyr RTOS — device tree, Kconfig, west tool, multi-platform support",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Peripheral Communication — reading sensors, driving actuators, protocol selection",
+      "status": "done",
+      "title": "esp32 - Choosing the Right I2C Protocol for Your Sensor",
+      "body": "When communicating with I2C sensors on the esp32, you'll often encounter the choice between standard (100 kHz) and fast (400 kHz) modes. The esp32's I2C peripheral supports both modes, but the decision depends on your sensor's requirements. For example, the popular BME280 temperature and humidity sensor operates at 100 kHz, while the MLX90614 infrared thermometer requires the faster 400 kHz mode. To switch modes, use the `i2c_set_clock_divider` function. Set the divider to 10 for standard mode (100 kHz) or 2 for fast mode (400 kHz). Ensure the sensor's clock speed matches the mode you select to avoid data corruption.",
+      "code_snippet": "const i2c = require('esp32-i2c');\nconst i2cMaster = i2c.begin(0, i2c.SCL_PIN, i2c.SDA_PIN);\ni2cMaster.setClockDivider(10); // 100 kHz mode\n",
+      "language": "javascript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Safety-Critical Systems — MISRA C, functional safety, certification considerations",
+      "status": "done",
+      "title": "esp32 Safety-Critical Systems — MISRA C Compliance",
+      "body": "To ensure compliance with MISRA C on the esp32, update your project settings to enable static analysis. For example, using the ESP-IDF, add the following flag to `idf.py set_target_property`: `-DMISRA`. Then, use the `idf.py check` command to run static analysis. Additionally, consider enabling the `lint` tool to catch code issues. For functional safety, use the `freertos` library with the `configUSE_APPLICATION_TASK_TAG` set to `1` to enable task tagging. Finally, ensure your code adheres to the MISRA C guidelines by avoiding implicit type conversions and keeping code concise.",
+      "code_snippet": null,
+      "language": "c",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Bootloaders — what they do, OTA update mechanisms, secure boot",
+      "status": "done",
+      "title": "esp32 Bootloaders — OTA Updates and Secure Boot",
+      "body": "esp32 boards typically employ the ESP32 Bootloader, which loads the main firmware. The bootloader also enables Over-The-Air (OTA) updates. To ensure secure boot, the esp32 uses the Secure Boot feature, which verifies the digital signature of the firmware. The ESP32 chip includes a dedicated hardware-based secure boot mechanism. To implement OTA updates, you can use the `esp_http_client` API to fetch the updated firmware and then use the `esp_partition` API to write it to the correct partition.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Choosing a Platform — Arduino vs ESP32 vs Raspberry Pi vs STM32 decision framework",
+      "status": "done",
+      "title": "ESP32 Dev: Arduino vs ESP32 vs Raspberry Pi vs STM32 — Decision Framework",
+      "body": "When choosing a platform for your ESP32 project, consider the following factors: 1) Complexity: If you're new to ESP32, the Arduino IDE provides an easier learning curve. 2) Resource requirements: ESP32 has a smaller footprint compared to Raspberry Pi. 3) Performance: For demanding tasks, consider STM32. 4) Development time: Use ESP32 if you need rapid prototyping. 5) Libraries and community: ESP32 has extensive libraries and a large community.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Debugging Embedded — JTAG/SWD, logic analyzers, printf debugging limitations",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Networking on Embedded — MQTT, CoAP, HTTP on constrained devices",
+      "status": "done",
+      "title": "esp32: Choosing the Right Networking Protocol for Constrained Devices",
+      "body": "When working with esp32, selecting the right networking protocol for IoT applications is crucial. MQTT, CoAP, and HTTP are popular choices, but each has its trade-offs. MQTT is ideal for low-bandwidth, high-latency networks, while CoAP excels in constrained networks with limited resources. HTTP, on the other hand, is more suitable for applications requiring web-based interfaces. esp32's IDF library provides native support for all three protocols. Use `esp_mqtt_client_init` for MQTT, `coap_client_init` for CoAP, and `http_client_init` for HTTP. For instance, to initialize an MQTT client, use `esp_mqtt_client_init(&client, config, port, timeout)`. When choosing a protocol, consider the device's resources, network conditions, and the application's requirements.",
+      "code_snippet": "esp_mqtt_client_init(&client, config, port, timeout)",
+      "language": "c",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Testing Embedded — hardware-in-the-loop, unit testing on host, mocking hardware",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "FreeRTOS — tasks, queues, semaphores, mutexes, interrupt service routines",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Zephyr RTOS — device tree, Kconfig, west tool, multi-platform support",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging Embedded — JTAG/SWD, logic analyzers, printf debugging limitations",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Testing Embedded — hardware-in-the-loop, unit testing on host, mocking hardware",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "FreeRTOS — tasks, queues, semaphores, mutexes, interrupt service routines",
+      "status": "done",
+      "title": "Scheduling Tasks with FreeRTOS on esp32",
+      "body": "To create a task with FreeRTOS on esp32, use `xTaskCreate` with the `TaskHandle_t` type. The task should be created with the `pdTRUE` priority to ensure it's executed immediately. You can also specify the task stack size, which should be at least 2048 bytes for the esp32. To interact with tasks, use queues, semaphores, or mutexes. For example, to send a character to a task, `xQueueSend` is used. The `xSemaphoreTake` function can be used to acquire a semaphore, while `xSemaphoreGive` is used to release it. `xMutexCreate` and `xMutexTake` are used to create and acquire a mutex. Interrupt service routines (ISRs) can be used to handle interrupts, but should be kept short and light to avoid context switching.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Zephyr RTOS — device tree, Kconfig, west tool, multi-platform support",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging Embedded — JTAG/SWD, logic analyzers, printf debugging limitations",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Testing Embedded — hardware-in-the-loop, unit testing on host, mocking hardware",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

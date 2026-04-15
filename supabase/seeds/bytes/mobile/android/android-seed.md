@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: android
 domain: mobile
-tech_stacks: [kotlin, jetpack_compose, android_sdk]
+tech_stacks: [kotlin, jetpack_compose]
 byte_type_default: article
 
 ## Topics to Seed

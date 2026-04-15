@@ -2,5 +2,374 @@
   "tech_stack": "php",
   "subdomain": "be_languages",
   "domain": "backend",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Package Management — lock files, versioning, dependency auditing",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Concurrency Model — async/await, goroutines, threads, actors — how each language handles it",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Error Handling — exceptions vs Result types, error propagation patterns per language",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Type Safety — static vs dynamic typing, type inference, generics across languages",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Memory Management — GC vs ownership model, stack vs heap, memory safety",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Standard Library — what's built in vs what needs a third-party library",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Testing — unit testing philosophy and test runner per language",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Security — memory safety, injection prevention, dependency vulnerability scanning",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Performance — benchmarking, profiling, runtime characteristics per language",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Code Quality — linting, formatting, language-specific idioms",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Dev Tooling — REPL, debugger, language server protocol support",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Deployment — binary size, containerization, runtime dependencies",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Scalability — horizontal scaling characteristics, thread model implications",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Language-specific — Node.js event loop, Python GIL, Go channels, Rust ownership, Elixir OTP",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Ecosystem Maturity — library quality, community size, long-term viability",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Choose — use cases where each language excels vs where it struggles",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Type Safety — static vs dynamic typing, type inference, generics across languages",
+      "status": "done",
+      "title": "PHP's Type System — Strict Types, Union Types, and Where Inference Falls Short",
+      "body": "PHP's type system is opt-in by default. Without `declare(strict_types=1)`, PHP silently coerces `'42'` to `42` when a function expects `int`. Add that declaration at the top of every file and PHP throws a `TypeError` instead — catching bugs that would otherwise survive to production.\n\nPHP 8.0 added union types (`int|string`), 8.1 added intersection types (`Countable&Iterator`), and 8.2 added `true`, `false`, and `null` as standalone types. Combined with `readonly` properties (8.1) and readonly classes (8.2), you can model immutable domain objects without a third-party library.\n\nPHP lacks generics — `array<string, User>` is a PHPStan/Psalm annotation, not enforced at runtime. The gap matters: a typed `array` parameter accepts any array regardless of element types. Tools like PHPStan at level 9 or Psalm at `errorLevel 1` fill this void statically, rejecting mismatched collection types before execution. For production codebases, running PHPStan in CI is the closest PHP gets to compile-time generic safety.",
+      "code_snippet": "<?php\ndeclare(strict_types=1);\n\nfinal readonly class Money {\n    public function __construct(\n        public int $amount,\n        public string $currency,\n    ) {}\n}\n\nfunction add(Money $a, Money $b): Money {\n    if ($a->currency !== $b->currency) {\n        throw new \\InvalidArgumentException('Currency mismatch');\n    }\n    return new Money($a->amount + $b->amount, $a->currency);\n}\n\n$total = add(new Money(100, 'USD'), new Money(50, 'USD'));\necho $total->amount; // 150",
+      "language": "php",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Package Management — lock files, versioning, dependency auditing",
+      "status": "done",
+      "title": "PHP Composer Lock Files — Why You Must Commit composer.lock",
+      "body": "Composer resolves dependencies using two files: `composer.json` (your constraints) and `composer.lock` (the exact resolved versions). When you run `composer install`, Composer installs exactly what's in `composer.lock` — not the latest matching version. This guarantees every developer and every CI/CD deployment runs identical dependency trees.\n\nSkipping `composer.lock` from version control is a common mistake. Without it, `composer install` silently upgrades packages to their latest allowed versions, breaking reproducibility.\n\nFor dependency auditing, run `composer audit` (available since Composer 2.4) to check all installed packages against the PHP Security Advisories Database. It exits with a non-zero code on vulnerabilities, making it CI-friendly.\n\nVersion constraints matter too: `^1.2` allows `>=1.2.0 <2.0.0`, while `~1.2` allows `>=1.2.0 <1.3.0`. Prefer `^` for libraries, but pin transitive dependencies via `composer.lock`, not by over-constraining `composer.json`. Use `composer outdated` to surface stale packages without breaking your lock file.",
+      "code_snippet": "# Install exact versions from composer.lock (never resolves newer)\ncomposer install\n\n# Update a single package and regenerate composer.lock\ncomposer update guzzlehttp/guzzle\n\n# Audit all installed packages for known CVEs\ncomposer audit\n\n# Check for outdated packages without modifying lock file\ncomposer outdated\n\n# Verify lock file is in sync with composer.json\ncomposer validate --strict",
+      "language": "bash",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Performance — benchmarking, profiling, runtime characteristics per language",
+      "status": "done",
+      "title": "PHP Performance Profiling — hrtime(), OPcache, and Xdebug's Overhead Cost",
+      "body": "PHP's `hrtime(true)` returns nanoseconds via the CPU clock — far more precise than `microtime(true)` for micro-benchmarks, since it's immune to NTP drift. Use it to wrap candidate code paths: `$start = hrtime(true); ... $ns = hrtime(true) - $start;`. But raw timing means nothing without OPcache context. On first request, PHP parses and compiles every file; OPcache serializes the opcode bytecode to shared memory, making subsequent requests up to 5–8× faster. Benchmark only after OPcache warms up — `opcache_get_status()` confirms it. For deep profiling, Xdebug's profiler (`xdebug.mode=profile`) emits Cachegrind files readable by KCacheGrind, but introduces 10–100× slowdown — never run it in production. Instead, use Blackfire.io, which instruments via a PHP extension with ~2% overhead and gives call graph analysis per function. Key runtime gotcha: PHP is share-nothing per request — no persistent in-process state, so memory leaks are per-request and reset automatically, but connection pool warm-up costs hit every worker process independently.",
+      "code_snippet": "<?php\n// Warm OPcache before benchmarking\n$status = opcache_get_status();\nif (!$status || !$status['opcache_enabled']) {\n    throw new RuntimeException('OPcache must be enabled for reliable benchmarks');\n}\n\n$iterations = 10_000;\n$start = hrtime(true);\n\nfor ($i = 0; $i < $iterations; $i++) {\n    $result = array_map(fn($x) => $x * $x, range(1, 100));\n}\n\n$ns = hrtime(true) - $start;\nprintf(\"avg: %.3f µs/iter\\n\", $ns / $iterations / 1_000);",
+      "language": "php",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Concurrency Model — async/await, goroutines, threads, actors — how each language handles it",
+      "status": "done",
+      "title": "PHP Concurrency — Fibers, Swoole Coroutines, and PHP-FPM's Process Model",
+      "body": "PHP has no built-in async/await or goroutines — concurrency depends entirely on your runtime.\n\n**PHP-FPM (default):** Concurrency is process-based. Each HTTP request runs in an isolated worker with its own heap. No shared state, no locks. Scale by tuning `pm.max_children`. Simple and battle-tested.\n\n**PHP 8.1 Fibers:** Native stackful coroutines for cooperative multitasking within a single thread. A `Fiber` calls `Fiber::suspend()` to yield control and can be `resume()`d with a value. No parallelism — just interleaved I/O waits. Fibers are the low-level primitive powering ReactPHP 3 and the Revolt event loop.\n\n**Swoole/OpenSwoole:** Replaces PHP-FPM with a persistent coroutine scheduler. `Co::create()` spawns coroutines; blocking syscalls like `Co\\System::sleep()` yield automatically. True non-blocking I/O without threads. Ideal for WebSocket servers or high-concurrency APIs.\n\n**parallel extension:** Real OS-thread parallelism via `parallel\\run()`. Each thread gets an isolated heap — closures passed in must reference no external state by design, enforcing safety at the language level.\n\nPick PHP-FPM for standard web workloads, Swoole for persistent high-concurrency services, and Fibers/Revolt when you need async without swapping your runtime.",
+      "code_snippet": "<?php\n// PHP 8.1 Fibers — cooperative multitasking primitive\n$fiber = new Fiber(function(): void {\n    echo \"Fiber started\\n\";\n    $input = Fiber::suspend('paused');  // yield control, pass value to caller\n    echo \"Resumed with: $input\\n\";\n});\n\n$yielded = $fiber->start();              // runs until first suspend()\necho \"Main received: $yielded\\n\";       // \"paused\"\n$fiber->resume('hello from main');      // hands control back\necho $fiber->isTerminated() ? \"Done\\n\" : \"Still running\\n\";",
+      "language": null,
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Error Handling — exceptions vs Result types, error propagation patterns per language",
+      "status": "done",
+      "title": "PHP Error Handling — Exceptions vs Result Types in PHP 8.1+",
+      "body": "PHP's exception hierarchy splits into `Error` (engine-level: `TypeError`, `ParseError`) and `Exception` (application-level). Unlike Java, PHP has no checked exceptions—nothing forces callers to handle them, so failures silently bubble up across layers until hitting a top-level handler or crashing the response.\n\nPHP 8.1 readonly classes make Result types practical without dependencies. Encoding success/failure in the return type forces callers to acknowledge errors at the call site—a sharp contrast to invisible exception propagation. Use exceptions for truly unrecoverable states (lost DB connection, filesystem failures). Use Result for expected domain failures: validation errors, not-found lookups, external API timeouts.\n\nThe PHP 8.0 `match` expression pairs naturally with Result unwrapping—it's exhaustive and expression-based, unlike `if/else` chains. For layered propagation, Results compose cleanly: a service method returns `Result::err(...)` without `throw`, and the controller decides how to surface it.\n\nAvoid the PHP anti-pattern of returning `false` or `null` on failure—union types like `User|false` look like Results but carry zero error context, making debugging opaque and callers reliant on `===` checks instead of structured failure information.",
+      "code_snippet": "readonly class Result {\n    private function __construct(\n        public mixed $value,\n        public ?string $error,\n        public bool $ok,\n    ) {}\n    public static function ok(mixed $v): self { return new self($v, null, true); }\n    public static function err(string $e): self { return new self(null, $e, false); }\n}\n\nfunction findUser(int $id): Result {\n    $user = User::find($id);\n    return $user ? Result::ok($user) : Result::err(\"User $id not found\");\n}\n\n$r = findUser(42);\necho match(true) {\n    $r->ok  => \"Found: {$r->value->name}\",\n    default => \"Error: {$r->error}\",\n};",
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
+      "status": "done",
+      "title": "PHP's JIT Compiler — What It Actually Does to Your Runtime",
+      "body": "PHP has always been interpreted: each request parses and compiles source to opcodes, executes them, then discards everything. OPcache changed the second part — it caches compiled opcodes in shared memory, eliminating re-parsing on subsequent requests. But opcodes still run through the Zend VM interpreter on every call.\n\nPHP 8.0 introduced a true JIT compiler (tracing and function modes) built on top of OPcache. When enabled, hot code paths are compiled to native machine code at runtime. The catch: PHP's bottleneck is almost never CPU-bound computation — it's I/O, database queries, and serialization. Benchmarks consistently show JIT yields 5–10% gains in typical web workloads, but 2–3x speedups in pure computation (math-heavy loops, image processing).\n\nCold start is the real cost. On the first request after a worker spawn (PHP-FPM), OPcache is cold, JIT profiling hasn't started, and class autoloading hits disk. Preloading (`opcache.preload`) solves this: PHP loads and compiles a bootstrap script at FPM startup, caching classes and functions in shared memory permanently — cold start effectively disappears for preloaded symbols.",
+      "code_snippet": "# php.ini / FPM pool config\nopcache.enable=1\nopcache.memory_consumption=256\nopcache.jit_buffer_size=128M\n; tracing JIT — best for mixed workloads\nopcache.jit=tracing\n\n; Preload bootstrap (eliminates cold-start for core classes)\nopcache.preload=/var/www/app/preload.php\nopcache.preload_user=www-data\n\n# preload.php\n<?php\nrequire_once __DIR__ . '/vendor/autoload.php';\n// Force-load hot classes into shared memory at FPM startup\nclass_exists(\\App\\Http\\Kernel::class);\nclass_exists(\\App\\Models\\User::class);",
+      "language": "bash",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Testing — unit testing philosophy and test runner per language",
+      "status": "done",
+      "title": "PHP Unit Testing — PHPUnit Philosophy and Writing Tests That Actually Catch Bugs",
+      "body": "PHPUnit is PHP's de facto test runner — installed via Composer, configured with `phpunit.xml`. The core philosophy is arrange-act-assert: set up state, invoke behavior, verify outcomes. Each test class extends `PHPUnit\\Framework\\TestCase` and each test method is prefixed with `test` or annotated with `#[Test]`.\n\nPrefer `assertSame()` over `assertEquals()` — the former enforces strict type equality (`1 !== '1'`), catching PHP's loose comparison traps. Use `expectException()` before the act phase to assert thrown exceptions rather than wrapping in try/catch.\n\nFor isolation, PHPUnit's `createMock()` generates test doubles at runtime via reflection. Stub dependencies with `method()->willReturn()` to unit-test a class without hitting the database or HTTP. Use `setUp()` to share fixture construction across tests and `tearDown()` for cleanup.\n\nPest PHP is a modern alternative built on PHPUnit — it adds a Vitest-style closure API (`it()`, `expect()`, `beforeEach()`) with zero boilerplate. Both runners support parallel execution via `--process-isolation`. Run only the failing suite with `--filter=MethodName` during red-green cycles.",
+      "code_snippet": "<?php\nuse PHPUnit\\Framework\\TestCase;\n\nclass OrderServiceTest extends TestCase\n{\n    private OrderService $service;\n\n    protected function setUp(): void\n    {\n        $repo = $this->createMock(OrderRepository::class);\n        $repo->method('find')->willReturn(new Order(id: 1, total: 99.99));\n        $this->service = new OrderService($repo);\n    }\n\n    #[Test]\n    public function it_applies_discount_to_order(): void\n    {\n        $result = $this->service->applyDiscount(orderId: 1, percent: 10);\n        $this->assertSame(89.99, $result->total);\n    }\n}",
+      "language": "php",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Security — memory safety, injection prevention, dependency vulnerability scanning",
+      "status": "done",
+      "title": "PHP Security — Injection Prevention, Memory Safety, and Dependency Scanning",
+      "body": "PHP's biggest injection risks are SQL and shell execution. Use PDO with named prepared statements exclusively — never interpolate user input into queries. For shell calls, avoid `exec()`, `shell_exec()`, and `passthru()` entirely; if unavoidable, use `escapeshellarg()` on every argument. PHP 8.x doesn't offer Rust-style memory safety, but you eliminate entire classes of buffer-adjacent bugs by disabling `allow_url_fopen`, `allow_url_include`, and `register_globals` in `php.ini`. Unserializing untrusted data via `unserialize()` is a critical RCE vector — use `json_decode()` instead, or pass an `allowed_classes` whitelist as the second argument. For dependency scanning, integrate `composer audit` into your CI pipeline; it queries the OSS vulnerability database against your `composer.lock` and exits non-zero on known CVEs, blocking merges automatically. Pair with `roave/security-advisories` as a Composer dev-dependency — it prevents installation of packages with known security issues at `composer install` time, before your code ever runs.",
+      "code_snippet": "<?php\n// Safe PDO query — named placeholders, no interpolation\n$stmt = $pdo->prepare('SELECT * FROM users WHERE email = :email AND active = :active');\n$stmt->execute([':email' => $email, ':active' => 1]);\n\n// Safe unserialize with class allowlist\n$data = unserialize($input, ['allowed_classes' => [UserPrefs::class]]);\n\n// Safe shell argument — never trust user input directly\n$file = escapeshellarg($_GET['filename']);\nexec(\"convert {$file} output.png\");\n\n// CI: run in your GitHub Actions pipeline\n// composer audit --no-dev --format=json",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Memory Management — GC vs ownership model, stack vs heap, memory safety",
+      "status": "done",
+      "title": "PHP Memory Management — Refcounting, Cyclic GC, and WeakReferences",
+      "body": "PHP uses reference counting (refcount) via the Zend Memory Manager — every zval tracks how many variables point to it. When refcount drops to zero, memory is freed immediately, no GC cycle needed. Arrays and strings use copy-on-write (COW): `$b = $a` doesn't copy heap data until mutation, cutting allocations in read-heavy paths.\n\nThe catch: circular references. If `$a->next = $b` and `$b->next = $a`, refcount never hits zero. PHP's cyclic GC (Tarjan's algorithm over a root buffer) handles these periodically. In long-running processes — CLI daemons, queue workers — call `gc_collect_cycles()` manually to reclaim cycles before they pile up. Monitor pressure with `memory_get_peak_usage(true)`.\n\nFor caches that shouldn't pin objects in memory, use `WeakReference::create($obj)`. The referent can still be collected; call `$ref->get()` and check for null before use.\n\nStack vs heap: PHP has no true stack allocation for objects — everything routes through ZMM's arena allocator. In PHP 8, scalar zvals (int, bool, null) are inlined into the zval struct itself, avoiding a heap round-trip entirely.",
+      "code_snippet": "<?php\nclass Node {\n    public ?Node $next = null;\n    public function __destruct() { echo \"freed\\n\"; }\n}\n\n$a = new Node();\n$b = new Node();\n$a->next = $b;\n$b->next = $a; // cycle: destructor never fires on unset alone\n\nunset($a, $b);\necho gc_collect_cycles() . \" cycle(s) collected\\n\"; // 1 cycle(s) collected\n\n// WeakReference: cache without blocking GC\n$obj = new Node();\n$ref = WeakReference::create($obj);\nunset($obj);\nvar_dump($ref->get()); // NULL — already freed",
+      "language": "php",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Standard Library — what's built in vs what needs a third-party library",
+      "status": "done",
+      "title": "PHP Standard Library — What's Built In vs What You Actually Need Composer For",
+      "body": "PHP ships with a surprisingly deep standard library, but knowing its gaps saves you from reinventing wheels or pulling in unnecessary dependencies. Built-in and ready: `PDO` for database access, `cURL` via ext-curl, `json_encode`/`json_decode`, `DateTime`/`DateTimeImmutable`, `SPL` data structures (`SplStack`, `SplMinHeap`), `array_map`/`array_filter`/`array_reduce`, `preg_*` for regex, `hash()`/`password_hash()` for crypto, and `intl` for Unicode-aware string ops. Where PHP's stdlib falls short: structured logging (reach for `monolog/monolog`), dependency injection containers (`php-di/php-di` or `symfony/dependency-injection`), robust HTTP clients (`guzzlehttp/guzzle` or `symfony/http-client`), UUID generation (`ramsey/uuid`), and any real ORM (`doctrine/orm` or `eloquent`). PHP also lacks a built-in async runtime — for non-blocking I/O you need `ReactPHP` or `Swoole`. Rule of thumb: if it touches I/O, formatting, or application architecture beyond basic CRUD, Composer is the right answer. The stdlib covers primitives; the ecosystem covers patterns.",
+      "code_snippet": "<?php\n// Built-in: hashing, JSON, DateTimeImmutable — no Composer needed\n$hash = password_hash('secret', PASSWORD_ARGON2ID);\n$payload = json_encode(['ts' => (new DateTimeImmutable())->getTimestamp()]);\n\n// Built-in: PDO for DB access\n$pdo = new PDO('pgsql:host=localhost;dbname=app', 'user', 'pass');\n$stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');\n$stmt->execute([42]);\n\n// Third-party needed: structured logging\n// composer require monolog/monolog\nuse Monolog\\Logger;\nuse Monolog\\Handler\\StreamHandler;\n$log = new Logger('app');\n$log->pushHandler(new StreamHandler('php://stdout'));\n$log->info('User fetched', ['id' => 42]);",
+      "language": "php",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Dev Tooling — REPL, debugger, language server protocol support",
+      "status": "done",
+      "title": "PHP Dev Tooling — REPL, Xdebug, and LSP in Your Editor",
+      "body": "PHP's `psysh` is the de facto REPL for interactive debugging and prototyping. Drop it into any project with `composer require --dev psy/psysh` and launch with `vendor/bin/psysh`. Inside, you get `ls()` to inspect object properties, `doc()` for inline PHPDoc, and `wtf` to pretty-print the last exception — far more useful than `php -a`.\n\nFor step debugging, Xdebug 3 streamlines configuration: set `xdebug.mode=debug` and `xdebug.start_with_request=yes` in your `php.ini`, then attach VS Code via the PHP Debug extension (felixfbecker.php-debug). Conditional breakpoints and stack inspection work out of the box.\n\nLanguage server support comes from `phpactor` or `intelephense`. Phpactor is open-source and installable as a PHAR; it provides go-to-definition, refactoring, and class import resolution via LSP. Configure it in Neovim with `nvim-lspconfig` using the `phpactor` server entry, or in VS Code as a standalone extension. Intelephense's free tier covers most LSP features with better performance on large codebases.",
+      "code_snippet": "# Install PsySH\ncomposer require --dev psy/psysh\n\n# Launch REPL\nvendor/bin/psysh\n\n# php.ini — Xdebug 3 config\n; xdebug.mode=debug\n; xdebug.start_with_request=yes\n; xdebug.client_host=127.0.0.1\n; xdebug.client_port=9003\n\n# Install Phpactor LSP\nwget https://github.com/phpactor/phpactor/releases/latest/download/phpactor.phar\nchmod +x phpactor.phar && mv phpactor.phar /usr/local/bin/phpactor\nphpactor status",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Deployment — binary size, containerization, runtime dependencies",
+      "status": "done",
+      "title": "PHP in Docker — Slim Images, OPcache, and No-Dev Deploys",
+      "body": "PHP's runtime model makes container size surprisingly controllable. Start with `php:8.3-fpm-alpine` (~30MB base) instead of the default Debian variant (~170MB). Use a multi-stage build: a `composer` stage installs dependencies with `--no-dev --optimize-autoloader --classmap-authoritative`, then the final stage copies only `vendor/` and app code — no Composer binary ships to prod. Strip unused extensions; every `docker-php-ext-install` call adds shared objects to the image. For runtime performance, bake OPcache config directly into the image via a custom `php.ini`: set `opcache.validate_timestamps=0` and `opcache.preload` pointing to your preload script. This eliminates per-request file-stat syscalls entirely. Avoid mounting `php.ini` at runtime — it creates environment drift. Pin your PHP version in `FROM` (never `php:fpm-latest`) and lock Composer deps with `composer.lock` committed to git. The result: a deterministic, ~80MB image with no dev tooling, no stray `.so` files, and preloaded bytecode ready on first request.",
+      "code_snippet": "# Stage 1: install deps\nFROM composer:2.7 AS deps\nWORKDIR /app\nCOPY composer.json composer.lock ./\nRUN composer install --no-dev --optimize-autoloader --classmap-authoritative\n\n# Stage 2: runtime\nFROM php:8.3-fpm-alpine\nCOPY --from=deps /app/vendor ./vendor\nCOPY . .\nCOPY docker/php.ini /usr/local/etc/php/conf.d/production.ini\n# php.ini includes: opcache.enable=1, opcache.validate_timestamps=0\nEXPOSE 9000\nCMD [\"php-fpm\"]",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Scalability — horizontal scaling characteristics, thread model implications",
+      "status": "done",
+      "title": "PHP's Shared-Nothing Model — Why Horizontal Scaling Is Both Easy and Tricky",
+      "body": "PHP's shared-nothing architecture means every request spawns a clean process via PHP-FPM, with zero shared memory between workers. This makes horizontal scaling straightforward: spin up more FPM pools or containers and put a load balancer (nginx, HAProxy) in front. No inter-process coordination, no distributed lock contention on application state.\n\nThe catch: OPcache is per-process. Each FPM worker warms its own opcode cache independently, so freshly forked workers take a brief latency hit until cache fills. Set `opcache.jit_buffer_size` and `pm.max_children` deliberately — over-provisioning workers exhausts memory without throughput gains.\n\nStateful data (sessions, rate-limit counters, queued jobs) must live externally. PHP's blocking synchronous model means a worker is fully occupied for the request lifetime. Redis for sessions (`session.save_handler = redis`), a proper queue worker (Laravel Horizon, Symfony Messenger with workers scaled independently) and sticky-session-free design are prerequisites for clean horizontal scale-out.\n\nPHP 8.1 Fibers enable cooperative multitasking within a single worker, but they don't change the FPM process model — they're only meaningful in long-running runtimes like Swoole or ReactPHP.",
+      "code_snippet": "; php-fpm pool config for horizontal scaling\n[www]\npm = dynamic\npm.max_children = 50\npm.start_servers = 10\npm.min_spare_servers = 5\npm.max_spare_servers = 20\npm.max_requests = 500   ; recycle workers to prevent memory leaks\n\n; php.ini — per-worker opcode cache\nopcache.enable = 1\nopcache.memory_consumption = 128\nopcache.jit_buffer_size = 64M\nopcache.validate_timestamps = 0   ; disable in prod, deploy triggers reset",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Code Quality — linting, formatting, language-specific idioms",
+      "status": "done",
+      "title": "PHP Code Quality — PHP_CodeSniffer, PHP-CS-Fixer, and PHPStan in Practice",
+      "body": "PHP has a mature toolchain for enforcing code quality, but teams often pick one tool and miss the others. PHP_CodeSniffer (`phpcs`) enforces coding standards like PSR-12 — it catches missing type declarations, incorrect brace placement, and unused imports. PHP-CS-Fixer goes further by auto-correcting violations rather than just reporting them; run it with `--rules=@PSR12,@PHP81Migration` to modernize codebases in bulk. PHPStan is the static analysis layer — at level 8, it catches type mismatches, dead code, and impossible conditions before runtime.\n\nBeyond formatting, embrace PHP 8.x idioms: use `match` instead of `switch` to enforce exhaustive matching and avoid fall-through bugs; replace `isset($arr['key']) ? $arr['key'] : 'default'` with `$arr['key'] ?? 'default'`; and prefer named arguments when calling functions with ambiguous boolean params. Wire all three tools into your CI pipeline using a single `composer run lint` script so there's no escape hatch. PHPStan and PHP-CS-Fixer together eliminate entire categories of review comments.",
+      "code_snippet": "// composer.json scripts block\n\"scripts\": {\n    \"lint\": [\n        \"phpcs --standard=PSR12 src/\",\n        \"php-cs-fixer fix --dry-run --diff --rules=@PSR12,@PHP81Migration src/\",\n        \"phpstan analyse src/ --level=8\"\n    ],\n    \"fix\": \"php-cs-fixer fix --rules=@PSR12,@PHP81Migration src/\"\n}\n\n// PHPStan config: phpstan.neon\nparameters:\n    level: 8\n    paths:\n        - src\n    checkMissingIterableValueType: true",
+      "language": "bash",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Ecosystem Maturity — library quality, community size, long-term viability",
+      "status": "done",
+      "title": "PHP's Ecosystem Maturity — Why Packagist and PSR Standards Are a Competitive Advantage",
+      "body": "PHP's ecosystem is one of the most battle-hardened in backend development. Packagist hosts over 400,000 packages, with Composer providing deterministic installs via composer.lock — the same model npm and Cargo later adopted. The PHP-FIG consortium's PSR standards (PSR-4 autoloading, PSR-7 HTTP messages, PSR-11 containers, PSR-15 middleware) mean packages from Symfony, Laravel, and Slim interoperate without coupling. Symfony components — HttpFoundation, Console, EventDispatcher — are individually installable and underpin Laravel, Drupal, and Magento. PHPUnit is the gold standard testing framework with a 20-year track record. Guzzle and Nyholm's PSR-18 clients give HTTP portability across frameworks. PHP 8.x ships with an 8-year release cycle (active + security support), with 8.3 receiving security patches until 2027 and 8.4 until 2028. Unlike niche runtimes, PHP runs on virtually every hosting provider. The combination of PSR interoperability, Composer's maturity, and stable LTS guarantees makes PHP's ecosystem unusually low-risk for long-term projects.",
+      "code_snippet": "<?php\n// composer.json: PSR-compliant HTTP client swap — no app code changes needed\n// \"psr/http-client\": \"^1.0\" defines the contract\n\nuse Psr\\Http\\Client\\ClientInterface;\nuse Psr\\Http\\Message\\RequestFactoryInterface;\n\nfinal class GitHubService\n{\n    public function __construct(\n        private readonly ClientInterface $http,\n        private readonly RequestFactoryInterface $requestFactory\n    ) {}\n\n    public function getUser(string $username): array\n    {\n        $request = $this->requestFactory\n            ->createRequest('GET', \"https://api.github.com/users/{$username}\")\n            ->withHeader('Accept', 'application/vnd.github.v3+json');\n\n        $response = $this->http->sendRequest($request);\n        return json_decode((string) $response->getBody(), true);\n    }\n}",
+      "language": "php",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Language-specific — Node.js event loop, Python GIL, Go channels, Rust ownership, Elixir OTP",
+      "status": "done",
+      "title": "PHP Fibers — Cooperative Multitasking Built Into PHP 8.1",
+      "body": "PHP 8.1 introduced Fibers — lightweight coroutines for cooperative multitasking within a single thread. Unlike Node.js's event loop or Go's goroutines, PHP Fibers don't run concurrently; they provide explicit yield points via `Fiber::suspend()`, letting you pause execution and resume it later with a passed value.\n\nEach `Fiber` wraps a callable. `$fiber->start()` runs it until the first `Fiber::suspend()` call, returning the suspended value to the caller. `$fiber->resume($value)` injects a value back into the fiber and continues execution to the next suspension. `$fiber->getReturn()` retrieves the final return value once the fiber terminates.\n\nThis is the mechanism powering async-by-default frameworks like Amp v3 and ReactPHP's `revolt/event-loop` — no Swoole extension required. Fibers share the same OS thread and call stack, so there's zero thread-spawn overhead. The critical mental shift: `Fiber::suspend()` returns inside `$fiber->resume()`, not inside `$fiber->start()`. Values flow bidirectionally — out via `suspend()`, in via `resume()`. Multiple fibers can be scheduled cooperatively in a single PHP process, making non-blocking I/O possible in vanilla PHP.",
+      "code_snippet": "<?php\n\n$fiber = new Fiber(function (): string {\n    $name = Fiber::suspend('ready');   // pauses, yields 'ready' to caller\n    echo \"Hello, $name!\\n\";           // resumes when ->resume() is called\n    return 'done';\n});\n\n$status = $fiber->start();             // 'ready'\necho \"Fiber suspended with: $status\\n\";\n\n$fiber->resume('ByteAI');              // Hello, ByteAI!\necho \"Fiber returned: \" . $fiber->getReturn() . \"\\n\"; // done",
+      "language": "php",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 9
+    },
+    {
+      "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
+      "status": "done",
+      "title": "PHP Runtime Monitoring — Profiling GC Pauses and Memory in Production",
+      "body": "PHP's garbage collector uses reference counting as its primary strategy, with a cycle collector that fires when the root buffer (default: 10,000 roots) fills. `gc_status()` (PHP 7.3+) exposes four keys: `runs`, `collected`, `roots`, and `threshold`. Unexpected `runs` spikes in production signal circular reference leaks, not just load — each cycle-collection pause blocks the request.\n\nFor memory introspection, `memory_get_usage(true)` returns actual OS-allocated pages; `memory_get_usage(false)` returns PHP's emalloc view. A growing delta between them indicates allocator fragmentation. `opcache_get_status()` surfaces hit rate and interned strings pool saturation — a hit rate below 95% usually means too many unique file paths or an undersized `opcache.memory_consumption`.\n\nFor production profiling without Xdebug's overhead, Blackfire's probe hooks into PHP 8.0's observer API with under 1% runtime cost and produces deterministic call graphs. For lightweight custom tracing, `hrtime(true)` gives nanosecond-precision wall time — emit deltas to Prometheus via a StatsD client.\n\nEnable PHP-FPM's `pm.status_path` for pool-level metrics: active/idle workers, slow requests (threshold via `request_slowlog_timeout`), and accepted connections — essential signals for autoscaling decisions.",
+      "code_snippet": "<?php\n// Detect GC pressure around expensive operations (PHP 7.3+)\n$gcBefore  = gc_status();\n$memBefore = memory_get_usage(true);\n$timeStart = hrtime(true);\n\n// ... your operation ...\n\n$gcAfter = gc_status();\n$gcRuns  = $gcAfter['runs'] - $gcBefore['runs'];\n\nif ($gcRuns > 0) {\n    error_log(sprintf(\n        '[GC] runs=+%d collected=%d mem_delta=%+dKB elapsed=%.2fms',\n        $gcRuns,\n        $gcAfter['collected'] - $gcBefore['collected'],\n        (memory_get_usage(true) - $memBefore) / 1024,\n        (hrtime(true) - $timeStart) / 1e6\n    ));\n}",
+      "language": "php",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "When to Choose — use cases where each language excels vs where it struggles",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Choose — use cases where each language excels vs where it struggles",
+      "status": "done",
+      "title": "PHP — Where It Wins and Where It Gets in Your Way",
+      "body": "PHP excels at content-heavy web applications where the request lifecycle maps directly to a page render. WordPress, Laravel-based CMSes, and e-commerce platforms like Magento thrive on PHP's shared-nothing model — each request bootstraps fresh, so horizontal scaling is trivial. Laravel's Eloquent ORM, Blade templating, and built-in queue system (backed by Redis or SQS) cover 90% of CRUD-heavy SaaS needs without ceremony. PHP 8.2+ brings fibers, readonly properties, and JIT compilation, closing performance gaps that existed in the 7.x era.\n\nWhere PHP struggles: long-running processes. Without Swoole or ReactPHP, PHP isn't event-loop-native — you can't hold WebSocket connections or stream responses efficiently in vanilla FPM. CPU-bound workloads (video transcoding, ML inference) are a poor fit; hand those off to Python or Go services. Dependency injection at scale also gets verbose — Symfony's DI container is powerful but generates boilerplate that TypeScript or Go handle more ergonomically. For greenfield APIs with real-time requirements, PHP forces workarounds where Node or Go feel natural.",
+      "code_snippet": "<?php\n// Laravel: queue a job from a controller — PHP's sweet spot\nuse App\\Jobs\\SendWelcomeEmail;\nuse App\\Models\\User;\n\nRoute::post('/register', function (Request $request) {\n    $user = User::create($request->validated());\n    SendWelcomeEmail::dispatch($user)->onQueue('emails');\n    return response()->json(['id' => $user->id], 201);\n});",
+      "language": "php",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    }
+  ]
 }

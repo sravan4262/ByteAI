@@ -2,5 +2,429 @@
   "tech_stack": "rust_sys",
   "subdomain": "sys_languages",
   "domain": "systems",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "C Language — manual memory management, pointer arithmetic, undefined behavior traps",
+      "status": "done",
+      "title": "rust_sys — Dodging C's Manual Memory Management Pitfalls",
+      "body": "When working with C libraries in rust_sys, manual memory management is a double-edged sword. C's pointer arithmetic can lead to dangling pointers, buffer overflows, and undefined behavior. To avoid these pitfalls, use `std::mem::forget()` to prevent rust_sys's lifetime system from freeing C-allocated memory. However, be cautious not to introduce memory leaks. For example, consider the following scenario:\n\n```rust\nuse libc::{c_char, malloc, free};\nuse std::mem::forget;\n\nfn main() {\n    let ptr = unsafe { malloc(10).as_mut_ptr().cast::<c_char>() }; // allocate memory\n    // use the pointer\n    forget(ptr); // prevent rust_sys from freeing the memory\n    // ... more code ...\n    free(ptr); // manually free the memory\n}",
+      "code_snippet": null,
+      "language": "rust",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Memory Model — stack vs heap, manual allocation, ownership, lifetimes",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Pointers & References — raw pointers, smart pointers (C++), Rust references, borrow checker",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Undefined Behavior — what it is, why it matters, how each language handles it",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "C++ — RAII, move semantics, templates, STL, modern C++ (11/14/17/20)",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Zig — comptime, allocators, error unions, C interop, no hidden allocations",
+      "status": "done",
+      "title": "rust_sys: Taming Comptime with Zig's Allocators",
+      "body": "When working with comptime in rust_sys, you can use Zig's allocators to handle memory management. Zig's allocators provide a way to allocate memory at comptime, eliminating the need for runtime allocations. To use Zig's allocators, you can import the `zig_std_allocator` crate and use the `std.heap` module. For example, you can use the `std.heap.page_allocator` to allocate memory at comptime: `let allocator = std.heap.page_allocator; let ptr = allocator.alloc(u8, 10);`. This approach ensures that memory is allocated at compile-time, reducing runtime overhead.",
+      "code_snippet": "let allocator = std.heap.page_allocator; let ptr = allocator.alloc(u8, 10);",
+      "language": "rust",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Rust Ownership — ownership, borrowing, lifetimes, why the borrow checker eliminates UB",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Rust Safety — unsafe blocks, when they're needed, minimizing unsafe surface area",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Assembly — registers, calling conventions, reading compiler output, debugging with asm",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Concurrency — threads, mutexes, atomics, lock-free data structures, race conditions",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Performance — zero-cost abstractions, profiling, SIMD, cache-friendly data layouts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Cross-compilation — targeting different architectures, toolchains, sysroots",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "FFI & Interop — calling C from Rust/Zig, C ABI, binding generation",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Build Systems — make, cmake, cargo, zig build, reproducible builds",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging — GDB, LLDB, valgrind, address sanitizer, undefined behavior sanitizer",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Linking — static vs dynamic libraries, symbol resolution, linker scripts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Error Handling — errno in C, exceptions in C++, Result in Rust, error unions in Zig",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Choose — C vs C++ vs Rust vs Zig decision framework per use case",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Rust Ownership — ownership, borrowing, lifetimes, why the borrow checker eliminates UB",
+      "status": "done",
+      "title": "rust_sys - Understanding Ownership and Borrowing",
+      "body": "Rust's ownership system is designed to prevent common programming errors like dangling pointers and use-after-free bugs. In rust_sys, every value has an owner, which is responsible for the value's lifetime. When a value is reassigned, its previous owner is dropped, and the value is moved to the new owner. To avoid moving a value, you can use borrowing. Rust's borrow checker ensures that a value is not both moved and borrowed simultaneously, preventing use-after-free bugs. For example:\n\n```rust\nfn main() {\n    let s = String::from(\"hello\");\n    let len = calculate_length(&s);\n    println!(\"The length of '{}' is {}.\", s, len);\n}\n\nfn calculate_length(s: &String) -> usize {\n    s.len()\n}\n```\nIn this example, `calculate_length` borrows `s` immutably, ensuring it remains valid even after `main` moves `s` to `len`.",
+      "code_snippet": {
+        "language": "rust",
+        "code": "fn main() {\n    let s = String::from(\"hello\");\n    let len = calculate_length(&s);\n    println!(\"The length of '{}' is {}.\", s, len);\n}\n\nfn calculate_length(s: &String) -> usize {\n    s.len()\n}\n"
+      },
+      "language": null,
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Memory Model — stack vs heap, manual allocation, ownership, lifetimes",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Pointers & References — raw pointers, smart pointers (C++), Rust references, borrow checker",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Undefined Behavior — what it is, why it matters, how each language handles it",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "C++ — RAII, move semantics, templates, STL, modern C++ (11/14/17/20)",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Concurrency — threads, mutexes, atomics, lock-free data structures, race conditions",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Rust Safety — unsafe blocks, when they're needed, minimizing unsafe surface area",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Assembly — registers, calling conventions, reading compiler output, debugging with asm",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Performance — zero-cost abstractions, profiling, SIMD, cache-friendly data layouts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Cross-compilation — targeting different architectures, toolchains, sysroots",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "FFI & Interop — calling C from Rust/Zig, C ABI, binding generation",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Build Systems — make, cmake, cargo, zig build, reproducible builds",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Error Handling — errno in C, exceptions in C++, Result in Rust, error unions in Zig",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging — GDB, LLDB, valgrind, address sanitizer, undefined behavior sanitizer",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Linking — static vs dynamic libraries, symbol resolution, linker scripts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Choose — C vs C++ vs Rust vs Zig decision framework per use case",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "C++ — RAII, move semantics, templates, STL, modern C++ (11/14/17/20)",
+      "status": "done",
+      "title": "rust_sys — Mastering C++ Move Semantics for Efficient Resource Management",
+      "body": "When working with C++ resources in rust_sys, understanding move semantics is crucial for efficient memory management. With Rust's borrow checker, we can leverage C++'s move constructors to transfer ownership of resources. This is particularly useful when working with unique_ptr. By implementing the Move trait in our Rust wrapper around unique_ptr, we can ensure seamless transfer of ownership and avoid unnecessary resource duplication.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Undefined Behavior — what it is, why it matters, how each language handles it",
+      "status": "done",
+      "title": "rust_sys - Understanding Undefined Behavior and its Impact",
+      "body": "Undefined behavior (UB) occurs when a program executes an operation that is not explicitly defined by the language's specification. In rust_sys, UB can arise from attempting to dereference a null pointer, accessing an array out of bounds, or using an uninitialized variable. The rust_sys compiler, rustc, does not prevent UB by default; instead, it relies on programmer discipline to avoid such situations. However, rust_sys offers several mechanisms to detect and prevent UB, including the `std::mem` module's `size_of` and `align_of` functions.",
+      "code_snippet": null,
+      "language": "rust",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Memory Model — stack vs heap, manual allocation, ownership, lifetimes",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Pointers & References — raw pointers, smart pointers (C++), Rust references, borrow checker",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Rust Safety — unsafe blocks, when they're needed, minimizing unsafe surface area",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Assembly — registers, calling conventions, reading compiler output, debugging with asm",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Concurrency — threads, mutexes, atomics, lock-free data structures, race conditions",
+      "status": "done",
+      "title": "rust_sys - Mastering Mutexes for Concurrency",
+      "body": "When working with multiple threads in rust_sys, mutexes are a crucial synchronization primitive. A mutex (short for 'mutual exclusion') ensures that only one thread can access a shared resource at a time. The `std::sync::Mutex` type in rust_sys provides a mutex implementation. To acquire a mutex, use the `lock()` method, which returns a `MutexGuard` that allows you to access the mutexed resource. Don't forget to `drop()` the `MutexGuard` when you're done, as it will release the mutex. Here's an example:",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Cross-compilation — targeting different architectures, toolchains, sysroots",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Performance — zero-cost abstractions, profiling, SIMD, cache-friendly data layouts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "FFI & Interop — calling C from Rust/Zig, C ABI, binding generation",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Build Systems — make, cmake, cargo, zig build, reproducible builds",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging — GDB, LLDB, valgrind, address sanitizer, undefined behavior sanitizer",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Linking — static vs dynamic libraries, symbol resolution, linker scripts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Error Handling — errno in C, exceptions in C++, Result in Rust, error unions in Zig",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Choose — C vs C++ vs Rust vs Zig decision framework per use case",
+      "status": "done",
+      "title": "rust_sys: C vs C++ vs Rust vs Zig — When to Choose",
+      "body": "When working with rust_sys, choosing between C, C++, Rust, and Zig depends on the specific requirements of your project. C is a good choice for systems programming and interfacing with legacy code. C++ is suitable for complex systems with a focus on performance. Rust provides memory safety and concurrency features, making it ideal for high-level systems programming. Zig is a systems programming language with a focus on performance and ease of use. Consider the following factors when making your decision: performance requirements, memory safety needs, concurrency requirements, and the need for legacy code interfacing.",
+      "code_snippet": null,
+      "language": "rust",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    }
+  ]
 }

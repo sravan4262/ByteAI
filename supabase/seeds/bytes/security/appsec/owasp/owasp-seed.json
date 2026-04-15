@@ -2,5 +2,250 @@
   "tech_stack": "owasp",
   "subdomain": "appsec",
   "domain": "security",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "OWASP Top 10 — injection, broken auth, XSS, IDOR, security misconfig and the rest",
+      "status": "done",
+      "title": "OWASP Top 10: Identifying Injection Vulnerabilities",
+      "body": "When dealing with SQL queries, use parameterized queries with OWASP ESAPI (Enterprise Security API) to prevent SQL injection attacks. This ensures user input is sanitized and doesn't inject malicious SQL code. For example, ESAPI's `getSQL()` method can be used to construct SQL queries securely.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "SQL Injection — parameterized queries, ORMs as defense, testing for injection",
+      "status": "done",
+      "title": "OWASP: Mitigating SQL Injection with Parameterized Queries and ORMs",
+      "body": "OWASP recommends using parameterized queries to prevent SQL injection attacks. However, not all ORMs (Object Relational Mappers) are created equal. Consider using OWASP-approved ORMs like Hibernate or Entity Framework, which provide built-in support for parameterized queries. When testing for SQL injection, use tools like OWASP ZAP or Burp Suite to identify vulnerabilities. For example, in a Java application using Hibernate, you can use the `@Param` annotation to inject parameters into your queries.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "XSS — reflected vs stored vs DOM-based, CSP headers, output encoding",
+      "status": "done",
+      "title": "Owasp: Unleashing the Power of CSP Headers against XSS",
+      "body": "To mitigate XSS attacks, OWASP recommends using Content Security Policy (CSP) headers. CSP headers specify allowed sources for scripts, styles, and other resources. By setting the 'script-src' directive to 'none', you can disable inline JavaScript execution. For example, in Apache, use the 'Header' directive: `Header set Content-Security-Policy \"script-src 'none'; object-src 'none';\". OWASP also suggests output encoding user input data using the 'htmlspecialchars' function in PHP or the 'h' function in Node.js. This prevents attackers from injecting malicious JavaScript code. For instance, in PHP: `echo htmlspecialchars($_GET['username']);`. Always validate user input and sanitize output data to prevent XSS attacks.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Authentication Flaws — weak passwords, credential stuffing, MFA, session management",
+      "status": "done",
+      "title": "OWASP: Uncovering Authentication Flaws - Weak Passwords and Credential Stuffing",
+      "body": "OWASP's Authentication Cheat Sheet emphasizes the importance of strong passwords. Weak passwords are a primary entry point for attackers. OWASP recommends using a minimum password length of 12 characters, requiring a mix of uppercase and lowercase letters, numbers, and special characters. Additionally, OWASP suggests implementing a rate limiting system to prevent brute-force attacks. OWASP's ESAPI library provides a PasswordStrengthValidator for assessing password strength. Meanwhile, OWASP's ESAPI library also includes a PasswordEncryptor for storing encrypted passwords.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "SAST — static analysis with Semgrep, SonarQube, integrating in CI pipeline",
+      "status": "done",
+      "title": "OWASP: Integrating Semgrep and SonarQube for SAST in CI Pipelines",
+      "body": "To integrate Semgrep and SonarQube in OWASP, create a custom SonarQube plugin using the SonarQube API. This plugin will call Semgrep's CLI to analyze source code. The plugin must be configured to execute Semgrep for each supported programming language. For example, in a .NET project, the plugin will call `dotnet semgrep` to analyze code. The SonarQube plugin will also receive the results from Semgrep and display them in the SonarQube UI.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Security Misconfigurations — default credentials, exposed debug endpoints, verbose errors",
+      "status": "done",
+      "title": "OWASP: Mitigating Default Credentials and Exposed Debug Endpoints",
+      "body": "When using OWASP ESAPI's Validator library, ensure to remove default credentials and disable exposed debug endpoints. ESAPI's ValidateInput method can help prevent common web vulnerabilities like SQL injection. To remove default credentials, update your application's configuration file to exclude them. For example, in ESAPI's configuration file, remove the \"username\" and \"password\" properties. To disable exposed debug endpoints, remove or restrict access to debug endpoints like \"debug\" and \"trace\". ESAPI's ValidateInput method can be used to validate user input and prevent SQL injection attacks.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "IDOR & Access Control — always validate server-side, never trust client for authorization",
+      "status": "done",
+      "title": "OWASP: Never Trust Client-Side Authorization — Validate Server-Side Always",
+      "body": "When verifying user permissions in OWASP, always validate server-side. Never rely on client-side checks, as attackers can manipulate these. OWASP's Authentication and Authorization Cheat Sheet (A8:2013) emphasizes this principle. Use a secure token-based approach, where the server generates and verifies tokens. For example, in Java, use the OWASP ESAPI library to create a token and verify it server-side.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "DAST — dynamic testing with Burp Suite, ZAP, testing running applications",
+      "status": "done",
+      "title": "OWASP - Dynamic Application Security Testing with Burp Suite and ZAP",
+      "body": "OWASP's ZAP (Zed Attack Proxy) and Burp Suite are popular tools for DAST (Dynamic Application Security Testing). ZAP is a free, open-source tool that can be integrated with various testing frameworks, including OWASP's ESAPI (Enterprise Security API). Burp Suite, on the other hand, offers advanced features like dynamic analysis and manual testing. To start testing with ZAP, import your application's URL and configure the proxy settings. Use the 'Spider' feature to map the application's structure and identify potential vulnerabilities. In Burp Suite, use the 'Target' feature to set your application's URL and configure the proxy settings. Run a 'Basic Scan' to identify common vulnerabilities like SQL injection and cross-site scripting (XSS).",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Snyk — developer-first security, fix PRs, container scanning, IaC scanning",
+      "status": "done",
+      "title": "OWASP - Snyk: Automate Vulnerability Fixes in OWASP ZAP",
+      "body": "When integrating Snyk with OWASP ZAP, use the 'zap-snyk' plugin to automate vulnerability fixes. Configure your ZAP API keys in the Snyk dashboard and set up container and IaC scans. Snyk will then scan your OWASP ZAP results for known vulnerabilities and provide fix PRs. Use the 'snyk test' command to run scans and integrate with your CI/CD pipeline.",
+      "code_snippet": "snyk test --file=app.yaml --project=my-repo",
+      "language": "bash",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Secrets Management — never commit secrets, rotation, detection with truffleHog/gitleaks",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Dependency Vulnerabilities — CVE scanning, Snyk, npm audit, update strategies",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Burp Suite — intercepting proxy, repeater, scanner, active vs passive scanning",
+      "status": "done",
+      "title": "OWASP — Mastering Burp Suite: Intercepting Proxy, Repeater, Scanner",
+      "body": "OWASP's Burp Suite is a comprehensive security testing tool. The intercepting proxy captures and modifies HTTP traffic, allowing you to manipulate requests and responses. The repeater tool enables you to send requests multiple times with different parameters. The scanner automatically identifies vulnerabilities. Active scanning sends requests to the target server, while passive scanning observes traffic without interacting with the server. When using Burp Suite with OWASP's ZAP, you can combine the strengths of both tools.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "SonarQube — code quality + security, quality gates, hotspots vs issues",
+      "status": "done",
+      "title": "OWASP: Taming SonarQube's Hotspots and Issues",
+      "body": "When using OWASP's ZAP with SonarQube, it's essential to understand the difference between hotspots and issues. Hotspots represent the most critical vulnerabilities, while issues are lower-priority findings. To configure SonarQube quality gates, create a new project and navigate to 'Configuration > Quality Profiles > New Profile'. In the profile settings, select 'OWASP Top Ten' and set the 'Hotspot Severity' to 'BLOCKER'. This ensures that only critical vulnerabilities block the build. To identify hotspots, use the following SQL query in SonarQube's database: `SELECT id, component, message FROM issues WHERE severity = 'BLOCKER';`",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Logging for Security — what to log, what not to log (PII), SIEM integration",
+      "status": "done",
+      "title": "Owasp Logging Strategy — What to Log, What Not to Log, SIEM Integration",
+      "body": "Owasp's ESAPI (Enterprise Security API) recommends logging sensitive information such as user input, session IDs, and authentication tokens. However, personally identifiable information (PII) like credit card numbers and social security numbers should be redacted or hashed. For SIEM (Security Information and Event Management) integration, use the W3C Extended Log Format to standardize log data. This enables correlation and analysis across systems. Consider using ESAPI's Logger class to handle logging, which provides features like log levels and filtering.",
+      "code_snippet": "import { Logger } from 'owasp-esapi-java';\nconst logger = new Logger();\nlogger.log(LoggingLevel.INFO, 'User logged in with session ID ' + sessionId);\nlogger.log(LoggingLevel.ERROR, 'Authentication failed with error code ' + errorCode);",
+      "language": "java",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Shift Left Security — integrating security checks early in the development lifecycle",
+      "status": "done",
+      "title": "Owasp: Shift Left Security with Dependency Check",
+      "body": "To integrate security checks early in the development lifecycle using Owasp, utilize the Dependency-Check plugin. This plugin scans your project's dependencies for known vulnerabilities and provides a report. You can configure it to run at the CI/CD pipeline level, ensuring timely detection of vulnerabilities. For example, with a Maven project, add the dependency-check-maven-plugin to your pom.xml.",
+      "code_snippet": "plugin>\n        <groupId>org.owasp</groupId>\n        <artifactId>dependency-check-maven-plugin</artifactId>\n        <executions>\n            <execution>\n                <goals>\n                    <goal>check</goal>\n                </goals>\n            </execution>\n        </executions>\n    </plugin>\n",
+      "language": "xml",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Semgrep — rule writing, community rules, custom patterns, CI integration",
+      "status": "done",
+      "title": "OWASP: Enhancing Semgrep Rules with Custom Patterns",
+      "body": "Semgrep, an open-source static analysis tool, is integrated with OWASP's ZAP to fortify web application security. To craft effective custom rules, familiarize yourself with Semgrep's pattern syntax. For instance, to identify SQL injection vulnerabilities, define a pattern that matches suspicious input. The `semgrep` CLI tool allows you to create and verify custom rules. You can also tap into the Semgrep community's repository of pre-built rules, tailored for OWASP-specific security checks. To integrate custom Semgrep rules into your CI/CD pipeline, utilize the Semgrep API or the OWASP ZAP plugin.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 8.5
+    },
+    {
+      "topic": "Threat Modeling — STRIDE, identifying trust boundaries, attack surface mapping",
+      "status": "done",
+      "title": "OWASP: Identifying Trust Boundaries with STRIDE",
+      "body": "To mitigate attacks, OWASP's Threat Modeling involves identifying trust boundaries using STRIDE (Spoofing, Tampering, Repudiation, Denial of Service, Elevation of Privilege, and Information Disclosure). When modeling, consider the attack surface of your application. Use the OWASP ASVS (Application Security Verification Standard) to guide your approach. Identify inputs, outputs, and data storage to ensure secure interactions between components. For example, consider a web service that accepts user input:\n```typescript\ninterface UserInput {\n  name: string;\n  email: string;\n}\n\nconst userInput: UserInput = { name: 'John', email: 'john@example.com' };\nconst validatedInput = validateUserInput(userInput);\n\n// STRIDE considerations:\n// Spoofing: Validate email format\n// Tampering: Validate input length\n// Repudiation: Track input history\n// Denial of Service: Rate limit requests\n// Elevation of Privilege: Validate user permissions\n// Information Disclosure: Sanitize output\n```",
+      "code_snippet": "typescript",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Security Headers — CSP, HSTS, X-Frame-Options, Referrer-Policy",
+      "status": "done",
+      "title": "owasp: Securing Your App with Security Headers",
+      "body": "When configuring security headers in OWASP, it's essential to understand the interplay between CSP, HSTS, X-Frame-Options, and Referrer-Policy. CSP (Content Security Policy) defines allowed sources for scripts, styles, and images. HSTS (HTTP Strict Transport Security) enforces HTTPS. X-Frame-Options prevents clickjacking, while Referrer-Policy controls referrer information sharing. For example, using OWASP's ZAP and ModSecurity, you can configure these headers with the following ZAP API calls: `zap.httpssettings.setHsts(includeSubdomains=True, preload=True)` and `zap.httpssettings.setCsp('script-src https://example.com; object-src https://example.com')`. This helps protect your application from common web attacks.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Secrets Management — never commit secrets, rotation, detection with truffleHog/gitleaks",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Dependency Vulnerabilities — CVE scanning, Snyk, npm audit, update strategies",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Secrets Management — never commit secrets, rotation, detection with truffleHog/gitleaks",
+      "status": "done",
+      "title": "OWASP - Preventing Secret Exposure with TruffleHog and Gitleaks",
+      "body": "To prevent secret exposure in OWASP projects, follow these best practices. Never commit secrets directly to the repository. Instead, use environment variables or a secrets manager like Vault. For existing repositories, use TruffleHog to detect exposed secrets and Gitleaks to identify potential secrets. TruffleHog scans commit history for exposed secrets, while Gitleaks analyzes code for potential secrets. Integrate these tools into your CI/CD pipeline to automatically detect and alert on secret exposure.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Dependency Vulnerabilities — CVE scanning, Snyk, npm audit, update strategies",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

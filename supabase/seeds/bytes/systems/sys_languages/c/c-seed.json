@@ -2,5 +2,418 @@
   "tech_stack": "c",
   "subdomain": "sys_languages",
   "domain": "systems",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Memory Model — stack vs heap, manual allocation, ownership, lifetimes",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Pointers & References — raw pointers, smart pointers (C++), Rust references, borrow checker",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Undefined Behavior — what it is, why it matters, how each language handles it",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "C Language — manual memory management, pointer arithmetic, undefined behavior traps",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "C++ — RAII, move semantics, templates, STL, modern C++ (11/14/17/20)",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Rust Ownership — ownership, borrowing, lifetimes, why the borrow checker eliminates UB",
+      "status": "done",
+      "title": "C - Rust Ownership and C's Manual Memory Management",
+      "body": "C developers might find Rust's ownership and borrowing system intriguing, especially when dealing with manual memory management. In C, memory management is explicit, with malloc() and free() functions. Rust's ownership model ensures memory safety by enforcing a strict ruleset. The borrow checker prevents data races and dangling pointers. A Rust value can be either owned or borrowed, with borrowing divided into immutable and mutable variants. Lifetimes are used to enforce the rules, preventing invalid references. This approach eliminates undefined behavior (UB), a common issue in C.",
+      "code_snippet": null,
+      "language": "c",
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Rust Safety — unsafe blocks, when they're needed, minimizing unsafe surface area",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Assembly — registers, calling conventions, reading compiler output, debugging with asm",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Zig — comptime, allocators, error unions, C interop, no hidden allocations",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Concurrency — threads, mutexes, atomics, lock-free data structures, race conditions",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Performance — zero-cost abstractions, profiling, SIMD, cache-friendly data layouts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Cross-compilation — targeting different architectures, toolchains, sysroots",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "FFI & Interop — calling C from Rust/Zig, C ABI, binding generation",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Build Systems — make, cmake, cargo, zig build, reproducible builds",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging — GDB, LLDB, valgrind, address sanitizer, undefined behavior sanitizer",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Linking — static vs dynamic libraries, symbol resolution, linker scripts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Error Handling — errno in C, exceptions in C++, Result in Rust, error unions in Zig",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Choose — C vs C++ vs Rust vs Zig decision framework per use case",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Pointers & References — raw pointers, smart pointers (C++), Rust references, borrow checker",
+      "status": "done",
+      "title": "c pointers - Raw vs. Dangling",
+      "body": "Raw pointers in c are declared with the asterisk symbol (*) and can point to any memory location. However, they don't perform any memory management and must be manually managed. Dangling pointers occur when the memory pointed to is deallocated. To avoid memory leaks, use dynamic memory allocation functions like `malloc()` and `free()` carefully. The `NULL` macro can be used to initialize raw pointers.",
+      "code_snippet": "int* p = malloc(sizeof(int));\n* p = 10;\nfree(p); // Don't forget to free the memory!\np = NULL;",
+      "language": "c",
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Memory Model — stack vs heap, manual allocation, ownership, lifetimes",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Undefined Behavior — what it is, why it matters, how each language handles it",
+      "status": "done",
+      "title": "C Undefined Behavior — Don't Trigger It",
+      "body": "Undefined behavior is a fundamental concept in C programming. It occurs when a program performs an operation that the C Standard does not specify the result for. This can happen due to incorrect usage of pointers, array indices, or other language features. In C, examples of undefined behavior include dereferencing a null pointer, accessing an array out of bounds, and performing arithmetic on a pointer that is not properly aligned. The C Standard does not guarantee the results of such operations, making it difficult to debug and predict program behavior.\n\nTo avoid undefined behavior, it's essential to understand the C Standard's guidelines and use language features correctly. For instance, always check for null pointer dereferences using the `==` operator, and use `size_t` to ensure array indices are within bounds.\n\n```c\nif (ptr != NULL) {\n    // safe dereference\n}\n```",
+      "code_snippet": "if (ptr != NULL) {\n    // safe dereference\n}",
+      "language": "c",
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "C Language — manual memory management, pointer arithmetic, undefined behavior traps",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "C++ — RAII, move semantics, templates, STL, modern C++ (11/14/17/20)",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Rust Safety — unsafe blocks, when they're needed, minimizing unsafe surface area",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Assembly — registers, calling conventions, reading compiler output, debugging with asm",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "FFI & Interop — calling C from Rust/Zig, C ABI, binding generation",
+      "status": "done",
+      "title": "C FFI & Interop — Calling C from Rust/Zig via C ABI",
+      "body": "To call C functions from Rust or Zig, you need to use the C Foreign Function Interface (FFI). The Rust `libc` crate and Zig's `foreign` module provide the necessary bindings. However, you must ensure the C functions are compiled with the correct C ABI (Application Binary Interface). The C ABI dictates the calling convention, function signature, and data layout. When generating bindings, you need to specify the C ABI in the compiler flags, such as `-mabi=sysv` for the System V ABI. This ensures the generated code matches the C ABI and can be called from Rust or Zig.",
+      "code_snippet": "/* rust */\ncargo build -p libc\n\n// main.rs\ncargo run --example example\n\n/* zig */\nzig build-exe -f src/main.zig\n\n// main.zig\ncargo run --example example",
+      "language": "c",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Zig — comptime, allocators, error unions, C interop, no hidden allocations",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Concurrency — threads, mutexes, atomics, lock-free data structures, race conditions",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Performance — zero-cost abstractions, profiling, SIMD, cache-friendly data layouts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Cross-compilation — targeting different architectures, toolchains, sysroots",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Build Systems — make, cmake, cargo, zig build, reproducible builds",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging — GDB, LLDB, valgrind, address sanitizer, undefined behavior sanitizer",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Linking — static vs dynamic libraries, symbol resolution, linker scripts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Error Handling — errno in C, exceptions in C++, Result in Rust, error unions in Zig",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Choose — C vs C++ vs Rust vs Zig decision framework per use case",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Memory Model — stack vs heap, manual allocation, ownership, lifetimes",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "C Language — manual memory management, pointer arithmetic, undefined behavior traps",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "C++ — RAII, move semantics, templates, STL, modern C++ (11/14/17/20)",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Performance — zero-cost abstractions, profiling, SIMD, cache-friendly data layouts",
+      "status": "done",
+      "title": "C: Zero-Cost Abstractions with __builtin_prefetch",
+      "body": "Zero-cost abstractions are functions that don't incur any performance overhead when inlined. C provides the `__builtin_prefetch` function for this purpose. It hints to the CPU about the memory access pattern, allowing the compiler to optimize accordingly. This can be particularly useful when dealing with large arrays or cache-inefficient data structures.\n\nFor example, suppose we have an array of integers and we're performing a loop that accesses each element sequentially.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": null,
+      "specificity": null,
+      "relevance": null,
+      "overall": null
+    },
+    {
+      "topic": "Rust Safety — unsafe blocks, when they're needed, minimizing unsafe surface area",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Assembly — registers, calling conventions, reading compiler output, debugging with asm",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Zig — comptime, allocators, error unions, C interop, no hidden allocations",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Concurrency — threads, mutexes, atomics, lock-free data structures, race conditions",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Cross-compilation — targeting different architectures, toolchains, sysroots",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Build Systems — make, cmake, cargo, zig build, reproducible builds",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Debugging — GDB, LLDB, valgrind, address sanitizer, undefined behavior sanitizer",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Linking — static vs dynamic libraries, symbol resolution, linker scripts",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "Error Handling — errno in C, exceptions in C++, Result in Rust, error unions in Zig",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    },
+    {
+      "topic": "When to Choose — C vs C++ vs Rust vs Zig decision framework per use case",
+      "status": "failed",
+      "title": null,
+      "body": null,
+      "code_snippet": null,
+      "language": null
+    }
+  ]
 }

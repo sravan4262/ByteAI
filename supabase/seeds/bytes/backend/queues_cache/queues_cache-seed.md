@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: queues_cache
 domain: backend
-tech_stacks: [redis, kafka, rabbitmq, bullmq, celery, nats]
+tech_stacks: [redis, kafka, rabbitmq, bullmq]
 byte_type_default: article
 
 ## Topics to Seed

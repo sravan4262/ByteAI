@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: sys_languages
 domain: systems
-tech_stacks: [c, cpp, rust_sys, assembly, zig]
+tech_stacks: [c, rust_sys]
 byte_type_default: article
 
 ## Topics to Seed
