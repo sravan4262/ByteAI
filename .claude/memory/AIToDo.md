@@ -49,6 +49,11 @@
 **Files:** `ByteQualityScore.cs`, `ByteQualityScoreConfiguration.cs`, `IGroqService.cs`, `GroqService.cs`, `ByteCreatedEventHandler.cs`, `AppDbContext.cs`
 **Migration:** `supabase/migrations/003_byte_quality_scores.sql`
 
+> ⚠️ **Scores are computed and stored but NOT yet consumed anywhere downstream.**
+> Two follow-through items are deferred:
+> - **Feed ranking multiplier** — join `byte_quality_scores.overall` into the feed query, weight it against recency decay. Pure backend, no new AI work.
+> - **Author-facing quality indicator** — expose score in the byte ViewModel, show Clarity / Specificity / Relevance breakdown on the detail screen so authors see how their content rated.
+
 ---
 
 ### 4. Dynamic Interest Embedding ✅
