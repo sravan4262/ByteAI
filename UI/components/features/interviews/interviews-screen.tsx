@@ -7,6 +7,7 @@ import { Briefcase, Bell, Bookmark, Share2, Plus, ChevronsUpDown, ChevronsDownUp
 import { useNotifications } from '@/components/layout/notification-context'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
+import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
 import { getMeCache } from '@/lib/user-cache'
 import { useUser } from '@clerk/nextjs'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
@@ -14,22 +15,7 @@ import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
 import * as api from '@/lib/api'
 import type { InterviewWithQuestions, InterviewQuestion } from '@/lib/api'
 
-const COMPANIES = ['Google', 'Meta', 'Amazon', 'Apple', 'Microsoft', 'Netflix', 'Stripe', 'Shopify', 'Airbnb', 'Uber']
-  .map((c) => ({ value: c, label: c }))
-
-const DIFFICULTY_OPTIONS = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'hard', label: 'Hard' },
-]
-
 const AVATAR_VARIANTS: Array<'cyan' | 'purple' | 'green' | 'orange'> = ['cyan', 'purple', 'green', 'orange']
-
-function difficultyColor(d: string) {
-  if (d === 'easy') return 'text-[var(--green)] border-[rgba(16,217,160,0.3)] bg-[rgba(16,217,160,0.06)]'
-  if (d === 'hard') return 'text-[var(--red)] border-[rgba(244,63,94,0.3)] bg-[rgba(244,63,94,0.06)]'
-  return 'text-[var(--orange)] border-[rgba(251,146,60,0.3)] bg-[rgba(251,146,60,0.06)]'
-}
 
 // ── Question Card (fully controlled) ──────────────────────────────────────────
 
@@ -77,6 +63,7 @@ function QuestionCard({
 function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQuestions; avatarVariant: typeof AVATAR_VARIANTS[number] }) {
   const router = useRouter()
   const [isBookmarked, setIsBookmarked] = useState(interview.isBookmarked ?? false)
+  const [showMiniProfile, setShowMiniProfile] = useState(false)
   // Controlled expansion: set of expanded question IDs
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const allExpanded = interview.questions.length > 0 && expandedIds.size === interview.questions.length
@@ -114,36 +101,82 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
 
       {/* Header — matches PostCard exactly */}
       <div className="flex items-start gap-3 md:gap-4">
-        <Avatar
-          initials={(interview.authorDisplayName || interview.authorUsername || interview.authorId).slice(0, 1).toUpperCase()}
-          imageUrl={interview.authorAvatarUrl}
-          size="md"
-          variant={avatarVariant}
-        />
+        {interview.isAnonymous ? (
+          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center text-lg flex-shrink-0 cursor-default select-none">
+            👻
+          </div>
+        ) : (
+          <Avatar
+            initials={(interview.authorDisplayName || interview.authorUsername || interview.authorId).slice(0, 1).toUpperCase()}
+            imageUrl={interview.authorAvatarUrl}
+            size="md"
+            variant={avatarVariant}
+            onClick={(e) => { e.stopPropagation(); setShowMiniProfile(true) }}
+          />
+        )}
         <div className="flex-1 min-w-0">
           <div className="font-mono text-xs md:text-sm font-bold text-[var(--t1)] flex items-center gap-2">
-            @{interview.authorUsername || interview.authorId.slice(0, 8)}
+            {interview.isAnonymous ? (
+              <span className="text-[var(--t2)]">Anonymous</span>
+            ) : (
+              <>@{interview.authorUsername || interview.authorId.slice(0, 8)}</>
+            )}
           </div>
           <div className="font-mono text-xs md:text-[13px] text-[var(--t2)] mt-0.5 tracking-[0.04em]">
-            {interview.role ?? ''}
-            {interview.role && interview.company ? ' @ ' : ''}
-            {interview.company ?? ''}
+            {interview.isAnonymous ? (
+              <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.08)] border border-[rgba(167,139,250,0.2)] px-2 py-0.5 rounded">
+                👻 anonymous post
+              </span>
+            ) : (
+              <>
+                {interview.authorRole ?? ''}
+                {interview.authorRole && interview.authorCompany ? ' @ ' : ''}
+                {interview.authorCompany ?? ''}
+              </>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className="font-mono text-[10px] md:text-xs text-[var(--t3)]">
             {new Date(interview.createdAt).toLocaleDateString()}
           </span>
-          <span className={`font-mono text-[9px] px-2 py-0.5 rounded border ${difficultyColor(interview.difficulty)}`}>
-            {interview.difficulty.toUpperCase()}
-          </span>
         </div>
       </div>
 
-      {/* Type badge */}
-      <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2.5 py-1 rounded flex items-center gap-1.5 w-fit">
-        <Briefcase size={10} /> INTERVIEW
-      </span>
+      {/* Type badge + metadata chips */}
+      <div className="flex flex-wrap items-center gap-2 -mt-1">
+        <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2.5 py-1 rounded flex items-center gap-1.5">
+          <Briefcase size={10} /> INTERVIEW
+        </span>
+        {interview.company && (
+          <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+            {interview.company}
+          </span>
+        )}
+        {interview.role && (
+          <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+            {interview.role}
+          </span>
+        )}
+        {interview.location && (
+          <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+            📍 {interview.location}
+          </span>
+        )}
+      </div>
+
+      {showMiniProfile && !interview.isAnonymous && (
+        <UserMiniProfile
+          userId={interview.authorId}
+          username={interview.authorUsername ?? ''}
+          displayName={interview.authorDisplayName ?? interview.authorUsername ?? ''}
+          initials={(interview.authorDisplayName || interview.authorUsername || 'U')[0].toUpperCase()}
+          avatarUrl={interview.authorAvatarUrl}
+          role={interview.authorRole}
+          company={interview.authorCompany}
+          onClose={() => setShowMiniProfile(false)}
+        />
+      )}
 
       {/* Title — matches PostCard h2 */}
       <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold leading-tight tracking-tight -mt-2">{interview.title}</h2>
@@ -235,28 +268,45 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
 export function InterviewsScreen() {
-  const { openNotifications } = useNotifications()
+  const { openNotifications, unreadCount } = useNotifications()
   const { user: clerkUser } = useUser()
   const cache = getMeCache()
   const avatarSrc = cache?.avatarUrl || clerkUser?.imageUrl || null
   const isEmoji = avatarSrc && !avatarSrc.startsWith('http')
   const initials = ((clerkUser?.firstName?.[0] ?? '') + (clerkUser?.lastName?.[0] ?? '')).toUpperCase() || cache?.username?.[0]?.toUpperCase() || '?'
   const [companyFilter, setCompanyFilter] = useState<string | null>(null)
+  const [roleFilter, setRoleFilter] = useState<string | null>(null)
+  const [locationFilter, setLocationFilter] = useState<string | null>(null)
   const [techFilters, setTechFilters] = useState<string[]>([])
-  const [difficultyFilter, setDifficultyFilter] = useState<string | null>(null)
   const [interviews, setInterviews] = useState<InterviewWithQuestions[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [companies, setCompanies] = useState<{ value: string; label: string }[]>([])
+  const [roles, setRoles] = useState<{ value: string; label: string }[]>([])
+  const [locations, setLocations] = useState<{ value: string; label: string }[]>([])
+
+  useEffect(() => {
+    api.getInterviewCompanies().then((data) =>
+      setCompanies(data.map((c) => ({ value: c, label: c })))
+    )
+    api.getInterviewRoles().then((data) =>
+      setRoles(data.map((r) => ({ value: r, label: r })))
+    )
+    api.getInterviewLocations().then((data) =>
+      setLocations(data.map((l) => ({ value: l, label: l })))
+    )
+  }, [])
 
   const loadInterviews = useCallback(async () => {
     setIsLoading(true)
     const { interviews: data } = await api.getInterviews({
       company: companyFilter ?? undefined,
+      role: roleFilter ?? undefined,
+      location: locationFilter ?? undefined,
       stack: techFilters.length > 0 ? techFilters.join(',') : undefined,
-      difficulty: difficultyFilter ?? undefined,
     })
     setInterviews(data)
     setIsLoading(false)
-  }, [companyFilter, techFilters, difficultyFilter])
+  }, [companyFilter, roleFilter, locationFilter, techFilters])
 
   useEffect(() => { loadInterviews() }, [loadInterviews])
 
@@ -278,7 +328,9 @@ export function InterviewsScreen() {
             className="w-[30px] h-[30px] lg:w-9 lg:h-9 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center relative transition-all hover:border-[var(--accent)]"
           >
             <Bell size={14} className="text-[var(--t2)]" />
-            <span className="absolute top-[3px] right-[3px] w-[7px] h-[7px] bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)]" />
+            {unreadCount > 0 && (
+              <span className="absolute top-[3px] right-[3px] w-[7px] h-[7px] bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)]" />
+            )}
           </button>
           <Link href="/profile">
             {isEmoji
@@ -298,12 +350,38 @@ export function InterviewsScreen() {
           <div className="flex items-center gap-2">
             <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">COMPANY</span>
             <SearchableDropdown
-              options={COMPANIES}
+              options={companies}
               value={companyFilter}
               onChange={setCompanyFilter}
               placeholder="COMPANY"
               allLabel="ALL COMPANIES"
               accentColor="purple"
+            />
+          </div>
+
+          {/* Role filter */}
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">ROLE</span>
+            <SearchableDropdown
+              options={roles}
+              value={roleFilter}
+              onChange={setRoleFilter}
+              placeholder="ROLE"
+              allLabel="ALL ROLES"
+              accentColor="green"
+            />
+          </div>
+
+          {/* Location filter */}
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">LOCATION</span>
+            <SearchableDropdown
+              options={locations}
+              value={locationFilter}
+              onChange={setLocationFilter}
+              placeholder="LOCATION"
+              allLabel="ALL LOCATIONS"
+              accentColor="cyan"
             />
           </div>
 
@@ -330,25 +408,12 @@ export function InterviewsScreen() {
             />
           </div>
 
-          {/* Difficulty */}
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">LEVEL</span>
-            <SearchableDropdown
-              options={DIFFICULTY_OPTIONS}
-              value={difficultyFilter}
-              onChange={setDifficultyFilter}
-              placeholder="DIFFICULTY"
-              allLabel="ALL LEVELS"
-              accentColor="green"
-            />
-          </div>
-
           <div className="flex-1" />
 
           {/* Reset */}
-          {(companyFilter || techFilters.length > 0 || difficultyFilter) && (
+          {(companyFilter || roleFilter || locationFilter || techFilters.length > 0) && (
             <button
-              onClick={() => { setCompanyFilter(null); setTechFilters([]); setDifficultyFilter(null) }}
+              onClick={() => { setCompanyFilter(null); setRoleFilter(null); setLocationFilter(null); setTechFilters([]) }}
               className="font-mono text-[8px] lg:text-[9px] tracking-[0.08em] px-3 py-2 rounded-full border border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               RESET

@@ -455,6 +455,7 @@ CREATE TABLE interviews.interviews (
     type          text        NOT NULL DEFAULT 'interview'
                               CHECK (type IN ('interview', 'system_design', 'behavioral', 'coding')),
     is_active     boolean     NOT NULL DEFAULT true,
+    is_anonymous  boolean     NOT NULL DEFAULT false,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now()
 );
@@ -465,6 +466,33 @@ CREATE INDEX ix_interviews_embedding     ON interviews.interviews USING hnsw (em
 CREATE INDEX ix_interviews_company       ON interviews.interviews (company) WHERE company IS NOT NULL;
 CREATE INDEX ix_interviews_is_active     ON interviews.interviews (is_active) WHERE is_active = true;
 COMMENT ON TABLE interviews.interviews IS 'Interview experience posts — separate content type from bytes';
+
+CREATE TABLE IF NOT EXISTS interviews.roles (
+    id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    name       text        NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT uq_roles_name UNIQUE (name)
+);
+CREATE INDEX IF NOT EXISTS ix_interview_roles_name ON interviews.roles (lower(name));
+COMMENT ON TABLE interviews.roles IS 'Role lookup for interview posts — populated automatically on interview creation';
+
+CREATE TABLE IF NOT EXISTS interviews.locations (
+    id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        text        NOT NULL CHECK (char_length(name) BETWEEN 1 AND 100),
+    country     text        NOT NULL DEFAULT 'United States',
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT uq_locations_name UNIQUE (name)
+);
+CREATE INDEX IF NOT EXISTS ix_interview_locations_name ON interviews.locations (lower(name));
+COMMENT ON TABLE interviews.locations IS 'Location lookup for interview posts — seeded with major tech hubs, grows automatically on interview creation';
+
+CREATE TABLE IF NOT EXISTS interviews.interview_locations (
+    interview_id  uuid NOT NULL REFERENCES interviews.interviews(id) ON DELETE CASCADE,
+    location_id   uuid NOT NULL REFERENCES interviews.locations(id)  ON DELETE CASCADE,
+    PRIMARY KEY (interview_id, location_id)
+);
+CREATE INDEX IF NOT EXISTS ix_interview_locations_location_id ON interviews.interview_locations (location_id);
+COMMENT ON TABLE interviews.interview_locations IS 'Maps interviews to locations — one company can post across multiple cities';
 
 CREATE TABLE interviews.interview_tech_stacks (
     interview_id  uuid NOT NULL REFERENCES interviews.interviews(id) ON DELETE CASCADE,

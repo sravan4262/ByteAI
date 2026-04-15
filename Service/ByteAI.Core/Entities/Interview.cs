@@ -14,6 +14,7 @@ public sealed class Interview
     public Pgvector.Vector? Embedding { get; set; }
     public string Type { get; set; } = "interview";
     public bool IsActive { get; set; } = true;
+    public bool IsAnonymous { get; set; } = false;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -25,4 +26,5 @@ public sealed class Interview
     public ICollection<InterviewView> InterviewViews { get; set; } = [];
     public ICollection<InterviewTechStack> InterviewTechStacks { get; set; } = [];
     public ICollection<InterviewQuestion> Questions { get; set; } = [];
+    public ICollection<InterviewLocation> Locations { get; set; } = [];
 }

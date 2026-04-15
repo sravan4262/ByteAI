@@ -241,12 +241,14 @@ export interface InterviewWithQuestions {
   title: string
   company?: string
   role?: string
+  location?: string
   difficulty: string
   type: string
   createdAt: string
   commentCount: number
   questions: InterviewQuestion[]
   isBookmarked?: boolean
+  isAnonymous?: boolean
 }
 
 interface InterviewPagedResponse {
@@ -272,8 +274,9 @@ export async function getInterview(id: string, token?: string | null): Promise<I
 
 export async function getInterviews(params: {
   company?: string
+  role?: string
+  location?: string
   stack?: string
-  difficulty?: string
   page?: number
   pageSize?: number
   authorId?: string
@@ -281,8 +284,9 @@ export async function getInterviews(params: {
   try {
     const qs = new URLSearchParams()
     if (params.company) qs.set('company', params.company)
+    if (params.role) qs.set('role', params.role)
+    if (params.location) qs.set('location', params.location)
     if (params.stack) qs.set('stack', params.stack)
-    if (params.difficulty) qs.set('difficulty', params.difficulty)
     if (params.page) qs.set('page', String(params.page))
     if (params.pageSize) qs.set('pageSize', String(params.pageSize))
     if (params.authorId) qs.set('authorId', params.authorId)
@@ -291,6 +295,33 @@ export async function getInterviews(params: {
     return { interviews: res.data.items, total: res.data.total, hasMore }
   } catch {
     return { interviews: [], total: 0, hasMore: false }
+  }
+}
+
+export async function getInterviewCompanies(): Promise<string[]> {
+  try {
+    const res = await apiFetch<ApiResponse<string[]>>('/api/interviews/companies')
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function getInterviewRoles(): Promise<string[]> {
+  try {
+    const res = await apiFetch<ApiResponse<string[]>>('/api/interviews/roles')
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function getInterviewLocations(): Promise<string[]> {
+  try {
+    const res = await apiFetch<ApiResponse<string[]>>('/api/interviews/locations')
+    return res.data
+  } catch {
+    return []
   }
 }
 
@@ -307,6 +338,9 @@ export interface QuestionComment {
   body: string
   authorId: string
   authorUsername: string
+  authorDisplayName: string
+  authorAvatarUrl?: string
+  authorRoleTitle?: string
   voteCount: number
   createdAt: string
   parentId?: string
@@ -321,17 +355,26 @@ export async function getQuestionComments(questionId: string): Promise<QuestionC
   }
 }
 
-export async function addQuestionComment(questionId: string, body: string): Promise<void> {
-  await apiFetch(`/api/interviews/questions/${questionId}/comments`, {
+export async function addQuestionComment(questionId: string, body: string): Promise<QuestionComment> {
+  const res = await apiFetch<ApiResponse<QuestionComment>>(`/api/interviews/questions/${questionId}/comments`, {
     method: 'POST',
     body: JSON.stringify({ body }),
   })
+  return res.data
+}
+
+export async function deleteQuestionComment(commentId: string): Promise<void> {
+  await apiFetch(`/api/interviews/questions/comments/${commentId}`, { method: 'DELETE' })
 }
 
 export interface InterviewComment {
   id: string
   body: string
   authorId: string
+  authorUsername: string
+  authorDisplayName: string
+  authorAvatarUrl?: string
+  authorRoleTitle?: string
   voteCount: number
   createdAt: string
   parentId?: string
@@ -346,11 +389,12 @@ export async function getInterviewComments(interviewId: string): Promise<Intervi
   }
 }
 
-export async function addInterviewComment(interviewId: string, body: string): Promise<void> {
-  await apiFetch(`/api/interviews/${interviewId}/comments`, {
+export async function addInterviewComment(interviewId: string, body: string): Promise<InterviewComment> {
+  const res = await apiFetch<ApiResponse<InterviewComment>>(`/api/interviews/${interviewId}/comments`, {
     method: 'POST',
     body: JSON.stringify({ body }),
   })
+  return res.data
 }
 
 export async function deleteInterviewComment(interviewId: string, commentId: string): Promise<void> {
@@ -879,8 +923,9 @@ export async function createInterviewWithQuestions(data: {
   title: string
   company?: string
   role?: string
-  difficulty?: string
+  location?: string
   questions: Array<{ question: string; answer: string }>
+  isAnonymous?: boolean
 }): Promise<{ id: string }> {
   const res = await apiFetch<ApiResponse<{ id: string }>>('/api/interviews/with-questions', {
     method: 'POST',
@@ -888,8 +933,10 @@ export async function createInterviewWithQuestions(data: {
       title: data.title,
       company: data.company ?? null,
       role: data.role ?? null,
-      difficulty: data.difficulty ?? 'medium',
+      location: data.location ?? null,
+      difficulty: 'medium',
       questions: data.questions,
+      isAnonymous: data.isAnonymous ?? false,
     }),
   })
   return { id: res.data.id }

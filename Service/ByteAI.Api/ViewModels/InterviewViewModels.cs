@@ -7,6 +7,7 @@ public sealed record CreateInterviewRequest(
     string? Language,
     string? Company,
     string? Role,
+    string? Location,
     string Difficulty = "medium",
     string Type = "interview"
 );
@@ -18,6 +19,7 @@ public sealed record UpdateInterviewRequest(
     string? Language,
     string? Company,
     string? Role,
+    string? Location,
     string? Difficulty
 );
 
@@ -30,6 +32,7 @@ public sealed record InterviewResponse(
     string? Language,
     string? Company,
     string? Role,
+    string? Location,
     string Difficulty,
     string Type,
     DateTime CreatedAt,
@@ -46,8 +49,10 @@ public sealed record CreateInterviewWithQuestionsRequest(
     string Title,
     string? Company,
     string? Role,
+    string? Location,
     string Difficulty = "medium",
-    List<InterviewQuestionRequest>? Questions = null
+    List<InterviewQuestionRequest>? Questions = null,
+    bool IsAnonymous = false
 );
 
 public sealed record InterviewQuestionResponse(
@@ -66,6 +71,7 @@ public sealed record InterviewWithQuestionsResponse(
     string Title,
     string? Company,
     string? Role,
+    string? Location,
     string Difficulty,
     string Type,
     DateTime CreatedAt,
@@ -76,5 +82,6 @@ public sealed record InterviewWithQuestionsResponse(
     string? AuthorAvatarUrl = null,
     string? AuthorRole = null,
     string? AuthorCompany = null,
-    bool IsBookmarked = false
+    bool IsBookmarked = false,
+    bool IsAnonymous = false
 );

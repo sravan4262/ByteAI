@@ -14,7 +14,10 @@ DELETE FROM interviews.interview_likes;
 DELETE FROM interviews.interview_views;
 DELETE FROM interviews.interview_tech_stacks;
 DELETE FROM interviews.interview_bookmarks;
+DELETE FROM interviews.interview_locations;
 DELETE FROM interviews.interviews;
+DELETE FROM interviews.roles;
+DELETE FROM interviews.locations;
 
 -- ── Bytes (deepest children first) ───────────────────────────
 DELETE FROM bytes.trending;

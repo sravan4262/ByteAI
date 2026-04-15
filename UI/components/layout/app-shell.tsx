@@ -46,7 +46,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => { cancelled = true; clearInterval(id) }
   }, [])
 
-  const notifCtx = useMemo(() => ({ openNotifications: () => setNotifOpen(true) }), [])
+  const notifCtx = useMemo(() => ({ openNotifications: () => setNotifOpen(true), unreadCount }), [unreadCount])
 
   return (
     <NotificationContext.Provider value={notifCtx}>

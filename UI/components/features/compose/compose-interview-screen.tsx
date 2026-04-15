@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
+import { CreatableDropdown } from '@/components/ui/creatable-dropdown'
 import * as api from '@/lib/api'
 
 interface QuestionPair {
@@ -13,8 +14,6 @@ interface QuestionPair {
   question: string
   answer: string
 }
-
-const DIFFICULTY_OPTIONS = ['easy', 'medium', 'hard']
 
 interface ComposeInterviewScreenProps {
   onBack: () => void
@@ -25,11 +24,17 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
   const [title, setTitle] = useState('')
   const [company, setCompany] = useState('')
   const [role, setRole] = useState('')
-  const [difficulty, setDifficulty] = useState('medium')
+  const [companyOptions, setCompanyOptions] = useState<string[]>([])
+  const [roleOptions, setRoleOptions] = useState<string[]>([])
   const [questions, setQuestions] = useState<QuestionPair[]>([
     { id: crypto.randomUUID(), question: '', answer: '' },
   ])
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    api.getInterviewCompanies().then(setCompanyOptions)
+    api.getInterviewRoles().then(setRoleOptions)
+  }, [])
 
   const addQuestion = () => {
     setQuestions((prev) => [
@@ -66,7 +71,6 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
         title: title.trim(),
         company: company.trim() || undefined,
         role: role.trim() || undefined,
-        difficulty,
         questions: validQuestions.map((q) => ({ question: q.question.trim(), answer: q.answer.trim() })),
       })
       toast.success('Interview Byte posted!')
@@ -117,47 +121,23 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// COMPANY</div>
-              <input
-                type="text"
+              <CreatableDropdown
+                options={companyOptions}
                 value={company}
-                onChange={(e) => setCompany(e.target.value)}
+                onChange={setCompany}
                 placeholder="e.g. Meta"
-                className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2.5 font-mono text-[11px] text-[var(--t1)] outline-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--purple)]"
+                accentColor="purple"
               />
             </div>
             <div>
               <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// ROLE</div>
-              <input
-                type="text"
+              <CreatableDropdown
+                options={roleOptions}
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
-                placeholder="e.g. SWE L5"
-                className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2.5 font-mono text-[11px] text-[var(--t1)] outline-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--purple)]"
+                onChange={setRole}
+                placeholder="e.g. Senior SWE"
+                accentColor="purple"
               />
-            </div>
-          </div>
-
-          {/* Difficulty */}
-          <div>
-            <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// DIFFICULTY</div>
-            <div className="flex gap-2">
-              {DIFFICULTY_OPTIONS.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDifficulty(d)}
-                  className={`flex-1 py-2 font-mono text-[10px] rounded-lg border transition-all ${
-                    difficulty === d
-                      ? d === 'easy'
-                        ? 'border-[var(--green)] bg-[var(--green-d)] text-[var(--green)]'
-                        : d === 'medium'
-                        ? 'border-[var(--orange)] bg-[rgba(251,146,60,0.1)] text-[var(--orange)]'
-                        : 'border-[var(--red)] bg-[rgba(244,63,94,0.1)] text-[var(--red)]'
-                      : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)]'
-                  }`}
-                >
-                  {d.toUpperCase()}
-                </button>
-              ))}
             </div>
           </div>
 

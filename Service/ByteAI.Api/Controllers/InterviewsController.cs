@@ -19,9 +19,12 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
 {
     // ── Mappers ──────────────────────────────────────────────────────────────
 
+    static string? FirstLocation(Interview i) =>
+        i.Locations.FirstOrDefault()?.Location?.Name;
+
     static InterviewResponse ToResponse(Interview i) => new(
         i.Id, i.AuthorId, i.Title, i.Body, i.CodeSnippet, i.Language,
-        i.Company, i.Role, i.Difficulty, i.Type, i.CreatedAt, i.UpdatedAt);
+        i.Company, i.Role, FirstLocation(i), i.Difficulty, i.Type, i.CreatedAt, i.UpdatedAt);
 
     static InterviewQuestionResponse ToQuestionResponse(InterviewQuestion q, Guid? userId = null) => new(
         q.Id, q.Question, q.Answer, q.OrderIndex,
@@ -29,21 +32,49 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         userId.HasValue && q.Likes.Any(l => l.UserId == userId.Value));
 
     static InterviewWithQuestionsResponse ToFullResponse(Interview i, Guid? userId = null) => new(
-        i.Id, i.AuthorId, i.Title, i.Company, i.Role, i.Difficulty, i.Type, i.CreatedAt,
+        i.Id, i.AuthorId, i.Title, i.Company, i.Role, FirstLocation(i), i.Difficulty, i.Type, i.CreatedAt,
         i.Comments.Count,
         i.Questions.OrderBy(q => q.OrderIndex).Select(q => ToQuestionResponse(q, userId)).ToList(),
-        i.Author?.Username ?? "",
-        i.Author?.DisplayName ?? i.Author?.Username ?? "",
-        i.Author?.AvatarUrl,
-        i.Author?.RoleTitle,
-        i.Author?.Company,
-        userId.HasValue && i.Bookmarks.Any(b => b.UserId == userId.Value));
+        AuthorUsername:    i.IsAnonymous ? "anonymous" : (i.Author?.Username ?? ""),
+        AuthorDisplayName: i.IsAnonymous ? "Anonymous" : (i.Author?.DisplayName ?? i.Author?.Username ?? ""),
+        AuthorAvatarUrl:   i.IsAnonymous ? null : i.Author?.AvatarUrl,
+        AuthorRole:        i.IsAnonymous ? null : i.Author?.RoleTitle,
+        AuthorCompany:     i.IsAnonymous ? null : i.Author?.Company,
+        IsBookmarked:      userId.HasValue && i.Bookmarks.Any(b => b.UserId == userId.Value),
+        IsAnonymous:       i.IsAnonymous);
 
     // ── Reads ─────────────────────────────────────────────────────────────────
 
+    /// <summary>List all companies from posted interviews.</summary>
+    [HttpGet("companies")]
+    [ProducesResponseType(typeof(ApiResponse<List<string>>), 200)]
+    public async Task<ActionResult<ApiResponse<List<string>>>> GetCompanies(CancellationToken ct)
+    {
+        var companies = await interviewsBusiness.GetCompaniesAsync(ct);
+        return Ok(ApiResponse<List<string>>.Success(companies.Select(c => c.Name).ToList()));
+    }
+
+    /// <summary>List all roles from posted interviews.</summary>
+    [HttpGet("roles")]
+    [ProducesResponseType(typeof(ApiResponse<List<string>>), 200)]
+    public async Task<ActionResult<ApiResponse<List<string>>>> GetRoles(CancellationToken ct)
+    {
+        var roles = await interviewsBusiness.GetRolesAsync(ct);
+        return Ok(ApiResponse<List<string>>.Success(roles.Select(r => r.Name).ToList()));
+    }
+
+    /// <summary>List all locations (cities) for interview filtering.</summary>
+    [HttpGet("locations")]
+    [ProducesResponseType(typeof(ApiResponse<List<string>>), 200)]
+    public async Task<ActionResult<ApiResponse<List<string>>>> GetLocations(CancellationToken ct)
+    {
+        var locations = await interviewsBusiness.GetLocationsAsync(ct);
+        return Ok(ApiResponse<List<string>>.Success(locations.Select(l => l.Name).ToList()));
+    }
+
     /// <summary>
     /// List interviews with embedded questions.
-    /// Supports filtering by company, difficulty, and tech stacks (comma-separated).
+    /// Supports filtering by company, role, and tech stacks (comma-separated).
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<PagedResponse<InterviewWithQuestionsResponse>>), 200)]
@@ -52,7 +83,8 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         [FromQuery] int pageSize = 20,
         [FromQuery] Guid? authorId = null,
         [FromQuery] string? company = null,
-        [FromQuery] string? difficulty = null,
+        [FromQuery] string? role = null,
+        [FromQuery] string? location = null,
         [FromQuery] string? stack = null,
         [FromQuery] string sort = "recent",
         CancellationToken ct = default)
@@ -60,7 +92,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         var clerkId = HttpContext.GetClerkUserId();
         var userId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
         var techStacks = string.IsNullOrEmpty(stack) ? null : stack.Split(',').Select(s => s.Trim()).ToList();
-        var result = await interviewsBusiness.GetInterviewsAsync(page, pageSize, authorId, company, difficulty, techStacks, sort, ct, clerkId);
+        var result = await interviewsBusiness.GetInterviewsAsync(page, pageSize, authorId, company, role, location, techStacks, sort, ct, clerkId);
 
         var response = new PagedResponse<InterviewWithQuestionsResponse>(
             result.Items.Select(i => ToFullResponse(i, userId)).ToList(),
@@ -95,7 +127,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         {
             var result = await interviewsBusiness.CreateInterviewAsync(
                 clerkId, request.Title, request.Body, request.CodeSnippet, request.Language,
-                request.Company, request.Role, request.Difficulty, request.Type, ct);
+                request.Company, request.Role, request.Location, request.Type, ct);
             return CreatedAtAction(nameof(GetById), new { id = result.Id },
                 ApiResponse<InterviewResponse>.Success(ToResponse(result)));
         }
@@ -121,7 +153,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
                 .ToList();
 
             var result = await interviewsBusiness.CreateInterviewWithQuestionsAsync(
-                clerkId, request.Title, request.Company, request.Role, request.Difficulty, questionInputs, ct);
+                clerkId, request.Title, request.Company, request.Role, request.Location, questionInputs, request.IsAnonymous, ct);
 
             return CreatedAtAction(nameof(GetById), new { id = result.Id },
                 ApiResponse<InterviewWithQuestionsResponse>.Success(ToFullResponse(result)));
@@ -141,7 +173,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         {
             var result = await interviewsBusiness.UpdateInterviewAsync(
                 clerkId, id, request.Title, request.Body, request.CodeSnippet, request.Language,
-                request.Company, request.Role, request.Difficulty, ct);
+                request.Company, request.Role, request.Location, ct);
             return Ok(ApiResponse<InterviewResponse>.Success(ToResponse(result)));
         }
         catch (KeyNotFoundException) { return NotFound(); }
@@ -203,7 +235,14 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         try
         {
             var result = await interviewsBusiness.AddQuestionCommentAsync(clerkId, questionId, request.Body, request.ParentId, ct);
-            return Ok(ApiResponse<object>.Success(new { result.Id, result.Body, result.AuthorId, result.CreatedAt }));
+            return Ok(ApiResponse<object>.Success(new
+            {
+                result.Id, result.Body, result.AuthorId, result.CreatedAt,
+                AuthorUsername    = result.Author?.Username ?? "",
+                AuthorDisplayName = result.Author?.DisplayName ?? result.Author?.Username ?? "",
+                AuthorAvatarUrl   = result.Author?.AvatarUrl,
+                AuthorRoleTitle   = result.Author?.RoleTitle,
+            }));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
     }
@@ -218,7 +257,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
                 result.Items.Select(c => (object)new
                 {
                     c.Id, c.Body, c.AuthorId,
-                    AuthorUsername = c.Author?.Username ?? "",
+                    AuthorUsername    = c.Author?.Username ?? "",
+                    AuthorDisplayName = c.Author?.DisplayName ?? c.Author?.Username ?? "",
+                    AuthorAvatarUrl   = c.Author?.AvatarUrl,
+                    AuthorRoleTitle   = c.Author?.RoleTitle,
                     c.VoteCount, c.CreatedAt, c.ParentId
                 }).ToList(),
                 result.Total, result.Page, result.PageSize)));
@@ -234,7 +276,14 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         try
         {
             var result = await interviewsBusiness.AddCommentAsync(clerkId, id, request.Body, request.ParentId, ct);
-            return Ok(ApiResponse<object>.Success(new { result.Id, result.Body, result.CreatedAt }));
+            return Ok(ApiResponse<object>.Success(new
+            {
+                result.Id, result.Body, result.AuthorId, result.CreatedAt,
+                AuthorUsername    = result.Author?.Username ?? "",
+                AuthorDisplayName = result.Author?.DisplayName ?? result.Author?.Username ?? "",
+                AuthorAvatarUrl   = result.Author?.AvatarUrl,
+                AuthorRoleTitle   = result.Author?.RoleTitle,
+            }));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
     }
@@ -246,7 +295,15 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         var result = await interviewsBusiness.GetCommentsAsync(id, page, pageSize, ct);
         return Ok(ApiResponse<PagedResponse<object>>.Success(
             new PagedResponse<object>(
-                result.Items.Select(c => (object)new { c.Id, c.Body, c.AuthorId, c.VoteCount, c.CreatedAt, c.ParentId }).ToList(),
+                result.Items.Select(c => (object)new
+                {
+                    c.Id, c.Body, c.AuthorId,
+                    AuthorUsername    = c.Author?.Username ?? "",
+                    AuthorDisplayName = c.Author?.DisplayName ?? c.Author?.Username ?? "",
+                    AuthorAvatarUrl   = c.Author?.AvatarUrl,
+                    AuthorRoleTitle   = c.Author?.RoleTitle,
+                    c.VoteCount, c.CreatedAt, c.ParentId
+                }).ToList(),
                 result.Total, result.Page, result.PageSize)));
     }
 

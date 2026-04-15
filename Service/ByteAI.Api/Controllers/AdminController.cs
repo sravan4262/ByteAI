@@ -97,4 +97,62 @@ public sealed class AdminController(IAdminBusiness adminBusiness) : ControllerBa
         var flagKeys = await adminBusiness.GetUserAssignedFeatureFlagsAsync(userId, ct);
         return Ok(ApiResponse<List<string>>.Success(flagKeys));
     }
+
+    // ── Role management ──────────────────────────────────────────────────────
+
+    public sealed record CreateRoleRequest(string Name, string Label, string? Description);
+
+    [HttpGet("roles")]
+    [ProducesResponseType(typeof(ApiResponse<List<RoleResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<RoleResponse>>>> GetAllRoles(CancellationToken ct)
+    {
+        var roles = await adminBusiness.GetAllRolesAsync(ct);
+        return Ok(ApiResponse<List<RoleResponse>>.Success(roles.Select(ToRoleResponse).ToList()));
+    }
+
+    [HttpPost("roles")]
+    [ProducesResponseType(typeof(ApiResponse<RoleResponse>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<RoleResponse>>> CreateRole([FromBody] CreateRoleRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var role = await adminBusiness.CreateRoleAsync(request.Name, request.Label, request.Description, ct);
+            return StatusCode(201, ApiResponse<RoleResponse>.Success(ToRoleResponse(role)));
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpGet("users/{userId:guid}/roles")]
+    [ProducesResponseType(typeof(ApiResponse<List<RoleResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<RoleResponse>>>> GetUserRoles(Guid userId, CancellationToken ct)
+    {
+        var roles = await adminBusiness.GetUserRolesAsync(userId, ct);
+        return Ok(ApiResponse<List<RoleResponse>>.Success(roles.Select(ToRoleResponse).ToList()));
+    }
+
+    [HttpPost("users/{userId:guid}/roles/{roleId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AssignRoleToUser(Guid userId, Guid roleId, CancellationToken ct)
+    {
+        try { await adminBusiness.AssignRoleToUserAsync(userId, roleId, ct); return NoContent(); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+    }
+
+    [HttpDelete("users/{userId:guid}/roles/{roleId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RevokeRoleFromUser(Guid userId, Guid roleId, CancellationToken ct)
+    {
+        try { await adminBusiness.RevokeRoleFromUserAsync(userId, roleId, ct); return NoContent(); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+    }
+
+    static RoleResponse ToRoleResponse(ByteAI.Core.Entities.RoleType r) =>
+        new(r.Id, r.Name, r.Label, r.Description);
+
+    public sealed record RoleResponse(Guid Id, string Name, string Label, string? Description);
 }

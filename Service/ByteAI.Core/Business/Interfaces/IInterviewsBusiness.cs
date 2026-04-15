@@ -7,13 +7,16 @@ namespace ByteAI.Core.Business.Interfaces;
 public interface IInterviewsBusiness
 {
     // Reads
-    Task<PagedResult<Interview>> GetInterviewsAsync(int page, int pageSize, Guid? authorId, string? company, string? difficulty, List<string>? techStacks, string sort, CancellationToken ct, string? clerkId = null);
+    Task<PagedResult<Interview>> GetInterviewsAsync(int page, int pageSize, Guid? authorId, string? company, string? role, string? location, List<string>? techStacks, string sort, CancellationToken ct, string? clerkId = null);
     Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? clerkId = null);
+    Task<List<Company>> GetCompaniesAsync(CancellationToken ct);
+    Task<List<InterviewRole>> GetRolesAsync(CancellationToken ct);
+    Task<List<Location>> GetLocationsAsync(CancellationToken ct);
 
     // Writes
-    Task<Interview> CreateInterviewAsync(string clerkId, string title, string body, string? codeSnippet, string? language, string? company, string? role, string difficulty, string type, CancellationToken ct);
-    Task<Interview> CreateInterviewWithQuestionsAsync(string clerkId, string title, string? company, string? role, string difficulty, List<InterviewQuestionInput> questions, CancellationToken ct);
-    Task<Interview> UpdateInterviewAsync(string clerkId, Guid id, string? title, string? body, string? codeSnippet, string? language, string? company, string? role, string? difficulty, CancellationToken ct);
+    Task<Interview> CreateInterviewAsync(string clerkId, string title, string body, string? codeSnippet, string? language, string? company, string? role, string? location, string type, CancellationToken ct);
+    Task<Interview> CreateInterviewWithQuestionsAsync(string clerkId, string title, string? company, string? role, string? location, List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct);
+    Task<Interview> UpdateInterviewAsync(string clerkId, Guid id, string? title, string? body, string? codeSnippet, string? language, string? company, string? role, string? location, CancellationToken ct);
     Task<bool> DeleteInterviewAsync(string clerkId, Guid id, CancellationToken ct);
 
     // Question interactions

@@ -2,29 +2,164 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Briefcase, ChevronLeft, Bookmark, Share2, ChevronsUpDown, ChevronsDownUp, MessageSquare, Send, Trash2 } from 'lucide-react'
+import { Briefcase, ChevronLeft, Bookmark, Share2, ChevronsUpDown, ChevronsDownUp, MessageSquare, Send, Trash2, ChevronDown, ChevronUp, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
+import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
+import { getMeCache } from '@/lib/user-cache'
 import * as api from '@/lib/api'
-import type { InterviewWithQuestions, InterviewQuestion, InterviewComment } from '@/lib/api'
+import type { InterviewWithQuestions, InterviewQuestion, InterviewComment, QuestionComment } from '@/lib/api'
 
-function difficultyColor(d: string) {
-  if (d === 'easy') return 'text-[var(--green)] border-[rgba(16,217,160,0.3)] bg-[rgba(16,217,160,0.06)]'
-  if (d === 'hard') return 'text-[var(--red)] border-[rgba(244,63,94,0.3)] bg-[rgba(244,63,94,0.06)]'
-  return 'text-[var(--orange)] border-[rgba(251,146,60,0.3)] bg-[rgba(251,146,60,0.06)]'
+// ── Question comment thread ────────────────────────────────────────────────────
+
+function QuestionCommentThread({
+  question,
+  currentUserId,
+}: {
+  question: InterviewQuestion
+  currentUserId: string | null
+}) {
+  const [comments, setComments] = useState<QuestionComment[]>([])
+  const [isOpen, setIsOpen] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [body, setBody] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const load = async () => {
+    if (isLoaded) return
+    const data = await api.getQuestionComments(question.id)
+    setComments(data)
+    setIsLoaded(true)
+  }
+
+  const handleToggle = () => {
+    setIsOpen((v) => !v)
+    load()
+  }
+
+  const handleAdd = async () => {
+    const trimmed = body.trim()
+    if (!trimmed || isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const created = await api.addQuestionComment(question.id, trimmed)
+      setComments((prev) => [...prev, created])
+      setBody('')
+    } catch {
+      toast.error('Failed to post comment')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (commentId: string) => {
+    try {
+      await api.deleteQuestionComment(commentId)
+      setComments((prev) => prev.filter((c) => c.id !== commentId))
+    } catch {
+      toast.error('Failed to delete comment')
+    }
+  }
+
+  const count = isLoaded ? comments.length : question.commentCount
+
+  return (
+    <div className="border-t border-[var(--border)]">
+      {/* Toggle */}
+      <button
+        onClick={handleToggle}
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-[rgba(255,255,255,0.02)] transition-all"
+      >
+        <MessageSquare size={12} className="text-[var(--purple)] flex-shrink-0" />
+        <span className="font-mono text-[9px] tracking-[0.08em] text-[var(--t2)] flex-1">
+          COMMENTS {count > 0 ? `(${count})` : ''}
+        </span>
+        {isOpen
+          ? <ChevronUp size={12} className="text-[var(--t3)]" />
+          : <ChevronDown size={12} className="text-[var(--t3)]" />}
+      </button>
+
+      {isOpen && (
+        <div className="px-4 pb-3 flex flex-col gap-3">
+          {/* Comment list */}
+          {comments.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {comments.map((c) => (
+                <div key={c.id} className="flex gap-2 group">
+                  <Avatar
+                    initials={(c.authorDisplayName || c.authorUsername || 'U')[0].toUpperCase()}
+                    imageUrl={c.authorAvatarUrl}
+                    size="xs"
+                    variant="purple"
+                  />
+                  <div className="flex-1 min-w-0 bg-[var(--bg)] border border-[var(--border)] rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="font-mono text-[9px] font-bold text-[var(--t1)]">
+                        @{c.authorUsername || 'user'}
+                      </span>
+                      {c.authorRoleTitle && (
+                        <span className="font-mono text-[7px] text-[var(--purple)] truncate max-w-[100px]">{c.authorRoleTitle}</span>
+                      )}
+                      <span className="font-mono text-[8px] text-[var(--t3)] ml-auto">
+                        {new Date(c.createdAt).toLocaleDateString()}
+                      </span>
+                      {(c.authorId === 'me' || (currentUserId && c.authorId === currentUserId)) && (
+                        <button
+                          onClick={() => handleDelete(c.id)}
+                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--t3)] hover:text-[var(--red)] transition-all"
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-[var(--t2)]">{c.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="font-mono text-[10px] text-[var(--t3)] text-center py-1">No comments yet</p>
+          )}
+
+          {/* Inline input */}
+          <div className="flex items-center gap-2 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2">
+            <input
+              type="text"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              placeholder="Add a comment..."
+              className="flex-1 bg-transparent font-mono text-[10px] text-[var(--t1)] outline-none placeholder:text-[var(--t3)]"
+            />
+            <button
+              onClick={handleAdd}
+              disabled={!body.trim() || isSubmitting}
+              className="w-6 h-6 rounded-full bg-[var(--purple)] flex items-center justify-center text-white transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              <Send size={10} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
+
+// ── Question item (with inline comments) ──────────────────────────────────────
 
 function QuestionItem({
   q,
   index,
   expanded,
   onToggle,
+  currentUserId,
 }: {
   q: InterviewQuestion
   index: number
   expanded: boolean
   onToggle: () => void
+  currentUserId: string | null
 }) {
   return (
     <div className="border border-[var(--border-m)] rounded-lg overflow-hidden bg-[var(--bg-el)]">
@@ -44,21 +179,28 @@ function QuestionItem({
       </button>
 
       {expanded && (
-        <div className="px-4 py-3 border-t border-[var(--border)]">
-          <p className="text-sm md:text-[15px] text-[var(--t2)] leading-relaxed whitespace-pre-wrap">{q.answer}</p>
-        </div>
+        <>
+          <div className="px-4 py-3 border-t border-[var(--border)]">
+            <p className="text-sm md:text-[15px] text-[var(--t2)] leading-relaxed whitespace-pre-wrap">{q.answer}</p>
+          </div>
+          <QuestionCommentThread question={q} currentUserId={currentUserId} />
+        </>
       )}
     </div>
   )
 }
 
+// ── Main Detail Screen ─────────────────────────────────────────────────────────
+
 export function InterviewDetailScreen({ interview }: { interview: InterviewWithQuestions }) {
   const router = useRouter()
+  const meCache = getMeCache()
+  const [showMiniProfile, setShowMiniProfile] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(interview.isBookmarked ?? false)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const allExpanded = interview.questions.length > 0 && expandedIds.size === interview.questions.length
 
-  // Comments
+  // Interview-level discussion
   const [comments, setComments] = useState<InterviewComment[]>([])
   const [commentBody, setCommentBody] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -101,15 +243,8 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
     if (!trimmed || isSubmitting) return
     setIsSubmitting(true)
     try {
-      await api.addInterviewComment(interview.id, trimmed)
-      const optimistic: InterviewComment = {
-        id: crypto.randomUUID(),
-        body: trimmed,
-        authorId: currentUserId ?? 'me',
-        voteCount: 0,
-        createdAt: new Date().toISOString(),
-      }
-      setComments((prev) => [...prev, optimistic])
+      const created = await api.addInterviewComment(interview.id, trimmed)
+      setComments((prev) => [...prev, created])
       setCommentBody('')
       toast.success('Comment posted')
     } catch {
@@ -139,9 +274,6 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
         >
           <ChevronLeft size={12} /> BACK
         </button>
-        <span className={`font-mono text-[9px] px-2.5 py-1 rounded border ${difficultyColor(interview.difficulty)}`}>
-          {interview.difficulty.toUpperCase()}
-        </span>
       </header>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
@@ -149,20 +281,39 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
 
           {/* Author */}
           <div className="flex items-center gap-3">
-            <Avatar
-              initials={(interview.authorDisplayName || interview.authorUsername || interview.authorId).slice(0, 1).toUpperCase()}
-              imageUrl={interview.authorAvatarUrl}
-              size="md"
-              variant="purple"
-            />
+            {interview.isAnonymous ? (
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center text-xl flex-shrink-0 cursor-default select-none">
+                👻
+              </div>
+            ) : (
+              <Avatar
+                initials={(interview.authorDisplayName || interview.authorUsername || interview.authorId).slice(0, 1).toUpperCase()}
+                imageUrl={interview.authorAvatarUrl}
+                size="md"
+                variant="purple"
+                onClick={(e) => { e.stopPropagation(); setShowMiniProfile(true) }}
+              />
+            )}
             <div>
               <div className="font-mono text-xs lg:text-sm font-bold text-[var(--t1)]">
-                @{interview.authorUsername || interview.authorId.slice(0, 8)}
+                {interview.isAnonymous ? (
+                  <span className="text-[var(--t2)]">Anonymous</span>
+                ) : (
+                  <>@{interview.authorUsername || interview.authorId.slice(0, 8)}</>
+                )}
               </div>
               <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-[3px] tracking-[0.04em]">
-                {interview.role ?? ''}
-                {interview.role && interview.company ? ' @ ' : ''}
-                {interview.company ?? ''}
+                {interview.isAnonymous ? (
+                  <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.08)] border border-[rgba(167,139,250,0.2)] px-2 py-0.5 rounded">
+                    👻 anonymous post
+                  </span>
+                ) : (
+                  <>
+                    {interview.authorRole ?? ''}
+                    {interview.authorRole && interview.authorCompany ? ' @ ' : ''}
+                    {interview.authorCompany ?? ''}
+                  </>
+                )}
               </div>
             </div>
             <span className="ml-auto font-mono text-[9px] text-[var(--t3)]">
@@ -170,17 +321,47 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
             </span>
           </div>
 
-          {/* Type badge */}
-          <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2.5 py-1 rounded flex items-center gap-1.5 w-fit">
-            <Briefcase size={10} /> INTERVIEW
-          </span>
+          {/* Type badge + metadata chips */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2.5 py-1 rounded flex items-center gap-1.5">
+              <Briefcase size={10} /> INTERVIEW
+            </span>
+            {interview.company && (
+              <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+                {interview.company}
+              </span>
+            )}
+            {interview.role && (
+              <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+                {interview.role}
+              </span>
+            )}
+            {interview.location && (
+              <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded flex items-center gap-1">
+                <MapPin size={9} /> {interview.location}
+              </span>
+            )}
+          </div>
+
+          {showMiniProfile && !interview.isAnonymous && (
+            <UserMiniProfile
+              userId={interview.authorId}
+              username={interview.authorUsername ?? ''}
+              displayName={interview.authorDisplayName ?? interview.authorUsername ?? ''}
+              initials={(interview.authorDisplayName || interview.authorUsername || 'U')[0].toUpperCase()}
+              avatarUrl={interview.authorAvatarUrl}
+              role={interview.authorRole}
+              company={interview.authorCompany}
+              onClose={() => setShowMiniProfile(false)}
+            />
+          )}
 
           {/* Title */}
           <h1 className="text-xl lg:text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight -mt-2">
             {interview.title}
           </h1>
 
-          {/* Questions */}
+          {/* Questions — each has inline comment thread when expanded */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <div className="font-mono text-[9px] tracking-[0.1em] text-[var(--t3)]">
@@ -206,6 +387,7 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
                 index={i}
                 expanded={expandedIds.has(q.id)}
                 onToggle={() => toggleQuestion(q.id)}
+                currentUserId={currentUserId}
               />
             ))}
           </div>
@@ -231,7 +413,7 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
             </button>
           </div>
 
-          {/* Discussion */}
+          {/* Interview-level Discussion */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-4">
               <div className="font-mono text-[8px] lg:text-[10px] font-bold tracking-[0.12em] text-[var(--t2)] flex items-center gap-1.5">
@@ -245,21 +427,27 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
             <div className="flex flex-col gap-4">
               {comments.length > 0 ? (
                 comments.map((c) => (
-                  <div key={c.id} className="flex gap-[10px] lg:gap-4">
-                    <div className="w-[30px] h-[30px] lg:w-10 lg:h-10 rounded-full border border-[var(--border-m)] flex-shrink-0 flex items-center justify-center font-mono text-[8px] lg:text-[10px] font-bold bg-gradient-to-br from-[#1a1f2f] to-[#16243f] text-[var(--accent)]">
-                      U
-                    </div>
+                  <div key={c.id} className="flex gap-[10px] lg:gap-4 group">
+                    <Avatar
+                      initials={(c.authorDisplayName || c.authorUsername || 'U')[0].toUpperCase()}
+                      imageUrl={c.authorAvatarUrl}
+                      size="sm"
+                    />
                     <div className="flex-1 min-w-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-3 py-[10px] lg:px-4 lg:py-3">
                       <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="font-mono text-[10px] lg:text-xs font-bold text-[var(--t1)]">@user</span>
-                        <span className="font-mono text-[8px] text-[var(--t3)]">
+                        <span className="font-mono text-[10px] lg:text-xs font-bold text-[var(--t1)]">
+                          @{c.authorUsername || 'user'}
+                        </span>
+                        {c.authorRoleTitle && (
+                          <span className="font-mono text-[7px] lg:text-[8px] text-[var(--purple)] truncate max-w-[120px]">{c.authorRoleTitle}</span>
+                        )}
+                        <span className="font-mono text-[8px] text-[var(--t3)] ml-auto">
                           {new Date(c.createdAt).toLocaleDateString()}
                         </span>
                         {(c.authorId === 'me' || (currentUserId && c.authorId === currentUserId)) && (
                           <button
                             onClick={() => handleDeleteComment(c.id)}
-                            className="ml-auto p-1 rounded text-[var(--t3)] hover:text-[var(--red)] hover:bg-[rgba(244,63,94,0.08)] transition-all"
-                            title="Delete comment"
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded text-[var(--t3)] hover:text-[var(--red)] hover:bg-[rgba(244,63,94,0.08)] transition-all"
                           >
                             <Trash2 size={11} />
                           </button>
@@ -271,7 +459,7 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
                 ))
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-el)] px-4 py-6 text-center text-[var(--t2)]">
-                  <p className="font-mono text-[11px] lg:text-sm">No comments yet. Be the first to add insight.</p>
+                  <p className="font-mono text-[11px] lg:text-sm">No discussion yet. Be the first to add insight.</p>
                 </div>
               )}
             </div>
@@ -280,15 +468,19 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
         </div>
       </div>
 
-      {/* Comment input — pinned to bottom */}
+      {/* Discussion input — pinned to bottom */}
       <div className="flex items-center gap-2 px-3 py-2 lg:px-6 lg:py-3 border-t border-[var(--border)] bg-[var(--bg-card)] flex-shrink-0">
-        <Avatar initials="U" size="xs" />
+        <Avatar
+          initials={(meCache?.displayName || meCache?.username || 'U')[0].toUpperCase()}
+          imageUrl={meCache?.avatarUrl ?? undefined}
+          size="xs"
+        />
         <input
           type="text"
           value={commentBody}
           onChange={(e) => setCommentBody(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-          placeholder="Write a comment..."
+          placeholder="Add to discussion..."
           className="flex-1 bg-transparent font-mono text-[10px] lg:text-sm text-[var(--t1)] outline-none placeholder:text-[var(--t3)]"
         />
         <button

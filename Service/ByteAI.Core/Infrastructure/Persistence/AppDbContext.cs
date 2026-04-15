@@ -11,6 +11,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Byte> Bytes => Set<Byte>();
     public DbSet<Interview> Interviews => Set<Interview>();
     public DbSet<Company> Companies => Set<Company>();
+    public DbSet<InterviewRole> InterviewRoles => Set<InterviewRole>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<InterviewLocation> InterviewLocations => Set<InterviewLocation>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<InterviewComment> InterviewComments => Set<InterviewComment>();
 

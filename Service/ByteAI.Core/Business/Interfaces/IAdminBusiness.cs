@@ -12,4 +12,11 @@ public interface IAdminBusiness
     Task AssignFeatureFlagToUserAsync(string key, Guid userId, CancellationToken ct);
     Task RemoveFeatureFlagFromUserAsync(string key, Guid userId, CancellationToken ct);
     Task<List<string>> GetUserAssignedFeatureFlagsAsync(Guid userId, CancellationToken ct);
+
+    // Role management
+    Task<List<RoleType>> GetAllRolesAsync(CancellationToken ct);
+    Task<RoleType> CreateRoleAsync(string name, string label, string? description, CancellationToken ct);
+    Task<List<RoleType>> GetUserRolesAsync(Guid userId, CancellationToken ct);
+    Task AssignRoleToUserAsync(Guid userId, Guid roleId, CancellationToken ct);
+    Task RevokeRoleFromUserAsync(Guid userId, Guid roleId, CancellationToken ct);
 }

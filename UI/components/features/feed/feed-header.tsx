@@ -13,7 +13,7 @@ interface FeedHeaderProps {
 
 export function FeedHeader({ contentType }: FeedHeaderProps) {
   const { user } = useUser()
-  const { openNotifications } = useNotifications()
+  const { openNotifications, unreadCount } = useNotifications()
   const cache = getMeCache()
 
   const initials = ((user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')).toUpperCase() || '?'
@@ -39,7 +39,9 @@ export function FeedHeader({ contentType }: FeedHeaderProps) {
             className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center relative transition-all hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
             <Bell size={16} className="text-[var(--t2)]" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)] shadow-[0_0_5px_var(--accent)]" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)] shadow-[0_0_5px_var(--accent)]" />
+            )}
           </button>
           <Link href="/profile">
             {isEmoji

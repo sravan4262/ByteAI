@@ -1,3 +1,4 @@
+using System.Globalization;
 using ByteAI.Core.Commands.Interviews;
 using ByteAI.Core.Entities;
 using ByteAI.Core.Events;
@@ -11,7 +12,7 @@ namespace ByteAI.Core.Services.Interviews;
 
 public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILogger<InterviewService> logger) : IInterviewService
 {
-    public async Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? difficulty, List<string>? techStacks, string sort, CancellationToken ct, Guid? requesterId = null)
+    public async Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? role, string? location, List<string>? techStacks, string sort, CancellationToken ct, Guid? requesterId = null)
     {
         // Privacy: block private author's interviews from non-owners
         if (authorId.HasValue && requesterId != authorId.Value)
@@ -30,14 +31,24 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
                 .ThenInclude(q => q.Likes)
             .Include(i => i.Questions.OrderBy(q => q.OrderIndex))
                 .ThenInclude(q => q.Comments)
+            .Include(i => i.Locations)
+                .ThenInclude(il => il.Location)
             .AsQueryable();
 
         if (authorId.HasValue)
             query = query.Where(i => i.AuthorId == authorId.Value);
         if (!string.IsNullOrEmpty(company))
             query = query.Where(i => i.Company != null && i.Company.ToLower().Contains(company.ToLower()));
-        if (!string.IsNullOrEmpty(difficulty))
-            query = query.Where(i => i.Difficulty == difficulty);
+        if (!string.IsNullOrEmpty(role))
+            query = query.Where(i => i.Role != null && i.Role.ToLower().Contains(role.ToLower()));
+        if (!string.IsNullOrEmpty(location))
+        {
+            var locLower = location.ToLower();
+            var matchIds = db.InterviewLocations
+                .Where(il => il.Location.Name.ToLower().Contains(locLower))
+                .Select(il => il.InterviewId);
+            query = query.Where(i => matchIds.Contains(i.Id));
+        }
         if (techStacks is { Count: > 0 })
         {
             var lower = techStacks.Select(t => t.ToLower()).ToList();
@@ -60,6 +71,15 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
         return new PagedResult<Interview>(items, total, pagination.Page, pagination.PageSize);
     }
 
+    public Task<List<Company>> GetCompaniesAsync(CancellationToken ct) =>
+        db.Companies.AsNoTracking().OrderBy(c => c.Name).ToListAsync(ct);
+
+    public Task<List<InterviewRole>> GetRolesAsync(CancellationToken ct) =>
+        db.InterviewRoles.AsNoTracking().OrderBy(r => r.Name).ToListAsync(ct);
+
+    public Task<List<Location>> GetLocationsAsync(CancellationToken ct) =>
+        db.Locations.AsNoTracking().OrderBy(l => l.Name).ToListAsync(ct);
+
     public Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct) =>
         db.Interviews
             .AsNoTracking()
@@ -71,65 +91,60 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
                 .ThenInclude(q => q.Likes)
             .Include(i => i.Questions.OrderBy(q => q.OrderIndex))
                 .ThenInclude(q => q.Comments)
+            .Include(i => i.Locations)
+                .ThenInclude(il => il.Location)
             .FirstOrDefaultAsync(i => i.Id == id, ct);
 
-    public async Task<Interview> CreateInterviewAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string? company, string? role, string difficulty, string type, CancellationToken ct)
+    public async Task<Interview> CreateInterviewAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string? company, string? role, string? location, string type, CancellationToken ct)
     {
         var entity = new Interview
         {
             Id = Guid.NewGuid(),
             AuthorId = authorId,
-            Title = title,
+            Title = ToTitleCase(title)!,
             Body = body,
             CodeSnippet = codeSnippet,
             Language = language,
-            Company = company,
-            Role = role,
-            Difficulty = difficulty,
+            Company = ToTitleCase(company),
+            Role = ToTitleCase(role),
+            Difficulty = "medium",
             Type = type,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
         db.Interviews.Add(entity);
 
-        if (!string.IsNullOrWhiteSpace(company))
-        {
-            var companyLower = company.Trim().ToLower();
-            var exists = await db.Companies.AnyAsync(c => c.Name.ToLower() == companyLower, ct);
-            if (!exists)
-                db.Companies.Add(new Company { Id = Guid.NewGuid(), Name = company.Trim(), CreatedAt = DateTime.UtcNow });
-        }
+        await UpsertCompanyAsync(entity.Company, ct);
+        await UpsertRoleAsync(entity.Role, ct);
+        await SetLocationAsync(entity.Id, location, ct);
 
         await db.SaveChangesAsync(ct);
         await XpAwarder.AwardAsync(db, authorId, "post_interview", logger, ct);
         return entity;
     }
 
-    public async Task<Interview> CreateInterviewWithQuestionsAsync(Guid authorId, string title, string? company, string? role, string difficulty, List<InterviewQuestionInput> questions, CancellationToken ct)
+    public async Task<Interview> CreateInterviewWithQuestionsAsync(Guid authorId, string title, string? company, string? role, string? location, List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct)
     {
         var interview = new Interview
         {
             Id = Guid.NewGuid(),
             AuthorId = authorId,
-            Title = title,
+            Title = ToTitleCase(title)!,
             Body = string.Join("\n\n", questions.Select((q, i) => $"Q{i + 1}: {q.Question}\nA: {q.Answer}")),
-            Company = company,
-            Role = role,
-            Difficulty = difficulty,
+            Company = ToTitleCase(company),
+            Role = ToTitleCase(role),
+            Difficulty = "medium",
             Type = "interview",
+            IsAnonymous = isAnonymous,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         db.Interviews.Add(interview);
 
-        if (!string.IsNullOrWhiteSpace(company))
-        {
-            var companyLower = company.Trim().ToLower();
-            var exists = await db.Companies.AnyAsync(c => c.Name.ToLower() == companyLower, ct);
-            if (!exists)
-                db.Companies.Add(new Company { Id = Guid.NewGuid(), Name = company.Trim(), CreatedAt = DateTime.UtcNow });
-        }
+        await UpsertCompanyAsync(interview.Company, ct);
+        await UpsertRoleAsync(interview.Role, ct);
+        await SetLocationAsync(interview.Id, location, ct);
 
         for (var i = 0; i < questions.Count; i++)
         {
@@ -150,10 +165,12 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
 
         return await db.Interviews
             .Include(i => i.Questions)
+            .Include(i => i.Locations)
+                .ThenInclude(il => il.Location)
             .FirstAsync(i => i.Id == interview.Id, ct);
     }
 
-    public async Task<Interview> UpdateInterviewAsync(Guid id, Guid requestingUserId, string? title, string? body, string? codeSnippet, string? language, string? company, string? role, string? difficulty, CancellationToken ct)
+    public async Task<Interview> UpdateInterviewAsync(Guid id, Guid requestingUserId, string? title, string? body, string? codeSnippet, string? language, string? company, string? role, string? location, CancellationToken ct)
     {
         var entity = await db.Interviews.FirstOrDefaultAsync(i => i.Id == id, ct)
             ?? throw new KeyNotFoundException($"Interview {id} not found");
@@ -161,17 +178,66 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
         if (entity.AuthorId != requestingUserId)
             throw new UnauthorizedAccessException();
 
-        if (title is not null) entity.Title = title;
+        if (title is not null) entity.Title = ToTitleCase(title)!;
         if (body is not null) entity.Body = body;
         if (codeSnippet is not null) entity.CodeSnippet = codeSnippet;
         if (language is not null) entity.Language = language;
-        if (company is not null) entity.Company = company;
-        if (role is not null) entity.Role = role;
-        if (difficulty is not null) entity.Difficulty = difficulty;
+        if (company is not null) { entity.Company = ToTitleCase(company); await UpsertCompanyAsync(entity.Company, ct); }
+        if (role is not null) { entity.Role = ToTitleCase(role); await UpsertRoleAsync(entity.Role, ct); }
+        if (location is not null) await SetLocationAsync(id, location, ct);
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
         return entity;
+    }
+
+    // ── Lookup upserts ─────────────────────────────────────────────────────────
+
+    private async Task UpsertCompanyAsync(string? name, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var lower = name.ToLower();
+        if (!await db.Companies.AnyAsync(c => c.Name.ToLower() == lower, ct))
+            db.Companies.Add(new Company { Id = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow });
+    }
+
+    private async Task UpsertRoleAsync(string? name, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        var lower = name.ToLower();
+        if (!await db.InterviewRoles.AnyAsync(r => r.Name.ToLower() == lower, ct))
+            db.InterviewRoles.Add(new InterviewRole { Id = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow });
+    }
+
+    private async Task UpsertLocationAsync(string name, CancellationToken ct)
+    {
+        var lower = name.ToLower();
+        if (!await db.Locations.AnyAsync(l => l.Name.ToLower() == lower, ct))
+            db.Locations.Add(new Location { Id = Guid.NewGuid(), Name = name, CreatedAt = DateTime.UtcNow });
+    }
+
+    private async Task SetLocationAsync(Guid interviewId, string? location, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(location)) return;
+        var normalized = ToTitleCase(location)!;
+
+        await UpsertLocationAsync(normalized, ct);
+        // Save location first so FK is resolvable
+        await db.SaveChangesAsync(ct);
+
+        var loc = await db.Locations.FirstAsync(l => l.Name.ToLower() == normalized.ToLower(), ct);
+
+        var alreadyLinked = await db.InterviewLocations
+            .AnyAsync(il => il.InterviewId == interviewId && il.LocationId == loc.Id, ct);
+
+        if (!alreadyLinked)
+            db.InterviewLocations.Add(new InterviewLocation { InterviewId = interviewId, LocationId = loc.Id });
+    }
+
+    private static string? ToTitleCase(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return input;
+        return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(input.Trim().ToLower());
     }
 
     public async Task<bool> DeleteInterviewAsync(Guid id, Guid requestingUserId, CancellationToken ct)
@@ -221,7 +287,9 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
         };
         db.InterviewQuestionComments.Add(entity);
         await db.SaveChangesAsync(ct);
-        return entity;
+        return await db.InterviewQuestionComments.AsNoTracking()
+            .Include(c => c.Author)
+            .FirstAsync(c => c.Id == entity.Id, ct);
     }
 
     public async Task<PagedResult<InterviewQuestionComment>> GetQuestionCommentsAsync(Guid questionId, PaginationParams pagination, CancellationToken ct)
@@ -249,12 +317,15 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
         };
         db.InterviewComments.Add(entity);
         await db.SaveChangesAsync(ct);
-        return entity;
+        return await db.InterviewComments.AsNoTracking()
+            .Include(c => c.Author)
+            .FirstAsync(c => c.Id == entity.Id, ct);
     }
 
     public async Task<PagedResult<InterviewComment>> GetCommentsAsync(Guid interviewId, PaginationParams pagination, CancellationToken ct)
     {
         var query = db.InterviewComments.AsNoTracking()
+            .Include(c => c.Author)
             .Where(c => c.InterviewId == interviewId && c.ParentId == null)
             .OrderByDescending(c => c.VoteCount).ThenBy(c => c.CreatedAt);
 
@@ -317,6 +388,9 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
             .Include(b => b.Interview)
                 .ThenInclude(i => i.Questions.OrderBy(q => q.OrderIndex))
                     .ThenInclude(q => q.Comments)
+            .Include(b => b.Interview)
+                .ThenInclude(i => i.Locations)
+                    .ThenInclude(il => il.Location)
             .Select(b => b.Interview);
 
         var total = await query.CountAsync(CancellationToken.None);
@@ -337,6 +411,8 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
                 .ThenInclude(q => q.Likes)
             .Include(i => i.Questions.OrderBy(q => q.OrderIndex))
                 .ThenInclude(q => q.Comments)
+            .Include(i => i.Locations)
+                .ThenInclude(il => il.Location)
             .OrderByDescending(i => i.CreatedAt);
 
         var total = await query.CountAsync(CancellationToken.None);

@@ -12,45 +12,51 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
     // ── Reads ────────────────────────────────────────────────────────────────
 
     public async Task<PagedResult<Interview>> GetInterviewsAsync(
-        int page, int pageSize, Guid? authorId, string? company, string? difficulty,
+        int page, int pageSize, Guid? authorId, string? company, string? role, string? location,
         List<string>? techStacks, string sort, CancellationToken ct, string? clerkId = null)
     {
         var requesterId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
         return await interviewService.GetInterviewsAsync(
             new PaginationParams(page, Math.Min(pageSize, 50)),
-            authorId, company, difficulty, techStacks, sort, ct, requesterId);
+            authorId, company, role, location, techStacks, sort, ct, requesterId);
     }
 
-    public async Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? clerkId = null)
-    {
-        // requesterId not currently used in service query but stored for future use
-        return await interviewService.GetInterviewByIdAsync(id, ct);
-    }
+    public async Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? clerkId = null) =>
+        await interviewService.GetInterviewByIdAsync(id, ct);
+
+    public Task<List<Company>> GetCompaniesAsync(CancellationToken ct) =>
+        interviewService.GetCompaniesAsync(ct);
+
+    public Task<List<InterviewRole>> GetRolesAsync(CancellationToken ct) =>
+        interviewService.GetRolesAsync(ct);
+
+    public Task<List<Location>> GetLocationsAsync(CancellationToken ct) =>
+        interviewService.GetLocationsAsync(ct);
 
     // ── Writes ───────────────────────────────────────────────────────────────
 
     public async Task<Interview> CreateInterviewAsync(
         string clerkId, string title, string body, string? codeSnippet, string? language,
-        string? company, string? role, string difficulty, string type, CancellationToken ct)
+        string? company, string? role, string? location, string type, CancellationToken ct)
     {
         var userId = await ResolveUserIdAsync(clerkId, ct);
-        return await interviewService.CreateInterviewAsync(userId, title, body, codeSnippet, language, company, role, difficulty, type, ct);
+        return await interviewService.CreateInterviewAsync(userId, title, body, codeSnippet, language, company, role, location, type, ct);
     }
 
     public async Task<Interview> CreateInterviewWithQuestionsAsync(
-        string clerkId, string title, string? company, string? role, string difficulty,
-        List<InterviewQuestionInput> questions, CancellationToken ct)
+        string clerkId, string title, string? company, string? role, string? location,
+        List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct)
     {
         var userId = await ResolveUserIdAsync(clerkId, ct);
-        return await interviewService.CreateInterviewWithQuestionsAsync(userId, title, company, role, difficulty, questions, ct);
+        return await interviewService.CreateInterviewWithQuestionsAsync(userId, title, company, role, location, questions, isAnonymous, ct);
     }
 
     public async Task<Interview> UpdateInterviewAsync(
         string clerkId, Guid id, string? title, string? body, string? codeSnippet,
-        string? language, string? company, string? role, string? difficulty, CancellationToken ct)
+        string? language, string? company, string? role, string? location, CancellationToken ct)
     {
         var userId = await ResolveUserIdAsync(clerkId, ct);
-        return await interviewService.UpdateInterviewAsync(id, userId, title, body, codeSnippet, language, company, role, difficulty, ct);
+        return await interviewService.UpdateInterviewAsync(id, userId, title, body, codeSnippet, language, company, role, location, ct);
     }
 
     public async Task<bool> DeleteInterviewAsync(string clerkId, Guid id, CancellationToken ct)

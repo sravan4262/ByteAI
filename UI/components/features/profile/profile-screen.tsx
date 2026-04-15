@@ -382,6 +382,17 @@ export function ProfileScreen() {
     await api.logout(); toast.success('Signed out'); logout()
   }
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'Escape') {
+        e.preventDefault()
+        handleLogout()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // Canvas-based zoom crop — works with object URLs (new file) and http URLs (existing photo)
   function applyZoomCrop(imageUrl: string, zoom: number): Promise<File> {
     return new Promise((resolve, reject) => {
@@ -690,16 +701,16 @@ export function ProfileScreen() {
       <div className="flex-1 flex overflow-hidden">
 
         {/* Left nav */}
-        <nav className="w-[58px] flex-shrink-0 flex flex-col border-r border-[var(--border)] bg-[var(--bg-card)]">
+        <nav className="w-[68px] flex-shrink-0 flex flex-col border-r border-[var(--border)] bg-[var(--bg-card)]">
           {PROFILE_NAV.map(({ id, icon: Icon, label, color, activeBg }) => {
             const active = activeTab === id
             return (
               <button key={id} onClick={() => setActiveTab(id)}
                 className="flex flex-col items-center justify-center gap-[5px] py-4 w-full transition-all relative"
-                style={active ? { color, background: activeBg } : { color: 'var(--t3)' }}>
+                style={active ? { color, background: activeBg } : { color: 'var(--t2)' }}>
                 {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-7 rounded-r-full" style={{ background: color }} />}
                 <Icon size={15} />
-                <span className="font-mono text-[7px] font-bold tracking-[0.04em]">{label}</span>
+                <span className="font-mono text-[8px] font-bold tracking-[0.05em]">{label}</span>
               </button>
             )
           })}
@@ -707,9 +718,16 @@ export function ProfileScreen() {
           {/* Spacer + sign out at bottom */}
           <div className="flex-1" />
           <button onClick={handleLogout}
-            className="flex flex-col items-center justify-center gap-[5px] py-4 w-full text-[var(--t3)] hover:text-[var(--red)] transition-all">
-            <LogOut size={14} />
-            <span className="font-mono text-[7px] font-bold tracking-[0.04em]">EXIT</span>
+            className="flex flex-col items-center justify-center gap-[6px] py-5 w-full text-[var(--t2)] hover:text-[var(--red)] transition-all group">
+            <LogOut size={18} />
+            <span className="font-mono text-[8px] font-bold tracking-[0.06em]">SIGN OUT</span>
+            <span className="flex flex-col items-center gap-0">
+              <span className="font-mono text-[9px] tracking-[0.04em] opacity-90 group-hover:opacity-100">Ctrl</span>
+              <span className="text-[10px] font-black opacity-60 group-hover:opacity-90 leading-none">+</span>
+              <span className="font-mono text-[9px] tracking-[0.04em] opacity-90 group-hover:opacity-100">Shift</span>
+              <span className="text-[10px] font-black opacity-60 group-hover:opacity-90 leading-none">+</span>
+              <span className="font-mono text-[9px] tracking-[0.04em] opacity-90 group-hover:opacity-100">Esc</span>
+            </span>
           </button>
         </nav>
 

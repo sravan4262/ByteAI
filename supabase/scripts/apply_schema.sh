@@ -91,6 +91,9 @@ psql "$DB" -f supabase/tables/bytes/trending.sql
 echo ""
 echo "--- interviews ---"
 psql "$DB" -f supabase/tables/interviews/interviews.sql
+psql "$DB" -f supabase/tables/interviews/interview_roles.sql
+psql "$DB" -f supabase/tables/interviews/locations.sql
+psql "$DB" -f supabase/tables/interviews/interview_locations.sql
 psql "$DB" -f supabase/tables/interviews/interview_tech_stacks.sql
 psql "$DB" -f supabase/tables/interviews/interview_questions.sql
 psql "$DB" -f supabase/tables/interviews/interview_comments.sql
@@ -113,6 +116,12 @@ psql "$DB" -f supabase/seeds/lookups/search_types_seed.sql
 psql "$DB" -f supabase/seeds/lookups/notification_types_seed.sql
 psql "$DB" -f supabase/seeds/lookups/companies_seed.sql
 psql "$DB" -f supabase/seeds/lookups/role_types_seed.sql
+
+# ── Seeds: interviews ─────────────────────────────────────────────────────────
+echo ""
+echo "--- Seeds (interviews) ---"
+psql "$DB" -f supabase/seeds/interviews/roles_seed.sql
+psql "$DB" -f supabase/seeds/interviews/locations_seed.sql
 
 echo ""
 echo "✓ Schema + lookup seeds applied."

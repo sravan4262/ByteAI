@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS interviews.interviews (
     type          text        NOT NULL DEFAULT 'interview'
                               CHECK (type IN ('interview', 'system_design', 'behavioral', 'coding')),
     is_active     boolean     NOT NULL DEFAULT true,
+    is_anonymous  boolean     NOT NULL DEFAULT false,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now()
 );
