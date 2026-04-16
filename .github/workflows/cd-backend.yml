@@ -88,23 +88,6 @@ jobs:
           echo "suffix=$SUFFIX"     >> $GITHUB_OUTPUT
           echo "Deploying to slot: $INACTIVE (suffix: $SUFFIX)"
 
-      # ── Inject secrets into Container Apps (CD owns secrets, not Terraform) ────
-      - name: Set API secrets
-        run: |
-          az containerapp secret set \
-            -n "$API_APP" -g "$RESOURCE_GROUP" \
-            --secrets \
-              "database-url=${{ secrets.DATABASE_URL }}" \
-              "clerk-authority=${{ secrets.CLERK_AUTHORITY }}" \
-              "groq-api-key=${{ secrets.GROQ_API_KEY }}"
-
-      - name: Set Gateway secrets
-        run: |
-          az containerapp secret set \
-            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --secrets \
-              "api-keys=${{ secrets.API_KEYS }}"
-
       # ── Deploy new revisions to inactive slot (0% traffic) ───────────────────
       - name: Deploy API → inactive slot
         run: |
@@ -113,9 +96,9 @@ jobs:
             --image "$IMAGE_API:${{ github.sha }}" \
             --revision-suffix "${{ steps.slot.outputs.suffix }}" \
             --env-vars \
-              "ConnectionStrings__Postgres=secretref:database-url" \
-              "Clerk__Authority=secretref:clerk-authority" \
-              "Groq__ApiKey=secretref:groq-api-key"
+              "ConnectionStrings__Postgres=${{ secrets.DATABASE_URL }}" \
+              "Clerk__Authority=${{ secrets.CLERK_AUTHORITY }}" \
+              "Groq__ApiKey=${{ secrets.GROQ_API_KEY }}"
 
       - name: Deploy Gateway → inactive slot
         run: |
@@ -125,7 +108,7 @@ jobs:
             --revision-suffix "${{ steps.slot.outputs.suffix }}" \
             --env-vars \
               "ApiUpstreamUrl=http://$API_APP" \
-              "ApiKeys=secretref:api-keys" \
+              "ApiKeys=${{ secrets.API_KEYS }}" \
               "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}"
 
       # ── TODO: Re-enable health gates once Postgres connectivity is confirmed ────
