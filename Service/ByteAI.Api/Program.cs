@@ -188,6 +188,17 @@ try
         });
     });
 
+    // ── CORS ──────────────────────────────────────────────────────────────────
+    // In production the API is internal-only (behind the Gateway) — CORS is enforced
+    // by the Gateway. In Development/Local the API is accessed directly by the browser.
+    var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000";
+    builder.Services.AddCors(opt =>
+        opt.AddDefaultPolicy(policy =>
+            policy.WithOrigins(allowedOrigin)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials()));
+
     // ── Rate limiting ─────────────────────────────────────────────────────────
     builder.Services.AddRateLimiter(opt =>
         opt.AddFixedWindowLimiter("api", limiter =>
@@ -199,7 +210,17 @@ try
     var app = builder.Build();
 
     // ── Middleware pipeline ───────────────────────────────────────────────────
-    app.UseSerilogRequestLogging();
+    // Global exception handler must be first — it wraps the entire pipeline
+    app.UseMiddleware<ByteAI.Api.Middleware.GlobalExceptionMiddleware>();
+
+    app.UseSerilogRequestLogging(opts =>
+    {
+        // Suppress health-check noise — they poll every few seconds and fill the logs
+        opts.GetLevel = (ctx, _, _) =>
+            ctx.Request.Path.StartsWithSegments("/health")
+                ? Serilog.Events.LogEventLevel.Debug
+                : Serilog.Events.LogEventLevel.Information;
+    });
 
     if (app.Environment.IsDevelopment())
     {
@@ -211,6 +232,7 @@ try
         });
     }
 
+    app.UseCors();
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();

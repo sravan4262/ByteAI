@@ -64,7 +64,13 @@ try
 
     var app = builder.Build();
 
-    app.UseSerilogRequestLogging();
+    app.UseSerilogRequestLogging(opts =>
+    {
+        opts.GetLevel = (ctx, _, _) =>
+            ctx.Request.Path.StartsWithSegments("/health")
+                ? Serilog.Events.LogEventLevel.Debug
+                : Serilog.Events.LogEventLevel.Information;
+    });
     app.UseCors();
 
     // API-key / JWT gate — evaluated before YARP forwards the request

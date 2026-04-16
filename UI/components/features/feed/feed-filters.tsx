@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
-import { sortOptions } from '@/lib/mock-data'
 import { getTechStacks, type TechStackResponse } from '@/lib/api/client'
+
+const sortOptions = [
+  { id: 'relevant', label: 'MOST RELEVANT' },
+  { id: 'newest',   label: 'NEWEST FIRST' },
+  { id: 'oldest',   label: 'OLDEST FIRST' },
+]
 
 interface FeedFiltersProps {
   activeTab: string

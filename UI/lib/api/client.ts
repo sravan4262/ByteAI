@@ -1,5 +1,5 @@
 import { apiFetch } from './http'
-import { mockPosts, mockTrendingPosts, mockInterviewPosts } from './__mocks__/mock-data'
+import type { User } from '../types'
 
 // Domain types
 export type {
@@ -11,8 +11,35 @@ export type {
   Notification,
 } from '../types'
 
-// Frontend Post and Comment types (match mock data shape used by all screens)
-export type { Post, Comment } from './__mocks__/api'
+// ── Frontend view types ────────────────────────────────────────────────────────
+// Canonical shapes used by all UI components.
+
+export interface Post {
+  id: string
+  author: User
+  title: string
+  body: string
+  code?: { language: string; filename: string; content: string }
+  tags: string[]
+  reactions: Array<{ emoji: string; count: number }>
+  comments: number
+  likes: number
+  createdAt: string
+  isLiked: boolean
+  isBookmarked: boolean
+  views?: number
+  type: 'byte' | 'interview'
+}
+
+export interface Comment {
+  id: string
+  postId: string
+  author: User
+  content: string
+  votes: number
+  createdAt: string
+  badge?: string
+}
 
 // Backend response shapes (mirroring C# ViewModels)
 interface ByteResponse {
@@ -106,8 +133,6 @@ export interface TechStackResponse {
 
 interface ApiResponse<T> { data: T }
 interface PagedResponse<T> { items: T[]; total: number; page: number; pageSize: number }
-
-import type { Post } from './__mocks__/api'
 
 function byteToPost(b: ByteResponse): Post {
   const username = b.authorUsername || b.authorId.slice(0, 8)
@@ -421,10 +446,6 @@ export async function getFeed(params: {
     const posts = res.data.items.map(byteToPost)
     const hasMore = res.data.page * res.data.pageSize < res.data.total
     return { posts, hasMore }
-  } catch {
-    // Fall back to mock data if backend unavailable
-    const posts = params.filter === 'trending' ? [...mockTrendingPosts] : [...mockPosts]
-    return { posts, hasMore: false }
   }
 }
 
@@ -438,8 +459,7 @@ export async function getPost(id: string, token?: string | null): Promise<Post |
     const data: ApiResponse<ByteResponse> = await res.json()
     return byteToPost(data.data)
   } catch {
-    const all = [...mockPosts, ...mockInterviewPosts, ...mockTrendingPosts]
-    return all.find((p) => p.id === id) ?? null
+    return null
   }
 }
 
@@ -478,13 +498,8 @@ export async function getUserBytes(userId: string, params: { page?: number; page
   }
 }
 
-export async function updateProfile(data: Record<string, unknown>): Promise<{ success: boolean }> {
-  try {
-    await apiFetch('/api/users/me/profile', { method: 'PUT', body: JSON.stringify(data) })
-    return { success: true }
-  } catch {
-    return { success: false }
-  }
+export async function updateProfile(data: Record<string, unknown>): Promise<void> {
+  await apiFetch('/api/users/me/profile', { method: 'PUT', body: JSON.stringify(data) })
 }
 
 export interface SocialLinkResponse {
@@ -502,16 +517,11 @@ export async function getMySocials(): Promise<SocialLinkResponse[]> {
   }
 }
 
-export async function updateMySocials(socials: SocialLinkResponse[]): Promise<{ success: boolean }> {
-  try {
-    await apiFetch('/api/users/me/socials', {
-      method: 'PUT',
-      body: JSON.stringify({ socials }),
-    })
-    return { success: true }
-  } catch {
-    return { success: false }
-  }
+export async function updateMySocials(socials: SocialLinkResponse[]): Promise<void> {
+  await apiFetch('/api/users/me/socials', {
+    method: 'PUT',
+    body: JSON.stringify({ socials }),
+  })
 }
 
 export async function getFollowers(userId: string): Promise<PersonResult[]> {
@@ -602,14 +612,14 @@ export async function reactToPost(postId: string, emoji: string): Promise<void> 
 export async function getPostComments(
   postId: string,
   _params: Record<string, unknown>
-): Promise<{ comments: import('./__mocks__/api').Comment[] }> {
+): Promise<{ comments: Comment[] }> {
   try {
     const res = await apiFetch<ApiResponse<PagedResponse<{
       id: string; byteId: string; parentId?: string;
       body: string; voteCount: number; createdAt: string
       author: { id: string; username: string; displayName: string; initials: string; avatarUrl?: string | null }
     }>>>(`/api/bytes/${postId}/comments`)
-    const comments: import('./__mocks__/api').Comment[] = res.data.items.map((c) => ({
+    const comments: Comment[] = res.data.items.map((c) => ({
       id: c.id,
       postId,
       author: {
@@ -779,7 +789,7 @@ export async function getTechStacks(subdomainId?: string, domainId?: string): Pr
 // ONBOARDING & SETTINGS — stored via profile update endpoint
 // ═══════════════════════════════════════════════════════════════════════════
 
-export async function saveOnboardingData(data: Record<string, unknown>): Promise<{ success: boolean }> {
+export async function saveOnboardingData(data: Record<string, unknown>): Promise<void> {
   return updateProfile(data)
 }
 

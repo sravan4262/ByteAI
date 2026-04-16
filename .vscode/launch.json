@@ -1,6 +1,47 @@
 {
   "version": "0.2.0",
   "configurations": [
+    // ── Backend ───────────────────────────────────────────────────────────────
+    {
+      "name": "API (Debug)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-api",
+      "program": "${workspaceFolder}/Service/ByteAI.Api/bin/Debug/net9.0/ByteAI.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/Service/ByteAI.Api",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Now listening on: (https?://\\S+)"
+      }
+    },
+    {
+      "name": "Gateway (Debug)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-gateway",
+      "program": "${workspaceFolder}/Service/ByteAI.Gateway/bin/Debug/net9.0/ByteAI.Gateway.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/Service/ByteAI.Gateway",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "stopAtEntry": false,
+      "console": "internalConsole"
+    },
+    // ── Frontend ──────────────────────────────────────────────────────────────
+    {
+      "name": "Next.js Server",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "skipFiles": ["<node_internals>/**"]
+    },
     {
       "name": "Next.js Client",
       "type": "chrome",
@@ -10,16 +51,18 @@
         "/": "${workspaceFolder}/UI/",
         "/_next": "${workspaceFolder}/UI/.next"
       }
-    },
-    {
-      "name": "Next.js Server",
-      "type": "node",
-      "request": "attach",
-      "port": 9229,
-      "skipFiles": ["<node_internals>/**"]
     }
   ],
   "compounds": [
+    {
+      "name": "Full Stack (API + Next.js)",
+      "configurations": ["API (Debug)", "Next.js Server", "Next.js Client"],
+      "presentation": {
+        "hidden": false,
+        "group": "Full Stack",
+        "order": 1
+      }
+    },
     {
       "name": "Next.js Full Debug",
       "configurations": ["Next.js Server", "Next.js Client"]

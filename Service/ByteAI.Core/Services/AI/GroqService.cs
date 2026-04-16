@@ -132,8 +132,14 @@ public sealed class GroqService(
     {
         var schema = """{"isTechRelated": true|false, "isCoherent": true|false, "reason": "max 20 words"}""";
         var prompt = $"""
-            Is the following content tech-related? Respond ONLY with valid JSON, no explanation.
-            Return exactly: {schema}
+            You are validating posts for a tech content platform.
+
+            Respond ONLY with valid JSON, no explanation. Return exactly: {schema}
+
+            Rules:
+            - isTechRelated: true if the content mentions any technology, programming language, framework, tool, concept, company, or practice (e.g. ".NET", "React", "Kubernetes", "CI/CD"). Be generous.
+            - isCoherent: false ONLY if the content is random keyboard mashing or completely unintelligible. A short tech term, a name, or a brief sentence is coherent.
+            - reason: one short phrase explaining your decision.
 
             Title: {title}
             Body: {body}

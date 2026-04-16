@@ -10,8 +10,14 @@ import { Avatar } from '@/components/layout/avatar'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
 import { useAuth } from '@/hooks/use-auth'
 import { useUser } from '@clerk/nextjs'
-import { themes } from '@/lib/mock-data'
 import * as api from '@/lib/api'
+
+const themes = [
+  { id: 'dark',   label: 'DARK',   color: '#05050e' },
+  { id: 'light',  label: 'LIGHT',  color: '#f4f5fb' },
+  { id: 'hacker', label: 'HACKER', color: '#001200' },
+  { id: 'nord',   label: 'NORD',   color: '#1a1e2e' },
+]
 import type { TechStackResponse, Post, InterviewWithQuestions, UserResponse, SocialLinkResponse, PersonResult, DraftResponse } from '@/lib/api'
 import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
 import { setMeCache } from '@/lib/user-cache'
@@ -450,15 +456,16 @@ export function ProfileScreen() {
         finalAvatarUrl = avatarPreview
       }
 
-      const [profileResult] = await Promise.all([
-        api.updateProfile({ username: editForm.username.trim() || undefined, displayName: editForm.displayName.trim() || undefined, bio: editForm.bio.trim() || null, company: editForm.company.trim() || null, roleTitle: editForm.roleTitle.trim() || null, customAvatarUrl: didUpload ? undefined : finalAvatarUrl }),
-        api.updateMySocials([
-          { platform: 'github', url: editForm.github.trim(), label: editForm.github.trim() ? editForm.github.replace(/^https?:\/\/(www\.)?github\.com\//, 'github/') : '' },
-          { platform: 'linkedin', url: editForm.linkedin.trim(), label: 'linkedin' },
-          ...editForm.websites.map((w) => w.trim()).filter(Boolean).map((url) => ({ platform: 'website', url, label: url.replace(/^https?:\/\//, '') })),
-        ].filter((s) => s.url)),
-      ])
-      if (profileResult.success) {
+      try {
+        await Promise.all([
+          api.updateProfile({ username: editForm.username.trim() || undefined, displayName: editForm.displayName.trim() || undefined, bio: editForm.bio.trim() || null, company: editForm.company.trim() || null, roleTitle: editForm.roleTitle.trim() || null, customAvatarUrl: didUpload ? undefined : finalAvatarUrl }),
+          api.updateMySocials([
+            { platform: 'github', url: editForm.github.trim(), label: editForm.github.trim() ? editForm.github.replace(/^https?:\/\/(www\.)?github\.com\//, 'github/') : '' },
+            { platform: 'linkedin', url: editForm.linkedin.trim(), label: 'linkedin' },
+            ...editForm.websites.map((w) => w.trim()).filter(Boolean).map((url) => ({ platform: 'website', url, label: url.replace(/^https?:\/\//, '') })),
+          ].filter((s) => s.url)),
+        ])
+
         const [updatedUser, updatedSocials] = await Promise.all([api.getCurrentUser(), api.getMySocials()])
         if (updatedUser) {
           setCurrentUser(updatedUser)
@@ -470,8 +477,8 @@ export function ProfileScreen() {
         setAvatarZoom(1)
         setEditMode(false)
         toast.success('Profile updated')
-      } else {
-        toast.error('Failed to update profile')
+      } catch {
+        toast.error("Profile couldn't be saved. Please try again.")
       }
     } finally {
       setEditSaving(false)

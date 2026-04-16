@@ -1,7 +1,18 @@
 name: CD — Backend (Blue-Green)
 
 on:
+  # Auto-deploy after a successful CI run on main (which publishes images)
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  # Manual redeploy or rollback — pass a specific SHA to revert
   workflow_dispatch:
+    inputs:
+      sha:
+        description: "Image SHA to deploy (leave blank for latest main)"
+        required: false
+        default: ""
 
 env:
   IMAGE_API:     ghcr.io/${{ github.repository_owner }}/byteai-api
@@ -13,152 +24,174 @@ env:
 
 permissions:
   contents: read
-  packages: write    # push images to GHCR
+  packages: read
   id-token: write    # OIDC login to Azure
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # 1. Build & push Docker images to GHCR
+  # Gate: only run when CI publish succeeded (skip on CI failure)
   # ─────────────────────────────────────────────────────────────────────────────
-  build:
-    name: Build & push images
+  check:
+    name: Gate — CI must have succeeded
     runs-on: ubuntu-latest
-
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build & push API image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./Service
-          file:    ./Service/Dockerfile.api
-          push:    true
-          tags:    ${{ env.IMAGE_API }}:${{ github.sha }}
-
-      - name: Build & push Gateway image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./Service
-          file:    ./Service/Dockerfile.gateway
-          push:    true
-          tags:    ${{ env.IMAGE_GATEWAY }}:${{ github.sha }}
+      - run: echo "CI passed or manual trigger — proceeding with deployment"
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # 2. Deploy to inactive slot, health check, swap
+  # Deploy: inactive slot → migrations → health check → swap traffic
   # ─────────────────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy (blue-green)
     runs-on: ubuntu-latest
-    needs: build
+    needs: check
 
     steps:
+      - uses: actions/checkout@v4
+
       - uses: azure/login@v2
         with:
           client-id:       ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # ── Detect active slot ────────────────────────────────────────────────────
+      # ── Resolve deploy SHA ───────────────────────────────────────────────────
+      - name: Resolve deploy SHA
+        id: sha
+        run: |
+          if [[ -n "${{ inputs.sha }}" ]]; then
+            SHA="${{ inputs.sha }}"
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            SHA="${{ github.event.workflow_run.head_sha }}"
+          else
+            SHA="${{ github.sha }}"
+          fi
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "Deploying SHA: $SHA"
+
+      # ── Detect active / inactive slot ────────────────────────────────────────
       - name: Detect active slot
         id: slot
         run: |
           ACTIVE_REV=$(az containerapp revision list \
             -n "$API_APP" -g "$RESOURCE_GROUP" \
-            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv)
+            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv 2>/dev/null || echo "")
 
           echo "Current active revision: $ACTIVE_REV"
 
           if [[ "$ACTIVE_REV" == *"green"* ]]; then
-            ACTIVE="green"
-            INACTIVE="blue"
+            ACTIVE="green"; INACTIVE="blue"
           else
-            ACTIVE="blue"
-            INACTIVE="green"
+            ACTIVE="blue"; INACTIVE="green"
           fi
 
-          SUFFIX="${INACTIVE}-${GITHUB_RUN_NUMBER}"
+          SUFFIX="${INACTIVE}-${{ github.run_number }}"
           echo "active=$ACTIVE"     >> $GITHUB_OUTPUT
           echo "inactive=$INACTIVE" >> $GITHUB_OUTPUT
           echo "suffix=$SUFFIX"     >> $GITHUB_OUTPUT
+          echo "active_rev=$ACTIVE_REV" >> $GITHUB_OUTPUT
           echo "Deploying to slot: $INACTIVE (suffix: $SUFFIX)"
 
-      # ── Deploy new revisions to inactive slot (0% traffic) ───────────────────
-      - name: Deploy API → inactive slot
+      # ── Deploy new revisions at 0% traffic ───────────────────────────────────
+      - name: Deploy API → inactive slot (0% traffic)
         run: |
           az containerapp update \
             -n "$API_APP" -g "$RESOURCE_GROUP" \
-            --image "$IMAGE_API:${{ github.sha }}" \
+            --image "$IMAGE_API:${{ steps.sha.outputs.sha }}" \
             --revision-suffix "${{ steps.slot.outputs.suffix }}" \
             --set-env-vars \
               "ConnectionStrings__Postgres=${{ secrets.DATABASE_URL }}" \
               "Clerk__Authority=${{ secrets.CLERK_AUTHORITY }}" \
               "Clerk__WebhookSecret=${{ secrets.CLERK_WEBHOOK_SECRET }}" \
-              "Groq__ApiKey=${{ secrets.GROQ_API_KEY }}"
+              "Groq__ApiKey=${{ secrets.GROQ_API_KEY }}" \
+              "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}"
 
-      - name: Deploy Gateway → inactive slot
+      - name: Deploy Gateway → inactive slot (0% traffic)
         run: |
           az containerapp update \
             -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --image "$IMAGE_GATEWAY:${{ github.sha }}" \
+            --image "$IMAGE_GATEWAY:${{ steps.sha.outputs.sha }}" \
             --revision-suffix "${{ steps.slot.outputs.suffix }}" \
             --set-env-vars \
               "ApiUpstreamUrl=http://$API_APP" \
               "ApiKeys=${{ secrets.API_KEYS }}" \
               "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}"
 
-      # ── TODO: Re-enable health gates once Postgres connectivity is confirmed ────
-      # - name: Health gate — API revision running state
-      #   run: |
-      #     API_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
-      #     echo "Waiting for revision $API_REV to reach Running state..."
-      #     for i in $(seq 1 18); do
-      #       STATE=$(az containerapp revision show \
-      #         -n "$API_APP" -g "$RESOURCE_GROUP" \
-      #         --revision "$API_REV" \
-      #         --query "properties.runningState" -o tsv 2>/dev/null || echo "Unknown")
-      #       echo "Attempt $i/18: state = $STATE"
-      #       if [[ "$STATE" == "Running" ]]; then echo "API revision is Running — proceeding"; exit 0; fi
-      #       sleep 10
-      #     done
-      #     echo "ERROR: API revision did not reach Running state within 3 minutes"; exit 1
+      # ── Health gate 1: wait for API revision Running state ───────────────────
+      - name: Health gate — API revision reaches Running state
+        run: |
+          API_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
+          echo "Waiting for revision $API_REV to reach Running state..."
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp revision show \
+              -n "$API_APP" -g "$RESOURCE_GROUP" \
+              --revision "$API_REV" \
+              --query "properties.runningState" -o tsv 2>/dev/null || echo "Unknown")
+            echo "Attempt $i/18: state = $STATE"
+            if [[ "$STATE" == "Running" ]]; then
+              echo "API revision is Running — proceeding"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "ERROR: API revision did not reach Running state within 3 minutes"
+          exit 1
 
-      # - name: Label inactive Gateway revision
-      #   run: |
-      #     GW_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
-      #     INACTIVE="${{ steps.slot.outputs.inactive }}"
-      #     az containerapp ingress traffic set \
-      #       -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-      #       --label-revision "${INACTIVE}=${GW_REV}" \
-      #       --revision-weight "${GW_REV}=0"
+      # ── Run database migrations before accepting traffic ──────────────────────
+      - name: Run migrations
+        run: |
+          API_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
+          echo "Running migrations via container exec on revision $API_REV..."
+          # Migrations run from the host using psql via a Container Apps Job in prod.
+          # Here we use a direct psql call from the runner using the DATABASE_URL secret.
+          PGPASSWORD=$(echo "${{ secrets.DATABASE_URL }}" | grep -oP '(?<=:)[^:@]+(?=@)') \
+          psql "${{ secrets.DATABASE_URL }}" \
+            -v ON_ERROR_STOP=1 \
+            -c "SELECT 1" > /dev/null 2>&1 \
+            && echo "DB connection OK" \
+            || (echo "ERROR: Cannot connect to database"; exit 1)
 
-      # - name: Health gate — HTTP check on inactive Gateway
-      #   run: |
-      #     INACTIVE="${{ steps.slot.outputs.inactive }}"
-      #     ENV_DOMAIN=$(az containerapp env show \
-      #       -n "$ENV_NAME" -g "$RESOURCE_GROUP" \
-      #       --query "properties.defaultDomain" -o tsv)
-      #     URL="https://${GATEWAY_APP}---${INACTIVE}.${ENV_DOMAIN}/health/ready"
-      #     for i in $(seq 1 12); do
-      #       STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
-      #       echo "Attempt $i/12: HTTP $STATUS"
-      #       if [[ "$STATUS" == "200" ]]; then echo "Health check passed — swapping traffic"; exit 0; fi
-      #       sleep 10
-      #     done
-      #     echo "ERROR: Health check failed after 2 minutes — aborting deployment"; exit 1
+          # Apply all pending migrations using the migrate script via psql heredoc
+          BYTEAI_DB_URL="${{ secrets.DATABASE_URL }}" bash supabase/scripts/migrate.sh
+          echo "Migrations applied successfully"
 
-      # ── Swap: send 100% traffic to inactive (now promoted) slot ─────────────
+      # ── Health gate 2: label inactive revision + HTTP check ──────────────────
+      - name: Label inactive Gateway revision
+        run: |
+          GW_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
+          INACTIVE="${{ steps.slot.outputs.inactive }}"
+          az containerapp ingress traffic set \
+            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+            --label-revision "${INACTIVE}=${GW_REV}" \
+            --revision-weight "${GW_REV}=0"
+
+      - name: Health gate — HTTP check on inactive Gateway slot
+        run: |
+          INACTIVE="${{ steps.slot.outputs.inactive }}"
+          ENV_DOMAIN=$(az containerapp env show \
+            -n "$ENV_NAME" -g "$RESOURCE_GROUP" \
+            --query "properties.defaultDomain" -o tsv)
+          URL="https://${GATEWAY_APP}---${INACTIVE}.${ENV_DOMAIN}/health/ready"
+          echo "Health check URL: $URL"
+          for i in $(seq 1 12); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+            echo "Attempt $i/12: HTTP $STATUS"
+            if [[ "$STATUS" == "200" ]]; then
+              echo "Health check passed — swapping traffic"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "ERROR: Health check failed after 2 minutes — aborting deployment"
+          exit 1
+
+      # ── Swap: 100% traffic to newly promoted slot ─────────────────────────────
       - name: Swap API traffic
         run: |
           INACTIVE_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
-          ACTIVE_REV=$(az containerapp revision list \
-            -n "$API_APP" -g "$RESOURCE_GROUP" \
-            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv)
+          ACTIVE_REV="${{ steps.slot.outputs.active_rev }}"
 
           az containerapp ingress traffic set \
             -n "$API_APP" -g "$RESOURCE_GROUP" \
@@ -169,13 +202,25 @@ jobs:
       - name: Swap Gateway traffic
         run: |
           INACTIVE_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
-          ACTIVE_REV=$(az containerapp revision list \
+          ACTIVE_GW_REV=$(az containerapp revision list \
             -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv)
+            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv 2>/dev/null || echo "")
 
           az containerapp ingress traffic set \
             -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --revision-weight "${INACTIVE_REV}=100" "${ACTIVE_REV}=0"
+            --revision-weight "${INACTIVE_REV}=100" "${ACTIVE_GW_REV}=0"
 
           echo "Gateway traffic swapped: $INACTIVE_REV is now live"
           echo "Deploy complete — ${{ steps.slot.outputs.inactive }} slot is now production"
+
+      # ── Deactivate old revision (cost saving — instant reactivate for rollback)
+      - name: Deactivate previous revision
+        if: success()
+        run: |
+          ACTIVE_REV="${{ steps.slot.outputs.active_rev }}"
+          if [[ -n "$ACTIVE_REV" ]]; then
+            az containerapp revision deactivate \
+              -n "$API_APP" -g "$RESOURCE_GROUP" \
+              --revision "$ACTIVE_REV" || true
+            echo "Deactivated old revision: $ACTIVE_REV"
+          fi

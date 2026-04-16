@@ -1,3 +1,10 @@
+# ByteAI — Legacy compose file (kept for reference).
+# Use docker-compose.local.yml for local development.
+# Use docker-compose.prod.yml for prod-parity smoke testing.
+#
+# Quick start (still works, no gateway):
+#   docker compose -f infra/docker-compose.yml up --build
+
 services:
   api:
     build:
@@ -6,10 +13,12 @@ services:
     ports:
       - "5000:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__Postgres=Host=postgres;Port=5432;Database=byteai;Username=byteai;Password=byteai
-      - Clerk__Authority=${CLERK_AUTHORITY}
-      - Groq__ApiKey=${GROQ_API_KEY}
+      ASPNETCORE_ENVIRONMENT:        Local
+      ConnectionStrings__Postgres:   Host=postgres;Port=5432;Database=byteai;Username=byteai;Password=byteai
+      Clerk__Authority:              ${CLERK_AUTHORITY}
+      Clerk__WebhookSecret:          ${CLERK_WEBHOOK_SECRET:-}
+      Groq__ApiKey:                  ${GROQ_API_KEY}
+      Cors__AllowedOrigin:           http://localhost:3000
     depends_on:
       postgres:
         condition: service_healthy
@@ -19,8 +28,8 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: byteai
-      POSTGRES_USER: byteai
+      POSTGRES_DB:       byteai
+      POSTGRES_USER:     byteai
       POSTGRES_PASSWORD: byteai
     volumes:
       - pg_data:/var/lib/postgresql/data

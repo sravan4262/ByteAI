@@ -3,8 +3,11 @@
 .AppleDouble
 .LSOverride
 
-# VS Code
-.vscode/
+# VS Code — ignore user-specific files but keep shared project config
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
 .history/
 
 # Node
@@ -36,6 +39,7 @@ dist/
 bin/
 obj/
 appsettings.Development.json
+appsettings.Local.json
 *.user
 *.suo
 *.userosscache
@@ -52,9 +56,12 @@ pnpm-debug.log*
 .env
 .env.*
 .env.local
+.env.docker
 .env.development.local
 .env.test.local
 .env.production.local
+infra/.env
+infra/.env.prod
 
 # Temporary files
 *.tmp

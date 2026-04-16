@@ -1,4 +1,4 @@
-// Re-export all mock data from the canonical location.
-// Components import from '@/lib/mock-data' — this barrel keeps that alias working.
-export * from './api/__mocks__/mock-data'
-export type { Post, Comment } from './api/__mocks__/api'
+// Static UI config constants and non-data mock exports.
+// Post/Comment types are now defined in lib/api/client.ts.
+// Mock post data lives in lib/api/__mocks__/mock-data.ts (test use only).
+export type { Post, Comment } from './api/client'

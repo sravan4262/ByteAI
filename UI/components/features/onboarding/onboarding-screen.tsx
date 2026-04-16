@@ -6,6 +6,7 @@ import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { useAuth } from '@/hooks/use-auth'
 import { useAuth as useClerkAuth, useUser } from '@clerk/nextjs'
 import { setTokenProvider } from '@/lib/api/http'
+import { handleMutationError } from '@/lib/api/handle-error'
 import * as api from '@/lib/api'
 import type { SeniorityTypeResponse, DomainResponse, TechStackResponse } from '@/lib/api'
 
@@ -63,16 +64,21 @@ export function OnboardingScreen() {
   const handleComplete = async () => {
     if (!selectedSeniority || !selectedDomain) return
     setIsLoading(true)
-    await api.saveOnboardingData({
-      seniority: selectedSeniority.name,
-      domain: selectedDomain.name,
-      techStack: selectedTechStack,
-      bio: bio.trim() || null,
-      company: company.trim() || null,
-      roleTitle: roleTitle.trim() || null,
-    })
-    setIsLoading(false)
-    completeOnboarding()
+    try {
+      await api.saveOnboardingData({
+        seniority: selectedSeniority.name,
+        domain: selectedDomain.name,
+        techStack: selectedTechStack,
+        bio: bio.trim() || null,
+        company: company.trim() || null,
+        roleTitle: roleTitle.trim() || null,
+      })
+      completeOnboarding()
+    } catch (err) {
+      handleMutationError(err, "Onboarding couldn't be saved. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const steps = [

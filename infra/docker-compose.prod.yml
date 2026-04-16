@@ -1,0 +1,89 @@
+# ByteAI — Prod-parity local smoke test
+# Pulls pre-built GHCR images (same as what runs in Azure) against a local Postgres.
+# Use this to validate a specific SHA before or after pushing.
+#
+# Usage:
+#   cp infra/.env.example infra/.env.prod   # fill in prod-equivalent secrets
+#   SHA=<git-sha> docker compose -f infra/docker-compose.prod.yml up
+#
+# The SHA variable selects the exact image tag to pull:
+#   SHA=abc1234 docker compose -f infra/docker-compose.prod.yml up
+#
+# Ports:
+#   Gateway → http://localhost:8090
+#   API     → http://localhost:8080
+
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB:       byteai
+      POSTGRES_USER:     byteai
+      POSTGRES_PASSWORD: byteai
+    volumes:
+      - pg_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U byteai -d byteai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../supabase:/supabase:ro
+    entrypoint: ["sh", "-c", "
+      apk add --no-cache bash &&
+      BYTEAI_DB_URL=postgresql://byteai:byteai@postgres:5432/byteai
+        bash /supabase/scripts/migrate.sh &&
+      BYTEAI_DB_URL=postgresql://byteai:byteai@postgres:5432/byteai
+        bash /supabase/scripts/seed.sh
+    "]
+    restart: "no"
+
+  api:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-sravanravula}/byteai-api:${SHA:-latest}
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT:      Production
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=byteai;Username=byteai;Password=byteai
+      Clerk__Authority:            ${CLERK_AUTHORITY}
+      Clerk__WebhookSecret:        ${CLERK_WEBHOOK_SECRET}
+      Groq__ApiKey:                ${GROQ_API_KEY}
+      Cors__AllowedOrigin:         http://localhost:3000
+      Supabase__Url:               ${SUPABASE_URL:-}
+      Supabase__ServiceRoleKey:    ${SUPABASE_SERVICE_ROLE_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  gateway:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-sravanravula}/byteai-gateway:${SHA:-latest}
+    ports:
+      - "8090:8090"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ApiUpstreamUrl:         http://api:8080
+      ApiKeys:                ${API_KEYS}
+      Cors__AllowedOrigin:    http://localhost:3000
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pg_data_prod:
