@@ -10,9 +10,7 @@ resource "azurerm_static_web_app" "ui" {
   sku_size            = "Standard"
   tags                = var.tags
 
-  app_settings = {
-    CLERK_SECRET_KEY                  = var.clerk_secret_key
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = var.clerk_publishable_key
-    NEXT_PUBLIC_API_URL               = var.cors_allowed_origin
-  }
+  # Runtime app settings are managed by cd-frontend.yml via:
+  # az staticwebapp appsettings set --name byteai-ui ...
+  # This keeps secrets out of Terraform state.
 }

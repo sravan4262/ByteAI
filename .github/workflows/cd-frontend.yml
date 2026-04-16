@@ -3,50 +3,42 @@ name: CD — Frontend (Azure Static Web Apps)
 on:
   workflow_dispatch:
 
-env:
-  IMAGE_UI: ghcr.io/${{ github.repository_owner }}/byteai-ui
-
 permissions:
   contents: read
-  packages: write
   id-token: write
   pull-requests: write    # SWA action posts PR comments
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # 1. Build & push Docker image to GHCR (portability / future use)
+  # Build & push Docker image to GHCR (portability / future use)
   # ─────────────────────────────────────────────────────────────────────────────
-  build-image:
-    name: Build & push Docker image
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build & push UI image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./UI
-          file:    ./UI/Dockerfile
-          push:    true
-          build-args: |
-            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-          tags: ${{ env.IMAGE_UI }}:${{ github.sha }}
+  # build-image:
+  #   name: Build & push Docker image
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: docker/login-action@v3
+  #       with:
+  #         registry: ghcr.io
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Build & push UI image
+  #       uses: docker/build-push-action@v6
+  #       with:
+  #         context: ./UI
+  #         file:    ./UI/Dockerfile
+  #         push:    true
+  #         build-args: |
+  #           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+  #           NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+  #         tags: ghcr.io/${{ github.repository_owner }}/byteai-ui:${{ github.sha }}
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # 2. Deploy to SWA staging → health check → promote to production
+  # Deploy directly to SWA production (Oryx build from source)
   # ─────────────────────────────────────────────────────────────────────────────
   deploy:
-    name: Deploy to SWA (blue-green)
+    name: Deploy to SWA
     runs-on: ubuntu-latest
-    needs: build-image
 
     steps:
       - uses: actions/checkout@v4
@@ -61,45 +53,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: UI/pnpm-lock.yaml
 
-      # ── Stage 1: Deploy to staging slot (green) ───────────────────────────────
-      - name: Deploy to SWA staging slot
-        id: staging
-        uses: Azure/static-web-apps-deploy@v1
+      - uses: azure/login@v2
         with:
-          azure_static_web_apps_api_token: ${{ secrets.SWA_DEPLOY_TOKEN }}
-          repo_token:                       ${{ secrets.GITHUB_TOKEN }}
-          action:                           upload
-          app_location:                     /UI
-          output_location:                  ""    # SWA detects Next.js framework automatically
-          deployment_environment:           staging
-        env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_API_URL:               ${{ secrets.NEXT_PUBLIC_API_URL }}
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # ── Health check staging slot ─────────────────────────────────────────────
-      - name: Health check — staging slot
-        run: |
-          # SWA staging URL follows the pattern of the deployment output
-          STAGING_URL="${{ steps.staging.outputs.static_web_app_url }}"
-          echo "Checking staging at: $STAGING_URL"
-
-          for i in $(seq 1 12); do
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$STAGING_URL" 2>/dev/null || echo "000")
-            echo "Attempt $i/12: HTTP $STATUS"
-
-            if [[ "$STATUS" == "200" ]]; then
-              echo "Staging health check passed"
-              exit 0
-            fi
-
-            sleep 10
-          done
-
-          echo "ERROR: Staging health check failed after 2 minutes — aborting"
-          exit 1
-
-      # ── Stage 2: Promote to production slot (blue) ───────────────────────────
-      - name: Deploy to SWA production
+      # ── Deploy to SWA production ──────────────────────────────────────────────
+      - name: Deploy to SWA
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.SWA_DEPLOY_TOKEN }}
@@ -111,11 +72,47 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_API_URL:               ${{ secrets.NEXT_PUBLIC_API_URL }}
 
-      # ── Clean up staging slot ─────────────────────────────────────────────────
-      - name: Close staging environment
-        if: always()
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.SWA_DEPLOY_TOKEN }}
-          action:                           close
-          deployment_environment:           staging
+      # ── Set SWA runtime app settings (server-side vars) ───────────────────────
+      - name: Set SWA runtime app settings
+        run: |
+          az staticwebapp appsettings set \
+            --name byteai-ui \
+            --resource-group byteai-rg \
+            --setting-names \
+              CLERK_SECRET_KEY="${{ secrets.CLERK_SECRET_KEY }}" \
+              NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" \
+              NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}"
+
+      # ── Deploy to SWA staging slot → health check → promote to production ─────
+      # Uncomment when staging slot is ready
+      # - name: Deploy to SWA staging slot
+      #   id: staging
+      #   uses: Azure/static-web-apps-deploy@v1
+      #   with:
+      #     azure_static_web_apps_api_token: ${{ secrets.SWA_DEPLOY_TOKEN }}
+      #     repo_token:                       ${{ secrets.GITHUB_TOKEN }}
+      #     action:                           upload
+      #     app_location:                     /UI
+      #     output_location:                  ""
+      #     deployment_environment:           staging
+      #   env:
+      #     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      #     NEXT_PUBLIC_API_URL:               ${{ secrets.NEXT_PUBLIC_API_URL }}
+
+      # - name: Health check — staging slot
+      #   run: |
+      #     STAGING_URL="${{ steps.staging.outputs.static_web_app_url }}"
+      #     for i in $(seq 1 12); do
+      #       STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$STAGING_URL" 2>/dev/null || echo "000")
+      #       if [[ "$STATUS" == "200" ]]; then exit 0; fi
+      #       sleep 10
+      #     done
+      #     echo "ERROR: Staging health check failed"; exit 1
+
+      # - name: Close staging environment
+      #   if: always()
+      #   uses: Azure/static-web-apps-deploy@v1
+      #   with:
+      #     azure_static_web_apps_api_token: ${{ secrets.SWA_DEPLOY_TOKEN }}
+      #     action:                           close
+      #     deployment_environment:           staging

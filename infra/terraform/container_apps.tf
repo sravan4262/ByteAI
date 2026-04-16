@@ -6,18 +6,9 @@ resource "azurerm_container_app" "api" {
   revision_mode                = "Multiple" # Required for blue-green labeled revisions
   tags                         = var.tags
 
-  # Secrets — referenced by env var bindings below
-  secret {
-    name  = "database-url"
-    value = var.database_url
-  }
-  secret {
-    name  = "clerk-authority"
-    value = var.clerk_authority
-  }
-  secret {
-    name  = "groq-api-key"
-    value = var.groq_api_key
+  # CD pipeline owns the image, env vars, secrets, and revision suffix — Terraform must not overwrite them
+  lifecycle {
+    ignore_changes = [template]
   }
 
   ingress {
@@ -32,8 +23,6 @@ resource "azurerm_container_app" "api" {
   }
 
   template {
-    # revision_suffix omitted — managed by the CD pipeline (blue/green swap)
-
     min_replicas = 0
     max_replicas = 1
 
@@ -42,19 +31,6 @@ resource "azurerm_container_app" "api" {
       image  = var.api_image
       cpu    = 0.5
       memory = "1Gi"
-
-      env {
-        name        = "ConnectionStrings__Postgres"
-        secret_name = "database-url"
-      }
-      env {
-        name        = "Clerk__Authority"
-        secret_name = "clerk-authority"
-      }
-      env {
-        name        = "Groq__ApiKey"
-        secret_name = "groq-api-key"
-      }
 
       liveness_probe {
         path                    = "/health/live"
@@ -84,9 +60,9 @@ resource "azurerm_container_app" "gateway" {
   revision_mode                = "Multiple"
   tags                         = var.tags
 
-  secret {
-    name  = "api-keys"
-    value = var.api_keys
+  # CD pipeline owns the image, env vars, secrets, and revision suffix — Terraform must not overwrite them
+  lifecycle {
+    ignore_changes = [template]
   }
 
   ingress {
@@ -101,8 +77,6 @@ resource "azurerm_container_app" "gateway" {
   }
 
   template {
-    # revision_suffix omitted — managed by the CD pipeline (blue/green swap)
-
     min_replicas = 0
     max_replicas = 1
 
@@ -111,21 +85,6 @@ resource "azurerm_container_app" "gateway" {
       image  = var.gateway_image
       cpu    = 0.25
       memory = "0.5Gi"
-
-      env {
-        # Internal hostname: Container Apps DNS resolves app-name within the same environment
-        name  = "ApiUpstreamUrl"
-        value = "http://${azurerm_container_app.api.name}"
-      }
-      env {
-        # Comma-separated API keys for the ApiKeyMiddleware
-        name        = "ApiKeys"
-        secret_name = "api-keys"
-      }
-      env {
-        name  = "Cors__AllowedOrigin"
-        value = var.frontend_url
-      }
 
       liveness_probe {
         path                    = "/health/live"
