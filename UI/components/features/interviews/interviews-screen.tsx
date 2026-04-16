@@ -11,7 +11,6 @@ import { UserMiniProfile } from '@/components/features/profile/user-mini-profile
 import { getMeCache } from '@/lib/user-cache'
 import { useUser } from '@clerk/nextjs'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
-import { MultiSelectDropdown } from '@/components/ui/multi-select-dropdown'
 import * as api from '@/lib/api'
 import type { InterviewWithQuestions, InterviewQuestion } from '@/lib/api'
 
@@ -277,7 +276,6 @@ export function InterviewsScreen() {
   const [companyFilter, setCompanyFilter] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<string | null>(null)
   const [locationFilter, setLocationFilter] = useState<string | null>(null)
-  const [techFilters, setTechFilters] = useState<string[]>([])
   const [interviews, setInterviews] = useState<InterviewWithQuestions[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [companies, setCompanies] = useState<{ value: string; label: string }[]>([])
@@ -302,11 +300,10 @@ export function InterviewsScreen() {
       company: companyFilter ?? undefined,
       role: roleFilter ?? undefined,
       location: locationFilter ?? undefined,
-      stack: techFilters.length > 0 ? techFilters.join(',') : undefined,
     })
     setInterviews(data)
     setIsLoading(false)
-  }, [companyFilter, roleFilter, locationFilter, techFilters])
+  }, [companyFilter, roleFilter, locationFilter])
 
   useEffect(() => { loadInterviews() }, [loadInterviews])
 
@@ -385,35 +382,13 @@ export function InterviewsScreen() {
             />
           </div>
 
-          {/* Tech filter — multi-select */}
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">TECH</span>
-            <MultiSelectDropdown
-              options={[
-                { value: 'react', label: 'React' },
-                { value: 'typescript', label: 'TypeScript' },
-                { value: 'golang', label: 'Go' },
-                { value: 'python', label: 'Python' },
-                { value: 'dotnet', label: '.NET / C#' },
-                { value: 'rust', label: 'Rust' },
-                { value: 'kubernetes', label: 'Kubernetes' },
-                { value: 'aws', label: 'AWS' },
-                { value: 'postgres', label: 'PostgreSQL' },
-                { value: 'docker', label: 'Docker' },
-              ]}
-              values={techFilters}
-              onChange={setTechFilters}
-              placeholder="TECHNOLOGY"
-              accentColor="cyan"
-            />
-          </div>
 
           <div className="flex-1" />
 
           {/* Reset */}
-          {(companyFilter || roleFilter || locationFilter || techFilters.length > 0) && (
+          {(companyFilter || roleFilter || locationFilter) && (
             <button
-              onClick={() => { setCompanyFilter(null); setRoleFilter(null); setLocationFilter(null); setTechFilters([]) }}
+              onClick={() => { setCompanyFilter(null); setRoleFilter(null); setLocationFilter(null) }}
               className="font-mono text-[8px] lg:text-[9px] tracking-[0.08em] px-3 py-2 rounded-full border border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               RESET
