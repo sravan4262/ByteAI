@@ -32,7 +32,7 @@ resource "azurerm_container_app" "api" {
   }
 
   template {
-    revision_suffix = "blue" # initial revision; CD swaps between blue/green
+    # revision_suffix omitted — managed by the CD pipeline (blue/green swap)
 
     min_replicas = 0
     max_replicas = 1
@@ -105,7 +105,7 @@ resource "azurerm_container_app" "gateway" {
   }
 
   template {
-    revision_suffix = "blue"
+    # revision_suffix omitted — managed by the CD pipeline (blue/green swap)
 
     min_replicas = 0
     max_replicas = 1
