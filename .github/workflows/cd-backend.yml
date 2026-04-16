@@ -108,6 +108,26 @@ jobs:
               "Groq__ApiKey=${{ secrets.GROQ_API_KEY }}" \
               "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}"
 
+      # ── Wait for API provisioning to complete before touching Gateway ─────────
+      - name: Wait for API provisioning to complete
+        run: |
+          echo "Waiting for byteai-api provisioning to complete..."
+          for i in $(seq 1 18); do
+            STATE=$(az containerapp show \
+              -n "$API_APP" -g "$RESOURCE_GROUP" \
+              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "Unknown")
+            echo "Attempt $i/18: provisioningState = $STATE"
+            if [[ "$STATE" == "Succeeded" ]]; then
+              echo "API provisioning complete"
+              break
+            fi
+            if [[ "$STATE" == "Failed" || "$STATE" == "Canceled" ]]; then
+              echo "ERROR: API provisioning ended in state $STATE"
+              exit 1
+            fi
+            sleep 10
+          done
+
       - name: Deploy Gateway → inactive slot (0% traffic)
         run: |
           az containerapp update \
