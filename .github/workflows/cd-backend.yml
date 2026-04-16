@@ -98,6 +98,7 @@ jobs:
             --set-env-vars \
               "ConnectionStrings__Postgres=${{ secrets.DATABASE_URL }}" \
               "Clerk__Authority=${{ secrets.CLERK_AUTHORITY }}" \
+              "Clerk__WebhookSecret=${{ secrets.CLERK_WEBHOOK_SECRET }}" \
               "Groq__ApiKey=${{ secrets.GROQ_API_KEY }}"
 
       - name: Deploy Gateway → inactive slot

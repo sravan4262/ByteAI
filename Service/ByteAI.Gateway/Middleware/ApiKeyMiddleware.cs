@@ -5,8 +5,10 @@ namespace ByteAI.Gateway.Middleware;
 ///
 /// Allows:
 ///   1. /health/* paths — always unauthenticated
-///   2. Authorization: Bearer &lt;token&gt; — Clerk JWT; the downstream API validates the token
-///   3. X-Api-Key: &lt;key&gt; — machine-to-machine; key must be in the ApiKeys config value
+///   2. /api/lookup/* — public read-only data, no auth required
+///   3. /api/webhooks/* — Clerk webhooks verified by Svix signature inside the API
+///   4. Authorization: Bearer &lt;token&gt; — Clerk JWT; the downstream API validates the token
+///   5. X-Api-Key: &lt;key&gt; — machine-to-machine; key must be in the ApiKeys config value
 ///
 /// Rejects everything else with 401.
 /// </summary>
@@ -25,6 +27,20 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, IConfiguration config
 
         // Preflight CORS requests must pass through to UseCors — never auth-gate them
         if (ctx.Request.Method == HttpMethods.Options)
+        {
+            await next(ctx);
+            return;
+        }
+
+        // Lookup endpoints are public — no auth required
+        if (ctx.Request.Path.StartsWithSegments("/api/lookup"))
+        {
+            await next(ctx);
+            return;
+        }
+
+        // Clerk webhooks — verified by Svix signature inside the API, not by API key
+        if (ctx.Request.Path.StartsWithSegments("/api/webhooks"))
         {
             await next(ctx);
             return;
