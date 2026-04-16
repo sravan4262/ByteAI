@@ -3,7 +3,6 @@ using ByteAI.Api.HealthChecks;
 using ByteAI.Core.Business;
 using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Infrastructure.AI;
-using ByteAI.Core.Infrastructure.Cache;
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Infrastructure.Services;
 using ByteAI.Core.Services.AI;
