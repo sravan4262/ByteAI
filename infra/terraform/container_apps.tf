@@ -8,15 +8,15 @@ resource "azurerm_container_app" "api" {
 
   # Secrets — referenced by env var bindings below
   secret {
-    name  = "database-url"
+    name  = "database_url"
     value = var.database_url
   }
   secret {
-    name  = "clerk-authority"
+    name  = "clerk_authority"
     value = var.clerk_authority
   }
   secret {
-    name  = "groq-api-key"
+    name  = "groq_api_key"
     value = var.groq_api_key
   }
 
@@ -45,15 +45,15 @@ resource "azurerm_container_app" "api" {
 
       env {
         name        = "ConnectionStrings__Postgres"
-        secret_name = "database-url"
+        secret_name = "database_url"
       }
       env {
         name        = "Clerk__Authority"
-        secret_name = "clerk-authority"
+        secret_name = "clerk_authority"
       }
       env {
         name        = "Groq__ApiKey"
-        secret_name = "groq-api-key"
+        secret_name = "groq_api_key"
       }
       env {
         name  = "Cors__AllowedOrigin"
@@ -89,7 +89,7 @@ resource "azurerm_container_app" "gateway" {
   tags                         = var.tags
 
   secret {
-    name  = "api-keys"
+    name  = "api_keys"
     value = var.api_keys
   }
 
@@ -124,7 +124,7 @@ resource "azurerm_container_app" "gateway" {
       env {
         # Comma-separated API keys for the ApiKeyMiddleware
         name        = "ApiKeys"
-        secret_name = "api-keys"
+        secret_name = "api_keys"
       }
 
       liveness_probe {
