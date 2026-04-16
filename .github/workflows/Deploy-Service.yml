@@ -3,7 +3,7 @@ name: Deploy Service (Blue-Green)
 on:
   # Auto-deploy after a successful CI run on main (which publishes images)
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["Build & Test (CI)"]
     types: [completed]
     branches: [main]
   # Manual redeploy or rollback — pass a specific SHA to revert

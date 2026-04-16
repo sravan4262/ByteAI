@@ -3,7 +3,7 @@ name: Deploy UI (Azure Static Web Apps)
 on:
   # Auto-deploy after a successful CI run on main
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["Build & Test (CI)"]
     types: [completed]
     branches: [main]
   # Manual deploy or rollback

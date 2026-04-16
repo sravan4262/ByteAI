@@ -87,7 +87,7 @@ jobs:
   db:
     name: DB — apply migrations
     needs: [publish]
-    uses: ./.github/workflows/supabase.yml
+    uses: ./.github/workflows/Deploy-DB.yml
     secrets: inherit
 
     permissions:
