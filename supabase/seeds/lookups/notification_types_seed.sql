@@ -1,5 +1,5 @@
--- Seed: users.notification_types
-INSERT INTO users.notification_types (key, label, icon_name) VALUES
+-- Seed: lookups.notification_types
+INSERT INTO lookups.notification_types (key, label, icon_name) VALUES
   ('like',     'Reaction',       'heart'),
   ('comment',  'Comment',        'message-circle'),
   ('follow',   'New Follower',   'user-plus'),

@@ -1,5 +1,5 @@
--- Seed: interviews.companies (top 50 tech companies)
-INSERT INTO interviews.companies (name) VALUES
+-- Seed: lookups.companies (top 50 tech companies)
+INSERT INTO lookups.companies (name) VALUES
   -- FAANG / Big Tech
   ('Google'),
   ('Meta'),
