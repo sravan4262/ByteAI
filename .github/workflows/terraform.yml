@@ -62,6 +62,7 @@ jobs:
             -var="groq_api_key=${{ secrets.GROQ_API_KEY }}" \
             -var="api_keys=${{ secrets.API_KEYS }}" \
             -var="cors_allowed_origin=${{ secrets.NEXT_PUBLIC_API_URL }}" \
+            -var="frontend_url=${{ secrets.FRONTEND_URL }}" \
             -var="custom_domain=${{ vars.CUSTOM_DOMAIN }}"
         env:
           ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}

@@ -81,3 +81,8 @@ variable "custom_domain" {
   default     = ""
   description = "Your apex domain, e.g. yourdomain.com. Leave empty to skip custom domain setup."
 }
+
+variable "frontend_url" {
+  type        = string
+  description = "SWA frontend URL — used as the CORS allowed origin on the gateway."
+}

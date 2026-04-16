@@ -55,10 +55,6 @@ resource "azurerm_container_app" "api" {
         name        = "Groq__ApiKey"
         secret_name = "groq-api-key"
       }
-      env {
-        name  = "Cors__AllowedOrigin"
-        value = var.cors_allowed_origin
-      }
 
       liveness_probe {
         path                    = "/health/live"
@@ -128,7 +124,7 @@ resource "azurerm_container_app" "gateway" {
       }
       env {
         name  = "Cors__AllowedOrigin"
-        value = var.cors_allowed_origin
+        value = var.frontend_url
       }
 
       liveness_probe {
