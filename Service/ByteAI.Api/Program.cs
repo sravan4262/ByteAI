@@ -120,15 +120,6 @@ try
         .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"])
         .AddCheck<OnnxModelHealthCheck>("onnx-model", tags: ["ready"]);
 
-    // ── CORS ─────────────────────────────────────────────────────────────────
-    builder.Services.AddCors(opt =>
-        opt.AddDefaultPolicy(policy =>
-            policy
-                .WithOrigins(builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000")
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials()));
-
     // ── OpenAPI + Scalar ─────────────────────────────────────────────────────
     builder.Services.AddOpenApi(options =>
     {
@@ -220,7 +211,6 @@ try
         });
     }
 
-    app.UseCors();
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
