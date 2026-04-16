@@ -22,14 +22,14 @@ variable "tags" {
 
 variable "api_image" {
   type        = string
-  description = "Full API image ref, e.g. ghcr.io/owner/byteai/api:sha"
-  default     = "ghcr.io/placeholder/byteai/api:latest"
+  description = "Full API image ref, e.g. ghcr.io/owner/byteai-api:sha"
+  default     = "mcr.microsoft.com/dotnet/samples:aspnetapp"
 }
 
 variable "gateway_image" {
   type        = string
   description = "Full Gateway image ref."
-  default     = "ghcr.io/placeholder/byteai/gateway:latest"
+  default     = "mcr.microsoft.com/dotnet/samples:aspnetapp"
 }
 
 # ── Secrets (sensitive — pass via -var or CI environment) ────────────────────
