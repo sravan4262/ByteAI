@@ -118,7 +118,7 @@ try
     // ── Health checks ─────────────────────────────────────────────────────────
     var pgConnStr = builder.Configuration.GetConnectionString("Postgres") ?? "";
     builder.Services.AddHealthChecks()
-        .AddNpgsql(pgConnStr, name: "postgres", tags: ["ready"])
+        .AddNpgsql(pgConnStr, tags: ["ready"])
         .AddCheck<OnnxModelHealthCheck>("onnx-model", tags: ["ready"]);
 
     // ── CORS ─────────────────────────────────────────────────────────────────
