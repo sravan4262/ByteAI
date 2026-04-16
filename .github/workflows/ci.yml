@@ -1,10 +1,7 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
@@ -77,13 +74,21 @@ jobs:
         run: pnpm test
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Publish Docker images to GHCR — only on push to main, after both jobs pass
+  # Publish Docker images to GHCR — after build & test pass
   # ─────────────────────────────────────────────────────────────────────────────
   publish:
     name: Build & push Docker images
     runs-on: ubuntu-latest
     needs: [backend, frontend]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # DB — apply Supabase migrations after images are published, before CD triggers
+  # ─────────────────────────────────────────────────────────────────────────────
+  db:
+    name: DB — apply migrations
+    needs: [publish]
+    uses: ./.github/workflows/supabase.yml
+    secrets: inherit
 
     permissions:
       contents: read

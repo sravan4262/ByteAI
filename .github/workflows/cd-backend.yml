@@ -1,4 +1,4 @@
-name: CD — Backend (Blue-Green)
+name: Deploy Service (Blue-Green)
 
 on:
   # Auto-deploy after a successful CI run on main (which publishes images)
@@ -159,23 +159,6 @@ jobs:
           echo "ERROR: API revision did not reach Running state within 3 minutes"
           exit 1
 
-      # ── Run database migrations before accepting traffic ──────────────────────
-      - name: Run migrations
-        run: |
-          API_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
-          echo "Running migrations via container exec on revision $API_REV..."
-          # Migrations run from the host using psql via a Container Apps Job in prod.
-          # Here we use a direct psql call from the runner using the DATABASE_URL secret.
-          PGPASSWORD=$(echo "${{ secrets.DATABASE_URL }}" | grep -oP '(?<=:)[^:@]+(?=@)') \
-          psql "${{ secrets.DATABASE_URL }}" \
-            -v ON_ERROR_STOP=1 \
-            -c "SELECT 1" > /dev/null 2>&1 \
-            && echo "DB connection OK" \
-            || (echo "ERROR: Cannot connect to database"; exit 1)
-
-          # Apply all pending migrations using the migrate script via psql heredoc
-          BYTEAI_DB_URL="${{ secrets.DATABASE_URL }}" bash supabase/scripts/migrate.sh
-          echo "Migrations applied successfully"
 
       # ── Health gate 2: label inactive revision + HTTP check ──────────────────
       - name: Label inactive Gateway revision

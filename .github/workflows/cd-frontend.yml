@@ -1,4 +1,4 @@
-name: CD — Frontend (Azure Static Web Apps)
+name: Deploy UI (Azure Static Web Apps)
 
 on:
   # Auto-deploy after a successful CI run on main
