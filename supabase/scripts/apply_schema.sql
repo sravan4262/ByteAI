@@ -96,13 +96,13 @@ CREATE TABLE lookups.tech_stacks (
 CREATE INDEX ix_tech_stacks_subdomain_id ON lookups.tech_stacks (subdomain_id);
 COMMENT ON TABLE lookups.tech_stacks IS 'Lookup: tech stack items grouped by subdomain';
 
-CREATE TABLE lookups.companies (
+CREATE TABLE interviews.companies (
     id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     name       text        NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT uq_companies_name UNIQUE (name)
 );
-COMMENT ON TABLE lookups.companies IS 'Company lookup for interview posts';
+COMMENT ON TABLE interviews.companies IS 'Company lookup for interview posts';
 
 CREATE TABLE lookups.notification_types (
     key       varchar(50)  NOT NULL,
@@ -178,6 +178,7 @@ CREATE TABLE users.users (
     domain_id           uuid        REFERENCES lookups.domains(id) ON DELETE SET NULL,
     level_type_id       uuid        REFERENCES lookups.level_types(id) ON DELETE SET NULL,
     interest_embedding  vector(768),
+    is_onboarded        boolean     NOT NULL DEFAULT false,
     is_verified         boolean     NOT NULL DEFAULT false,
     created_at          timestamptz NOT NULL DEFAULT now(),
     updated_at          timestamptz NOT NULL DEFAULT now()
@@ -677,7 +678,7 @@ ON CONFLICT (name) DO UPDATE SET
 label = EXCLUDED.label,
 description = EXCLUDED.description;
 
-INSERT INTO lookups.companies (name) VALUES
+INSERT INTO interviews.companies (name) VALUES
   ('Google'), ('Meta'), ('Apple'), ('Amazon'), ('Microsoft'), ('Netflix'),
   ('Cloudflare'), ('Snowflake'), ('Databricks'), ('HashiCorp'), ('Datadog'), ('Vercel'), ('Supabase'),
   ('OpenAI'), ('Anthropic'), ('Hugging Face'), ('Mistral AI'), ('Cohere'),
