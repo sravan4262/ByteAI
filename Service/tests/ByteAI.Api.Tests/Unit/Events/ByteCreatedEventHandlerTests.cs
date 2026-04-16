@@ -66,7 +66,7 @@ public sealed class ByteCreatedEventHandlerTests : IDisposable
 
         _sut = new ByteCreatedEventHandler(
             _db, _embedding.Object, _groq.Object, _byteService.Object,
-            _badgeService.Object, _scopeFactory.Object, null /* feedCache */,
+            _badgeService.Object, _scopeFactory.Object,
             NullLogger<ByteCreatedEventHandler>.Instance);
     }
 

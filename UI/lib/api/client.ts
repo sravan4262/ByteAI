@@ -446,6 +446,8 @@ export async function getFeed(params: {
     const posts = res.data.items.map(byteToPost)
     const hasMore = res.data.page * res.data.pageSize < res.data.total
     return { posts, hasMore }
+  } catch {
+    return { posts: [], hasMore: false }
   }
 }
 
