@@ -9,4 +9,10 @@ resource "azurerm_static_web_app" "ui" {
   sku_tier            = "Standard"
   sku_size            = "Standard"
   tags                = var.tags
+
+  app_settings = {
+    CLERK_SECRET_KEY                  = var.clerk_secret_key
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = var.clerk_publishable_key
+    NEXT_PUBLIC_API_URL               = var.cors_allowed_origin
+  }
 }

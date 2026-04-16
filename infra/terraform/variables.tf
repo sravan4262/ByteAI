@@ -46,6 +46,18 @@ variable "clerk_authority" {
   description = "Clerk JWT issuer URL, e.g. https://clerk.your-domain.com"
 }
 
+variable "clerk_secret_key" {
+  type        = string
+  sensitive   = true
+  description = "Clerk secret key (sk_live_... or sk_test_...)"
+}
+
+variable "clerk_publishable_key" {
+  type        = string
+  sensitive   = true
+  description = "Clerk publishable key (pk_live_... or pk_test_...)"
+}
+
 variable "groq_api_key" {
   type      = string
   sensitive = true

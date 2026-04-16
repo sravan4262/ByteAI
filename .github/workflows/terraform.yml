@@ -57,6 +57,8 @@ jobs:
           terraform plan -out=tfplan \
             -var="database_url=${{ secrets.DATABASE_URL }}" \
             -var="clerk_authority=${{ secrets.CLERK_AUTHORITY }}" \
+            -var="clerk_secret_key=${{ secrets.CLERK_SECRET_KEY }}" \
+            -var="clerk_publishable_key=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" \
             -var="groq_api_key=${{ secrets.GROQ_API_KEY }}" \
             -var="api_keys=${{ secrets.API_KEYS }}" \
             -var="cors_allowed_origin=${{ secrets.NEXT_PUBLIC_API_URL }}" \
