@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import { Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import { ClerkProvider } from '@clerk/nextjs'
 import './globals.css'
 
@@ -45,8 +44,7 @@ export default function RootLayout({
         </head>
         <body className={`${bricolage.variable} ${jetbrains.variable} font-sans antialiased h-full w-full`}>
           {children}
-          {process.env.NODE_ENV === 'production' && <Analytics />}
-        </body>
+</body>
       </html>
     </ClerkProvider>
   )
