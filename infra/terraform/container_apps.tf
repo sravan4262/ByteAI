@@ -8,7 +8,7 @@ resource "azurerm_container_app" "api" {
 
   # CD pipeline owns the image, env vars, secrets, and revision suffix — Terraform must not overwrite them
   lifecycle {
-    ignore_changes = [template]
+    ignore_changes = [template, secret]
   }
 
   ingress {
@@ -62,7 +62,7 @@ resource "azurerm_container_app" "gateway" {
 
   # CD pipeline owns the image, env vars, secrets, and revision suffix — Terraform must not overwrite them
   lifecycle {
-    ignore_changes = [template]
+    ignore_changes = [template, secret]
   }
 
   ingress {
