@@ -165,10 +165,11 @@ jobs:
         run: |
           GW_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
           INACTIVE="${{ steps.slot.outputs.inactive }}"
-          az containerapp ingress traffic set \
+          az containerapp revision label add \
             -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --label-revision "${INACTIVE}=${GW_REV}" \
-            --revision-weight "${GW_REV}=0"
+            --revision "$GW_REV" \
+            --label "$INACTIVE" \
+            --yes
 
       - name: Health gate — HTTP check on inactive Gateway slot
         run: |
