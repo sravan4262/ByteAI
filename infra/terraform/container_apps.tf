@@ -126,6 +126,10 @@ resource "azurerm_container_app" "gateway" {
         name        = "ApiKeys"
         secret_name = "api-keys"
       }
+      env {
+        name  = "Cors__AllowedOrigin"
+        value = var.cors_allowed_origin
+      }
 
       liveness_probe {
         path                    = "/health/live"

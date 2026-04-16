@@ -18,6 +18,15 @@ try
         .Enrich.FromLogContext()
         .WriteTo.Console());
 
+    // ── CORS — allow the SWA frontend origin ────────────────────────────────
+    var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000";
+    builder.Services.AddCors(opt =>
+        opt.AddDefaultPolicy(policy =>
+            policy.WithOrigins(allowedOrigin)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials()));
+
     // ── YARP reverse proxy ───────────────────────────────────────────────────
     // Upstream URL is set via ApiUpstreamUrl config (env var from Container Apps).
     // Within the Container Apps environment, the API is reachable by its app name.
@@ -56,6 +65,7 @@ try
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
+    app.UseCors();
 
     // API-key / JWT gate — evaluated before YARP forwards the request
     app.UseMiddleware<ApiKeyMiddleware>();

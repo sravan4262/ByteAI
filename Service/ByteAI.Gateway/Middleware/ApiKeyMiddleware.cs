@@ -23,6 +23,13 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, IConfiguration config
             return;
         }
 
+        // Preflight CORS requests must pass through to UseCors — never auth-gate them
+        if (ctx.Request.Method == HttpMethods.Options)
+        {
+            await next(ctx);
+            return;
+        }
+
         // Clerk JWT passthrough — the downstream API validates the token itself
         if (ctx.Request.Headers.Authorization.ToString()
                 .StartsWith("Bearer ", StringComparison.Ordinal))
