@@ -116,9 +116,8 @@ try
     builder.Services.AddScoped<IDraftsBusiness, DraftsBusiness>();
 
     // ── Health checks ─────────────────────────────────────────────────────────
-    var pgConnStr = builder.Configuration.GetConnectionString("Postgres") ?? "";
     builder.Services.AddHealthChecks()
-        .AddNpgsql(pgConnStr, tags: ["ready"])
+        .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"])
         .AddCheck<OnnxModelHealthCheck>("onnx-model", tags: ["ready"]);
 
     // ── CORS ─────────────────────────────────────────────────────────────────
