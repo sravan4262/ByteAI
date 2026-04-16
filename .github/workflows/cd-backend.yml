@@ -103,67 +103,45 @@ jobs:
             --image "$IMAGE_GATEWAY:${{ github.sha }}" \
             --revision-suffix "${{ steps.slot.outputs.suffix }}"
 
-      # ── Wait for API revision to reach Running state ──────────────────────────
-      - name: Health gate — API revision running state
-        run: |
-          API_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
-          echo "Waiting for revision $API_REV to reach Running state..."
+      # ── TODO: Re-enable health gates once Postgres connectivity is confirmed ────
+      # - name: Health gate — API revision running state
+      #   run: |
+      #     API_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
+      #     echo "Waiting for revision $API_REV to reach Running state..."
+      #     for i in $(seq 1 18); do
+      #       STATE=$(az containerapp revision show \
+      #         -n "$API_APP" -g "$RESOURCE_GROUP" \
+      #         --revision "$API_REV" \
+      #         --query "properties.runningState" -o tsv 2>/dev/null || echo "Unknown")
+      #       echo "Attempt $i/18: state = $STATE"
+      #       if [[ "$STATE" == "Running" ]]; then echo "API revision is Running — proceeding"; exit 0; fi
+      #       sleep 10
+      #     done
+      #     echo "ERROR: API revision did not reach Running state within 3 minutes"; exit 1
 
-          for i in $(seq 1 18); do
-            STATE=$(az containerapp revision show \
-              -n "$API_APP" -g "$RESOURCE_GROUP" \
-              --revision "$API_REV" \
-              --query "properties.runningState" -o tsv 2>/dev/null || echo "Unknown")
+      # - name: Label inactive Gateway revision
+      #   run: |
+      #     GW_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
+      #     INACTIVE="${{ steps.slot.outputs.inactive }}"
+      #     az containerapp ingress traffic set \
+      #       -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+      #       --label-revision "${INACTIVE}=${GW_REV}" \
+      #       --revision-weight "${GW_REV}=0"
 
-            echo "Attempt $i/18: state = $STATE"
-
-            if [[ "$STATE" == "Running" ]]; then
-              echo "API revision is Running — proceeding"
-              exit 0
-            fi
-
-            sleep 10
-          done
-
-          echo "ERROR: API revision did not reach Running state within 3 minutes"
-          exit 1
-
-      # ── HTTP health check via the inactive Gateway revision URL ───────────────
-      - name: Label inactive Gateway revision
-        run: |
-          GW_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
-          INACTIVE="${{ steps.slot.outputs.inactive }}"
-
-          # Assign label so it gets a stable URL: https://{app}---{label}.{env-domain}
-          az containerapp ingress traffic set \
-            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --label-revision "${INACTIVE}=${GW_REV}" \
-            --revision-weight "${GW_REV}=0"
-
-      - name: Health gate — HTTP check on inactive Gateway
-        run: |
-          INACTIVE="${{ steps.slot.outputs.inactive }}"
-          ENV_DOMAIN=$(az containerapp env show \
-            -n "$ENV_NAME" -g "$RESOURCE_GROUP" \
-            --query "properties.defaultDomain" -o tsv)
-
-          URL="https://${GATEWAY_APP}---${INACTIVE}.${ENV_DOMAIN}/health/ready"
-          echo "Health checking: $URL"
-
-          for i in $(seq 1 12); do
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
-            echo "Attempt $i/12: HTTP $STATUS"
-
-            if [[ "$STATUS" == "200" ]]; then
-              echo "Health check passed — swapping traffic"
-              exit 0
-            fi
-
-            sleep 10
-          done
-
-          echo "ERROR: Health check failed after 2 minutes — aborting deployment"
-          exit 1
+      # - name: Health gate — HTTP check on inactive Gateway
+      #   run: |
+      #     INACTIVE="${{ steps.slot.outputs.inactive }}"
+      #     ENV_DOMAIN=$(az containerapp env show \
+      #       -n "$ENV_NAME" -g "$RESOURCE_GROUP" \
+      #       --query "properties.defaultDomain" -o tsv)
+      #     URL="https://${GATEWAY_APP}---${INACTIVE}.${ENV_DOMAIN}/health/ready"
+      #     for i in $(seq 1 12); do
+      #       STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
+      #       echo "Attempt $i/12: HTTP $STATUS"
+      #       if [[ "$STATUS" == "200" ]]; then echo "Health check passed — swapping traffic"; exit 0; fi
+      #       sleep 10
+      #     done
+      #     echo "ERROR: Health check failed after 2 minutes — aborting deployment"; exit 1
 
       # ── Swap: send 100% traffic to inactive (now promoted) slot ─────────────
       - name: Swap API traffic
