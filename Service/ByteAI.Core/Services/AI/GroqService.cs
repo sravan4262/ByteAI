@@ -184,10 +184,10 @@ public sealed class GroqService(
 
     private async Task<string?> ChatAsync(string prompt, int maxTokens, CancellationToken ct)
     {
-        var apiKey = config["Ai:GroqApiKey"];
+        var apiKey = config["Groq:ApiKey"];
         if (string.IsNullOrEmpty(apiKey))
         {
-            logger.LogWarning("Ai:GroqApiKey is not configured. Skipping Groq request.");
+            logger.LogWarning("Groq:ApiKey is not configured. Skipping Groq request.");
             return null;
         }
 

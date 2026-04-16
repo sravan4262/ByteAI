@@ -107,9 +107,8 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
             }
             else
             {
-                // Groq unavailable and content isn't clearly tech — reject to be safe
-                logger.LogWarning("Groq validation returned null (API down or key missing) — failing closed for: {Title}", title);
-                throw new InvalidContentException("ByteAI is for tech content only. Could not verify content relevance.");
+                logger.LogWarning("Groq validation unavailable (API down, rate-limited, or key missing) for: {Title}", title);
+                throw new ServiceUnavailableException("Content validation is temporarily unavailable. Please try again in a moment.");
             }
         }
 
@@ -184,8 +183,8 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
             var validation = await groq.ValidateTechContentAsync(newTitle, newBody, ct);
             if (validation is null)
             {
-                logger.LogWarning("Groq validation returned null during update for byte {ByteId}", byteId);
-                throw new InvalidContentException("ByteAI is for tech content only. Could not verify content relevance.");
+                logger.LogWarning("Groq validation unavailable during update for byte {ByteId}", byteId);
+                throw new ServiceUnavailableException("Content validation is temporarily unavailable. Please try again in a moment.");
             }
             if (!validation.IsCoherent)
                 throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");

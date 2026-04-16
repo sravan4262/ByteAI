@@ -31,13 +31,14 @@ public sealed class GlobalExceptionMiddleware(RequestDelegate next, ILogger<Glob
     {
         var (status, title, detail) = ex switch
         {
-            KeyNotFoundException           => (404, "Not Found",             ex.Message),
-            UnauthorizedAccessException    => (403, "Forbidden",             "You are not authorized to perform this action."),
-            InvalidContentException ice    => (422, "Invalid Content",       ice.Reason),
-            DuplicateContentException      => (409, "Duplicate Content",     ex.Message),
-            ValidationException ve         => (400, "Validation Failed",     BuildValidationDetail(ve)),
-            OperationCanceledException     => (499, "Request Cancelled",     "The request was cancelled."),
-            _                              => (500, "Internal Server Error", "An unexpected error occurred. Please try again later.")
+            KeyNotFoundException           => (404, "Not Found",                ex.Message),
+            UnauthorizedAccessException    => (403, "Forbidden",                "You are not authorized to perform this action."),
+            InvalidContentException ice    => (422, "Invalid Content",          ice.Reason),
+            DuplicateContentException      => (409, "Duplicate Content",        ex.Message),
+            ValidationException ve         => (400, "Validation Failed",        BuildValidationDetail(ve)),
+            ServiceUnavailableException    => (503, "Service Unavailable",      ex.Message),
+            OperationCanceledException     => (499, "Request Cancelled",        "The request was cancelled."),
+            _                              => (500, "Internal Server Error",    "An unexpected error occurred. Please try again later.")
         };
 
         // Log to structured logger (Serilog) — captures in console + any sinks
