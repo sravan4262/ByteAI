@@ -196,10 +196,11 @@ jobs:
         run: |
           INACTIVE_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
           ACTIVE_REV="${{ steps.slot.outputs.active_rev }}"
+          SUB=$(az account show --query id -o tsv)
 
-          az containerapp ingress traffic set \
-            -n "$API_APP" -g "$RESOURCE_GROUP" \
-            --revision-weight "${INACTIVE_REV}=100" "${ACTIVE_REV}=0"
+          az rest --method patch \
+            --url "https://management.azure.com/subscriptions/${SUB}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/containerApps/${API_APP}?api-version=2023-05-01" \
+            --body "{\"properties\":{\"configuration\":{\"ingress\":{\"traffic\":[{\"revisionName\":\"${INACTIVE_REV}\",\"weight\":100},{\"revisionName\":\"${ACTIVE_REV}\",\"weight\":0}]}}}}"
 
           echo "API traffic swapped: $INACTIVE_REV is now live"
 
@@ -209,10 +210,11 @@ jobs:
           ACTIVE_GW_REV=$(az containerapp revision list \
             -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
             --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv 2>/dev/null || echo "")
+          SUB=$(az account show --query id -o tsv)
 
-          az containerapp ingress traffic set \
-            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --revision-weight "${INACTIVE_REV}=100" "${ACTIVE_GW_REV}=0"
+          az rest --method patch \
+            --url "https://management.azure.com/subscriptions/${SUB}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/containerApps/${GATEWAY_APP}?api-version=2023-05-01" \
+            --body "{\"properties\":{\"configuration\":{\"ingress\":{\"traffic\":[{\"revisionName\":\"${INACTIVE_REV}\",\"weight\":100},{\"revisionName\":\"${ACTIVE_GW_REV}\",\"weight\":0}]}}}}"
 
           echo "Gateway traffic swapped: $INACTIVE_REV is now live"
           echo "Deploy complete — ${{ steps.slot.outputs.inactive }} slot is now production"
