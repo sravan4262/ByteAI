@@ -12,7 +12,7 @@ RUN dotnet restore ByteAI.Api/ByteAI.Api.csproj
 
 COPY ByteAI.Core/ ByteAI.Core/
 COPY ByteAI.Api/  ByteAI.Api/
-RUN dotnet publish ByteAI.Api/ByteAI.Api.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish ByteAI.Api/ByteAI.Api.csproj -c Release -o /app/publish
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime

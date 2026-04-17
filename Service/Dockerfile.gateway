@@ -8,7 +8,7 @@ COPY ByteAI.Gateway/ByteAI.Gateway.csproj ByteAI.Gateway/
 RUN dotnet restore ByteAI.Gateway/ByteAI.Gateway.csproj
 
 COPY ByteAI.Gateway/ ByteAI.Gateway/
-RUN dotnet publish ByteAI.Gateway/ByteAI.Gateway.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish ByteAI.Gateway/ByteAI.Gateway.csproj -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app

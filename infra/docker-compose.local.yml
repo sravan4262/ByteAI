@@ -1,55 +1,17 @@
 # ByteAI — Local Docker stack
-# Builds from source, runs full service stack with a local Postgres.
+# Uses your local Supabase instance (supabase start) for the database.
+# No postgres container — DB runs on your Mac at localhost:54322.
 #
 # Usage:
-#   cp infra/.env.example infra/.env   # fill in secrets once
-#   docker compose -f infra/docker-compose.local.yml up --build
-#
-# Frontend runs separately: cd UI && pnpm dev (uses .env.docker)
-#   cp UI/.env.docker UI/.env.local
+#   1. supabase start                              (start local Supabase)
+#   2. docker compose -f infra/docker-compose.local.yml up --build
+#   3. cd UI && cp .env.docker .env.local && pnpm dev
 #
 # Ports:
 #   Gateway  → http://localhost:8090  (entry point for frontend)
 #   API      → http://localhost:8080  (internal, exposed for direct testing)
-#   Postgres → localhost:5432
 
 services:
-
-  # ── Database ─────────────────────────────────────────────────────────────────
-  postgres:
-    image: pgvector/pgvector:pg16
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB:       byteai
-      POSTGRES_USER:     byteai
-      POSTGRES_PASSWORD: byteai
-    volumes:
-      - pg_data_local:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U byteai -d byteai"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  # ── Migrations + Seeds (one-shot, runs then exits) ────────────────────────────
-  migrate:
-    image: postgres:16-alpine
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      BYTEAI_DB_URL: postgresql://byteai:byteai@postgres:5432/byteai
-    volumes:
-      - ../supabase:/supabase:ro
-    entrypoint: ["sh", "-c", "
-      apk add --no-cache bash &&
-      BYTEAI_DB_URL=postgresql://byteai:byteai@postgres:5432/byteai
-        bash /supabase/scripts/migrate.sh &&
-      BYTEAI_DB_URL=postgresql://byteai:byteai@postgres:5432/byteai
-        bash /supabase/scripts/seed.sh
-    "]
-    restart: "no"
 
   # ── API ───────────────────────────────────────────────────────────────────────
   api:
@@ -60,18 +22,13 @@ services:
       - "8080:8080"
     environment:
       ASPNETCORE_ENVIRONMENT:        LocalDocker
-      ConnectionStrings__Postgres:   Host=postgres;Port=5432;Database=byteai;Username=byteai;Password=byteai
+      ConnectionStrings__Postgres:   Host=host.docker.internal;Port=54322;Database=postgres;Username=postgres;Password=postgres
       Clerk__Authority:              ${CLERK_AUTHORITY}
       Clerk__WebhookSecret:          ${CLERK_WEBHOOK_SECRET}
       Groq__ApiKey:                  ${GROQ_API_KEY}
       Cors__AllowedOrigin:           http://localhost:3000
       Supabase__Url:                 ${SUPABASE_URL:-}
       Supabase__ServiceRoleKey:      ${SUPABASE_SERVICE_ROLE_KEY:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/live || exit 1"]
       interval: 10s
@@ -94,6 +51,3 @@ services:
     depends_on:
       api:
         condition: service_healthy
-
-volumes:
-  pg_data_local:
