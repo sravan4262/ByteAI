@@ -24,8 +24,11 @@ services:
       ASPNETCORE_ENVIRONMENT:        LocalDocker
       ConnectionStrings__Postgres:   Host=host.docker.internal;Port=54322;Database=postgres;Username=postgres;Password=postgres
       Groq__ApiKey:                  ${GROQ_API_KEY}
-      Cors__AllowedOrigin:           http://localhost:3000
-      Supabase__Url:                 ${SUPABASE_URL:-}
+      Cors__AllowedOrigin:           http://localhost:3000,http://127.0.0.1:3000
+      Supabase__Url:                 ${SUPABASE_URL:-http://host.docker.internal:54321}
+      Supabase__PublicUrl:           http://127.0.0.1:54321
+      Supabase__JwtSecret:           ${SUPABASE_JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      Supabase__JwtIssuer:           http://127.0.0.1:54321
       Supabase__ServiceRoleKey:      ${SUPABASE_SERVICE_ROLE_KEY:-}
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/live || exit 1"]
@@ -45,7 +48,7 @@ services:
       ASPNETCORE_ENVIRONMENT: LocalDocker
       ApiUpstreamUrl:         http://api:8080
       ApiKeys:                dev-local-key
-      Cors__AllowedOrigin:    http://localhost:3000
+      Cors__AllowedOrigin:    http://localhost:3000,http://127.0.0.1:3000
     depends_on:
       api:
         condition: service_healthy

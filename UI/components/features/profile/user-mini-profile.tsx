@@ -75,14 +75,16 @@ export function UserMiniProfile({
   const resolvedUsername = profile?.username || (isOwnProfile ? meCache?.username : null) || username
   const resolvedName = profile?.displayName || (isOwnProfile ? meCache?.displayName : null) || displayName
   const resolvedAvatar = profile?.avatarUrl
-    || (isOwnProfile ? (meCache?.avatarUrl || getMeCache()?.avatarUrl ?? null) : null)
+    || (isOwnProfile ? (meCache?.avatarUrl || (getMeCache()?.avatarUrl ?? null)) : null)
     || avatarUrl
-    || (isOwnProfile ? getMeCache()?.avatarUrl ?? null : null)
+    || (isOwnProfile ? (getMeCache()?.avatarUrl ?? null) : null)
   const resolvedRole = profile?.roleTitle || (isOwnProfile ? meCache?.roleTitle : null) || role || ''
   const resolvedCompany = profile?.company || (isOwnProfile ? meCache?.company : null) || company || ''
   const resolvedBytes = profile?.bytesCount ?? (isOwnProfile ? meCache?.bytesCount : undefined) ?? '—'
   const resolvedFollowers = profile?.followersCount ?? (isOwnProfile ? meCache?.followersCount : undefined) ?? '—'
   const resolvedLevel = profile?.level ?? (isOwnProfile ? meCache?.level : undefined) ?? '—'
+
+  const isSystemAccount = username === 'byteai' || (profile?.username ?? '').toLowerCase() === 'byteai'
 
   const resolvedInitials = resolvedName
     .split(' ')
@@ -218,43 +220,57 @@ export function UserMiniProfile({
                 </div>
               )}
 
-              {/* Action buttons — equal width */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* Follow / Unfollow toggle */}
-                <button
-                  onClick={handleFollow}
-                  disabled={followLoading}
-                  onMouseEnter={() => isFollowing && setHoverUnfollow(true)}
-                  onMouseLeave={() => setHoverUnfollow(false)}
-                  className={`relative py-3 rounded-2xl font-mono text-[11px] font-bold tracking-[0.07em] flex items-center justify-center gap-2 transition-all duration-200 overflow-hidden disabled:opacity-50 ${
-                    isFollowing
-                      ? hoverUnfollow
-                        ? 'bg-[var(--red)]/10 border border-[var(--red)] text-[var(--red)]'
-                        : 'bg-[var(--bg-el)] border border-[var(--border-m)] text-[var(--t1)]'
-                      : 'bg-gradient-to-r from-[var(--accent)] to-[#2563eb] text-white shadow-[0_4px_18px_var(--accent-glow)]'
-                  }`}
-                >
-                  {followLoading ? (
-                    <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                  ) : isFollowing ? (
-                    hoverUnfollow ? (
-                      <><X size={13} /> UNFOLLOW</>
+              {/* Action buttons */}
+              {isSystemAccount ? (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-center gap-2 py-2 rounded-xl border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.06)]">
+                    <span className="font-mono text-[10px] text-[var(--purple)] tracking-[0.08em]">✦ OFFICIAL BYTEAI ACCOUNT</span>
+                  </div>
+                  <button
+                    onClick={handleViewProfile}
+                    className="py-3 rounded-2xl font-mono text-[11px] font-bold tracking-[0.07em] border border-[var(--border-h)] text-[var(--t1)] bg-[var(--bg-el)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)] transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    VIEW PROFILE <ArrowUpRight size={13} />
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {/* Follow / Unfollow toggle */}
+                  <button
+                    onClick={handleFollow}
+                    disabled={followLoading || isOwnProfile}
+                    onMouseEnter={() => isFollowing && setHoverUnfollow(true)}
+                    onMouseLeave={() => setHoverUnfollow(false)}
+                    className={`relative py-3 rounded-2xl font-mono text-[11px] font-bold tracking-[0.07em] flex items-center justify-center gap-2 transition-all duration-200 overflow-hidden disabled:opacity-50 ${
+                      isFollowing
+                        ? hoverUnfollow
+                          ? 'bg-[var(--red)]/10 border border-[var(--red)] text-[var(--red)]'
+                          : 'bg-[var(--bg-el)] border border-[var(--border-m)] text-[var(--t1)]'
+                        : 'bg-gradient-to-r from-[var(--accent)] to-[#2563eb] text-white shadow-[0_4px_18px_var(--accent-glow)]'
+                    }`}
+                  >
+                    {followLoading ? (
+                      <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                    ) : isFollowing ? (
+                      hoverUnfollow ? (
+                        <><X size={13} /> UNFOLLOW</>
+                      ) : (
+                        <><UserCheck size={13} /> FOLLOWING</>
+                      )
                     ) : (
-                      <><UserCheck size={13} /> FOLLOWING</>
-                    )
-                  ) : (
-                    <><UserPlus size={13} /> FOLLOW</>
-                  )}
-                </button>
+                      <><UserPlus size={13} /> FOLLOW</>
+                    )}
+                  </button>
 
-                {/* View profile */}
-                <button
-                  onClick={handleViewProfile}
-                  className="py-3 rounded-2xl font-mono text-[11px] font-bold tracking-[0.07em] border border-[var(--border-h)] text-[var(--t1)] bg-[var(--bg-el)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)] transition-all duration-200 flex items-center justify-center gap-2"
-                >
-                  PROFILE <ArrowUpRight size={13} />
-                </button>
-              </div>
+                  {/* View profile */}
+                  <button
+                    onClick={handleViewProfile}
+                    className="py-3 rounded-2xl font-mono text-[11px] font-bold tracking-[0.07em] border border-[var(--border-h)] text-[var(--t1)] bg-[var(--bg-el)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)] transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    PROFILE <ArrowUpRight size={13} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </motion.div>

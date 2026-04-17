@@ -72,12 +72,12 @@ function QuestionCommentThread({
         className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-[rgba(255,255,255,0.02)] transition-all"
       >
         <MessageSquare size={12} className="text-[var(--purple)] flex-shrink-0" />
-        <span className="font-mono text-[9px] tracking-[0.08em] text-[var(--t2)] flex-1">
+        <span className="font-mono text-[10px] tracking-[0.08em] text-[var(--t1)] flex-1">
           COMMENTS {count > 0 ? `(${count})` : ''}
         </span>
         {isOpen
-          ? <ChevronUp size={12} className="text-[var(--t3)]" />
-          : <ChevronDown size={12} className="text-[var(--t3)]" />}
+          ? <ChevronUp size={12} className="text-[var(--purple)]" />
+          : <ChevronDown size={12} className="text-[var(--purple)]" />}
       </button>
 
       {isOpen && (
@@ -327,18 +327,18 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
               <Briefcase size={10} /> INTERVIEW
             </span>
             {interview.company && (
-              <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+              <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2.5 py-1 rounded">
                 {interview.company}
               </span>
             )}
             {interview.role && (
-              <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+              <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2.5 py-1 rounded">
                 {interview.role}
               </span>
             )}
             {interview.location && (
-              <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded flex items-center gap-1">
-                <MapPin size={9} /> {interview.location}
+              <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2.5 py-1 rounded flex items-center gap-1">
+                <MapPin size={10} /> {interview.location}
               </span>
             )}
           </div>
@@ -364,15 +364,15 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
           {/* Questions — each has inline comment thread when expanded */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <div className="font-mono text-[9px] tracking-[0.1em] text-[var(--t3)]">
+              <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)]">
                 // {interview.questions.length} QUESTION{interview.questions.length !== 1 ? 'S' : ''}
               </div>
               <button
                 onClick={toggleAll}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[9px] tracking-[0.07em] border transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[10px] tracking-[0.07em] border transition-all ${
                   allExpanded
                     ? 'text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-d)]'
-                    : 'text-[var(--t3)] border-[var(--border-m)] hover:text-[var(--t1)] hover:border-[var(--border-h)]'
+                    : 'text-[var(--purple)] border-[rgba(167,139,250,0.4)] bg-[rgba(167,139,250,0.06)] hover:bg-[rgba(167,139,250,0.12)] hover:border-[rgba(167,139,250,0.7)]'
                 }`}
               >
                 {allExpanded
@@ -416,9 +416,9 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
           {/* Interview-level Discussion */}
           <div className="pt-2">
             <div className="flex items-center justify-between mb-4">
-              <div className="font-mono text-[8px] lg:text-[10px] font-bold tracking-[0.12em] text-[var(--t2)] flex items-center gap-1.5">
-                <MessageSquare size={12} /> DISCUSSION
-                <span className="bg-[var(--bg-el)] border border-[var(--border-m)] rounded-full px-[7px] py-px text-[7px] lg:text-[8px] text-[var(--t1)]">
+              <div className="font-mono text-[10px] lg:text-xs font-bold tracking-[0.12em] text-[var(--t1)] flex items-center gap-1.5">
+                <MessageSquare size={13} className="text-[var(--purple)]" /> DISCUSSION
+                <span className="bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.3)] rounded-full px-[7px] py-px text-[9px] lg:text-[10px] text-[var(--purple)] font-bold">
                   {comments.length}
                 </span>
               </div>

@@ -12,38 +12,54 @@ public sealed class GroqService(
     ILogger<GroqService> logger,
     GroqLoadBalancer balancer) : IGroqService
 {
-    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+    private const string SubdomainList =
+        "be_languages, be_frameworks, api_protocols, queues_cache, " +
+        "ui_frameworks, meta_frameworks, styling, build_tools, fe_testing, " +
+        "cloud_providers, containers, cicd, iac, observability, " +
+        "ios, android, cross_platform, " +
+        "ml_frameworks, nlp_llms, mlops, data_science, " +
+        "data_databases, data_warehouses, data_processing, data_viz, " +
+        "appsec, cloud_security, cryptography, pentesting, " +
+        "sys_languages, embedded, os_kernel, networking, " +
+        "evm, non_evm, web3_tools, smart_contracts, " +
+        "game_engines, graphics, game_languages";
 
-    public async Task<List<string>> SuggestTagsAsync(string title, string body, string? codeSnippet, IReadOnlyList<string> allowedTags, CancellationToken ct = default)
+    public async Task<List<TagSuggestion>> SuggestTagsAsync(string title, string body, string? codeSnippet, CancellationToken ct = default)
     {
         var content = string.IsNullOrEmpty(codeSnippet)
             ? $"Title: {title}\n\n{body}"
             : $"Title: {title}\n\n{body}\n\nCode:\n{codeSnippet}";
 
-        var allowedList = string.Join(", ", allowedTags);
+        var prompt = $$"""
+            You are a tech content tagger. Suggest up to 5 relevant tech stack tags for the content below, ranked most to least relevant.
+            For each tag, classify which subdomain it belongs to from the SUBDOMAIN LIST.
+            Tag names must be lowercase snake_case (e.g. javascript, node_js, react, postgresql).
+            Return ONLY a JSON array of objects. No explanation, no markdown.
 
-        var prompt = $"""
-            You are a tech content tagger. Pick the SINGLE most relevant tag from the ALLOWED LIST below that best matches the content.
-            Return ONLY a JSON array containing exactly one tag name from the list. No explanation. No tags outside the list.
+            Format: [{"tag":"javascript","subdomain":"be_languages"}]
 
-            ALLOWED LIST: {allowedList}
+            SUBDOMAIN LIST: {{SubdomainList}}
 
             Content:
-            {content}
+            {{content}}
             """;
 
-        var raw = await ChatAsync(prompt, maxTokens: 50, ct);
+        var raw = await ChatAsync(prompt, maxTokens: 200, ct);
         if (string.IsNullOrEmpty(raw)) return [];
 
         try
         {
-            // Extract JSON array from response
             var start = raw.IndexOf('[');
             var end = raw.LastIndexOf(']');
             if (start < 0 || end < 0) return [];
 
-            var tags = JsonSerializer.Deserialize<List<string>>(raw[start..(end + 1)], JsonOpts) ?? [];
-            return tags.Take(1).ToList();
+            using var doc = JsonDocument.Parse(raw[start..(end + 1)]);
+            return doc.RootElement.EnumerateArray()
+                .Select(el => new TagSuggestion(
+                    el.GetProperty("tag").GetString() ?? "",
+                    el.GetProperty("subdomain").GetString() ?? ""))
+                .Where(s => !string.IsNullOrWhiteSpace(s.Tag) && !string.IsNullOrWhiteSpace(s.Subdomain))
+                .ToList();
         }
         catch (Exception ex)
         {

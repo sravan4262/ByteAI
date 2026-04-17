@@ -9,6 +9,7 @@ import { setTokenProvider } from '@/lib/api/http'
 import { handleMutationError } from '@/lib/api/handle-error'
 import * as api from '@/lib/api'
 import type { SeniorityTypeResponse, DomainResponse, TechStackResponse } from '@/lib/api'
+import { getMeCache } from '@/lib/user-cache'
 
 export function OnboardingScreen() {
   const { completeOnboarding, getToken } = useAuth()

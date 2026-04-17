@@ -24,10 +24,9 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   const hydrated = useRef(false)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-
-    // Listen for auth state changes (sign-in, sign-out, token refresh)
+    // onAuthStateChange fires INITIAL_SESSION with the real session from cookies
+    // on mount — more reliable than getSession() which reads stale in-memory state
+    // after a sign-out/sign-in cycle and would set session=null too early.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
     })

@@ -209,16 +209,16 @@ export function AdminScreen() {
               </div>
               <h1 className="font-mono text-lg font-bold tracking-[0.06em] text-[var(--t1)]">SYSTEM_ADMIN</h1>
             </div>
-            <p className="font-mono text-[10px] text-[var(--t3)] tracking-[0.08em] ml-[42px]">
+            <p className="font-mono text-xs text-[var(--t2)] tracking-[0.06em] ml-[42px]">
               Feature flags · RBAC roles · User overrides
             </p>
           </div>
           <div className="flex items-center gap-2">
             <div className="px-3 py-1.5 rounded-lg bg-[rgba(16,217,160,0.08)] border border-[rgba(16,217,160,0.2)]">
-              <span className="font-mono text-[9px] text-[var(--green)] tracking-[0.08em]">{enabledCount} FLAGS ON</span>
+              <span className="font-mono text-[10px] text-[var(--green)] tracking-[0.08em] font-bold">{enabledCount} FLAGS ON</span>
             </div>
             <div className="px-3 py-1.5 rounded-lg bg-[rgba(167,139,250,0.08)] border border-[rgba(167,139,250,0.2)]">
-              <span className="font-mono text-[9px] text-[var(--purple)] tracking-[0.08em]">{roles.length} ROLES</span>
+              <span className="font-mono text-[10px] text-[var(--purple)] tracking-[0.08em] font-bold">{roles.length} ROLES</span>
             </div>
           </div>
         </div>
@@ -248,20 +248,20 @@ export function AdminScreen() {
                 <div className="font-mono text-[9px] text-[var(--accent)] tracking-[0.12em] font-bold">// NEW FLAG</div>
                 <form onSubmit={handleCreateFlag} className="flex flex-col gap-2.5">
                   <div>
-                    <label className="font-mono text-[8px] text-[var(--t3)] tracking-[0.1em] mb-1 block">KEY *</label>
+                    <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">KEY *</label>
                     <input type="text" placeholder="e.g. new-feed-v2" value={flagKey}
                       onChange={e => setFlagKey(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                       className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] outline-none transition-all placeholder:text-[var(--t3)]" />
                     <p className="font-mono text-[8px] text-[var(--t3)] mt-0.5">Lowercase, hyphens only. Permanent.</p>
                   </div>
                   <div>
-                    <label className="font-mono text-[8px] text-[var(--t3)] tracking-[0.1em] mb-1 block">DISPLAY NAME *</label>
+                    <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">DISPLAY NAME *</label>
                     <input type="text" placeholder="e.g. New Feed Algorithm" value={flagName}
                       onChange={e => setFlagName(e.target.value)}
                       className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] outline-none transition-all placeholder:text-[var(--t3)]" />
                   </div>
                   <div>
-                    <label className="font-mono text-[8px] text-[var(--t3)] tracking-[0.1em] mb-1 block">DESCRIPTION</label>
+                    <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">DESCRIPTION</label>
                     <input type="text" placeholder="What does this flag do?" value={flagDesc}
                       onChange={e => setFlagDesc(e.target.value)}
                       className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] outline-none transition-all placeholder:text-[var(--t3)]" />
@@ -300,8 +300,8 @@ export function AdminScreen() {
                           {flag.globalOpen ? 'ON' : 'OFF'}
                         </span>
                       </div>
-                      <code className="font-mono text-[8px] text-[var(--t3)]">{flag.key}</code>
-                      {flag.description && <p className="font-mono text-[9px] text-[var(--t2)] mt-0.5 leading-relaxed">{flag.description}</p>}
+                      <code className="font-mono text-[10px] text-[var(--t2)]">{flag.key}</code>
+                      {flag.description && <p className="font-mono text-xs text-[var(--t1)] mt-0.5 leading-relaxed">{flag.description}</p>}
                     </div>
                     <button onClick={() => handleDeleteFlag(flag.key)} className="flex-shrink-0 p-1 rounded text-[var(--t3)] hover:text-[var(--red)] hover:bg-[rgba(244,63,94,0.08)] transition-all" title="Delete">
                       <Trash2 size={11} />
@@ -335,20 +335,20 @@ export function AdminScreen() {
                 <div className="font-mono text-[9px] text-[var(--purple)] tracking-[0.12em] font-bold">// NEW ROLE</div>
                 <form onSubmit={handleCreateRole} className="flex flex-col gap-2.5">
                   <div>
-                    <label className="font-mono text-[8px] text-[var(--t3)] tracking-[0.1em] mb-1 block">NAME (SLUG) *</label>
+                    <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">NAME (SLUG) *</label>
                     <input type="text" placeholder="e.g. moderator" value={roleName}
                       onChange={e => setRoleName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                       className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--purple)] outline-none transition-all placeholder:text-[var(--t3)]" />
                     <p className="font-mono text-[8px] text-[var(--t3)] mt-0.5">Lowercase, hyphens only. Cannot be <code>user</code> or <code>admin</code>.</p>
                   </div>
                   <div>
-                    <label className="font-mono text-[8px] text-[var(--t3)] tracking-[0.1em] mb-1 block">DISPLAY LABEL *</label>
+                    <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">DISPLAY LABEL *</label>
                     <input type="text" placeholder="e.g. Content Moderator" value={roleLabel}
                       onChange={e => setRoleLabel(e.target.value)}
                       className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--purple)] outline-none transition-all placeholder:text-[var(--t3)]" />
                   </div>
                   <div>
-                    <label className="font-mono text-[8px] text-[var(--t3)] tracking-[0.1em] mb-1 block">DESCRIPTION</label>
+                    <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">DESCRIPTION</label>
                     <input type="text" placeholder="What can this role do?" value={roleDesc}
                       onChange={e => setRoleDesc(e.target.value)}
                       className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--purple)] outline-none transition-all placeholder:text-[var(--t3)]" />
@@ -383,8 +383,8 @@ export function AdminScreen() {
                             <span className="font-mono text-[7px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-1.5 py-px rounded">SYSTEM</span>
                           )}
                         </div>
-                        <code className="font-mono text-[8px] text-[var(--t3)]">{role.name}</code>
-                        {role.description && <p className="font-mono text-[9px] text-[var(--t2)] mt-0.5 leading-relaxed">{role.description}</p>}
+                        <code className="font-mono text-[10px] text-[var(--t2)]">{role.name}</code>
+                        {role.description && <p className="font-mono text-xs text-[var(--t1)] mt-0.5 leading-relaxed">{role.description}</p>}
                       </div>
                     </div>
                   </div>
@@ -399,7 +399,7 @@ export function AdminScreen() {
               <User size={13} className="text-[var(--cyan,#06b6d4)]" />
               <h2 className="font-mono text-[11px] font-bold tracking-[0.1em] text-[var(--t1)]">USER OVERRIDES</h2>
             </div>
-            <p className="font-mono text-[9px] text-[var(--t3)] -mt-2 leading-relaxed">
+            <p className="font-mono text-xs text-[var(--t2)] -mt-2 leading-relaxed">
               Assign roles and grant individual flags to a specific user.
             </p>
 
@@ -423,7 +423,7 @@ export function AdminScreen() {
                     </div>
                     <div>
                       <div className="font-mono text-[10px] font-bold text-[var(--t1)]">{user.displayName}</div>
-                      <div className="font-mono text-[9px] text-[var(--t3)]">@{user.username}</div>
+                      <div className="font-mono text-[10px] text-[var(--t2)]">@{user.username}</div>
                     </div>
                   </button>
                 ))}
@@ -436,7 +436,7 @@ export function AdminScreen() {
                 <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg-el)]">
                   <div>
                     <div className="font-mono text-[11px] font-bold text-[var(--t1)]">{selectedUser.displayName}</div>
-                    <div className="font-mono text-[9px] text-[var(--t3)]">@{selectedUser.username}</div>
+                    <div className="font-mono text-[10px] text-[var(--t2)]">@{selectedUser.username}</div>
                   </div>
                   <button onClick={() => { setSelectedUser(null); setAssignedRoleIds(new Set()); setAssignedFlags(new Set()) }}
                     className="font-mono text-[9px] text-[var(--t3)] hover:text-[var(--t1)] transition-all px-2 py-1 rounded border border-transparent hover:border-[var(--border-m)]">
@@ -451,7 +451,7 @@ export function AdminScreen() {
                       className={`flex-1 py-2.5 font-mono text-[9px] font-bold tracking-[0.08em] transition-all ${
                         userTab === tab
                           ? 'text-[var(--t1)] border-b-2 border-[var(--accent)] -mb-px'
-                          : 'text-[var(--t3)] hover:text-[var(--t2)]'
+                          : 'text-[var(--t2)] hover:text-[var(--t1)]'
                       }`}>
                       {tab === 'roles' ? `ROLES (${assignedRoleIds.size})` : `FLAGS (${assignedFlags.size})`}
                     </button>
@@ -473,7 +473,7 @@ export function AdminScreen() {
                               {isAssigned && <span className="font-mono text-[7px] text-[var(--green)] border border-[rgba(16,217,160,0.3)] px-1 rounded">ACTIVE</span>}
                               {isBaseRole && <span className="font-mono text-[7px] text-[var(--t3)] border border-[var(--border-m)] px-1 rounded">BASE</span>}
                             </div>
-                            <code className="font-mono text-[8px] text-[var(--t3)]">{role.name}</code>
+                            <code className="font-mono text-[10px] text-[var(--t2)]">{role.name}</code>
                           </div>
                           {isBaseRole ? (
                             <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-m)] text-[var(--t3)]">
@@ -505,7 +505,7 @@ export function AdminScreen() {
                               <span className="font-mono text-[10px] font-bold text-[var(--t1)]">{flag.name}</span>
                               {flag.globalOpen && <span className="font-mono text-[7px] text-[var(--green)] border border-[rgba(16,217,160,0.3)] px-1 rounded">GLOBAL ON</span>}
                             </div>
-                            <code className="font-mono text-[8px] text-[var(--t3)]">{flag.key}</code>
+                            <code className="font-mono text-[10px] text-[var(--t2)]">{flag.key}</code>
                           </div>
                           <button onClick={() => handleToggleFlagForUser(flag.key, flag.name)}
                             className={`font-mono text-[9px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
@@ -524,8 +524,8 @@ export function AdminScreen() {
             ) : (
               <div className="border border-dashed border-[var(--border-m)] rounded-xl p-10 text-center">
                 <User size={20} className="text-[var(--t3)] mx-auto mb-2 opacity-40" />
-                <div className="font-mono text-[10px] text-[var(--t3)]">NO USER SELECTED</div>
-                <div className="font-mono text-[9px] text-[var(--t3)] mt-1 opacity-60">Search above to manage a user's roles and flags</div>
+                <div className="font-mono text-xs font-bold text-[var(--t2)]">NO USER SELECTED</div>
+                <div className="font-mono text-[10px] text-[var(--t2)] mt-1">Search above to manage a user&apos;s roles and flags</div>
               </div>
             )}
           </div>

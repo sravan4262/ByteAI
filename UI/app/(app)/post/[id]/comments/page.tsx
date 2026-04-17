@@ -1,6 +1,6 @@
-
 import { CommentsScreen } from '@/components/features/comments/comments-screen'
 import { getPost } from '@/lib/api'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 interface PostCommentsPageProps {
   params: Promise<{ id: string }>
@@ -9,8 +9,11 @@ interface PostCommentsPageProps {
 export default async function PostCommentsPage({ params }: PostCommentsPageProps) {
   const { id } = await params
 
+  const supabase = await createSupabaseServerClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? null
 
-  const post = await getPost(id, null)
+  const post = await getPost(id, token)
 
   if (!post) {
     return (

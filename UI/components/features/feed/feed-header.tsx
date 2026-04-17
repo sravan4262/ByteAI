@@ -15,9 +15,8 @@ export function FeedHeader({ contentType }: FeedHeaderProps) {
   const { openNotifications, unreadCount } = useNotifications()
   const cache = getMeCache()
 
-  const initials = ((user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')).toUpperCase() || '?'
-  // Prefer custom avatar from DB; fall back to provider photo
-  const avatarSrc = cache?.avatarUrl || user?.imageUrl || null
+  const initials = (cache?.displayName?.[0] ?? cache?.username?.[0] ?? '?').toUpperCase()
+  const avatarSrc = cache?.avatarUrl ?? null
   const isEmoji = avatarSrc && !avatarSrc.startsWith('http')
 
   return (

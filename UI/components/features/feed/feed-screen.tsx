@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useIsMobile } from '@/hooks/use-mobile'
 
 import { FeedHeader } from './feed-header'
@@ -26,10 +27,13 @@ function parseTime(timeStr: string): number {
 }
 
 export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
-  const [activeTab, setActiveTab] = useState('for_you')
-  const [sortBy, setSortBy] = useState('relevant')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') ?? 'for_you')
+  const [sortBy, setSortBy] = useState(() => searchParams.get('sort') ?? 'relevant')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
-  const [activeStackFilter, setActiveStackFilter] = useState<string | null>(null)
+  const [activeStackFilter, setActiveStackFilter] = useState<string | null>(() => searchParams.get('stack'))
   const [rawPosts, setRawPosts] = useState<Post[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -91,22 +95,24 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
       }
     }
 
-    // Persist feed order so the detail page can show real prev/next navigation
-    if (result.length > 0) {
-      sessionStorage.setItem(
-        'byteai_feed_context',
-        JSON.stringify(result.map((p) => ({
-          id: p.id,
-          title: p.title,
-          username: p.author.username,
-          role: p.author.role,
-          company: p.author.company,
-        })))
-      )
-    }
-
     return result
   }, [activeTab, sortBy, posts])
+
+  // Persist feed order so the detail page can show real prev/next navigation.
+  // Done in an effect (not the memo) so it doesn't race with logout clearing session storage.
+  useEffect(() => {
+    if (filteredPosts.length === 0) return
+    sessionStorage.setItem(
+      'byteai_feed_context',
+      JSON.stringify(filteredPosts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        username: p.author.username,
+        role: p.author.role,
+        company: p.author.company,
+      })))
+    )
+  }, [filteredPosts])
 
   const handleLike = async (postId: string) => {
     const post = rawPosts.find((p) => p.id === postId)
@@ -138,9 +144,19 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
     }
   }
 
+  const updateUrl = useCallback((tab: string, sort: string, stack: string | null) => {
+    const params = new URLSearchParams()
+    if (tab !== 'for_you') params.set('tab', tab)
+    if (sort !== 'relevant') params.set('sort', sort)
+    if (stack) params.set('stack', stack)
+    const qs = params.toString()
+    router.replace(qs ? `?${qs}` : '?', { scroll: false })
+  }, [router])
+
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
     setActiveStackFilter(null)
+    updateUrl(tabId, sortBy, null)
   }
 
   const shouldTruncate = (post: Post) => {
@@ -158,9 +174,9 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
         showSortDropdown={showSortDropdown}
         activeStackFilter={activeStackFilter}
         onTabChange={handleTabChange}
-        onSortChange={(sort) => { setSortBy(sort); setShowSortDropdown(false) }}
+        onSortChange={(sort) => { setSortBy(sort); setShowSortDropdown(false); updateUrl(activeTab, sort, activeStackFilter) }}
         onToggleSortDropdown={() => setShowSortDropdown(!showSortDropdown)}
-        onStackFilter={setActiveStackFilter}
+        onStackFilter={(stack) => { setActiveStackFilter(stack); updateUrl(activeTab, sortBy, stack) }}
       />
 
       {/* Posts feed */}

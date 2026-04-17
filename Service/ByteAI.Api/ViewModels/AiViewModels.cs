@@ -18,5 +18,6 @@ public sealed record FormatCodeRequest(string Code, string Language);
 public sealed record FormatCodeResponse(string Formatted);
 
 public sealed record SimilarByteResponse(
-    Guid Id, Guid AuthorId, string Title, string Body,
-    string? CodeSnippet, string? Language, string Type, DateTime CreatedAt);
+    Guid Id, Guid AuthorId, string AuthorUsername, string Title, string Body,
+    string? CodeSnippet, string? Language, string Type, DateTime CreatedAt,
+    List<string> Tags, int LikeCount, int CommentCount);

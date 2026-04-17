@@ -107,7 +107,7 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
 
           {/* Title */}
           <div>
-            <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// TITLE</div>
+            <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)] mb-2">// TITLE</div>
             <input
               type="text"
               value={title}
@@ -120,7 +120,7 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
           {/* Company + Role */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// COMPANY</div>
+              <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)] mb-2">// COMPANY</div>
               <CreatableDropdown
                 options={companyOptions}
                 value={company}
@@ -130,7 +130,7 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
               />
             </div>
             <div>
-              <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// ROLE</div>
+              <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)] mb-2">// ROLE</div>
               <CreatableDropdown
                 options={roleOptions}
                 value={role}
@@ -143,7 +143,7 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
 
           {/* Questions */}
           <div>
-            <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-3">
+            <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)] mb-3">
               // QUESTIONS ({questions.length})
             </div>
 
@@ -171,7 +171,7 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
                   <div className="px-4 py-3 flex flex-col gap-3">
                     {/* Question */}
                     <div>
-                      <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-1.5">QUESTION</div>
+                      <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)] mb-1.5">QUESTION</div>
                       <textarea
                         value={q.question}
                         onChange={(e) => updateQuestion(q.id, 'question', e.target.value)}
@@ -183,7 +183,7 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
 
                     {/* Answer */}
                     <div>
-                      <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-1.5">ANSWER</div>
+                      <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)] mb-1.5">ANSWER</div>
                       <textarea
                         value={q.answer}
                         onChange={(e) => updateQuestion(q.id, 'answer', e.target.value)}

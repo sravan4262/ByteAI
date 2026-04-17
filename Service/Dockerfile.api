@@ -21,7 +21,7 @@ COPY --from=build /app/publish .
 
 # Download ONNX model from HuggingFace, pinned to commit e9b6763.
 # This layer is cached and only re-executed when the SHA changes.
-RUN apt-get update && apt-get install -y --no-install-recommends wget \
+RUN apt-get update && apt-get install -y --no-install-recommends wget curl \
  && mkdir -p /app/models \
  && wget -q "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5/resolve/e9b6763023c676ca8431644204f50c2b100d9aab/onnx/model_quantized.onnx" \
          -O /app/models/nomic-embed-text-v1.5.onnx \

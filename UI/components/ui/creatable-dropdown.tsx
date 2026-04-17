@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Search, X, Plus } from 'lucide-react'
+import { ChevronDown, Search, X, Sparkles } from 'lucide-react'
 
 interface CreatableDropdownProps {
   options: string[]
@@ -135,12 +135,16 @@ export function CreatableDropdown({
               <button
                 type="button"
                 onClick={() => select(search.trim())}
-                className="w-full flex items-center gap-2 px-3 py-2.5 border-b border-[var(--border)] text-left transition-all hover:bg-white/5 group"
+                className="w-full flex items-center gap-2 px-3 py-2.5 border-b border-[var(--border)] text-left transition-all group bg-[rgba(167,139,250,0.04)] hover:bg-[rgba(167,139,250,0.1)]"
               >
-                <Plus size={11} className={`flex-shrink-0 ${ACCENT[accentColor].split(' ')[2]}`} />
-                <span className="font-mono text-xs text-[var(--t2)] group-hover:text-[var(--t1)]">
-                  Create <span className="font-bold text-[var(--t1)]">&quot;{search.trim()}&quot;</span>
-                </span>
+                <div className="flex items-center justify-center w-5 h-5 rounded-md bg-[rgba(167,139,250,0.15)] border border-[rgba(167,139,250,0.3)] flex-shrink-0">
+                  <Sparkles size={10} className="text-[var(--purple)]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-mono text-[10px] text-[var(--t3)] block leading-none mb-0.5">use custom</span>
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] truncate block">&quot;{search.trim()}&quot;</span>
+                </div>
+                <span className="font-mono text-[8px] px-1.5 py-0.5 rounded border border-[rgba(167,139,250,0.4)] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] flex-shrink-0">NEW</span>
               </button>
             )}
 

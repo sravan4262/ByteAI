@@ -34,6 +34,7 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
 
     /// <summary>Get a single byte by ID.</summary>
     [HttpGet("{byteId:guid}")]
+    [Authorize]
     [ProducesResponseType(typeof(ApiResponse<ByteResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ByteResponse>>> GetByteById(Guid byteId, CancellationToken ct)

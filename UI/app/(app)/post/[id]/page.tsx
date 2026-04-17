@@ -1,6 +1,6 @@
-
 import { DetailScreen } from '@/components/features/detail/detail-screen'
 import { getPost } from '@/lib/api'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 interface PostPageProps {
   params: Promise<{ id: string }>
@@ -9,8 +9,11 @@ interface PostPageProps {
 export default async function PostDetailPage({ params }: PostPageProps) {
   const { id } = await params
 
+  const supabase = await createSupabaseServerClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token ?? null
 
-  const post = await getPost(id, null)
+  const post = await getPost(id, token)
 
   if (!post) {
     return (

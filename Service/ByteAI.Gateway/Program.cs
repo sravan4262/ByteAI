@@ -19,10 +19,11 @@ try
         .WriteTo.Console());
 
     // ── CORS — allow the SWA frontend origin ────────────────────────────────
-    var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000";
+    var allowedOrigins = (builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     builder.Services.AddCors(opt =>
         opt.AddDefaultPolicy(policy =>
-            policy.WithOrigins(allowedOrigin)
+            policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials()));

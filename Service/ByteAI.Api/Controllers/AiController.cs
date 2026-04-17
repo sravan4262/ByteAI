@@ -71,7 +71,12 @@ public sealed class AiController(
             .Where(b => b.Id != byteId && b.IsActive && b.Embedding != null)
             .OrderBy(b => b.Embedding!.CosineDistance(source.Embedding))
             .Take(Math.Min(limit, 20))
-            .Select(b => new SimilarByteResponse(b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type, b.CreatedAt))
+            .Select(b => new SimilarByteResponse(
+                b.Id, b.AuthorId, b.Author.Username, b.Title, b.Body,
+                b.CodeSnippet, b.Language, b.Type, b.CreatedAt,
+                b.ByteTechStacks.Select(bt => bt.TechStack.Name).ToList(),
+                b.UserLikes.Count,
+                b.Comments.Count))
             .ToListAsync(ct);
 
         return Ok(ApiResponse<List<SimilarByteResponse>>.Success(similar));

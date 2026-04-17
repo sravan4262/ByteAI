@@ -43,10 +43,9 @@ export function CommentsScreen({ post }: CommentsScreenProps) {
 
     setIsSubmitting(true)
     try {
-      await addComment(post.id, trimmed)
-      // Optimistically add to the list
+      const { id: realId } = await addComment(post.id, trimmed)
       const optimistic: Comment = {
-        id: crypto.randomUUID(),
+        id: realId,
         postId: post.id,
         author: {
           id: 'me',

@@ -5,6 +5,9 @@ public sealed record QualityScore(int Clarity, int Specificity, int Relevance)
     public int Overall => (Clarity + Specificity + Relevance) / 3;
 }
 
+/// <summary>A tag suggestion returned by Groq, including its classified subdomain.</summary>
+public sealed record TagSuggestion(string Tag, string Subdomain);
+
 /// <summary>Result of the Groq-based tech-relevance classification (Stage 3 of content validation).</summary>
 public sealed record ContentValidationResult(bool IsTechRelated, bool IsCoherent, string Reason);
 
@@ -13,8 +16,12 @@ public sealed record RagPassage(string Title, string Body, string? SourceId = nu
 
 public interface IGroqService
 {
-    /// <summary>Returns the single most relevant tag for a byte's content, constrained to the provided allowed tag names.</summary>
-    Task<List<string>> SuggestTagsAsync(string title, string body, string? codeSnippet, IReadOnlyList<string> allowedTags, CancellationToken ct = default);
+    /// <summary>
+    /// Suggests up to 5 tech stack tags for the byte content, ranked most to least relevant.
+    /// Each result includes the tag name (snake_case) and the subdomain it belongs to.
+    /// May suggest tags that do not yet exist in the database — callers are responsible for upsert.
+    /// </summary>
+    Task<List<TagSuggestion>> SuggestTagsAsync(string title, string body, string? codeSnippet, CancellationToken ct = default);
 
     /// <summary>Scores a byte's quality on clarity, specificity and relevance (1–10 each).</summary>
     Task<QualityScore?> ScoreQualityAsync(string title, string body, CancellationToken ct = default);

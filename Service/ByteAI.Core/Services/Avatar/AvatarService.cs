@@ -12,6 +12,9 @@ public sealed class AvatarService(
     ILogger<AvatarService> logger) : IAvatarService
 {
     private readonly string _supabaseUrl       = config["Supabase:Url"]              ?? throw new InvalidOperationException("Supabase:Url is not configured");
+    // PublicUrl is the browser-accessible base URL — differs from Url in local Docker
+    // where the API reaches Supabase via host.docker.internal but the browser uses 127.0.0.1.
+    private readonly string _publicUrl         = config["Supabase:PublicUrl"] ?? config["Supabase:Url"] ?? throw new InvalidOperationException("Supabase:Url is not configured");
     private readonly string _serviceRoleKey    = config["Supabase:ServiceRoleKey"]   ?? throw new InvalidOperationException("Supabase:ServiceRoleKey is not configured");
     private readonly string _bucket            = config["Supabase:AvatarBucket"]     ?? "byteAIAvatars";
 
@@ -52,7 +55,7 @@ public sealed class AvatarService(
             throw new InvalidOperationException($"Avatar upload failed: {response.StatusCode}");
         }
 
-        // ── 3. Return public URL ───────────────────────────────────────────────
-        return $"{_supabaseUrl}/storage/v1/object/public/{_bucket}/{path}";
+        // ── 3. Return public URL (browser-accessible) ─────────────────────────
+        return $"{_publicUrl.TrimEnd('/')}/storage/v1/object/public/{_bucket}/{path}";
     }
 }

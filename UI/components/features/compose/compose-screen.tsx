@@ -115,6 +115,10 @@ export function ComposeScreen() {
   }
 
   const handleSaveDraft = async () => {
+    if (!title.trim() && !content.trim() && !codeContent.trim()) {
+      toast.error('Add a title or some content before saving a draft')
+      return
+    }
     setIsSavingDraft(true)
     try {
       const saved = await api.saveDraft({

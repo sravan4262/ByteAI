@@ -21,9 +21,8 @@ interface DetailScreenProps {
 export function DetailScreen({ post }: DetailScreenProps) {
   const router = useRouter()
   const meCache = getMeCache()
-  const myAvatarUrl = meCache?.avatarUrl || getMeCache()?.avatarUrl ?? null || null
-  const myInitials = ((getMeCache()?.displayName?.split(" ")[0] ?? ""?.[0] ?? '') + (""?.[0] ?? '')).toUpperCase()
-    || meCache?.username?.[0]?.toUpperCase() || 'U'
+  const myAvatarUrl = meCache?.avatarUrl ?? null
+  const myInitials = (meCache?.displayName?.[0] ?? meCache?.username?.[0] ?? 'U').toUpperCase()
   const [comments, setComments] = useState<Comment[]>([])
   const [commentCount, setCommentCount] = useState(post.comments ?? 0)
   const [likeCount, setLikeCount] = useState(post.likes ?? 0)

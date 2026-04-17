@@ -36,7 +36,7 @@ function QuestionCard({
         onClick={onToggle}
         className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-[rgba(255,255,255,0.02)] transition-all"
       >
-        <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.12)] border border-[rgba(167,139,250,0.2)] rounded px-2 py-1 flex-shrink-0 mt-0.5">
+        <span className="font-mono text-[10px] text-[var(--purple)] bg-[rgba(167,139,250,0.12)] border border-[rgba(167,139,250,0.2)] rounded px-2 py-1 flex-shrink-0 mt-0.5">
           Q{index + 1}
         </span>
         <p className="flex-1 text-sm md:text-base font-semibold text-[var(--t1)] leading-relaxed">{q.question}</p>
@@ -114,14 +114,14 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
           />
         )}
         <div className="flex-1 min-w-0">
-          <div className="font-mono text-xs md:text-sm font-bold text-[var(--t1)] flex items-center gap-2">
+          <div className="font-mono text-sm md:text-sm font-bold text-[var(--t1)] flex items-center gap-2">
             {interview.isAnonymous ? (
               <span className="text-[var(--t2)]">Anonymous</span>
             ) : (
               <>@{interview.authorUsername || interview.authorId.slice(0, 8)}</>
             )}
           </div>
-          <div className="font-mono text-xs md:text-[13px] text-[var(--t2)] mt-0.5 tracking-[0.04em]">
+          <div className="font-mono text-xs md:text-xs text-[var(--t2)] mt-0.5 tracking-[0.04em]">
             {interview.isAnonymous ? (
               <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.08)] border border-[rgba(167,139,250,0.2)] px-2 py-0.5 rounded">
                 👻 anonymous post
@@ -144,21 +144,21 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
 
       {/* Type badge + metadata chips */}
       <div className="flex flex-wrap items-center gap-2 -mt-1">
-        <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2.5 py-1 rounded flex items-center gap-1.5">
-          <Briefcase size={10} /> INTERVIEW
+        <span className="font-mono text-[10px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2.5 py-1 rounded flex items-center gap-1.5">
+          <Briefcase size={11} /> INTERVIEW
         </span>
         {interview.company && (
-          <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+          <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2.5 py-1 rounded">
             {interview.company}
           </span>
         )}
         {interview.role && (
-          <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+          <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2.5 py-1 rounded">
             {interview.role}
           </span>
         )}
         {interview.location && (
-          <span className="font-mono text-[9px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2 py-1 rounded">
+          <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2.5 py-1 rounded">
             📍 {interview.location}
           </span>
         )}
@@ -184,15 +184,15 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
       {interview.questions.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <div className="font-mono text-[9px] tracking-[0.1em] text-[var(--t3)]">
+            <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)]">
               // {interview.questions.length} QUESTION{interview.questions.length !== 1 ? 'S' : ''}
             </div>
             <button
               onClick={toggleAll}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[9px] tracking-[0.07em] border transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[10px] tracking-[0.07em] border transition-all ${
                 allExpanded
                   ? 'text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-d)]'
-                  : 'text-[var(--t3)] border-[var(--border-m)] hover:text-[var(--t1)] hover:border-[var(--border-h)]'
+                  : 'text-[var(--purple)] border-[rgba(167,139,250,0.4)] bg-[rgba(167,139,250,0.06)] hover:bg-[rgba(167,139,250,0.12)] hover:border-[rgba(167,139,250,0.7)]'
               }`}
             >
               {allExpanded
@@ -215,15 +215,15 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
       {/* Actions — mirrors PostCard button strip */}
       <div className="flex items-center gap-2 pt-4 border-t border-[var(--border)]">
         {/* Questions count */}
-        <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)]">
+        <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)]">
           <Briefcase size={14} />
-          <span className="hidden sm:inline">{interview.questions.length}Q</span>
+          <span>{interview.questions.length}Q</span>
         </span>
 
         {/* Comment count — navigates to detail screen discussion section */}
         <button
           onClick={() => router.push(`/interviews/${interview.id}`)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--purple)] hover:border-[rgba(167,139,250,0.5)]"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--purple)] hover:border-[rgba(167,139,250,0.5)]"
         >
           <MessageSquare size={14} />
           <span>{interview.commentCount ?? 0}</span>
@@ -232,23 +232,23 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
         {/* Bookmark */}
         <button
           onClick={handleBookmark}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] transition-all ${
             isBookmarked
               ? 'text-[var(--accent)] bg-[var(--accent-d)] border border-[var(--accent)]'
-              : 'text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
+              : 'text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
           }`}
         >
           <Bookmark size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
-          <span className="hidden sm:inline">SAVE</span>
+          <span>SAVE</span>
         </button>
 
         {/* Share */}
         <button
           onClick={handleShare}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--green)] hover:border-[var(--green)]"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--green)] hover:border-[var(--green)]"
         >
           <Share2 size={14} />
-          <span className="hidden sm:inline">SHARE</span>
+          <span>SHARE</span>
         </button>
 
         {/* View full */}
@@ -269,9 +269,9 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
 export function InterviewsScreen() {
   const { openNotifications, unreadCount } = useNotifications()
   const cache = getMeCache()
-  const avatarSrc = cache?.avatarUrl || getMeCache()?.avatarUrl ?? null || null
+  const avatarSrc = cache?.avatarUrl ?? null
   const isEmoji = avatarSrc && !avatarSrc.startsWith('http')
-  const initials = ((getMeCache()?.displayName?.split(" ")[0] ?? ""?.[0] ?? '') + (""?.[0] ?? '')).toUpperCase() || cache?.username?.[0]?.toUpperCase() || '?'
+  const initials = (cache?.displayName?.[0] ?? cache?.username?.[0] ?? '?').toUpperCase()
   const [companyFilter, setCompanyFilter] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<string | null>(null)
   const [locationFilter, setLocationFilter] = useState<string | null>(null)
@@ -344,7 +344,7 @@ export function InterviewsScreen() {
         <div className="flex flex-wrap items-center gap-3 px-4 lg:px-6 py-3">
           {/* Company filter */}
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">COMPANY</span>
+            <span className="font-mono text-[9px] tracking-[0.12em] text-[var(--t2)]">COMPANY</span>
             <SearchableDropdown
               options={companies}
               value={companyFilter}
@@ -357,7 +357,7 @@ export function InterviewsScreen() {
 
           {/* Role filter */}
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">ROLE</span>
+            <span className="font-mono text-[9px] tracking-[0.12em] text-[var(--t2)]">ROLE</span>
             <SearchableDropdown
               options={roles}
               value={roleFilter}
@@ -370,7 +370,7 @@ export function InterviewsScreen() {
 
           {/* Location filter */}
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[8px] tracking-[0.12em] text-[var(--t3)]">LOCATION</span>
+            <span className="font-mono text-[9px] tracking-[0.12em] text-[var(--t2)]">LOCATION</span>
             <SearchableDropdown
               options={locations}
               value={locationFilter}

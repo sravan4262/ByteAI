@@ -617,8 +617,9 @@ export async function getPostComments(
   }
 }
 
-export async function addComment(postId: string, comment: string): Promise<void> {
-  await apiFetch(`/api/bytes/${postId}/comments`, { method: 'POST', body: JSON.stringify({ body: comment }) })
+export async function addComment(postId: string, comment: string): Promise<{ id: string }> {
+  const res = await apiFetch<ApiResponse<{ id: string }>>(`/api/bytes/${postId}/comments`, { method: 'POST', body: JSON.stringify({ body: comment }) })
+  return res.data
 }
 
 export async function voteComment(commentId: string, direction: 'up' | 'down'): Promise<void> {

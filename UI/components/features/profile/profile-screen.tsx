@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Pencil, Globe, Lock, Github, Plus, Bookmark, X, Check, User, Hash, Briefcase, SlidersHorizontal, Bell, Camera } from 'lucide-react'
+import { LogOut, Pencil, Globe, Lock, Github, Plus, Bookmark, X, Check, User, Hash, Briefcase, SlidersHorizontal, Bell, Camera, Trash2, Heart, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PhoneFrame } from '@/components/layout/phone-frame'
@@ -11,6 +11,7 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
 import { useAuth } from '@/hooks/use-auth'
 
 import * as api from '@/lib/api'
+import { getMeCache } from '@/lib/user-cache'
 
 const themes = [
   { id: 'dark',   label: 'DARK',   color: '#05050e' },
@@ -194,7 +195,7 @@ const PROFILE_NAV: { id: ProfileTab; icon: React.ElementType; label: string; col
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function ProfileScreen() {
-  const { logout } = useAuth()
+  const { logout, user: authUser } = useAuth()
   const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('profile')
@@ -384,7 +385,7 @@ export function ProfileScreen() {
   }
 
   const handleLogout = async () => {
-    await api.logout(); toast.success('Signed out'); logout()
+    await logout(); toast.success('Signed out')
   }
 
   useEffect(() => {
@@ -555,14 +556,14 @@ export function ProfileScreen() {
                   <div className="flex flex-col gap-1">
                     <span className="font-mono text-[10px] text-[var(--t2)] tracking-[0.06em]">PROVIDER PHOTO</span>
                     <button type="button"
-                      onClick={() => { setPendingAvatarFile(null); setAvatarPreview(null); setAvatarZoom(1); setEditForm(f => ({ ...f, customAvatarUrl: '' })) }}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-all w-fit ${editForm.customAvatarUrl === '' && !pendingAvatarFile ? 'border-[var(--cyan)] bg-[rgba(34,211,238,0.08)]' : 'border-[var(--border-m)] hover:border-[var(--border-h)]'}`}>
-                      {getMeCache()?.avatarUrl ?? null
-                        ? <img src={getMeCache()?.avatarUrl ?? ''} alt="provider" className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                      onClick={() => { const providerUrl = authUser?.user_metadata?.avatar_url ?? ''; setPendingAvatarFile(null); setAvatarPreview(providerUrl || null); setAvatarZoom(1); setEditForm(f => ({ ...f, customAvatarUrl: providerUrl })) }}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-all w-fit ${editForm.customAvatarUrl === (authUser?.user_metadata?.avatar_url ?? '') && !pendingAvatarFile ? 'border-[var(--cyan)] bg-[rgba(34,211,238,0.08)]' : 'border-[var(--border-m)] hover:border-[var(--border-h)]'}`}>
+                      {authUser?.user_metadata?.avatar_url
+                        ? <img src={authUser.user_metadata.avatar_url} alt="provider" className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
                         : <div className="w-8 h-8 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center font-mono text-xs text-[var(--t2)]">{(currentUser?.displayName ?? '?')[0]}</div>
                       }
                       <span className="font-mono text-xs text-[var(--t1)]">Use my Google / GitHub photo</span>
-                      {editForm.customAvatarUrl === '' && !pendingAvatarFile && <Check size={12} className="text-[var(--cyan)] ml-1" />}
+                      {editForm.customAvatarUrl === (authUser?.user_metadata?.avatar_url ?? '') && !pendingAvatarFile && <Check size={12} className="text-[var(--cyan)] ml-1" />}
                     </button>
                   </div>
 
@@ -969,27 +970,41 @@ export function ProfileScreen() {
                     <button onClick={() => router.push('/compose')} className="font-mono text-xs px-3 py-1.5 rounded-lg border border-[rgba(249,115,22,0.3)] text-[var(--orange)] bg-[rgba(249,115,22,0.07)] transition-all hover:opacity-80">→ COMPOSE</button>
                   </div>
                 ) : (
-                  <div className="divide-y divide-[var(--border)]">
-                    {myDrafts.map((draft, idx) => {
+                  <div className="flex flex-col gap-3 p-4">
+                    {myDrafts.map((draft) => {
                       const isConfirming = confirmDeleteDraft === draft.id
                       const dateStr = new Date(draft.updatedAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })
-                      const preview = draft.title || draft.body?.slice(0, 55) || '(untitled)'
+                      const preview = draft.title || draft.body?.slice(0, 80) || '(untitled)'
                       return (
-                        <div key={draft.id} className={`flex items-start gap-3 px-4 py-3.5 transition-all ${isConfirming ? 'bg-[rgba(244,63,94,0.06)]' : 'hover:bg-[rgba(255,255,255,0.02)]'}`}>
-                          <span className="font-mono text-xs text-[var(--t3)] w-5 flex-shrink-0 tabular-nums mt-0.5">{String(idx + 1).padStart(2, '0')}</span>
-                          <button onClick={() => router.push(`/compose?draftId=${draft.id}`)} className="flex-1 min-w-0 text-left">
-                            <span className="font-mono text-sm text-[var(--t1)] block leading-snug">{preview}</span>
-                            {draft.language && <span className="font-mono text-xs px-1.5 py-px rounded mt-1 inline-block text-[var(--orange)] bg-[rgba(249,115,22,0.07)]">{draft.language}</span>}
+                        <div key={draft.id} className={`group relative rounded-xl border transition-all ${
+                          isConfirming
+                            ? 'border-[var(--red)] bg-[rgba(244,63,94,0.06)]'
+                            : 'border-[var(--border-m)] bg-[var(--bg-card)] hover:border-[var(--border-h)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]'
+                        }`}>
+                          <button onClick={() => router.push(`/compose?draftId=${draft.id}`)} className="w-full text-left p-4">
+                            <p className="font-bold text-base text-[var(--t1)] leading-snug mb-2 pr-8">{preview}</p>
+                            {draft.body && draft.title && (
+                              <p className="text-xs text-[var(--t2)] leading-relaxed line-clamp-2 mb-3">{draft.body.slice(0, 120)}</p>
+                            )}
+                            <div className="flex items-center gap-3">
+                              {draft.language && (
+                                <span className="font-mono text-[10px] px-2.5 py-1 rounded border border-[rgba(249,115,22,0.3)] text-[var(--orange)] bg-[rgba(249,115,22,0.07)]">
+                                  {draft.language}
+                                </span>
+                              )}
+                              <span className="font-mono text-[10px] text-[var(--t2)] ml-auto">{dateStr}</span>
+                            </div>
                           </button>
-                          <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
-                            <span className="font-mono text-xs text-[var(--t2)]">{dateStr}</span>
+                          <div className="absolute top-3 right-3">
                             {isConfirming ? (
-                              <div className="flex items-center gap-1">
-                                <button onClick={() => handleDeleteDraft(draft.id)} className="font-mono text-xs px-2 py-0.5 rounded bg-[var(--red)] text-white">YES</button>
-                                <button onClick={() => setConfirmDeleteDraft(null)} className="font-mono text-xs px-2 py-0.5 rounded border border-[var(--border-m)] text-[var(--t2)]">NO</button>
+                              <div className="flex items-center gap-1.5">
+                                <button onClick={() => handleDeleteDraft(draft.id)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg bg-[var(--red)] text-white font-bold">YES</button>
+                                <button onClick={() => setConfirmDeleteDraft(null)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--border-m)] text-[var(--t2)] hover:text-[var(--t1)]">NO</button>
                               </div>
                             ) : (
-                              <button onClick={() => setConfirmDeleteDraft(draft.id)} className="font-mono text-xs px-3 py-1 rounded border border-[rgba(244,63,94,0.3)] text-[var(--red)] bg-[rgba(244,63,94,0.06)] hover:bg-[rgba(244,63,94,0.14)] transition-all">rm</button>
+                              <button onClick={() => setConfirmDeleteDraft(draft.id)} className="font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[rgba(244,63,94,0.5)] text-[var(--red)] bg-[rgba(244,63,94,0.1)] hover:bg-[rgba(244,63,94,0.2)] hover:border-[var(--red)] transition-all tracking-wide">
+                                rm
+                              </button>
                             )}
                           </div>
                         </div>
@@ -1007,33 +1022,69 @@ export function ProfileScreen() {
                   {bytesTab === 'posted' && <button onClick={() => router.push('/compose')} className="font-mono text-xs px-3 py-1.5 rounded-lg border border-[rgba(34,211,238,0.3)] text-[var(--cyan)] bg-[rgba(34,211,238,0.07)] transition-all hover:opacity-80">→ POST A BYTE</button>}
                 </div>
               ) : (
-                <div className="divide-y divide-[var(--border)]">
-                  {(bytesTab === 'posted' ? myBytes : savedBytes).map((byte, idx) => {
+                <div className="flex flex-col gap-3 p-4">
+                  {(bytesTab === 'posted' ? myBytes : savedBytes).map((byte) => {
                     const isConfirming = confirmDelete === byte.id
                     const dateStr = new Date(byte.createdAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })
                     return (
-                      <div key={byte.id} className={`flex items-start gap-3 px-4 py-3.5 transition-all ${isConfirming ? 'bg-[rgba(244,63,94,0.06)]' : 'hover:bg-[rgba(255,255,255,0.02)]'}`}>
-                        <span className="font-mono text-xs text-[var(--t3)] w-5 flex-shrink-0 tabular-nums select-none mt-0.5">{String(idx + 1).padStart(2, '0')}</span>
-                        <button onClick={() => router.push(`/post/${byte.id}`)} className="flex-1 min-w-0 text-left">
-                          <span className="font-mono text-sm text-[var(--t1)] block leading-snug hover:opacity-80">{byte.title}</span>
-                          <div className="flex gap-3 mt-1 font-mono text-xs text-[var(--t2)]">
-                            <span>❤ {byte.likes ?? 0}</span><span>💬 {byte.comments ?? 0}</span>
+                      <div
+                        key={byte.id}
+                        className={`group relative rounded-xl border transition-all ${
+                          isConfirming
+                            ? 'border-[var(--red)] bg-[rgba(244,63,94,0.06)]'
+                            : 'border-[var(--border-m)] bg-[var(--bg-card)] hover:border-[var(--border-h)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]'
+                        }`}
+                      >
+                        <button
+                          onClick={() => !isConfirming && router.push(`/post/${byte.id}`)}
+                          className="w-full text-left p-4"
+                        >
+                          <p className="font-bold text-base text-[var(--t1)] leading-snug mb-2 pr-8">{byte.title}</p>
+                          {byte.body && (
+                            <p className="text-xs text-[var(--t2)] leading-relaxed line-clamp-2 mb-3">{byte.body}</p>
+                          )}
+                          {byte.tags && byte.tags.length > 0 && (
+                            <div className="flex gap-1.5 flex-wrap mb-3">
+                              {byte.tags.slice(0, 3).map((tag) => (
+                                <span key={tag} className="font-mono text-[10px] py-1 px-2.5 rounded border border-[var(--border-m)] text-[var(--t1)] bg-[var(--bg-el)]">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1.5 font-mono text-xs text-[var(--t1)]">
+                              <Heart size={12} className="text-[var(--red)]" /> {byte.likes ?? 0}
+                            </span>
+                            <span className="flex items-center gap-1.5 font-mono text-xs text-[var(--t1)]">
+                              <MessageSquare size={12} className="text-[var(--accent)]" /> {byte.comments ?? 0}
+                            </span>
+                            <span className="font-mono text-[10px] text-[var(--t2)] ml-auto">{dateStr}</span>
                           </div>
                         </button>
-                        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
-                          <span className="font-mono text-xs text-[var(--t2)]">{dateStr}</span>
+
+                        {/* Action button — top-right corner */}
+                        <div className="absolute top-3 right-3">
                           {bytesTab === 'posted' ? (
                             isConfirming ? (
-                              <div className="flex items-center gap-1">
-                                <button onClick={() => handleDeleteByte(byte.id)} className="font-mono text-xs px-3 py-1.5 rounded bg-[var(--red)] text-white font-bold">YES</button>
-                                <button onClick={() => setConfirmDelete(null)} className="font-mono text-xs px-3 py-1.5 rounded border border-[var(--border-m)] text-[var(--t1)]">NO</button>
+                              <div className="flex items-center gap-1.5">
+                                <button onClick={() => handleDeleteByte(byte.id)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg bg-[var(--red)] text-white font-bold">YES</button>
+                                <button onClick={() => setConfirmDelete(null)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--border-m)] text-[var(--t2)] hover:text-[var(--t1)]">NO</button>
                               </div>
                             ) : (
-                              <button onClick={() => setConfirmDelete(byte.id)} className="font-mono text-xs px-4 py-1.5 rounded border border-[rgba(244,63,94,0.4)] text-[var(--red)] bg-[rgba(244,63,94,0.08)] hover:bg-[rgba(244,63,94,0.18)] transition-all font-bold">rm</button>
+                              <button
+                                onClick={() => setConfirmDelete(byte.id)}
+                                className="font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[rgba(244,63,94,0.5)] text-[var(--red)] bg-[rgba(244,63,94,0.1)] hover:bg-[rgba(244,63,94,0.2)] hover:border-[var(--red)] transition-all tracking-wide"
+                              >
+                                rm
+                              </button>
                             )
                           ) : (
-                            <button onClick={() => handleUnsaveByte(byte.id)} className="flex items-center gap-1 font-mono text-xs px-2 py-0.5 rounded border border-[rgba(59,130,246,0.3)] text-[var(--accent)] bg-[rgba(59,130,246,0.06)] hover:bg-[rgba(59,130,246,0.12)] transition-all">
-                              <Bookmark size={8} fill="currentColor" />unsave
+                            <button
+                              onClick={() => handleUnsaveByte(byte.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-mono text-[9px] px-2 py-1 rounded-md border border-[rgba(59,130,246,0.3)] text-[var(--accent)] bg-[rgba(59,130,246,0.06)] hover:bg-[rgba(59,130,246,0.14)]"
+                            >
+                              <Bookmark size={9} /> unsave
                             </button>
                           )}
                         </div>
@@ -1077,33 +1128,47 @@ export function ProfileScreen() {
                   {interviewsTab === 'posted' && <button onClick={() => router.push('/interviews')} className="font-mono text-xs px-3 py-1.5 rounded-lg border border-[rgba(168,85,247,0.3)] text-[var(--purple)] bg-[rgba(168,85,247,0.07)] transition-all hover:opacity-80">→ SHARE ONE</button>}
                 </div>
               ) : (
-                <div className="divide-y divide-[var(--border)]">
-                  {(interviewsTab === 'posted' ? myInterviews : savedInterviews).map((interview, idx) => {
+                <div className="flex flex-col gap-3 p-4">
+                  {(interviewsTab === 'posted' ? myInterviews : savedInterviews).map((interview) => {
                     const isConfirming = confirmDelete === interview.id
                     const dateStr = new Date(interview.createdAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })
+                    const diffColor = interview.difficulty?.toLowerCase() === 'hard'
+                      ? 'text-[var(--red)] border-[rgba(244,63,94,0.35)] bg-[rgba(244,63,94,0.07)]'
+                      : interview.difficulty?.toLowerCase() === 'medium'
+                      ? 'text-[var(--orange)] border-[rgba(249,115,22,0.35)] bg-[rgba(249,115,22,0.07)]'
+                      : 'text-[var(--green)] border-[rgba(16,217,160,0.35)] bg-[rgba(16,217,160,0.07)]'
                     return (
-                      <div key={interview.id} className={`flex items-start gap-3 px-4 py-3.5 transition-all ${isConfirming ? 'bg-[rgba(244,63,94,0.06)]' : 'hover:bg-[rgba(255,255,255,0.02)]'}`}>
-                        <span className="font-mono text-xs text-[var(--t3)] w-5 flex-shrink-0 tabular-nums select-none mt-0.5">{String(idx + 1).padStart(2, '0')}</span>
-                        <button onClick={() => router.push(`/interviews/${interview.id}`)} className="flex-1 min-w-0 text-left">
-                          <span className="font-mono text-sm text-[var(--t1)] block leading-snug hover:opacity-80">{interview.title}</span>
-                          <span className="font-mono text-xs text-[var(--t2)] mt-1 block">
-                            {interview.company && `${interview.company} · `}{interview.difficulty?.toUpperCase()} · {interview.questions?.length ?? 0}Q
-                          </span>
+                      <div key={interview.id} className={`group relative rounded-xl border transition-all ${
+                        isConfirming
+                          ? 'border-[var(--red)] bg-[rgba(244,63,94,0.06)]'
+                          : 'border-[var(--border-m)] bg-[var(--bg-card)] hover:border-[var(--border-h)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]'
+                      }`}>
+                        <button onClick={() => !isConfirming && router.push(`/interviews/${interview.id}`)} className="w-full text-left p-4">
+                          <p className="font-bold text-base text-[var(--t1)] leading-snug mb-2 pr-16">{interview.title}</p>
+                          <div className="flex items-center gap-2 flex-wrap mb-3">
+                            {interview.company && (
+                              <span className="font-mono text-[10px] px-2.5 py-1 rounded border border-[var(--border-m)] text-[var(--t1)] bg-[var(--bg-el)]">{interview.company}</span>
+                            )}
+                            {interview.difficulty && (
+                              <span className={`font-mono text-[10px] px-2.5 py-1 rounded border font-bold ${diffColor}`}>{interview.difficulty.toUpperCase()}</span>
+                            )}
+                            <span className="font-mono text-[10px] px-2.5 py-1 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)]">{interview.questions?.length ?? 0}Q</span>
+                          </div>
+                          <span className="font-mono text-[10px] text-[var(--t2)]">{dateStr}</span>
                         </button>
-                        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
-                          <span className="font-mono text-xs text-[var(--t2)]">{dateStr}</span>
+                        <div className="absolute top-3 right-3">
                           {interviewsTab === 'posted' ? (
                             isConfirming ? (
-                              <div className="flex items-center gap-1">
-                                <button onClick={() => handleDeleteInterview(interview.id)} className="font-mono text-xs px-3 py-1.5 rounded bg-[var(--red)] text-white font-bold">YES</button>
-                                <button onClick={() => setConfirmDelete(null)} className="font-mono text-xs px-3 py-1.5 rounded border border-[var(--border-m)] text-[var(--t1)]">NO</button>
+                              <div className="flex items-center gap-1.5">
+                                <button onClick={() => handleDeleteInterview(interview.id)} className="font-mono text-[9px] px-2.5 py-1 rounded-md bg-[var(--red)] text-white font-bold tracking-wide">YES</button>
+                                <button onClick={() => setConfirmDelete(null)} className="font-mono text-[9px] px-2.5 py-1 rounded-md border border-[var(--border-m)] text-[var(--t2)] hover:text-[var(--t1)]">NO</button>
                               </div>
                             ) : (
-                              <button onClick={() => setConfirmDelete(interview.id)} className="font-mono text-xs px-4 py-1.5 rounded border border-[rgba(244,63,94,0.4)] text-[var(--red)] bg-[rgba(244,63,94,0.08)] hover:bg-[rgba(244,63,94,0.18)] transition-all font-bold">rm</button>
+                              <button onClick={() => setConfirmDelete(interview.id)} className="font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[rgba(244,63,94,0.5)] text-[var(--red)] bg-[rgba(244,63,94,0.1)] hover:bg-[rgba(244,63,94,0.2)] hover:border-[var(--red)] transition-all tracking-wide">rm</button>
                             )
                           ) : (
-                            <button onClick={() => handleUnsaveInterview(interview.id)} className="flex items-center gap-1 font-mono text-xs px-2 py-0.5 rounded border border-[rgba(168,85,247,0.3)] text-[var(--purple)] bg-[rgba(168,85,247,0.06)] hover:bg-[rgba(168,85,247,0.12)] transition-all">
-                              <Bookmark size={8} fill="currentColor" />unsave
+                            <button onClick={() => handleUnsaveInterview(interview.id)} className="flex items-center gap-1.5 font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[rgba(168,85,247,0.4)] text-[var(--purple)] bg-[rgba(168,85,247,0.08)] hover:bg-[rgba(168,85,247,0.18)] transition-all">
+                              <Bookmark size={10} fill="currentColor" /> unsave
                             </button>
                           )}
                         </div>

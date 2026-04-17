@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ByteAI.Api.Common.Auth;
@@ -18,13 +19,21 @@ public static class SupabaseJwtExtensions
             ?? throw new InvalidOperationException(
                 "Supabase:JwtSecret is required. Find it in Supabase Dashboard → Project Settings → API → JWT Settings.");
 
-        var issuer = $"{supabaseUrl.TrimEnd('/')}/auth/v1";
+        // Allow overriding the issuer separately from the URL used for HTTP calls.
+        // Needed for local Docker where the JWT iss is 127.0.0.1 but the API reaches
+        // Supabase via host.docker.internal.
+        var jwtIssuerBase = config["Supabase:JwtIssuer"] ?? supabaseUrl;
+        var issuer = $"{jwtIssuerBase.TrimEnd('/')}/auth/v1";
+
+        // Build signing keys: HS256 (cloud Supabase / legacy) + ES256/RS256 from JWKS
+        // (new Supabase CLI v2.84+ signs with EC keys).
+        var signingKeys = BuildSigningKeys(supabaseUrl, jwtSecret);
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                // Supabase issues HS256 JWTs — symmetric key validation, no OIDC discovery.
+                options.RequireHttpsMetadata = false;
                 options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -33,8 +42,9 @@ public static class SupabaseJwtExtensions
                     ValidateAudience = false,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtSecret)),
+                    IssuerSigningKeys = signingKeys,
+                    // Return all keys so kid mismatches don't block validation.
+                    IssuerSigningKeyResolver = (_, _, _, _) => signingKeys,
                     NameClaimType = "sub",
                     ClockSkew = TimeSpan.FromSeconds(30),
                 };
@@ -42,6 +52,29 @@ public static class SupabaseJwtExtensions
 
         services.AddAuthorization();
         return services;
+    }
+
+    private static IList<SecurityKey> BuildSigningKeys(string supabaseUrl, string jwtSecret)
+    {
+        var keys = new List<SecurityKey>
+        {
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+        };
+
+        try
+        {
+            var jwksUrl = $"{supabaseUrl.TrimEnd('/')}/auth/v1/.well-known/jwks.json";
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            var json = http.GetStringAsync(jwksUrl).GetAwaiter().GetResult();
+            var jwks = new JsonWebKeySet(json);
+            keys.AddRange(jwks.Keys);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Auth] JWKS fetch skipped ({ex.Message}). HS256 key only.");
+        }
+
+        return keys;
     }
 
     /// <summary>Extracts the Supabase user ID (auth.users.id) from the JWT sub claim.</summary>
