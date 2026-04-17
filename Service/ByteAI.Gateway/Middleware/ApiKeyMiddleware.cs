@@ -6,8 +6,8 @@ namespace ByteAI.Gateway.Middleware;
 /// Allows:
 ///   1. /health/* paths — always unauthenticated
 ///   2. /api/lookup/* — public read-only data, no auth required
-///   3. /api/webhooks/* — Clerk webhooks verified by Svix signature inside the API
-///   4. Authorization: Bearer &lt;token&gt; — Clerk JWT; the downstream API validates the token
+///   3. /api/webhooks/* — webhooks verified by signature inside the API
+///   4. Authorization: Bearer &lt;token&gt; — Supabase JWT; the downstream API validates the token
 ///   5. X-Api-Key: &lt;key&gt; — machine-to-machine; key must be in the ApiKeys config value
 ///
 /// Rejects everything else with 401.
@@ -39,14 +39,14 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, IConfiguration config
             return;
         }
 
-        // Clerk webhooks — verified by Svix signature inside the API, not by API key
+        // Webhooks — verified by signature inside the API, not by API key
         if (ctx.Request.Path.StartsWithSegments("/api/webhooks"))
         {
             await next(ctx);
             return;
         }
 
-        // Clerk JWT passthrough — the downstream API validates the token itself
+        // JWT passthrough — the downstream API validates the token itself
         if (ctx.Request.Headers.Authorization.ToString()
                 .StartsWith("Bearer ", StringComparison.Ordinal))
         {

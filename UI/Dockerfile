@@ -2,7 +2,6 @@
 # Usage: docker build -t byteai/ui:latest ./UI
 #
 # Build-time args (set in GitHub Actions):
-#   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 #   NEXT_PUBLIC_API_URL
 
 FROM node:22-alpine AS deps
@@ -16,9 +15,7 @@ RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_OUTPUT=standalone

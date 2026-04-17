@@ -7,10 +7,10 @@ namespace ByteAI.Core.Business;
 
 public sealed class TrendingBusiness(ITrendingService trendingService, ICurrentUserService currentUserService) : ITrendingBusiness
 {
-    public async Task RecordClickAsync(Guid contentId, string contentType, string? clerkId, CancellationToken ct)
+    public async Task RecordClickAsync(Guid contentId, string contentType, string? supabaseUserId, CancellationToken ct)
     {
         Guid? userId = null;
-        if (clerkId is not null)
+        if (supabaseUserId is not null)
             userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
         await trendingService.RecordClickAsync(contentId, contentType, userId, ct);
     }

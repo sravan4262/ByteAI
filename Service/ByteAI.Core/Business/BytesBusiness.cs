@@ -9,15 +9,15 @@ namespace ByteAI.Core.Business;
 
 public sealed class BytesBusiness(IByteService byteService, ICurrentUserService currentUserService) : IBytesBusiness
 {
-    public async Task<PagedResult<ByteResult>> GetBytesAsync(int page, int pageSize, Guid? authorId, string sort, CancellationToken ct, string? clerkId = null)
+    public async Task<PagedResult<ByteResult>> GetBytesAsync(int page, int pageSize, Guid? authorId, string sort, CancellationToken ct, string? supabaseUserId = null)
     {
-        var requesterId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
         return await byteService.GetBytesAsync(new PaginationParams(page, Math.Min(pageSize, 100)), authorId, sort, ct, requesterId);
     }
 
-    public async Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct, string? clerkId = null)
+    public async Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct, string? supabaseUserId = null)
     {
-        var requesterId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
         return await byteService.GetByteByIdAsync(byteId, ct, requesterId);
     }
 
@@ -49,7 +49,7 @@ public sealed class BytesBusiness(IByteService byteService, ICurrentUserService 
     private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
-        if (userId is null) throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
+        if (userId is null) throw new UnauthorizedAccessException("User not found.");
         return userId.Value;
     }
 }

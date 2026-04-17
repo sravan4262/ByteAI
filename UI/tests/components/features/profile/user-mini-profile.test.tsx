@@ -8,7 +8,6 @@ const mockGetProfileById = vi.hoisted(() => vi.fn())
 const mockFollowUser = vi.hoisted(() => vi.fn())
 const mockUnfollowUser = vi.hoisted(() => vi.fn())
 const mockGetMeCache = vi.hoisted(() => vi.fn())
-const mockUseUser = vi.hoisted(() => vi.fn())
 const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
 
@@ -26,10 +25,6 @@ vi.mock('@/lib/api/client', () => ({
 
 vi.mock('@/lib/user-cache', () => ({
   getMeCache: mockGetMeCache,
-}))
-
-vi.mock('@clerk/nextjs', () => ({
-  useUser: mockUseUser,
 }))
 
 vi.mock('sonner', () => ({
@@ -78,7 +73,6 @@ const makeProfile = (overrides: Partial<UserResponse> = {}): UserResponse => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockUseUser.mockReturnValue({ user: null })
   mockGetMeCache.mockReturnValue(null)
   mockGetProfileById.mockResolvedValue(makeProfile())
   mockFollowUser.mockResolvedValue(undefined)

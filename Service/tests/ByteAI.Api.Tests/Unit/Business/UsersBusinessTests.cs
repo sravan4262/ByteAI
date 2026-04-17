@@ -15,7 +15,7 @@ public sealed class UsersBusinessTests
     private readonly UsersBusiness _sut;
 
     private readonly Guid _userId = Guid.NewGuid();
-    private const string SupabaseUserId = "clerk_user";
+    private const string SupabaseUserId = "supabase_user";
 
     public UsersBusinessTests()
     {
@@ -65,9 +65,9 @@ public sealed class UsersBusinessTests
     public async Task GetCurrentUser_DelegatesToCurrentUserService()
     {
         var user = new User { Id = _userId, Username = "me" };
-        _currentUser.Setup(s => s.GetCurrentUserAsync(ClerkId, default)).ReturnsAsync(user);
+        _currentUser.Setup(s => s.GetCurrentUserAsync(SupabaseUserId, default)).ReturnsAsync(user);
 
-        var result = await _sut.GetCurrentUserAsync(ClerkId, default);
+        var result = await _sut.GetCurrentUserAsync(SupabaseUserId, default);
 
         Assert.NotNull(result);
         Assert.Equal("me", result.Username);
@@ -79,59 +79,59 @@ public sealed class UsersBusinessTests
     public async Task UpdateProfile_OtherUsersId_ThrowsUnauthorized()
     {
         var otherUserId = Guid.NewGuid();
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.UpdateProfileAsync(ClerkId, otherUserId, "New Name", null, default));
+            () => _sut.UpdateProfileAsync(SupabaseUserId, otherUserId, "New Name", null, default));
     }
 
     [Fact]
-    public async Task UpdateProfile_UnknownClerkId_ThrowsUnauthorized()
+    public async Task UpdateProfile_UnknownUserId_ThrowsUnauthorized()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.UpdateProfileAsync(ClerkId, _userId, "New Name", null, default));
+            () => _sut.UpdateProfileAsync(SupabaseUserId, _userId, "New Name", null, default));
     }
 
     [Fact]
     public async Task UpdateProfile_OwnProfile_DelegatesToService()
     {
         var updated = new User { Id = _userId, DisplayName = "New Name" };
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _userService.Setup(s => s.UpdateProfileAsync(_userId, "New Name", null, default)).ReturnsAsync(updated);
 
-        var result = await _sut.UpdateProfileAsync(ClerkId, _userId, "New Name", null, default);
+        var result = await _sut.UpdateProfileAsync(SupabaseUserId, _userId, "New Name", null, default);
 
         Assert.Equal("New Name", result.DisplayName);
     }
 
-    // ── SyncClerkUserAsync ────────────────────────────────────────────────────
+    // ── ProvisionUserAsync ────────────────────────────────────────────────────
 
     [Fact]
-    public async Task SyncClerkUser_NewUser_AwardsBadge()
+    public async Task ProvisionUser_NewUser_AwardsBadge()
     {
         var user = new User { Id = _userId, Username = "newuser" };
-        _userService.Setup(s => s.UpsertByClerkAsync(ClerkId, "New User", null, null, default))
+        _userService.Setup(s => s.ProvisionAsync(SupabaseUserId, "New User", null, null, default))
                     .ReturnsAsync((user, true)); // wasCreated = true
 
         _badgeService.Setup(s => s.CheckAndAwardAsync(_userId, BadgeTrigger.UserRegistered, default))
                      .ReturnsAsync([]);
 
-        var result = await _sut.SyncClerkUserAsync(ClerkId, "New User", null, null, default);
+        var result = await _sut.ProvisionUserAsync(SupabaseUserId, "New User", null, null, default);
 
         Assert.Equal(user.Id, result.Id);
         _badgeService.Verify(s => s.CheckAndAwardAsync(_userId, BadgeTrigger.UserRegistered, default), Times.Once);
     }
 
     [Fact]
-    public async Task SyncClerkUser_ExistingUser_DoesNotAwardBadge()
+    public async Task ProvisionUser_ExistingUser_DoesNotAwardBadge()
     {
         var user = new User { Id = _userId };
-        _userService.Setup(s => s.UpsertByClerkAsync(ClerkId, "Alice", null, null, default))
+        _userService.Setup(s => s.ProvisionAsync(SupabaseUserId, "Alice", null, null, default))
                     .ReturnsAsync((user, false)); // wasCreated = false
 
-        await _sut.SyncClerkUserAsync(ClerkId, "Alice", null, null, default);
+        await _sut.ProvisionUserAsync(SupabaseUserId, "Alice", null, null, default);
 
         _badgeService.Verify(s => s.CheckAndAwardAsync(It.IsAny<Guid>(), It.IsAny<BadgeTrigger>(), default), Times.Never);
     }
@@ -139,24 +139,24 @@ public sealed class UsersBusinessTests
     // ── UpdateMyProfileAsync ──────────────────────────────────────────────────
 
     [Fact]
-    public async Task UpdateMyProfile_UnknownClerkId_ThrowsUnauthorized()
+    public async Task UpdateMyProfile_UnknownUserId_ThrowsUnauthorized()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.UpdateMyProfileAsync(ClerkId, null, null, null, null, null, null, null, null, null, default));
+            () => _sut.UpdateMyProfileAsync(SupabaseUserId, null, null, null, null, null, null, null, null, null, default));
     }
 
     [Fact]
     public async Task UpdateMyProfile_ValidUser_DelegatesToService()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         var updated = new User { Id = _userId, Username = "alice_new" };
         _userService
             .Setup(s => s.UpdateMyProfileAsync(_userId, "alice_new", null, null, null, null, null, null, null, null, default))
             .ReturnsAsync(updated);
 
-        var result = await _sut.UpdateMyProfileAsync(ClerkId, "alice_new", null, null, null, null, null, null, null, null, default);
+        var result = await _sut.UpdateMyProfileAsync(SupabaseUserId, "alice_new", null, null, null, null, null, null, null, null, default);
 
         Assert.Equal("alice_new", result.Username);
     }

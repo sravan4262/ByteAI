@@ -28,8 +28,8 @@ public sealed class UserFollowedEventHandlerTests : IDisposable
         _db = DbContextFactory.Create();
 
         _db.Users.AddRange(
-            new User { Id = _followerId, SupabaseUserId = "clerk_f1", Username = "follower", DisplayName = "Follower" },
-            new User { Id = _followingId, SupabaseUserId = "clerk_f2", Username = "following", DisplayName = "Following", Xp = 0 });
+            new User { Id = _followerId, SupabaseUserId = "supabase_f1", Username = "follower", DisplayName = "Follower" },
+            new User { Id = _followingId, SupabaseUserId = "supabase_f2", Username = "following", DisplayName = "Following", Xp = 0 });
         _db.SaveChanges();
 
         _notifications.Setup(n => n.CreateAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CancellationToken>()))

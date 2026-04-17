@@ -13,7 +13,7 @@ public sealed class AdminBusiness(IFeatureFlagService featureFlagService, AppDbC
     public Task<List<FeatureFlagType>> GetAllFeatureFlagsAsync(CancellationToken ct) =>
         featureFlagService.GetAllAsync(ct);
 
-    public Task<List<FeatureFlagType>> GetEnabledFeatureFlagsAsync(string? clerkId, CancellationToken ct) =>
+    public Task<List<FeatureFlagType>> GetEnabledFeatureFlagsAsync(string? supabaseUserId, CancellationToken ct) =>
         featureFlagService.GetEnabledAsync(supabaseUserId, ct);
 
     public Task<FeatureFlagType> UpsertFeatureFlagAsync(string key, string name, string? description, bool globalOpen, CancellationToken ct) =>

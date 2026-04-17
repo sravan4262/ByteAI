@@ -6,7 +6,7 @@
 > **Architecture phase: Monolith-first.** Single ASP.NET Core 8 API. Microservices extraction deferred.
 
 - **Frontend:** Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui — hosted on Azure Static Web Apps.
-- **Auth:** Clerk (Magic Link · Google · Facebook · Phone OTP) — issues JWTs validated directly in the monolith.
+- **Auth:** Supabase Auth (Magic Link · Google · Phone OTP) — issues JWTs (HS256) validated directly in the monolith.
 - **Backend:** Single ASP.NET Core 8 Web API (`Service/ByteAI.Api`) — Minimal APIs, vertical slice by feature.
 - **In-process events:** MediatR — replaces RabbitMQ for now (e.g. ByteCreated → embed → tag).
 - **Data:** PostgreSQL + pgvector (Azure Flexible Server) · Redis for feed cache (optional MVP).

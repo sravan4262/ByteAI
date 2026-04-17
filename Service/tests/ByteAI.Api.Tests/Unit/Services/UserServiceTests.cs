@@ -19,7 +19,7 @@ public sealed class UserServiceTests : IDisposable
         _sut = new UserService(_db, NullLogger<UserService>.Instance);
 
         _db.Users.Add(new User { Id = _userId, SupabaseUserId = "u1", Username = "testuser", DisplayName = "Test User" });
-        // Seed role types for UpsertByClerkAsync
+        // Seed role types for ProvisionAsync
         _db.RoleTypes.AddRange(
             new RoleType { Id = Guid.NewGuid(), Name = "user",  Label = "User" },
             new RoleType { Id = Guid.NewGuid(), Name = "admin", Label = "Admin" });
@@ -158,50 +158,50 @@ public sealed class UserServiceTests : IDisposable
         Assert.Equal(1, following);
     }
 
-    // ── UpsertByClerkAsync ────────────────────────────────────────────────────
+    // ── ProvisionAsync ────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task UpsertByClerk_NewUser_CreatesUserAndReturnsWasCreatedTrue()
+    public async Task Provision_NewUser_CreatesUserAndReturnsWasCreatedTrue()
     {
-        var (user, wasCreated) = await _sut.UpsertByClerkAsync("new_clerk", "New Person", null, null, default);
+        var (user, wasCreated) = await _sut.ProvisionAsync("new_supabase_id", "New Person", null, null, default);
 
         Assert.True(wasCreated);
         Assert.NotNull(user);
-        Assert.Equal("new_clerk", user.SupabaseUserId);
+        Assert.Equal("new_supabase_id", user.SupabaseUserId);
     }
 
     [Fact]
-    public async Task UpsertByClerk_ExistingUser_UpdatesDisplayNameAndReturnsWasCreatedFalse()
+    public async Task Provision_ExistingUser_UpdatesDisplayNameAndReturnsWasCreatedFalse()
     {
-        var (user, wasCreated) = await _sut.UpsertByClerkAsync("u1", "Updated Name", null, null, default);
+        var (user, wasCreated) = await _sut.ProvisionAsync("u1", "Updated Name", null, null, default);
 
         Assert.False(wasCreated);
         Assert.Equal("Updated Name", user.DisplayName);
     }
 
     [Fact]
-    public async Task UpsertByClerk_NewUser_AssignsUserRole()
+    public async Task Provision_NewUser_AssignsUserRole()
     {
-        var (user, _) = await _sut.UpsertByClerkAsync("clerk_new2", "Person2", null, null, default);
+        var (user, _) = await _sut.ProvisionAsync("supabase_new2", "Person2", null, null, default);
 
         Assert.True(_db.UserRoles.Any(r => r.UserId == user.Id));
     }
 
-    // ── DeleteByClerkIdAsync ──────────────────────────────────────────────────
+    // ── DeleteBySupabaseUserIdAsync ───────────────────────────────────────────
 
     [Fact]
-    public async Task DeleteByClerkId_Existing_RemovesAndReturnsTrue()
+    public async Task DeleteBySupabaseUserId_Existing_RemovesAndReturnsTrue()
     {
-        var result = await _sut.DeleteByClerkIdAsync("u1", default);
+        var result = await _sut.DeleteBySupabaseUserIdAsync("u1", default);
 
         Assert.True(result);
         Assert.Null(await _db.Users.FindAsync([_userId]));
     }
 
     [Fact]
-    public async Task DeleteByClerkId_NotFound_ReturnsFalse()
+    public async Task DeleteBySupabaseUserId_NotFound_ReturnsFalse()
     {
-        var result = await _sut.DeleteByClerkIdAsync("nobody", default);
+        var result = await _sut.DeleteBySupabaseUserIdAsync("nobody", default);
         Assert.False(result);
     }
 

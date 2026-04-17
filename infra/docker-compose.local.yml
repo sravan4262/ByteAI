@@ -23,8 +23,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:        LocalDocker
       ConnectionStrings__Postgres:   Host=host.docker.internal;Port=54322;Database=postgres;Username=postgres;Password=postgres
-      Clerk__Authority:              ${CLERK_AUTHORITY}
-      Clerk__WebhookSecret:          ${CLERK_WEBHOOK_SECRET}
       Groq__ApiKey:                  ${GROQ_API_KEY}
       Cors__AllowedOrigin:           http://localhost:3000
       Supabase__Url:                 ${SUPABASE_URL:-}

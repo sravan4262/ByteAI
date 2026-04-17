@@ -13,15 +13,15 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
 
     public async Task<PagedResult<Interview>> GetInterviewsAsync(
         int page, int pageSize, Guid? authorId, string? company, string? role, string? location,
-        List<string>? techStacks, string sort, CancellationToken ct, string? clerkId = null)
+        List<string>? techStacks, string sort, CancellationToken ct, string? supabaseUserId = null)
     {
-        var requesterId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
         return await interviewService.GetInterviewsAsync(
             new PaginationParams(page, Math.Min(pageSize, 50)),
             authorId, company, role, location, techStacks, sort, ct, requesterId);
     }
 
-    public async Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? clerkId = null) =>
+    public async Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? supabaseUserId = null) =>
         await interviewService.GetInterviewByIdAsync(id, ct);
 
     public Task<List<Company>> GetCompaniesAsync(CancellationToken ct) =>
@@ -150,7 +150,7 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
     private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
-        if (userId is null) throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
+        if (userId is null) throw new UnauthorizedAccessException("User not found.");
         return userId.Value;
     }
 }

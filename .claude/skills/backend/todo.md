@@ -10,7 +10,7 @@ Status as of 2026-04-09. Backend compiles (0 errors), Swagger UI works at `/swag
 ## Recently Completed ✅
 - Swagger UI with Bearer security scheme, XML doc comments on all controllers
 - Redis DI fix — `RedisFeedCache` always registered, `AddDistributedMemoryCache()` fallback
-- Clerk JWT dev bypass — any well-formed JWT accepted in Development
+- Supabase JWT dev bypass — any well-formed JWT accepted in Development
 - All frontend stub functions added to `UI/lib/api/client.ts`
 - Frontend module errors fixed (`@/lib/mock-data`, `@/lib/schemas`, `@/lib/utils` barrels restored)
 - **Local dev setup** — Supabase DB running, pgvector extension enabled, all 9 tables applied via psql
@@ -32,9 +32,9 @@ To restart: `supabase start` from repo root, then `cd Service && dotnet run --pr
 
 ## Phase 2 — Security Hardening
 
-### Clerk Webhook svix Signature Validation
+### Supabase Webhook Signature Validation
 
-`WebhooksController.cs` has a TODO for svix signature validation. This MUST be implemented before production — without it, anyone can POST fake events to `/webhooks/clerk`.
+`WebhooksController.cs` has a TODO for svix signature validation. This MUST be implemented before production — without it, anyone can POST fake events to /webhooks/auth`.
 
 ```csharp
 // WebhooksController.cs — replace TODO with:
@@ -43,7 +43,7 @@ private bool ValidateSvixSignature(HttpRequest request, string body)
     var svixId = request.Headers["svix-id"].ToString();
     var svixTimestamp = request.Headers["svix-timestamp"].ToString();
     var svixSignature = request.Headers["svix-signature"].ToString();
-    var webhookSecret = _config["Clerk:WebhookSecret"] ?? string.Empty;
+    var webhookSecret = _config["Supabase:WebhookSecret"] ?? string.Empty;
 
     if (string.IsNullOrEmpty(svixId) || string.IsNullOrEmpty(svixTimestamp)
         || string.IsNullOrEmpty(svixSignature) || string.IsNullOrEmpty(webhookSecret))
@@ -90,7 +90,7 @@ Core wiring done. `http.ts` base client reads `byteai_auth_token` from localStor
 
 | Feature | Status | Notes |
 |---|---|---|
-| Auth token flow | Stub | `byteai_auth_token` in localStorage — Clerk not installed yet |
+| Auth token flow | Complete | Supabase auth via use-auth.ts hook |
 | `getFeed` | ✅ Wired | Falls back to mockPosts if backend down |
 | `getPost` | ✅ Wired | Falls back to mock |
 | `createPost` | ✅ Wired | Calls `POST /api/bytes` |
@@ -103,12 +103,12 @@ Core wiring done. `http.ts` base client reads `byteai_auth_token` from localStor
 | Notifications | Not wired | No UI screen yet |
 | `byteToPost` author enrichment | Partial | Author fields hardcoded as defaults — need author join in backend `ByteResponse` |
 
-### Clerk Auth in Frontend (Next up)
+### Auth Status
 
-1. Install `@clerk/nextjs`
-2. Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` to `UI/.env.local`
-3. Replace `byteai_auth_token` localStorage pattern with `useAuth().getToken()` from Clerk
-4. Add `CLERK_AUTHORITY` to `appsettings.Development.json` to activate full JWT validation
+
+2. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to `UI/.env.local`
+
+4. Add `Supabase:JwtSecret` to `appsettings.Development.json` for JWT validation
 
 ---
 

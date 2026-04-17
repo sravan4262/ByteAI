@@ -16,7 +16,7 @@ public sealed class BookmarksBusinessTests
 
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _byteId = Guid.NewGuid();
-    private const string SupabaseUserId = "clerk_bookmark";
+    private const string SupabaseUserId = "supabase_bookmark";
 
     public BookmarksBusinessTests()
     {
@@ -26,21 +26,21 @@ public sealed class BookmarksBusinessTests
     // ── Auth guards ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task ToggleBookmark_UnknownClerkId_ThrowsUnauthorized()
+    public async Task ToggleBookmark_UnknownUserId_ThrowsUnauthorized()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.ToggleBookmarkAsync(ClerkId, _byteId, default));
+            () => _sut.ToggleBookmarkAsync(SupabaseUserId, _byteId, default));
     }
 
     [Fact]
-    public async Task GetMyBookmarks_UnknownClerkId_ThrowsUnauthorized()
+    public async Task GetMyBookmarks_UnknownUserId_ThrowsUnauthorized()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.GetMyBookmarksAsync(ClerkId, 1, 20, default));
+            () => _sut.GetMyBookmarksAsync(SupabaseUserId, 1, 20, default));
     }
 
     // ── ToggleBookmarkAsync ───────────────────────────────────────────────────
@@ -48,10 +48,10 @@ public sealed class BookmarksBusinessTests
     [Fact]
     public async Task ToggleBookmark_ValidUser_ReturnsTrue()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _bookmarkService.Setup(s => s.ToggleBookmarkAsync(_byteId, _userId, default)).ReturnsAsync(true);
 
-        var result = await _sut.ToggleBookmarkAsync(ClerkId, _byteId, default);
+        var result = await _sut.ToggleBookmarkAsync(SupabaseUserId, _byteId, default);
 
         Assert.True(result);
     }
@@ -59,10 +59,10 @@ public sealed class BookmarksBusinessTests
     [Fact]
     public async Task ToggleBookmark_ValidUser_ReturnsFalseWhenRemoving()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _bookmarkService.Setup(s => s.ToggleBookmarkAsync(_byteId, _userId, default)).ReturnsAsync(false);
 
-        var result = await _sut.ToggleBookmarkAsync(ClerkId, _byteId, default);
+        var result = await _sut.ToggleBookmarkAsync(SupabaseUserId, _byteId, default);
 
         Assert.False(result);
     }
@@ -72,7 +72,7 @@ public sealed class BookmarksBusinessTests
     [Fact]
     public async Task GetMyBookmarks_ValidUser_MapsByteResults()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
 
         var author = new User { Id = Guid.NewGuid(), Username = "alice", DisplayName = "Alice" };
         var byte1 = new ByteEntity
@@ -92,7 +92,7 @@ public sealed class BookmarksBusinessTests
             .Setup(s => s.GetUserBookmarksAsync(_userId, It.IsAny<PaginationParams>(), default))
             .ReturnsAsync(pagedBytes);
 
-        var result = await _sut.GetMyBookmarksAsync(ClerkId, 1, 20, default);
+        var result = await _sut.GetMyBookmarksAsync(SupabaseUserId, 1, 20, default);
 
         Assert.Single(result.Items);
         Assert.Equal("Title1", result.Items[0].Title);
@@ -102,12 +102,12 @@ public sealed class BookmarksBusinessTests
     [Fact]
     public async Task GetMyBookmarks_PageSizeCappedAt100()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _bookmarkService
             .Setup(s => s.GetUserBookmarksAsync(_userId, It.Is<PaginationParams>(p => p.PageSize == 100), default))
             .ReturnsAsync(new PagedResult<ByteEntity>([], 0, 1, 100));
 
-        await _sut.GetMyBookmarksAsync(ClerkId, 1, 999, default);
+        await _sut.GetMyBookmarksAsync(SupabaseUserId, 1, 999, default);
 
         _bookmarkService.Verify(s =>
             s.GetUserBookmarksAsync(_userId, It.Is<PaginationParams>(p => p.PageSize == 100), default),

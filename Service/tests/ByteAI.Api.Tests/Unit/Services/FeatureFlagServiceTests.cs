@@ -159,7 +159,7 @@ public sealed class FeatureFlagServiceTests : IDisposable
     // ── GetEnabledAsync ───────────────────────────────────────────────────────
 
     [Fact]
-    public async Task GetEnabled_NoClerkId_OnlyGlobalOpenFlags()
+    public async Task GetEnabled_NoSupabaseUserId_OnlyGlobalOpenFlags()
     {
         _db.FeatureFlagTypes.AddRange(
             new FeatureFlagType { Key = "open_flag", Name = "Open", GlobalOpen = true },

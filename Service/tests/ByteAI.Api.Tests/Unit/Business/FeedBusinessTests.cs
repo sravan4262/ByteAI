@@ -13,7 +13,7 @@ public sealed class FeedBusinessTests
     private readonly FeedBusiness _sut;
 
     private readonly Guid _userId = Guid.NewGuid();
-    private const string SupabaseUserId = "clerk_feed";
+    private const string SupabaseUserId = "supabase_feed";
 
     public FeedBusinessTests()
     {
@@ -21,7 +21,7 @@ public sealed class FeedBusinessTests
     }
 
     [Fact]
-    public async Task GetFeed_WithoutClerkId_PassesNullUserId()
+    public async Task GetFeed_WithoutAuth_PassesNullUserId()
     {
         var expected = new PagedResult<ByteResult>([], 0, 1, 20);
         _feedService
@@ -35,15 +35,15 @@ public sealed class FeedBusinessTests
     }
 
     [Fact]
-    public async Task GetFeed_WithClerkId_ResolvesAndPassesUserId()
+    public async Task GetFeed_WithSupabaseUserId_ResolvesAndPassesUserId()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         var expected = new PagedResult<ByteResult>([], 0, 1, 20);
         _feedService
             .Setup(s => s.GetFeedAsync(_userId, It.IsAny<PaginationParams>(), null, "latest", default))
             .ReturnsAsync(expected);
 
-        var result = await _sut.GetFeedAsync(ClerkId, 1, 20, null, "latest", default);
+        var result = await _sut.GetFeedAsync(SupabaseUserId, 1, 20, null, "latest", default);
 
         Assert.Equal(expected, result);
     }

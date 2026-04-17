@@ -14,7 +14,7 @@ public sealed class ReactionsBusinessTests
 
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _byteId = Guid.NewGuid();
-    private const string SupabaseUserId = "clerk_react";
+    private const string SupabaseUserId = "supabase_react";
 
     public ReactionsBusinessTests()
     {
@@ -24,21 +24,21 @@ public sealed class ReactionsBusinessTests
     // ── Auth guards ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task ToggleReaction_UnknownClerkId_ThrowsUnauthorized()
+    public async Task ToggleReaction_UnknownUserId_ThrowsUnauthorized()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.ToggleReactionAsync(ClerkId, _byteId, "like", default));
+            () => _sut.ToggleReactionAsync(SupabaseUserId, _byteId, "like", default));
     }
 
     [Fact]
-    public async Task DeleteReaction_UnknownClerkId_ThrowsUnauthorized()
+    public async Task DeleteReaction_UnknownUserId_ThrowsUnauthorized()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.DeleteReactionAsync(ClerkId, _byteId, default));
+            () => _sut.DeleteReactionAsync(SupabaseUserId, _byteId, default));
     }
 
     // ── GetReactionsAsync ─────────────────────────────────────────────────────
@@ -59,11 +59,11 @@ public sealed class ReactionsBusinessTests
     [Fact]
     public async Task ToggleReaction_ValidUser_DelegatesToService()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         var expected = new ToggleLikeResult(_byteId, _userId, true);
         _reactionService.Setup(s => s.ToggleReactionAsync(_byteId, _userId, "like", default)).ReturnsAsync(expected);
 
-        var result = await _sut.ToggleReactionAsync(ClerkId, _byteId, "like", default);
+        var result = await _sut.ToggleReactionAsync(SupabaseUserId, _byteId, "like", default);
 
         Assert.Equal(expected, result);
         Assert.True(result.IsLiked);
@@ -74,10 +74,10 @@ public sealed class ReactionsBusinessTests
     [Fact]
     public async Task DeleteReaction_ValidUser_DelegatesToService()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _reactionService.Setup(s => s.DeleteReactionAsync(_byteId, _userId, default)).ReturnsAsync(true);
 
-        var result = await _sut.DeleteReactionAsync(ClerkId, _byteId, default);
+        var result = await _sut.DeleteReactionAsync(SupabaseUserId, _byteId, default);
 
         Assert.True(result);
     }

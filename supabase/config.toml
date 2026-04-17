@@ -62,7 +62,24 @@ schema_paths = []
 enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
-sql_paths = ["./seed.sql"]
+sql_paths = [
+  "./seeds/lookups/role_types_seed.sql",
+  "./seeds/lookups/badge_types_seed.sql",
+  "./seeds/lookups/domains_seed.sql",
+  "./seeds/lookups/subdomains_seed.sql",
+  "./seeds/lookups/seniority_types_seed.sql",
+  "./seeds/lookups/level_types_seed.sql",
+  "./seeds/lookups/tech_stacks_seed.sql",
+  "./seeds/lookups/feature_flag_types_seed.sql",
+  "./seeds/lookups/xp_action_types_seed.sql",
+  "./seeds/lookups/search_types_seed.sql",
+  "./seeds/lookups/notification_types_seed.sql",
+  "./seeds/lookups/companies_seed.sql",
+  "./seeds/interviews/locations_seed.sql",
+  "./seeds/interviews/roles_seed.sql",
+  "./seeds/users/seed_user.sql",
+  "./seeds/bytes/frontend/ui_frameworks/react/react-seed.sql",
+]
 
 [db.network_restrictions]
 # Enable management of network restrictions.
@@ -339,11 +356,6 @@ enabled = false
 # user_pool_id = "my-user-pool-id"
 # user_pool_region = "us-east-1"
 
-# Use Clerk as a third-party provider alongside Supabase Auth.
-[auth.third_party.clerk]
-enabled = false
-# Obtain from https://clerk.com/setup/supabase
-# domain = "example.clerk.accounts.dev"
 
 # OAuth server configuration
 [auth.oauth_server]

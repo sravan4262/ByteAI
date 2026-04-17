@@ -11,7 +11,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
 }))
 
-// Stub sub-components that carry heavy deps (framer-motion, Clerk, etc.)
+// Stub sub-components that carry heavy deps (framer-motion, etc.)
 vi.mock('@/components/features/profile/user-mini-profile', () => ({
   UserMiniProfile: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="mini-profile">

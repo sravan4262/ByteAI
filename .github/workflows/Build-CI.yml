@@ -65,7 +65,6 @@ jobs:
       - name: Build
         working-directory: UI
         env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           NEXT_PUBLIC_API_URL: http://localhost:8090
         run: pnpm run build
 

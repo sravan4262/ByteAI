@@ -5,7 +5,7 @@ namespace ByteAI.Core.Business.Interfaces;
 public interface IAdminBusiness
 {
     Task<List<FeatureFlagType>> GetAllFeatureFlagsAsync(CancellationToken ct);
-    Task<List<FeatureFlagType>> GetEnabledFeatureFlagsAsync(string? clerkId, CancellationToken ct);
+    Task<List<FeatureFlagType>> GetEnabledFeatureFlagsAsync(string? supabaseUserId, CancellationToken ct);
     Task<FeatureFlagType> UpsertFeatureFlagAsync(string key, string name, string? description, bool globalOpen, CancellationToken ct);
     Task<FeatureFlagType> SetFeatureFlagEnabledAsync(string key, bool globalOpen, CancellationToken ct);
     Task<bool> DeleteFeatureFlagAsync(string key, CancellationToken ct);

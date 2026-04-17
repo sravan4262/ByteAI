@@ -1,6 +1,6 @@
 # Sign In / Sign Up / Sign Out — Process
 
-> **Live document.** Update this file whenever auth flow, Clerk config, webhook handling, or session logic changes.
+> **Live document.** Update this file whenever auth flow, Supabase config, webhook handling, or session logic changes.
 
 ---
 
@@ -8,9 +8,9 @@
 
 | Tool | Why |
 |---|---|
-| **Clerk** | Identity provider — handles credential collection, magic link, OAuth, OTP |
-| **Svix** | Webhook delivery + signature verification for Clerk events |
-| **JWT (Bearer)** | Stateless session token issued by Clerk, validated by the API on every request |
+| **Supabase Auth** | Identity provider — handles credential collection, magic link, Google OAuth, OTP |
+| **Supabase Webhooks** | Fires `auth.users` row changes → API provisions `users.users` record |
+| **JWT (Bearer)** | Stateless session token issued by Supabase, validated by the API on every request |
 | **PostgreSQL** | Stores user records, roles |
 | **MediatR** | Fires `BadgeTrigger.UserRegistered` event after first registration |
 
@@ -21,17 +21,17 @@
 ### Flow
 
 ```
-User submits credentials (magic link / Google / Facebook / Phone OTP)
-  └── Clerk handles auth (no app code)
-        └── Clerk emits webhook: user.created
-              └── POST /api/webhooks/clerk
-                    ├── Svix signature verified
-                    ├── Event parsed: clerkId, displayName, avatarUrl, email
-                    └── IUsersBusiness.SyncClerkUserAsync()
-                          └── UserService.UpsertByClerkAsync()
-                                ├── Lookup by ClerkId → not found
+User submits credentials (magic link / Google / Phone OTP)
+  └── Supabase Auth handles auth (no app code)
+        └── Supabase emits webhook: auth.users INSERT
+              └── POST /api/webhooks/auth (Supabase webhook)
+                    ├── Signature verified
+                    ├── Event parsed: supabaseUserId, displayName, avatarUrl, email
+                    └── IUsersBusiness.ProvisionUserAsync()
+                          └── UserService.ProvisionAsync()
+                                ├── Lookup by SupabaseUserId → not found
                                 ├── Generate unique username from displayName
-                                ├── INSERT users (ClerkId, Username, DisplayName, AvatarUrl)
+                                ├── INSERT users (SupabaseUserId, Username, DisplayName, AvatarUrl)
                                 ├── Assign default "user" role → INSERT user_roles
                                 ├── Hardcoded admin check: if email == admin email → INSERT user_roles (admin)
                                 └── BadgeService.CheckAndAwardAsync(BadgeTrigger.UserRegistered)
@@ -59,16 +59,14 @@ User submits credentials (magic link / Google / Facebook / Phone OTP)
 ### Flow
 
 ```
-User signs in via Clerk
-  └── Clerk emits webhook: user.updated (on profile changes)
-        └── POST /api/webhooks/clerk
-              └── UserService.UpsertByClerkAsync()
-                    ├── Lookup by ClerkId → found
-                    ├── UPDATE users: DisplayName, AvatarUrl, UpdatedAt
-                    └── Return (user, wasCreated=false)
+User signs in via Supabase Auth
+  └── Supabase issues JWT (access_token)
+        └── Frontend stores session via supabase.auth.onAuthStateChange()
+              └── getToken() returns session.access_token
+                    └── Authorization: Bearer <token> on every API request
 ```
 
-> **Note:** The `user.updated` webhook fires only on Clerk-side profile changes (name, avatar). Normal sign-ins do NOT re-trigger a webhook — the JWT is sufficient.
+> **Note:** Profile changes sync via the Supabase webhook. Normal sign-ins do NOT re-trigger provisioning — the JWT is sufficient.
 
 ---
 
@@ -77,25 +75,25 @@ User signs in via Clerk
 ### How it works
 
 ```
-Frontend (Next.js + @clerk/nextjs)
-  └── getToken() → Clerk-issued JWT
+Frontend (Next.js + @supabase/supabase-js)
+  └── supabase.auth.getSession() / onAuthStateChange() → session.access_token
         └── Authorization: Bearer <token> on every API request
               └── ASP.NET Core JWT middleware
-                    ├── Validates against Clerk JWKS endpoint (issuer, lifetime, signature)
-                    ├── MapInboundClaims = false (preserves "sub" as ClerkId)
+                    ├── Validates against Supabase JWT secret (HS256)
+                    ├── MapInboundClaims = false (preserves "sub" as supabaseUserId)
                     └── ICurrentUserService.GetCurrentUserId()
-                          └── Maps "sub" (ClerkId) → users.Id (GUID) via DB lookup
+                          └── Maps "sub" (supabaseUserId) → users.Id (GUID) via DB lookup
 ```
 
 **Files:**
-- `Service/ByteAI.Api/Common/Auth/ClerkJwtExtensions.cs` — JWT bearer config
-- `Service/ByteAI.Core/Services/Users/CurrentUserService.cs` — ClerkId → GUID resolution
+- `Service/ByteAI.Api/Common/Auth/SupabaseJwtExtensions.cs` — JWT bearer config
+- `Service/ByteAI.Core/Services/Users/CurrentUserService.cs` — supabaseUserId → GUID resolution
 
 ### Key config
 
 ```csharp
-// NameClaimType = "sub" so User.Identity.Name == ClerkId
-// JWT validated: issuer, audience, signing keys (JWKS auto-fetched from Clerk)
+// NameClaimType = "sub" so User.Identity.Name == supabaseUserId (auth.users.id UUID)
+// JWT validated: HS256, Supabase:JwtSecret from appsettings
 ```
 
 ---
@@ -106,11 +104,9 @@ Frontend (Next.js + @clerk/nextjs)
 
 ```
 User clicks sign out in frontend
-  └── Clerk.signOut() — revokes session on Clerk side
-        └── (Optional) Clerk emits user.deleted webhook if user deletes account
-              └── POST /api/webhooks/clerk
-                    └── IUsersBusiness.DeleteClerkUserAsync(clerkId)
-                          └── Soft-delete or hard-delete from users table
+  └── supabase.auth.signOut() — revokes session on Supabase side
+        └── Frontend clears cookie, session storage, MeCache
+              └── Router redirects to "/"
 ```
 
 > Regular sign-out does NOT trigger a webhook. The JWT simply expires and the user is redirected to `/`. No server-side session state to invalidate.
@@ -126,12 +122,12 @@ User clicks sign out in frontend
 | `/onboarding` | Must be signed in |
 | `/feed`, `/search`, etc. | Must be signed in AND onboarded (`byteai_onboarded` cookie set) |
 | `/` | Public |
-| `POST /api/webhooks/clerk` | No auth — Svix signature only |
+| `POST /api/webhooks/auth` | No auth — Supabase signature only |
 | All other API routes | `[Authorize]` — valid JWT required |
 
 ---
 
 ## Admin Role Assignment
 
-- Hardcoded in `UserService.UpsertByClerkAsync()`: if registered email matches admin email → assign both "user" + "admin" roles
+- Hardcoded in `UserService.ProvisionAsync()`: if registered email matches admin email → assign both "user" + "admin" roles
 - No UI for promoting other users to admin (manual DB or future admin endpoint)

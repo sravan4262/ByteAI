@@ -256,13 +256,13 @@ public sealed class ByteAIWebFactory : WebApplicationFactory<Program>, IClassFix
                 ["ConnectionStrings:Postgres"] = _connectionString,
                 ["Ai:OnnxModelPath"] = "",      // Disable ONNX in tests
                 ["Ai:GroqApiKey"] = "",           // Disable Groq in tests
-                ["Clerk:Authority"] = "https://test.clerk.dev",
+                ["Supabase:JwtSecret" = "test-jwt-secret",
             });
         });
 
         builder.ConfigureServices(services =>
         {
-            // Replace Clerk auth with test auth scheme
+            // Replace Supabase auth with test auth scheme
             services.AddAuthentication("Test")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
         });
@@ -321,7 +321,7 @@ public sealed class BytesEndpointTests : IClassFixture<ByteAIWebFactory>
 
 ---
 
-## Test Auth Handler (Bypass Clerk in Tests)
+## Test Auth Handler (Bypass Supabase Auth in Tests)
 
 ```csharp
 // Fixtures/TestAuthHandler.cs

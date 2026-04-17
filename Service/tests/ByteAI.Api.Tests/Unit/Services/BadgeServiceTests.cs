@@ -22,7 +22,7 @@ public sealed class BadgeServiceTests : IDisposable
         _db.Users.Add(new User
         {
             Id = _userId,
-            SupabaseUserId = "clerk_badge",
+            SupabaseUserId = "supabase_badge",
             Username = "badgeuser",
             DisplayName = "Badge User",
             Xp = 0,

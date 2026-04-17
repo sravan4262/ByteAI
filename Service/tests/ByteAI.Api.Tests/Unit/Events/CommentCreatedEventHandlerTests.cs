@@ -23,8 +23,8 @@ public sealed class CommentCreatedEventHandlerTests : IDisposable
         _db = DbContextFactory.Create();
 
         _db.Users.AddRange(
-            new User { Id = _commentAuthorId, SupabaseUserId = "clerk_c1", Username = "commenter", DisplayName = "Commenter", Xp = 0 },
-            new User { Id = _contentAuthorId, SupabaseUserId = "clerk_c2", Username = "content_author", DisplayName = "Content Author", Xp = 0 });
+            new User { Id = _commentAuthorId, SupabaseUserId = "supabase_c1", Username = "commenter", DisplayName = "Commenter", Xp = 0 },
+            new User { Id = _contentAuthorId, SupabaseUserId = "supabase_c2", Username = "content_author", DisplayName = "Content Author", Xp = 0 });
         _db.SaveChanges();
 
         _sut = new CommentCreatedEventHandler(_db, NullLogger<CommentCreatedEventHandler>.Instance);

@@ -1,11 +1,10 @@
 -- ============================================================
 -- TABLE: users.users
--- Synced from Clerk via webhook (user.created / user.updated)
 -- Schema: users
 -- ============================================================
 CREATE TABLE IF NOT EXISTS users.users (
     id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-    clerk_id            text        NOT NULL UNIQUE,
+    supabase_user_id    uuid        UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
     username            text        NOT NULL UNIQUE CHECK (char_length(username) BETWEEN 3 AND 50),
     display_name        text        NOT NULL CHECK (char_length(display_name) BETWEEN 1 AND 100),
     bio                 text        CHECK (char_length(bio) <= 500),
@@ -27,9 +26,10 @@ CREATE TABLE IF NOT EXISTS users.users (
     updated_at          timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_clerk_id ON users.users (clerk_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username  ON users.users (username);
-CREATE INDEX        IF NOT EXISTS ix_users_domain    ON users.users (domain) WHERE domain IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_supabase_user_id ON users.users (supabase_user_id) WHERE supabase_user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username         ON users.users (username);
+CREATE INDEX        IF NOT EXISTS ix_users_domain           ON users.users (domain) WHERE domain IS NOT NULL;
 
-COMMENT ON TABLE  users.users                    IS 'Platform users — synced from Clerk via webhook';
-COMMENT ON COLUMN users.users.interest_embedding IS '768-dim embedding of user interests for personalised feed ranking';
+COMMENT ON TABLE  users.users                         IS 'Platform users — provisioned via Supabase auth webhook';
+COMMENT ON COLUMN users.users.supabase_user_id        IS 'FK to auth.users.id — NULL only for internal system users (e.g. seed user)';
+COMMENT ON COLUMN users.users.interest_embedding      IS '768-dim embedding of user interests for personalised feed ranking';

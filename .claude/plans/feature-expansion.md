@@ -50,11 +50,11 @@ psql $DB -f supabase/seeds/seed_bytes.sql
 Script: `supabase/apply_schema.sh`
 
 ### 2. DevAuthHandler / FeedController Auth Bug
-**Cause:** `sub` claim is `"seed_alex"` (text) but controllers do `Guid.TryParse(clerkId)` → false → Unauthorized.  
+**Cause:** `sub` claim is `"seed_alex"` (text) but controllers do `Guid.TryParse(supabaseUserId)` → false → Unauthorized.  
 **Fix:** 
-- Add `ICurrentUserService` that resolves User entity from `clerk_id` 
-- Use it in all controllers instead of trying to parse clerk_id as UUID
-- DevAuthHandler keeps returning `"seed_alex"` as sub (which IS the seed user's clerk_id)
+- Add `ICurrentUserService` that resolves User entity from `supabase_user_id` 
+- Use it in all controllers instead of trying to parse supabase_user_id as UUID
+- DevAuthHandler keeps returning `"seed_alex"` as sub (which IS the seed user's supabase_user_id)
 
 ### 3. POST /api/bytes 400 Error
 **Two issues:**

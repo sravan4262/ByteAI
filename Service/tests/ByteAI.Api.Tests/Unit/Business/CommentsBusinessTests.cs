@@ -14,7 +14,7 @@ public sealed class CommentsBusinessTests
 
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _byteId = Guid.NewGuid();
-    private const string SupabaseUserId = "clerk_comment";
+    private const string SupabaseUserId = "supabase_comment";
 
     public CommentsBusinessTests()
     {
@@ -24,30 +24,30 @@ public sealed class CommentsBusinessTests
     // ── Auth guards ───────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task CreateComment_UnknownClerkId_ThrowsUnauthorized()
+    public async Task CreateComment_UnknownUserId_ThrowsUnauthorized()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.CreateCommentAsync(ClerkId, _byteId, "body", null, default));
+            () => _sut.CreateCommentAsync(SupabaseUserId, _byteId, "body", null, default));
     }
 
     [Fact]
-    public async Task UpdateComment_UnknownClerkId_ThrowsUnauthorized()
+    public async Task UpdateComment_UnknownUserId_ThrowsUnauthorized()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.UpdateCommentAsync(ClerkId, Guid.NewGuid(), "body", default));
+            () => _sut.UpdateCommentAsync(SupabaseUserId, Guid.NewGuid(), "body", default));
     }
 
     [Fact]
-    public async Task DeleteComment_UnknownClerkId_ThrowsUnauthorized()
+    public async Task DeleteComment_UnknownUserId_ThrowsUnauthorized()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => _sut.DeleteCommentAsync(ClerkId, Guid.NewGuid(), default));
+            () => _sut.DeleteCommentAsync(SupabaseUserId, Guid.NewGuid(), default));
     }
 
     // ── GetCommentsByByteAsync ────────────────────────────────────────────────
@@ -84,13 +84,13 @@ public sealed class CommentsBusinessTests
     [Fact]
     public async Task CreateComment_ValidUser_DelegatesToService()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         var comment = new Comment { Id = Guid.NewGuid(), ByteId = _byteId, AuthorId = _userId, Body = "nice" };
         _commentService
             .Setup(s => s.CreateCommentAsync(_byteId, _userId, "nice", null, default))
             .ReturnsAsync(comment);
 
-        var result = await _sut.CreateCommentAsync(ClerkId, _byteId, "nice", null, default);
+        var result = await _sut.CreateCommentAsync(SupabaseUserId, _byteId, "nice", null, default);
 
         Assert.Equal(comment.Id, result.Id);
         Assert.Equal("nice", result.Body);
@@ -102,13 +102,13 @@ public sealed class CommentsBusinessTests
     public async Task UpdateComment_ValidUser_DelegatesToService()
     {
         var commentId = Guid.NewGuid();
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         var updated = new Comment { Id = commentId, Body = "updated" };
         _commentService
             .Setup(s => s.UpdateCommentAsync(commentId, _userId, "updated", default))
             .ReturnsAsync(updated);
 
-        var result = await _sut.UpdateCommentAsync(ClerkId, commentId, "updated", default);
+        var result = await _sut.UpdateCommentAsync(SupabaseUserId, commentId, "updated", default);
 
         Assert.Equal("updated", result.Body);
     }
@@ -119,10 +119,10 @@ public sealed class CommentsBusinessTests
     public async Task DeleteComment_ValidUser_DelegatesToService()
     {
         var commentId = Guid.NewGuid();
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _commentService.Setup(s => s.DeleteCommentAsync(commentId, _userId, default)).ReturnsAsync(true);
 
-        var result = await _sut.DeleteCommentAsync(ClerkId, commentId, default);
+        var result = await _sut.DeleteCommentAsync(SupabaseUserId, commentId, default);
 
         Assert.True(result);
     }

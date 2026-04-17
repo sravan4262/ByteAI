@@ -558,7 +558,7 @@ export function ProfileScreen() {
                       onClick={() => { setPendingAvatarFile(null); setAvatarPreview(null); setAvatarZoom(1); setEditForm(f => ({ ...f, customAvatarUrl: '' })) }}
                       className={`flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-all w-fit ${editForm.customAvatarUrl === '' && !pendingAvatarFile ? 'border-[var(--cyan)] bg-[rgba(34,211,238,0.08)]' : 'border-[var(--border-m)] hover:border-[var(--border-h)]'}`}>
                       {getMeCache()?.avatarUrl ?? null
-                        ? <img src={clerkUser.imageUrl} alt="provider" className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
+                        ? <img src={getMeCache()?.avatarUrl ?? ''} alt="provider" className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
                         : <div className="w-8 h-8 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center font-mono text-xs text-[var(--t2)]">{(currentUser?.displayName ?? '?')[0]}</div>
                       }
                       <span className="font-mono text-xs text-[var(--t1)]">Use my Google / GitHub photo</span>

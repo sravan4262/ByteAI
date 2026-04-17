@@ -44,7 +44,7 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
   }, [])
 
   // Hydrate a post list: replace own posts with real profile data from MeCache
-  const hydrateWithClerk = useCallback((fetched: Post[]): Post[] => {
+  const hydrateWithUserCache = useCallback((fetched: Post[]): Post[] => {
     if (!currentUserId) return fetched
     const cache = getMeCache()
     const resolvedUsername = cache?.username || ''
@@ -76,8 +76,8 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
       .finally(() => setIsLoading(false))
   }, [activeTab, activeStackFilter])
 
-  // Re-hydrate whenever Clerk user or currentUserId become available
-  const posts = useMemo(() => hydrateWithClerk(rawPosts), [rawPosts, hydrateWithClerk])
+  // Re-hydrate whenever currentUserId becomes available
+  const posts = useMemo(() => hydrateWithUserCache(rawPosts), [rawPosts, hydrateWithUserCache])
 
   // Client-side sort on top of server-fetched posts
   const filteredPosts = useMemo(() => {

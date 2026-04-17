@@ -14,7 +14,7 @@ public sealed class InterviewsBusinessTests
     private readonly InterviewsBusiness _sut;
 
     private readonly Guid _userId = Guid.NewGuid();
-    private const string SupabaseUserId = "clerk_abc";
+    private const string SupabaseUserId = "supabase_abc";
 
     public InterviewsBusinessTests()
     {
@@ -25,26 +25,26 @@ public sealed class InterviewsBusinessTests
 
     [Theory]
     [MemberData(nameof(WriteMethods))]
-    public async Task WriteMethod_UnknownClerkId_ThrowsUnauthorized(Func<InterviewsBusiness, Task> act)
+    public async Task WriteMethod_UnknownUserId_ThrowsUnauthorized(Func<InterviewsBusiness, Task> act)
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => act(_sut));
     }
 
     public static TheoryData<Func<InterviewsBusiness, Task>> WriteMethods => new()
     {
-        b => b.CreateInterviewAsync(ClerkId, "t", "b", null, null, null, null, null, "article", default),
-        b => b.UpdateInterviewAsync(ClerkId, Guid.NewGuid(), null, null, null, null, null, null, null, default),
-        b => b.DeleteInterviewAsync(ClerkId, Guid.NewGuid(), default),
-        b => b.LikeQuestionAsync(ClerkId, Guid.NewGuid(), default),
-        b => b.UnlikeQuestionAsync(ClerkId, Guid.NewGuid(), default),
-        b => b.ToggleBookmarkAsync(ClerkId, Guid.NewGuid(), default),
+        b => b.CreateInterviewAsync(SupabaseUserId, "t", "b", null, null, null, null, null, "article", default),
+        b => b.UpdateInterviewAsync(SupabaseUserId, Guid.NewGuid(), null, null, null, null, null, null, null, default),
+        b => b.DeleteInterviewAsync(SupabaseUserId, Guid.NewGuid(), default),
+        b => b.LikeQuestionAsync(SupabaseUserId, Guid.NewGuid(), default),
+        b => b.UnlikeQuestionAsync(SupabaseUserId, Guid.NewGuid(), default),
+        b => b.ToggleBookmarkAsync(SupabaseUserId, Guid.NewGuid(), default),
     };
 
     // ── GetInterviewsAsync ────────────────────────────────────────────────────
 
     [Fact]
-    public async Task GetInterviews_WithoutClerkId_NullRequesterId()
+    public async Task GetInterviews_WithoutAuth_NullRequesterId()
     {
         var expected = new PagedResult<Interview>([], 0, 1, 20);
         _interviewService
@@ -93,14 +93,14 @@ public sealed class InterviewsBusinessTests
     [Fact]
     public async Task CreateInterview_ValidUser_DelegatesToService()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
 
         var interview = new Interview { Id = Guid.NewGuid(), AuthorId = _userId, Title = "My Interview" };
         _interviewService
             .Setup(s => s.CreateInterviewAsync(_userId, "My Interview", "body", null, null, null, null, null, "article", default))
             .ReturnsAsync(interview);
 
-        var result = await _sut.CreateInterviewAsync(ClerkId, "My Interview", "body", null, null, null, null, null, "article", default);
+        var result = await _sut.CreateInterviewAsync(SupabaseUserId, "My Interview", "body", null, null, null, null, null, "article", default);
 
         Assert.Equal(interview.Id, result.Id);
     }
@@ -111,10 +111,10 @@ public sealed class InterviewsBusinessTests
     public async Task DeleteInterview_ValidUser_DelegatesToService()
     {
         var interviewId = Guid.NewGuid();
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _interviewService.Setup(s => s.DeleteInterviewAsync(interviewId, _userId, default)).ReturnsAsync(true);
 
-        var result = await _sut.DeleteInterviewAsync(ClerkId, interviewId, default);
+        var result = await _sut.DeleteInterviewAsync(SupabaseUserId, interviewId, default);
 
         Assert.True(result);
     }
@@ -125,10 +125,10 @@ public sealed class InterviewsBusinessTests
     public async Task ToggleBookmark_ValidUser_DelegatesToService()
     {
         var interviewId = Guid.NewGuid();
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _interviewService.Setup(s => s.ToggleBookmarkAsync(interviewId, _userId, default)).ReturnsAsync(true);
 
-        var result = await _sut.ToggleBookmarkAsync(ClerkId, interviewId, default);
+        var result = await _sut.ToggleBookmarkAsync(SupabaseUserId, interviewId, default);
 
         Assert.True(result);
     }

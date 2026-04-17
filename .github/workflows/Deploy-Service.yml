@@ -103,8 +103,6 @@ jobs:
             --revision-suffix "${{ steps.slot.outputs.suffix }}" \
             --set-env-vars \
               "ConnectionStrings__Postgres=${{ secrets.DATABASE_URL }}" \
-              "Clerk__Authority=${{ secrets.CLERK_AUTHORITY }}" \
-              "Clerk__WebhookSecret=${{ secrets.CLERK_WEBHOOK_SECRET }}" \
               "Groq__ApiKey=${{ secrets.GROQ_API_KEY }}" \
               "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}"
 

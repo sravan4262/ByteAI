@@ -13,7 +13,7 @@ public sealed class NotificationsBusinessTests
     private readonly NotificationsBusiness _sut;
 
     private readonly Guid _userId = Guid.NewGuid();
-    private const string SupabaseUserId = "clerk_notif";
+    private const string SupabaseUserId = "supabase_notif";
 
     public NotificationsBusinessTests()
     {
@@ -24,19 +24,19 @@ public sealed class NotificationsBusinessTests
 
     [Theory]
     [MemberData(nameof(AuthGuardedMethods))]
-    public async Task AnyWrite_UnknownClerkId_ThrowsUnauthorized(Func<NotificationsBusiness, Task> act)
+    public async Task AnyWrite_UnknownUserId_ThrowsUnauthorized(Func<NotificationsBusiness, Task> act)
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync((Guid?)null);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync((Guid?)null);
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() => act(_sut));
     }
 
     public static TheoryData<Func<NotificationsBusiness, Task>> AuthGuardedMethods => new()
     {
-        b => b.GetNotificationsAsync(ClerkId, 1, 20, false, default),
-        b => b.MarkReadAsync(ClerkId, Guid.NewGuid(), default),
-        b => b.MarkAllReadAsync(ClerkId, default),
-        b => b.GetUnreadCountAsync(ClerkId, default),
-        b => b.DeleteAsync(ClerkId, Guid.NewGuid(), default),
+        b => b.GetNotificationsAsync(SupabaseUserId, 1, 20, false, default),
+        b => b.MarkReadAsync(SupabaseUserId, Guid.NewGuid(), default),
+        b => b.MarkAllReadAsync(SupabaseUserId, default),
+        b => b.GetUnreadCountAsync(SupabaseUserId, default),
+        b => b.DeleteAsync(SupabaseUserId, Guid.NewGuid(), default),
     };
 
     // ── GetNotificationsAsync ─────────────────────────────────────────────────
@@ -44,13 +44,13 @@ public sealed class NotificationsBusinessTests
     [Fact]
     public async Task GetNotifications_ValidUser_DelegatesToService()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         var expected = new PagedResult<Notification>([], 0, 1, 20);
         _notificationService
             .Setup(s => s.GetNotificationsAsync(_userId, It.IsAny<PaginationParams>(), false, default))
             .ReturnsAsync(expected);
 
-        var result = await _sut.GetNotificationsAsync(ClerkId, 1, 20, false, default);
+        var result = await _sut.GetNotificationsAsync(SupabaseUserId, 1, 20, false, default);
 
         Assert.Equal(expected, result);
     }
@@ -58,12 +58,12 @@ public sealed class NotificationsBusinessTests
     [Fact]
     public async Task GetNotifications_PageSizeCappedAt50()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _notificationService
             .Setup(s => s.GetNotificationsAsync(_userId, It.Is<PaginationParams>(p => p.PageSize == 50), false, default))
             .ReturnsAsync(new PagedResult<Notification>([], 0, 1, 50));
 
-        await _sut.GetNotificationsAsync(ClerkId, 1, 999, false, default);
+        await _sut.GetNotificationsAsync(SupabaseUserId, 1, 999, false, default);
 
         _notificationService.Verify(s =>
             s.GetNotificationsAsync(_userId, It.Is<PaginationParams>(p => p.PageSize == 50), false, default),
@@ -76,10 +76,10 @@ public sealed class NotificationsBusinessTests
     public async Task MarkRead_ValidUser_DelegatesToService()
     {
         var notifId = Guid.NewGuid();
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _notificationService.Setup(s => s.MarkReadAsync(notifId, _userId, default)).ReturnsAsync(true);
 
-        var result = await _sut.MarkReadAsync(ClerkId, notifId, default);
+        var result = await _sut.MarkReadAsync(SupabaseUserId, notifId, default);
 
         Assert.True(result);
     }
@@ -89,10 +89,10 @@ public sealed class NotificationsBusinessTests
     [Fact]
     public async Task MarkAllRead_ValidUser_DelegatesToService()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _notificationService.Setup(s => s.MarkAllReadAsync(_userId, default)).Returns(Task.CompletedTask);
 
-        await _sut.MarkAllReadAsync(ClerkId, default);
+        await _sut.MarkAllReadAsync(SupabaseUserId, default);
 
         _notificationService.Verify(s => s.MarkAllReadAsync(_userId, default), Times.Once);
     }
@@ -102,10 +102,10 @@ public sealed class NotificationsBusinessTests
     [Fact]
     public async Task GetUnreadCount_ValidUser_ReturnsCount()
     {
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _notificationService.Setup(s => s.GetUnreadCountAsync(_userId, default)).ReturnsAsync(7);
 
-        var result = await _sut.GetUnreadCountAsync(ClerkId, default);
+        var result = await _sut.GetUnreadCountAsync(SupabaseUserId, default);
 
         Assert.Equal(7, result);
     }
@@ -116,10 +116,10 @@ public sealed class NotificationsBusinessTests
     public async Task Delete_ValidUser_DelegatesToService()
     {
         var notifId = Guid.NewGuid();
-        _currentUser.Setup(s => s.GetCurrentUserIdAsync(ClerkId, default)).ReturnsAsync(_userId);
+        _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _notificationService.Setup(s => s.DeleteAsync(notifId, _userId, default)).ReturnsAsync(true);
 
-        var result = await _sut.DeleteAsync(ClerkId, notifId, default);
+        var result = await _sut.DeleteAsync(SupabaseUserId, notifId, default);
 
         Assert.True(result);
     }

@@ -170,7 +170,7 @@ var users = await _db.Users
 
 ---
 
-### 4. Authentication & Authorization (Clerk + ASP.NET Core)
+### 4. Authentication & Authorization (Supabase + ASP.NET Core)
 
 #### JWT Token Handling
 ```csharp
@@ -412,7 +412,7 @@ Before ANY production deployment:
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [ASP.NET Core Security Docs](https://learn.microsoft.com/en-us/aspnet/core/security/)
-- [Clerk Security](https://clerk.com/docs/security)
+- [Supabase Auth Security](https://supabase.com/docs/guides/auth)
 - [Web Security Academy](https://portswigger.net/web-security)
 
 ---

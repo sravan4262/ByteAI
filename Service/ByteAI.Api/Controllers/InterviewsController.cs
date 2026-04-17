@@ -90,7 +90,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         CancellationToken ct = default)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId();
-        var userId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        var userId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
         var techStacks = string.IsNullOrEmpty(stack) ? null : stack.Split(',').Select(s => s.Trim()).ToList();
         var result = await interviewsBusiness.GetInterviewsAsync(page, pageSize, authorId, company, role, location, techStacks, sort, ct, supabaseUserId);
 
@@ -107,7 +107,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     public async Task<ActionResult<ApiResponse<InterviewWithQuestionsResponse>>> GetById(Guid id, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId();
-        var userId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        var userId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
         var result = await interviewsBusiness.GetInterviewByIdAsync(id, ct, supabaseUserId);
         if (result is null) return NotFound();
         return Ok(ApiResponse<InterviewWithQuestionsResponse>.Success(ToFullResponse(result, userId)));
@@ -126,7 +126,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         try
         {
             var result = await interviewsBusiness.CreateInterviewAsync(
-                clerkId, request.Title, request.Body, request.CodeSnippet, request.Language,
+                supabaseUserId, request.Title, request.Body, request.CodeSnippet, request.Language,
                 request.Company, request.Role, request.Location, request.Type, ct);
             return CreatedAtAction(nameof(GetById), new { id = result.Id },
                 ApiResponse<InterviewResponse>.Success(ToResponse(result)));
@@ -153,7 +153,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
                 .ToList();
 
             var result = await interviewsBusiness.CreateInterviewWithQuestionsAsync(
-                clerkId, request.Title, request.Company, request.Role, request.Location, questionInputs, request.IsAnonymous, ct);
+                supabaseUserId, request.Title, request.Company, request.Role, request.Location, questionInputs, request.IsAnonymous, ct);
 
             return CreatedAtAction(nameof(GetById), new { id = result.Id },
                 ApiResponse<InterviewWithQuestionsResponse>.Success(ToFullResponse(result)));
@@ -172,7 +172,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         try
         {
             var result = await interviewsBusiness.UpdateInterviewAsync(
-                clerkId, id, request.Title, request.Body, request.CodeSnippet, request.Language,
+                supabaseUserId, id, request.Title, request.Body, request.CodeSnippet, request.Language,
                 request.Company, request.Role, request.Location, ct);
             return Ok(ApiResponse<InterviewResponse>.Success(ToResponse(result)));
         }

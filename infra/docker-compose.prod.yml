@@ -54,8 +54,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:      Production
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=byteai;Username=byteai;Password=byteai
-      Clerk__Authority:            ${CLERK_AUTHORITY}
-      Clerk__WebhookSecret:        ${CLERK_WEBHOOK_SECRET}
       Groq__ApiKey:                ${GROQ_API_KEY}
       Cors__AllowedOrigin:         http://localhost:3000
       Supabase__Url:               ${SUPABASE_URL:-}

@@ -47,7 +47,7 @@ UserResponse(
 
 ### What's rendered
 
-- Avatar (Clerk image URL, or gradient initials fallback)
+- Avatar (Supabase user metadata avatar URL, or gradient initials fallback)
 - Display name, @username
 - Bio (up to 280 chars)
 - Role title + Company ("Sr. Engineer @ ByteAI")

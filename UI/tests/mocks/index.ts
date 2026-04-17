@@ -1,4 +1,4 @@
-export * from './clerk'
+export * from './supabase-auth'
 
 // framer-motion mock — apply in any test rendering UserMiniProfile or motion components.
 // Without this, jsdom crashes on spring animations.

@@ -162,7 +162,7 @@ COMMENT ON COLUMN lookups.xp_action_types.is_active   IS 'Toggle to disable an X
 
 CREATE TABLE users.users (
     id                  uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-    clerk_id            text        NOT NULL UNIQUE,
+    supabase_user_id    uuid        UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
     username            text        NOT NULL UNIQUE CHECK (char_length(username) BETWEEN 3 AND 50),
     display_name        text        NOT NULL CHECK (char_length(display_name) BETWEEN 1 AND 100),
     bio                 text        CHECK (char_length(bio) <= 500),
@@ -183,11 +183,12 @@ CREATE TABLE users.users (
     created_at          timestamptz NOT NULL DEFAULT now(),
     updated_at          timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX uq_users_clerk_id ON users.users (clerk_id);
-CREATE UNIQUE INDEX uq_users_username  ON users.users (username);
-CREATE INDEX        ix_users_domain    ON users.users (domain) WHERE domain IS NOT NULL;
-COMMENT ON TABLE  users.users                    IS 'Platform users — synced from Clerk via webhook';
-COMMENT ON COLUMN users.users.interest_embedding IS '768-dim embedding of user interests for personalised feed ranking';
+CREATE UNIQUE INDEX uq_users_supabase_user_id ON users.users (supabase_user_id) WHERE supabase_user_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_users_username          ON users.users (username);
+CREATE INDEX        ix_users_domain            ON users.users (domain) WHERE domain IS NOT NULL;
+COMMENT ON TABLE  users.users                         IS 'Platform users — provisioned via Supabase auth webhook';
+COMMENT ON COLUMN users.users.supabase_user_id        IS 'FK to auth.users.id — NULL only for internal system users (e.g. seed user)';
+COMMENT ON COLUMN users.users.interest_embedding      IS '768-dim embedding of user interests for personalised feed ranking';
 
 CREATE TABLE users.user_roles (
     user_id       uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
@@ -962,12 +963,11 @@ ON CONFLICT (name) DO NOTHING;
 -- ============================================================
 
 INSERT INTO users.users (
-    id, clerk_id, username, display_name, bio,
+    id, username, display_name, bio,
     role_title, company, avatar_url,
     level, xp, streak, is_verified, created_at, updated_at
 ) VALUES (
     '00000000-0000-0000-0000-000000000001',
-    'seed_system',
     'byteai',
     'ByteAI',
     'Official ByteAI content — curated technical bytes across every domain.',
@@ -975,4 +975,4 @@ INSERT INTO users.users (
     'ByteAI',
     'https://api.dicebear.com/7.x/bottts/svg?seed=byteai',
     99, 999999, 0, true, now(), now()
-) ON CONFLICT (clerk_id) DO NOTHING;
+) ON CONFLICT (id) DO NOTHING;

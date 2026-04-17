@@ -66,7 +66,7 @@ public sealed class UsersBusiness(
         CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct)
-            ?? throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
+            ?? throw new UnauthorizedAccessException("User not found.");
 
         return await userService.UpdateMyProfileAsync(userId, username, displayName, bio, company, roleTitle, seniority, domain, techStack, customAvatarUrl, ct);
     }
@@ -74,14 +74,14 @@ public sealed class UsersBusiness(
     public async Task<List<Social>> GetMySocialsAsync(string supabaseUserId, CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct)
-            ?? throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
+            ?? throw new UnauthorizedAccessException("User not found.");
         return await userService.GetUserSocialsAsync(userId, ct);
     }
 
     public async Task UpsertMySocialsAsync(string supabaseUserId, List<(string Platform, string Url, string? Label)> socials, CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct)
-            ?? throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
+            ?? throw new UnauthorizedAccessException("User not found.");
         await userService.UpsertUserSocialsAsync(userId, socials, ct);
     }
 }

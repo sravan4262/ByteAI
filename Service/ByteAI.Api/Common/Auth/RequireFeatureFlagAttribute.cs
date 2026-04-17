@@ -63,7 +63,7 @@ public sealed class RequireFeatureFlagAttribute : TypeFilterAttribute
             // Check per-user assignment
             var hasAccess = await db.Users
                 .AsNoTracking()
-                .Where(u => u.SupabaseUserId == clerkId)
+                .Where(u => u.SupabaseUserId == supabaseUserId)
                 .SelectMany(u => u.UserFeatureFlags)
                 .AnyAsync(uff => uff.FeatureFlagTypeId == flagType.Id, context.HttpContext.RequestAborted);
 

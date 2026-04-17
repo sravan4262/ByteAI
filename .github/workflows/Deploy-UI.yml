@@ -83,8 +83,6 @@ jobs:
             --name byteai-ui \
             --resource-group byteai-rg \
             --setting-names \
-              CLERK_SECRET_KEY="${{ secrets.CLERK_SECRET_KEY }}" \
-              NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" \
               NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}"
 
       # ── Deploy to production ──────────────────────────────────────────────────
@@ -98,8 +96,7 @@ jobs:
           app_location:                     /UI
           output_location:                  ""
         env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_API_URL:               ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
       # ── Health check on production ────────────────────────────────────────────
       - name: Health check — production
@@ -149,8 +146,7 @@ jobs:
           app_location:                     /UI
           output_location:                  ""
         env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_API_URL:               ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
 
       - name: Rollback — annotate failure
         if: failure()

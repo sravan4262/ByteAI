@@ -10,10 +10,10 @@
 | Backend Structure | Complete — 3-project solution, 0 build errors |
 | Database Schema | Complete — 9 SQL tables applied to local Supabase DB |
 | Seed Data | Complete — 5 users + 23 bytes via `scripts/seed.sql` |
-| Backend API | Complete — all controllers with Swagger docs, Clerk JWT dev bypass |
+| Backend API | Complete — all controllers with Swagger docs, Supabase JWT validation |
 | AI Endpoints | Complete — `/api/ai/suggest-tags`, `/api/ai/ask` (Groq) exist; no UI yet |
 | Frontend ↔ Backend | Wired — `http.ts` base client, `client.ts` calls real endpoints, feed uses `api.getFeed()` |
-| Clerk Auth | Not started — frontend uses localStorage token stub |
+| Supabase Auth | Complete — Supabase JWTs, hooks/use-auth.ts |
 | CI/CD / IaC | Not started |
 
 ---
@@ -57,7 +57,7 @@ repo/
 ### What Was Built
 
 **`supabase/tables/`** — 9 SQL files
-- `users.sql` — `interest_embedding vector(384)`, unique on `clerk_id` and `username`
+- `users.sql` — `interest_embedding vector(384)`, unique on `supabase_user_id` and `username`
 - `bytes.sql` — generated `tsvector`, HNSW index on embedding, GIN on `search_vector` and `tags`
 - `comments.sql` — `parent_id` FK for threading
 - `reactions.sql` — composite PK `(byte_id, user_id)`, CHECK `type IN ('like')`
@@ -88,7 +88,7 @@ repo/
 - `ViewModels/` — immutable `sealed record` request/response types per domain
 - `ViewModels/Common/` — `ApiResponse<T>`, `ApiError`, `PagedResponse<T>`
 - `Mappers/` — static extension methods: `ToResponse()`, `ToCommand()`
-- `Common/Auth/ClerkJwtExtensions.cs` — `AddClerkJwt()`, `GetClerkUserId()`
+- `Common/Auth/SupabaseJwtExtensions.cs — AddSupabaseJwt(), GetSupabaseUserId()`
 - `GlobalUsings.cs` — same `Byte` alias
 - `Program.cs` — MediatR + FluentValidation scan `ByteAI.Core` assembly; no auto-migrate
 
@@ -164,7 +164,7 @@ UI/
 
 ### What Still Uses Mock Data
 - `lib/api.ts` — fully stubbed, all endpoints return mock data
-- Avatar initials hardcoded as `AX` (Clerk identity not wired)
+- Avatar initials hardcoded as `AX` (resolved from Supabase session)
 - Onboarding preferences not persisted to backend
 - Notification bell has no real data
 
@@ -195,7 +195,7 @@ UI/
 2. Get dev JWT from jwt.io (payload: `{"sub": "seed_alex"}`)
 3. Set in browser localStorage: `localStorage.setItem('byteai_auth_token', '<jwt>')`
 4. Feed screen should load real bytes from DB
-5. Install Clerk — replace localStorage token with `useAuth().getToken()`
+5. Auth complete — Supabase auth in use with useAuth() hook
 
 ---
 
@@ -204,8 +204,8 @@ UI/
 ### Backend
 - Added full Swagger UI (`/swagger`) with Bearer security scheme and XML doc comments on all 11 controllers
 - Fixed DI startup crash: `RedisFeedCache` always registered; `AddDistributedMemoryCache()` as fallback when Redis not configured
-- Added Clerk JWT dev bypass: `SignatureValidator` delegate accepts any well-formed JWT in Development (no Clerk config needed)
-- `Program.cs` passes `builder.Environment` to `AddClerkJwt()` so dev bypass activates correctly
+- Added Supabase JWT validation (HS256) with dev bypass for local testing
+- `Program.cs` configures Supabase JWT bearer via AddSupabaseJwt()
 
 ### Frontend
 - Fixed Turbopack workspace root confusion — added `turbopack.root` to `next.config.mjs`
@@ -227,11 +227,11 @@ UI/
 | Phase | Description |
 |-------|-------------|
 | Next | Wire `UI/lib/api/client.ts` to real backend HTTP calls (replace all stubs) |
-| Next | Add Clerk token to all frontend API requests (`getToken()` → `Authorization: Bearer`) |
+| Done | Supabase access_token sent as Authorization: Bearer on all API requests |
 | Next | AI Chat UI — floating "Ask AI" button or per-byte panel (endpoint exists, no UI) |
 | Next | Tag suggestion in compose screen (endpoint exists, not wired) |
 | Infra | docker-compose.yml for local Postgres + Redis dev |
-| Infra | Clerk webhook svix signature validation (security gap) |
+| Infra | Supabase webhook signature validation |
 | Infra | AI rate limiter on `/api/ai/*` (stricter than global 120 req/min) |
 | Infra | OpenTelemetry tracing + Prometheus metrics |
 | Infra | Dockerfile, Bicep IaC, GitHub Actions CI/CD |

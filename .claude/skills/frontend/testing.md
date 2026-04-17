@@ -23,7 +23,7 @@ UI/tests/
 │   └── profile/
 │       └── profile.spec.ts       ← view profile, follow/unfollow
 ├── fixtures/
-│   ├── auth.ts                   ← test auth fixture (bypass Clerk)
+│   ├── auth.ts                   ← test auth fixture (bypass auth)
 │   └── data.ts                   ← seed test bytes/users
 ├── pages/                        ← Page Object Models
 │   ├── FeedPage.ts
@@ -75,9 +75,9 @@ export default defineConfig({
 
 ---
 
-## Auth Fixture (Bypass Clerk in Tests)
+## Auth Fixture (Bypass Auth in Tests)
 
-ByteAI uses a cookie `byteai_auth` for client-side guards. Inject it in the auth fixture to skip Clerk.
+ByteAI uses a cookie `byteai_auth` for client-side guards. Inject it in the auth fixture to skip Supabase auth.
 
 ```typescript
 // tests/fixtures/auth.ts

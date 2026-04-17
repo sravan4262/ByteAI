@@ -189,7 +189,7 @@ Watch for these architectural anti-patterns:
 | Layer | Technology |
 |-------|-----------|
 | **Frontend** | Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui — Azure Static Web Apps |
-| **Auth** | Clerk — Magic Link · Google · Facebook · Phone OTP · issues JWTs |
+| **Auth** | Supabase Auth — Magic Link · Google · Phone OTP · issues JWTs (HS256) |
 | **API Gateway** | YARP on ASP.NET Core 8 — JWT validation, rate limiting, path routing |
 | **Microservices** | 6 × ASP.NET Core 8 on Azure Container Apps |
 | **Relational DB** | PostgreSQL + pgvector (Azure Flexible Server) |

@@ -23,8 +23,8 @@ public sealed class ContentBookmarkedEventHandlerTests : IDisposable
         _db = DbContextFactory.Create();
 
         _db.Users.AddRange(
-            new User { Id = _saverId, SupabaseUserId = "clerk_saver", Username = "saver", DisplayName = "Saver" },
-            new User { Id = _contentAuthorId, SupabaseUserId = "clerk_creator", Username = "creator", DisplayName = "Creator", Xp = 0 });
+            new User { Id = _saverId, SupabaseUserId = "supabase_saver", Username = "saver", DisplayName = "Saver" },
+            new User { Id = _contentAuthorId, SupabaseUserId = "supabase_creator", Username = "creator", DisplayName = "Creator", Xp = 0 });
         _db.SaveChanges();
 
         _sut = new ContentBookmarkedEventHandler(_db, NullLogger<ContentBookmarkedEventHandler>.Instance);

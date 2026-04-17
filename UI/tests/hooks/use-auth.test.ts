@@ -1,14 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { CLERK_SIGNED_IN } from '@/tests/mocks/clerk'
 
 const mockRouterPush    = vi.hoisted(() => vi.fn())
 const mockRouterReplace = vi.hoisted(() => vi.fn())
-const mockSignOut       = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
-const mockGetToken      = vi.hoisted(() => vi.fn().mockResolvedValue('test-token'))
-const mockUseAuth       = vi.hoisted(() => vi.fn())
-const mockUseUser       = vi.hoisted(() => vi.fn())
-const mockUseClerk      = vi.hoisted(() => vi.fn())
+const mockSignOut       = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }))
+const mockGetSession    = vi.hoisted(() => vi.fn().mockResolvedValue({ data: { session: { user: { id: 'test-user-id' }, access_token: 'test-token' } } }))
+const mockOnAuthStateChange = vi.hoisted(() => vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }))
 const mockClearMeCache  = vi.hoisted(() => vi.fn())
 
 vi.mock('next/navigation', () => ({
@@ -16,10 +13,14 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@clerk/nextjs', () => ({
-  useAuth:  mockUseAuth,
-  useUser:  mockUseUser,
-  useClerk: mockUseClerk,
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
+      signOut: mockSignOut,
+    },
+  },
 }))
 
 vi.mock('@/lib/user-cache', () => ({
@@ -28,13 +29,12 @@ vi.mock('@/lib/user-cache', () => ({
 
 import { useAuth } from '@/hooks/use-auth'
 
+const mockSession = { user: { id: 'test-user-id' }, access_token: 'test-token' }
+
 beforeEach(() => {
   vi.clearAllMocks()
-  mockUseAuth.mockReturnValue({ ...CLERK_SIGNED_IN, signOut: mockSignOut, getToken: mockGetToken })
-  mockUseUser.mockReturnValue({ user: { firstName: 'Alex', lastName: 'Xu' } })
-  mockUseClerk.mockReturnValue({
-    client: { activeSessions: [{ id: 's1', end: vi.fn().mockResolvedValue(undefined) }] },
-  })
+  mockGetSession.mockResolvedValue({ data: { session: mockSession } })
+  mockOnAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } })
   document.cookie = 'byteai_onboarded=; path=/; max-age=0'
   sessionStorage.clear()
 })
@@ -69,45 +69,38 @@ describe('useAuth', () => {
       document.cookie = 'byteai_onboarded=1; path=/'
       const { result } = renderHook(() => useAuth())
       await act(async () => { await result.current.logout() })
-      // Cookie max-age=0 effectively removes it — value should no longer be '1'
       expect(document.cookie).not.toContain('byteai_onboarded=1')
     })
 
-    it('calls session.end() for each active session', async () => {
-      const mockEnd = vi.fn().mockResolvedValue(undefined)
-      mockUseClerk.mockReturnValue({
-        client: { activeSessions: [{ id: 's1', end: mockEnd }, { id: 's2', end: mockEnd }] },
-      })
+    it('calls supabase.auth.signOut()', async () => {
       const { result } = renderHook(() => useAuth())
       await act(async () => { await result.current.logout() })
-      expect(mockEnd).toHaveBeenCalledTimes(2)
+      expect(mockSignOut).toHaveBeenCalledOnce()
     })
 
-    it('still calls signOut even if session.end() throws', async () => {
-      mockUseClerk.mockReturnValue({
-        client: { activeSessions: [{ id: 's1', end: vi.fn().mockRejectedValue(new Error('fail')) }] },
-      })
+    it('redirects to "/" after logout', async () => {
       const { result } = renderHook(() => useAuth())
       await act(async () => { await result.current.logout() })
-      expect(mockSignOut).toHaveBeenCalledWith({ redirectUrl: '/' })
-    })
-
-    it('calls signOut with redirectUrl "/"', async () => {
-      const { result } = renderHook(() => useAuth())
-      await act(async () => { await result.current.logout() })
-      expect(mockSignOut).toHaveBeenCalledWith({ redirectUrl: '/' })
+      expect(mockRouterReplace).toHaveBeenCalledWith('/')
     })
   })
 
   describe('returned values', () => {
-    it('returns auth.isAuthenticated as true when signed in', () => {
+    it('returns auth.isAuthenticated as true when session exists', async () => {
       const { result } = renderHook(() => useAuth())
+      await act(async () => {})
       expect(result.current.auth.isAuthenticated).toBe(true)
     })
 
     it('returns getToken function', () => {
       const { result } = renderHook(() => useAuth())
       expect(typeof result.current.getToken).toBe('function')
+    })
+
+    it('getToken returns access_token from session', async () => {
+      const { result } = renderHook(() => useAuth())
+      const token = await act(async () => result.current.getToken())
+      expect(token).toBe('test-token')
     })
   })
 })

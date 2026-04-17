@@ -52,7 +52,7 @@ _Depends on Phase 3 Dockerfile structure._
 - [x] Create `Service/ByteAI.Gateway/ByteAI.Gateway.csproj` with `Yarp.ReverseProxy` + `Serilog.AspNetCore`
 - [x] Create `Service/ByteAI.Gateway/Program.cs` — YARP configured from code (upstream URL from `ApiUpstreamUrl` config)
 - [x] Create `Service/ByteAI.Gateway/appsettings.json` — defaults for `ApiUpstreamUrl` and `ApiKeys`
-- [x] Create `Service/ByteAI.Gateway/Middleware/ApiKeyMiddleware.cs` — validate `X-Api-Key`; skip `/health/*`; allow Clerk JWT passthrough
+- [x] Create `Service/ByteAI.Gateway/Middleware/ApiKeyMiddleware.cs` — validate `X-Api-Key`; skip `/health/*`; allow JWT passthrough
 - [x] Create `Service/ByteAI.Gateway/HealthChecks/UpstreamHealthCheck.cs` — polls `byteai-api /health/ready`
 - [x] Register `/health/live` and `/health/ready` on gateway
 - [x] Add `ByteAI.Gateway` to `Service/ByteAI.sln`
@@ -88,8 +88,8 @@ _Depends on Phase 4 (need Azure resources to exist)._
 - [ ] Add GitHub secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 - [ ] Add GitHub secrets: `SWA_DEPLOY_TOKEN` (from `terraform output swa_api_key`)
 - [ ] Add GitHub secrets: `SUPABASE_DB_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] Add Container App secrets via Terraform vars: `CLERK_AUTHORITY`, `GROQ_API_KEY`, `REDIS_URL`, `DATABASE_URL`, `API_KEYS`
-- [ ] Add GitHub secrets: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `NEXT_PUBLIC_API_URL`
+- [ ] Add Container App secrets via Terraform vars: `SUPABASE_JWT_SECRET`, `GROQ_API_KEY`, `REDIS_URL`, `DATABASE_URL`, `API_KEYS`
+- [ ] Add GitHub secrets: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL`
 
 ---
 

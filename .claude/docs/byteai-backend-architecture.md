@@ -15,7 +15,7 @@ graph TB
     end
 
     subgraph AUTH["🔐 AUTH"]
-        CLERK[Clerk Auth<br/>Magic Link · Google · Facebook · Phone OTP<br/>Issues JWTs · Webhooks for user sync]
+        SUPABASE[Supabase Auth<br/>Magic Link · Google · Facebook · Phone OTP<br/>Issues JWTs · Webhooks for user sync]
     end
 
     subgraph API["⚙️ API LAYER — Single Container"]
@@ -35,9 +35,9 @@ graph TB
         PROM[Prometheus + Grafana]
     end
 
-    PWA -->|HTTPS| CLERK
-    CLERK -->|JWT| PWA
-    CLERK -->|Webhook user.created/updated| MONO
+    PWA -->|HTTPS| SUPA[Supabase Auth]
+    SUPA -->|JWT| PWA
+    SUPA -->|Webhook auth event| MONO
     PWA -->|JWT Bearer| MONO
 
     MONO --> MEDI
@@ -56,7 +56,7 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant U as 📱 User (PWA)
-    participant C as Clerk Auth
+    participant C as Supabase Auth
     participant A as ByteAI.Api
 
     Note over U,C: Magic Link / Google SSO / Phone OTP
@@ -65,12 +65,12 @@ sequenceDiagram
 
     Note over U,A: Every API call
     U->>A: Request + Authorization: Bearer {JWT}
-    A->>A: Validate JWT via Clerk JWKS endpoint
+    A->>A: Validate JWT via Supabase HS256 secret
     A->>A: Extract userId from sub claim
     A-->>U: Response
 
     Note over C,A: User sync (webhook)
-    C->>A: POST /webhooks/clerk (user.created / user.updated)
+    C->>A: POST /webhooks/auth (Supabase auth event)
     A->>A: Upsert user record in PostgreSQL
 ```
 
@@ -259,7 +259,7 @@ AppDbContext                   ← Reads existing tables; NO migrations; NO __EF
 
 | Method | Route | Feature | Auth |
 |--------|-------|---------|------|
-| `POST` | `/webhooks/clerk` | Auth | Clerk signature |
+| `POST | /webhooks/auth | Auth | Supabase signature |
 | `GET` | `/api/users/me` | Users | JWT |
 | `GET` | `/api/users/:username` | Users | public |
 | `PUT` | `/api/users/me` | Users | JWT |
@@ -291,7 +291,7 @@ AppDbContext                   ← Reads existing tables; NO migrations; NO __EF
 erDiagram
     users {
         uuid id PK
-        text clerk_id UK
+        text supabase_user_id UK
         text username UK
         text display_name
         text bio
@@ -471,7 +471,7 @@ graph TB
     end
 
     subgraph EXTERNAL["External Services"]
-        CLERK_EXT[Clerk Auth · Free 10k MAU]
+        SUPABASE_EXT[Supabase Auth · Free 50k MAU]
         GROQ_EXT[Groq API · Free tier]
         GH[GitHub Actions · CI/CD]
         ACR[Azure Container Registry]
@@ -490,7 +490,7 @@ graph TB
 
 | Concern | Choice | Why |
 |---|---|---|
-| **Auth** | Clerk (free 10k MAU) | Magic Link · Google · FB · Phone OTP · zero infra |
+| **Auth** | Supabase Auth (free 50k MAU) | Magic Link · Google · Phone OTP · zero infra |
 | **API** | ASP.NET Core 8 Minimal APIs | Fast, clean, Primary Constructors, easy to test |
 | **In-process events** | MediatR | Replaces RabbitMQ; same handler interface — extractable later |
 | **ORM** | EF Core 9 + Npgsql (table-first) | PostgreSQL-native, LINQ queries; Fluent API configs map to existing tables; NO migrations |
@@ -515,7 +515,7 @@ graph TB
 | Azure Container Apps | 180k vCPU-sec/month free | $0–5 |
 | Azure DB for PostgreSQL | Free 12 months | $0 → $15/mo after |
 | Redis (ACI) | No free tier | $10–15 |
-| Clerk Auth | Free 10k MAU | $0 |
+| Supabase Auth | Free 50k MAU | $0 |
 | Groq API | Free tier | $0 |
 | Azure Container Registry | Free tier | $0 |
 | GitHub Actions | Free public repos | $0 |

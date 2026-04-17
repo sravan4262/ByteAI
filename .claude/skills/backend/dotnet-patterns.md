@@ -472,7 +472,7 @@ public sealed class BytesController(IMediator mediator) : ControllerBase
         [FromBody] CreateByteRequest request,
         CancellationToken ct)
     {
-        var authorId = HttpContext.GetClerkUserId();
+        var authorId = HttpContext.GetSupabaseUserId();
         var command = new CreateByteCommand(request.ToEntity(authorId));
         var created = await mediator.Send(command, ct);
         return CreatedAtAction(nameof(GetBytes), new { id = created.Id },

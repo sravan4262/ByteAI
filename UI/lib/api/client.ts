@@ -74,7 +74,6 @@ export interface BadgeResponse {
 
 export interface UserResponse {
   id: string
-  clerkId: string
   username: string
   displayName: string
   bio?: string
@@ -180,48 +179,8 @@ function byteToPost(b: ByteResponse): Post {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AUTH API — handled by Clerk; stubs until Clerk SDK is installed
+// AUTH API — handled by Supabase; see hooks/use-auth.ts
 // ═══════════════════════════════════════════════════════════════════════════
-
-export async function loginWithEmail(email: string): Promise<{ success: boolean; message: string }> {
-  console.log('[API] loginWithEmail — Clerk not yet wired', { email })
-  return { success: true, message: 'OTP sent to email' }
-}
-
-export async function loginWithPhone(countryCode: string, phone: string): Promise<{ success: boolean; message: string }> {
-  console.log('[API] loginWithPhone — Clerk not yet wired', { countryCode, phone })
-  return { success: true, message: 'OTP sent to phone' }
-}
-
-export async function loginWithGoogle(): Promise<{ success: boolean }> {
-  console.log('[API] loginWithGoogle — Clerk not yet wired')
-  return { success: true }
-}
-
-export async function loginWithFacebook(): Promise<{ success: boolean }> {
-  console.log('[API] loginWithFacebook — Clerk not yet wired')
-  return { success: true }
-}
-
-export async function signup(data: {
-  firstName: string
-  lastName: string
-  username: string
-  email?: string
-  phone?: string
-}): Promise<{ success: boolean; message: string }> {
-  console.log('[API] signup — Clerk not yet wired', data)
-  return { success: true, message: 'Account created, OTP sent' }
-}
-
-export async function verifyOTP(otp: string): Promise<{ success: boolean }> {
-  console.log('[API] verifyOTP — Clerk not yet wired', { otp })
-  return { success: true }
-}
-
-export async function logout(): Promise<void> {
-  console.log('[API] logout — Clerk not yet wired')
-}
 
 export async function getCurrentUser(): Promise<UserResponse | null> {
   try {

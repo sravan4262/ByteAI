@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ByteAI.Api.Common.Auth;
 
 /// <summary>
-/// Custom authorization attribute that verifies the Clerk user exists in the local database
+/// Custom authorization attribute that verifies the authenticated user exists in the local database
 /// and has the specified role (e.g., "admin"). Returns 403 Forbidden if not.
 /// </summary>
 public sealed class RequireRoleAttribute : TypeFilterAttribute
@@ -29,7 +29,7 @@ public sealed class RequireRoleAttribute : TypeFilterAttribute
 
             var hasRole = await db.Users
                 .AsNoTracking()
-                .Where(u => u.SupabaseUserId == clerkId)
+                .Where(u => u.SupabaseUserId == supabaseUserId)
                 .SelectMany(u => u.UserRoles)
                 .AnyAsync(ur => ur.RoleType.Name.ToLower() == role.ToLower(), context.HttpContext.RequestAborted);
 

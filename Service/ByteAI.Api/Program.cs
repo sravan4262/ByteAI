@@ -134,11 +134,11 @@ try
                     **ByteAI** — tech-focused short-content social platform.
 
                     ## Authentication
-                    All protected endpoints require a Clerk JWT passed as:
+                    All protected endpoints require a Supabase JWT passed as:
                     ```
                     Authorization: Bearer <token>
                     ```
-                    Obtain the token from your Clerk session (`getToken()` on the frontend).
+                    Obtain the token from your Supabase session (`session.access_token` on the frontend).
 
                     ## Rate Limiting
                     - Global: 120 requests / minute
@@ -155,7 +155,7 @@ try
                 Type = SecuritySchemeType.Http,
                 Scheme = "bearer",
                 BearerFormat = "JWT",
-                Description = "Clerk-issued JWT. Format: `Bearer <token>`",
+                Description = "Supabase-issued JWT. Format: `Bearer <token>`",
             };
 
             return Task.CompletedTask;

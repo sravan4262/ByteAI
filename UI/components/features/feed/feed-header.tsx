@@ -16,7 +16,7 @@ export function FeedHeader({ contentType }: FeedHeaderProps) {
   const cache = getMeCache()
 
   const initials = ((user?.firstName?.[0] ?? '') + (user?.lastName?.[0] ?? '')).toUpperCase() || '?'
-  // Prefer custom avatar from DB; fall back to Clerk provider photo
+  // Prefer custom avatar from DB; fall back to provider photo
   const avatarSrc = cache?.avatarUrl || user?.imageUrl || null
   const isEmoji = avatarSrc && !avatarSrc.startsWith('http')
 

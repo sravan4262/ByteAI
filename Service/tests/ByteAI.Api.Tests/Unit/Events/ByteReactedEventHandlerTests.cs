@@ -32,7 +32,7 @@ public sealed class ByteReactedEventHandlerTests : IDisposable
         _db.Users.Add(new User
         {
             Id = _authorId,
-            SupabaseUserId = "clerk_author",
+            SupabaseUserId = "supabase_author",
             Username = "author",
             DisplayName = "Author",
             Xp = 0
@@ -41,7 +41,7 @@ public sealed class ByteReactedEventHandlerTests : IDisposable
         _db.Users.Add(new User
         {
             Id = _reactorId,
-            SupabaseUserId = "clerk_reactor",
+            SupabaseUserId = "supabase_reactor",
             Username = "reactor",
             DisplayName = "Reactor"
         });

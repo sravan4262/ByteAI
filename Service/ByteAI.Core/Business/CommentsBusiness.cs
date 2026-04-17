@@ -35,7 +35,7 @@ public sealed class CommentsBusiness(ICommentService commentService, ICurrentUse
     private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
-        if (userId is null) throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
+        if (userId is null) throw new UnauthorizedAccessException("User not found.");
         return userId.Value;
     }
 }

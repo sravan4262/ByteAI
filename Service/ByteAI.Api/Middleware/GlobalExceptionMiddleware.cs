@@ -102,7 +102,7 @@ public sealed class GlobalExceptionMiddleware(RequestDelegate next, ILogger<Glob
 
     private static Guid? ResolveUserId(HttpContext ctx)
     {
-        // Try to extract internal DB user id stored as a custom claim by ClerkJwt middleware
+        // Try to extract internal DB user id stored as a custom claim
         var sub = ctx.User.FindFirstValue("byteai_user_id");
         return Guid.TryParse(sub, out var id) ? id : null;
     }

@@ -42,7 +42,7 @@ public sealed class ByteCreatedEventHandlerTests : IDisposable
         _db.Users.Add(new User
         {
             Id = _authorId,
-            SupabaseUserId = "clerk_created",
+            SupabaseUserId = "supabase_created",
             Username = "author",
             DisplayName = "Author"
         });

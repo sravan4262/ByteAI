@@ -8,7 +8,7 @@ public interface IFeatureFlagService
     Task<List<FeatureFlagType>> GetAllAsync(CancellationToken ct);
 
     /// <summary>Returns only enabled feature flags (used by the public polling endpoint).</summary>
-    Task<List<FeatureFlagType>> GetEnabledAsync(string? clerkId, CancellationToken ct);
+    Task<List<FeatureFlagType>> GetEnabledAsync(string? supabaseUserId, CancellationToken ct);
 
     /// <summary>Creates or replaces a feature flag by key.</summary>
     Task<FeatureFlagType> UpsertAsync(string key, string name, string? description, bool globalOpen, CancellationToken ct);

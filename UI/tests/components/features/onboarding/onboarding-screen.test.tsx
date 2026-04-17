@@ -3,8 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const mockCompleteOnboarding = vi.hoisted(() => vi.fn())
-const mockGetToken = vi.hoisted(() => vi.fn().mockResolvedValue('tok'))
-const mockUseUser = vi.hoisted(() => vi.fn())
 const mockGetSeniorityTypes = vi.hoisted(() => vi.fn())
 const mockGetDomains = vi.hoisted(() => vi.fn())
 const mockGetTechStacks = vi.hoisted(() => vi.fn())
@@ -13,11 +11,6 @@ const mockSetTokenProvider = vi.hoisted(() => vi.fn())
 
 vi.mock('@/hooks/use-auth', () => ({
   useAuth: () => ({ completeOnboarding: mockCompleteOnboarding }),
-}))
-
-vi.mock('@clerk/nextjs', () => ({
-  useAuth: () => ({ getToken: mockGetToken }),
-  useUser: mockUseUser,
 }))
 
 vi.mock('@/lib/api/http', () => ({
@@ -65,7 +58,6 @@ const TECH_OPTIONS = [
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockUseUser.mockReturnValue({ user: { firstName: 'Dev', imageUrl: null } })
   mockGetSeniorityTypes.mockResolvedValue(SENIORITY_OPTIONS)
   mockGetDomains.mockResolvedValue(DOMAIN_OPTIONS)
   mockGetTechStacks.mockResolvedValue(TECH_OPTIONS)

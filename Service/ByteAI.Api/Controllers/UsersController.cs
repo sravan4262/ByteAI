@@ -48,32 +48,6 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
         return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount)));
     }
 
-    /// <summary>Sync the current authenticated user from Clerk (create if not found).</summary>
-    //[HttpPost("me/sync")]
-    //[Authorize]
-    //[ProducesResponseType(typeof(ApiResponse<UserResponse>), StatusCodes.Status200OK)]
-    //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    //public async Task<ActionResult<ApiResponse<UserResponse>>> SyncCurrentUser(CancellationToken ct)
-    //{
-    //    var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
-
-    //    // Extract user data from JWT claims — includes given_name, family_name, picture from Clerk
-    //    var firstName = HttpContext.User.FindFirst("given_name")?.Value;
-    //    var lastName = HttpContext.User.FindFirst("family_name")?.Value;
-    //    var avatarUrl = HttpContext.User.FindFirst("picture")?.Value;
-
-    //    var displayName = string.Join(" ", new[] { firstName, lastName }
-    //        .Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
-
-    //    if (string.IsNullOrWhiteSpace(displayName))
-    //        displayName = HttpContext.User.FindFirst("email")?.Value?.Split('@')[0]
-    //            ?? supabaseUserId;
-
-    //    var user = await usersBusiness.SyncClerkUserAsync(supabaseUserId, displayName, avatarUrl, ct);
-    //    var (bytesCount, followersCount, followingCount) = await usersBusiness.GetUserStatsAsync(user.Id, ct);
-    //    return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount)));
-    //}
-
     /// <summary>Get the currently authenticated user's profile.</summary>
     [HttpGet("me")]
     [Authorize]

@@ -12,7 +12,7 @@ public sealed class FeatureFlagService(AppDbContext db) : IFeatureFlagService
             .OrderBy(f => f.Key)
             .ToListAsync(ct);
 
-    public async Task<List<FeatureFlagType>> GetEnabledAsync(string? clerkId, CancellationToken ct)
+    public async Task<List<FeatureFlagType>> GetEnabledAsync(string? supabaseUserId, CancellationToken ct)
     {
         var query = db.FeatureFlagTypes.AsNoTracking().Where(f => f.GlobalOpen);
 
@@ -20,7 +20,7 @@ public sealed class FeatureFlagService(AppDbContext db) : IFeatureFlagService
         {
             var userFlags = db.UserFeatureFlags
                 .AsNoTracking()
-                .Where(uf => uf.User.SupabaseUserId == clerkId)
+                .Where(uf => uf.User.SupabaseUserId == supabaseUserId)
                 .Select(uf => uf.FeatureFlagType);
             
             query = query.Union(userFlags);

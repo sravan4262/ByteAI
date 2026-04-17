@@ -27,7 +27,7 @@ public sealed class DraftsController(IDraftsBusiness draftsBusiness) : Controlle
         try
         {
             var draft = await draftsBusiness.SaveDraftAsync(
-                clerkId,
+                supabaseUserId,
                 request.DraftId,
                 request.Title,
                 request.Body,

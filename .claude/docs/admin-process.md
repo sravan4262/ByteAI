@@ -23,7 +23,7 @@ Stored in `lookups.role_types`:
 
 ### How roles are assigned
 
-**On registration** (`UserService.UpsertByClerkAsync()`):
+**On registration** (`UserService.ProvisionAsync()`):
 
 ```
 1. INSERT user_roles (userId, roleTypeId=user, assignedAt=now)
@@ -40,7 +40,7 @@ Stored in `lookups.role_types`:
 Applied to controllers as `[RequireRole("admin")]`:
 ```
 Request arrives with JWT
-  └── CurrentUserService resolves ClerkId → userId
+  └── CurrentUserService resolves supabaseUserId → userId
         └── UserRole query: SELECT * FROM user_roles WHERE userId = me AND roleTypeId = admin
               └── Not found → 403 Forbidden
 ```
