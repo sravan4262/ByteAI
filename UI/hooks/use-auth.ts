@@ -1,9 +1,10 @@
 "use client"
 
-import { useAuth as useClerkAuth, useUser, useClerk } from '@clerk/nextjs'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import { clearMeCache } from '@/lib/user-cache'
+import type { Session } from '@supabase/supabase-js'
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 
@@ -11,12 +12,15 @@ function setCookie(name: string, value: string) {
   document.cookie = `${name}=${value}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`
 }
 
-
 export function useAuth() {
-  const { isSignedIn, isLoaded, signOut, getToken } = useClerkAuth()
-  const { user } = useUser()
-  const clerk = useClerk()
+  const [session, setSession] = useState<Session | null | undefined>(undefined)
   const router = useRouter()
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    return () => subscription.unsubscribe()
+  }, [])
 
   const completeOnboarding = useCallback(() => {
     setCookie('byteai_onboarded', '1')
@@ -24,33 +28,26 @@ export function useAuth() {
   }, [router])
 
   const logout = useCallback(async () => {
-    // Clear the session-scoped user cache
     clearMeCache()
-    // Clear feed context so stale posts don't show on next login
     try { sessionStorage.removeItem('byteai_feed_context') } catch {}
-    // Clear onboarding cookie so a different account signing in on this device
-    // goes through /onboarding-check, which re-validates against the backend
-    // and sets the cookie if they've already completed onboarding.
     document.cookie = 'byteai_onboarded=; path=/; max-age=0; SameSite=Lax'
-    try {
-      // Clear all active sessions (handles multi-session edge cases)
-      const sessions = clerk.client?.activeSessions ?? []
-      await Promise.all(sessions.map(s => s.end()))
-    } catch {
-      // ignore — proceed to signOut regardless
-    }
-    // signOut with redirectUrl so Clerk completes cleanup before navigating
-    await signOut({ redirectUrl: '/' })
-  }, [signOut, clerk, router])
+    await supabase.auth.signOut()
+    router.replace('/')
+  }, [router])
+
+  const getToken = useCallback(async () => {
+    const { data } = await supabase.auth.getSession()
+    return data.session?.access_token ?? null
+  }, [])
 
   return {
     auth: {
-      isAuthenticated: isSignedIn ?? false,
-      isLoaded,
+      isAuthenticated: !!session,
+      isLoaded: session !== undefined,
     },
     getToken,
     completeOnboarding,
     logout,
-    user,
+    user: session?.user ?? null,
   }
 }

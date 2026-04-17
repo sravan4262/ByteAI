@@ -34,11 +34,11 @@ public sealed class CommentsController(ICommentsBusiness commentsBusiness) : Con
     public async Task<ActionResult<ApiResponse<CommentResponse>>> CreateComment(
         Guid byteId, [FromBody] CreateCommentRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await commentsBusiness.CreateCommentAsync(clerkId, byteId, request.Body, request.ParentCommentId, ct);
+            var result = await commentsBusiness.CreateCommentAsync(supabaseUserId, byteId, request.Body, request.ParentCommentId, ct);
             return CreatedAtAction(nameof(GetComments), new { byteId }, ApiResponse<CommentResponse>.Success(result.ToResponse()));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -54,11 +54,11 @@ public sealed class CommentsController(ICommentsBusiness commentsBusiness) : Con
     public async Task<ActionResult<ApiResponse<CommentResponse>>> UpdateComment(
         Guid commentId, [FromBody] UpdateCommentRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await commentsBusiness.UpdateCommentAsync(clerkId, commentId, request.Body, ct);
+            var result = await commentsBusiness.UpdateCommentAsync(supabaseUserId, commentId, request.Body, ct);
             return Ok(ApiResponse<CommentResponse>.Success(result.ToResponse()));
         }
         catch (UnauthorizedAccessException) { return Forbid(); }
@@ -74,11 +74,11 @@ public sealed class CommentsController(ICommentsBusiness commentsBusiness) : Con
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteComment(Guid commentId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var ok = await commentsBusiness.DeleteCommentAsync(clerkId, commentId, ct);
+            var ok = await commentsBusiness.DeleteCommentAsync(supabaseUserId, commentId, ct);
             if (!ok) return NotFound(new { message = $"Comment {commentId} not found" });
             return Ok(ApiResponse<bool>.Success(true));
         }

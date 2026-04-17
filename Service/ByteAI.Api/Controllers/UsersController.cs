@@ -27,10 +27,10 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
         if (user is null) return NotFound(new { message = $"User {userId} not found" });
         var (bytesCount, followersCount, followingCount) = await usersBusiness.GetUserStatsAsync(userId, ct);
         bool? isFollowedByMe = null;
-        var clerkId = HttpContext.GetClerkUserId();
-        if (clerkId is not null)
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        if (supabaseUserId is not null)
         {
-            var me = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
+            var me = await usersBusiness.GetCurrentUserAsync(supabaseUserId, ct);
             if (me is not null) isFollowedByMe = await usersBusiness.IsFollowingAsync(me.Id, userId, ct);
         }
         return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount, isFollowedByMe)));
@@ -55,7 +55,7 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
     //public async Task<ActionResult<ApiResponse<UserResponse>>> SyncCurrentUser(CancellationToken ct)
     //{
-    //    var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+    //    var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
     //    // Extract user data from JWT claims — includes given_name, family_name, picture from Clerk
     //    var firstName = HttpContext.User.FindFirst("given_name")?.Value;
@@ -67,9 +67,9 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
 
     //    if (string.IsNullOrWhiteSpace(displayName))
     //        displayName = HttpContext.User.FindFirst("email")?.Value?.Split('@')[0]
-    //            ?? clerkId;
+    //            ?? supabaseUserId;
 
-    //    var user = await usersBusiness.SyncClerkUserAsync(clerkId, displayName, avatarUrl, ct);
+    //    var user = await usersBusiness.SyncClerkUserAsync(supabaseUserId, displayName, avatarUrl, ct);
     //    var (bytesCount, followersCount, followingCount) = await usersBusiness.GetUserStatsAsync(user.Id, ct);
     //    return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount)));
     //}
@@ -82,8 +82,8 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<UserResponse>>> GetCurrentUser(CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
-        var user = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var user = await usersBusiness.GetCurrentUserAsync(supabaseUserId, ct);
         if (user is null) return NotFound(new { message = "User not found" });
         var (bytesCount, followersCount, followingCount) = await usersBusiness.GetUserStatsAsync(user.Id, ct);
         return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount)));
@@ -118,12 +118,12 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<UserResponse>>> UpdateMyProfile([FromBody] UpdateProfileRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
             var result = await usersBusiness.UpdateMyProfileAsync(
-                clerkId, request.Username, request.DisplayName, request.Bio, request.Company, request.RoleTitle, request.Seniority, request.Domain, request.TechStack, request.CustomAvatarUrl, ct);
+                supabaseUserId, request.Username, request.DisplayName, request.Bio, request.Company, request.RoleTitle, request.Seniority, request.Domain, request.TechStack, request.CustomAvatarUrl, ct);
             return Ok(ApiResponse<UserResponse>.Success(result.ToResponse()));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -137,11 +137,11 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ApiResponse<UserResponse>>> UpdateProfile(Guid userId, [FromBody] UpdateProfileRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await usersBusiness.UpdateProfileAsync(clerkId, userId, request.DisplayName, request.Bio, ct);
+            var result = await usersBusiness.UpdateProfileAsync(supabaseUserId, userId, request.DisplayName, request.Bio, ct);
             return Ok(ApiResponse<UserResponse>.Success(result.ToResponse()));
         }
         catch (UnauthorizedAccessException) { return Forbid(); }
@@ -153,8 +153,8 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     [ProducesResponseType(typeof(ApiResponse<List<SocialResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<SocialResponse>>>> GetMySocials(CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
-        var socials = await usersBusiness.GetMySocialsAsync(clerkId, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var socials = await usersBusiness.GetMySocialsAsync(supabaseUserId, ct);
         var response = socials.Select(s => new SocialResponse(s.Platform, s.Url, s.Label)).ToList();
         return Ok(ApiResponse<List<SocialResponse>>.Success(response));
     }
@@ -166,9 +166,9 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpsertMySocials([FromBody] UpsertSocialsRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         var socials = request.Socials.Select(s => (s.Platform, s.Url, s.Label)).ToList();
-        await usersBusiness.UpsertMySocialsAsync(clerkId, socials, ct);
+        await usersBusiness.UpsertMySocialsAsync(supabaseUserId, socials, ct);
         return NoContent();
     }
 
@@ -178,8 +178,8 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     [ProducesResponseType(typeof(ApiResponse<UserPreferencesResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<UserPreferencesResponse>>> GetMyPreferences(CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
-        var me = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var me = await usersBusiness.GetCurrentUserAsync(supabaseUserId, ct);
         if (me is null) return NotFound();
         var prefs = await prefsService.GetOrDefaultAsync(me.Id, ct);
         return Ok(ApiResponse<UserPreferencesResponse>.Success(new UserPreferencesResponse(
@@ -195,8 +195,8 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     public async Task<ActionResult<ApiResponse<UserPreferencesResponse>>> UpdateMyPreferences(
         [FromBody] UpdatePreferencesRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
-        var me = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var me = await usersBusiness.GetCurrentUserAsync(supabaseUserId, ct);
         if (me is null) return NotFound();
         var prefs = await prefsService.UpsertAsync(
             me.Id, request.Theme, request.Visibility,
@@ -227,8 +227,8 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
         if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { message = "File must be an image." });
 
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
-        var me = await usersBusiness.GetCurrentUserAsync(clerkId, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var me = await usersBusiness.GetCurrentUserAsync(supabaseUserId, ct);
         if (me is null) return NotFound(new { message = "User not found" });
 
         await using var stream = file.OpenReadStream();
@@ -236,7 +236,7 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
 
         // Persist the URL to the users table
         await usersBusiness.UpdateMyProfileAsync(
-            clerkId, null, null, null, null, null, null, null, null, avatarUrl, ct);
+            supabaseUserId, null, null, null, null, null, null, null, null, avatarUrl, ct);
 
         return Ok(ApiResponse<AvatarUploadResponse>.Success(new AvatarUploadResponse(avatarUrl)));
     }

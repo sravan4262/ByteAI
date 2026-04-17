@@ -17,8 +17,8 @@ public sealed class UserCommandHandlerTests : IDisposable
         _db = DbContextFactory.Create();
 
         _db.Users.AddRange(
-            new User { Id = _userId,  ClerkId = "c1", Username = "alice", DisplayName = "Alice" },
-            new User { Id = _userId2, ClerkId = "c2", Username = "bob",   DisplayName = "Bob" });
+            new User { Id = _userId,  SupabaseUserId = "c1", Username = "alice", DisplayName = "Alice" },
+            new User { Id = _userId2, SupabaseUserId = "c2", Username = "bob",   DisplayName = "Bob" });
         _db.SaveChanges();
     }
 

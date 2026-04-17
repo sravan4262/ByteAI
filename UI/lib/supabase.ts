@@ -1,7 +1,7 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
-// Supabase client — used for realtime/other features. Avatar uploads go through the .NET backend.
-export const supabase = createClient(
+// Browser client — uses cookie-based sessions managed by @supabase/ssr
+export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 )

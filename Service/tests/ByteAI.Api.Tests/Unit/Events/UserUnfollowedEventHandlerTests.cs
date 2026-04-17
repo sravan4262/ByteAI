@@ -24,8 +24,8 @@ public sealed class UserUnfollowedEventHandlerTests : IDisposable
                       .Returns(Task.CompletedTask);
 
         _db.Users.AddRange(
-            new User { Id = _followerId,  ClerkId = "f1", Username = "follower",  DisplayName = "Follower" },
-            new User { Id = _followingId, ClerkId = "f2", Username = "following", DisplayName = "Following" });
+            new User { Id = _followerId,  SupabaseUserId = "f1", Username = "follower",  DisplayName = "Follower" },
+            new User { Id = _followingId, SupabaseUserId = "f2", Username = "following", DisplayName = "Following" });
         _db.SaveChanges();
     }
 

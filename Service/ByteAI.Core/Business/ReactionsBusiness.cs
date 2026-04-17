@@ -11,24 +11,24 @@ public sealed class ReactionsBusiness(IReactionService reactionService, ICurrent
     public async Task<ReactionsCount> GetReactionsAsync(Guid byteId, CancellationToken ct) =>
         await reactionService.GetReactionsAsync(byteId, ct);
 
-    public async Task<ToggleLikeResult> ToggleReactionAsync(string clerkId, Guid byteId, string reactionType, CancellationToken ct)
+    public async Task<ToggleLikeResult> ToggleReactionAsync(string supabaseUserId, Guid byteId, string reactionType, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await reactionService.ToggleReactionAsync(byteId, userId, reactionType, ct);
     }
 
-    public async Task<bool> DeleteReactionAsync(string clerkId, Guid byteId, CancellationToken ct)
+    public async Task<bool> DeleteReactionAsync(string supabaseUserId, Guid byteId, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await reactionService.DeleteReactionAsync(byteId, userId, ct);
     }
 
     public async Task<List<LikerInfo>> GetLikersAsync(Guid byteId, CancellationToken ct) =>
         await reactionService.GetLikersAsync(byteId, ct);
 
-    private async Task<Guid> ResolveUserIdAsync(string clerkId, CancellationToken ct)
+    private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
-        var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);
+        var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
         if (userId is null) throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
         return userId.Value;
     }

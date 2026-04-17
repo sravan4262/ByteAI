@@ -18,7 +18,7 @@ public sealed class UserServiceTests : IDisposable
         _db = DbContextFactory.Create();
         _sut = new UserService(_db, NullLogger<UserService>.Instance);
 
-        _db.Users.Add(new User { Id = _userId, ClerkId = "u1", Username = "testuser", DisplayName = "Test User" });
+        _db.Users.Add(new User { Id = _userId, SupabaseUserId = "u1", Username = "testuser", DisplayName = "Test User" });
         // Seed role types for UpsertByClerkAsync
         _db.RoleTypes.AddRange(
             new RoleType { Id = Guid.NewGuid(), Name = "user",  Label = "User" },
@@ -95,7 +95,7 @@ public sealed class UserServiceTests : IDisposable
     public async Task GetFollowers_ReturnsFollowers()
     {
         var followerId = Guid.NewGuid();
-        _db.Users.Add(new User { Id = followerId, ClerkId = "f1", Username = "follower", DisplayName = "F" });
+        _db.Users.Add(new User { Id = followerId, SupabaseUserId = "f1", Username = "follower", DisplayName = "F" });
         _db.UserFollowers.Add(new UserFollower { UserId = _userId, FollowerId = followerId });
         await _db.SaveChangesAsync();
 
@@ -108,7 +108,7 @@ public sealed class UserServiceTests : IDisposable
     public async Task GetFollowing_ReturnsFollowing()
     {
         var targetId = Guid.NewGuid();
-        _db.Users.Add(new User { Id = targetId, ClerkId = "t1", Username = "target", DisplayName = "T" });
+        _db.Users.Add(new User { Id = targetId, SupabaseUserId = "t1", Username = "target", DisplayName = "T" });
         _db.UserFollowings.Add(new UserFollowing { UserId = _userId, FollowingId = targetId });
         await _db.SaveChangesAsync();
 
@@ -123,7 +123,7 @@ public sealed class UserServiceTests : IDisposable
     public async Task IsFollowing_WhenFollowing_ReturnsTrue()
     {
         var targetId = Guid.NewGuid();
-        _db.Users.Add(new User { Id = targetId, ClerkId = "t2", Username = "t2", DisplayName = "T2" });
+        _db.Users.Add(new User { Id = targetId, SupabaseUserId = "t2", Username = "t2", DisplayName = "T2" });
         _db.UserFollowings.Add(new UserFollowing { UserId = _userId, FollowingId = targetId });
         await _db.SaveChangesAsync();
 
@@ -144,8 +144,8 @@ public sealed class UserServiceTests : IDisposable
         var f1 = Guid.NewGuid();
         var t1 = Guid.NewGuid();
         _db.Users.AddRange(
-            new User { Id = f1, ClerkId = "f2", Username = "f2", DisplayName = "F2" },
-            new User { Id = t1, ClerkId = "t3", Username = "t3", DisplayName = "T3" });
+            new User { Id = f1, SupabaseUserId = "f2", Username = "f2", DisplayName = "F2" },
+            new User { Id = t1, SupabaseUserId = "t3", Username = "t3", DisplayName = "T3" });
         _db.Bytes.Add(new ByteEntity { AuthorId = _userId, Title = "X", Body = "x", Type = "article", IsActive = true });
         _db.UserFollowers.Add(new UserFollower { UserId = _userId, FollowerId = f1 });
         _db.UserFollowings.Add(new UserFollowing { UserId = _userId, FollowingId = t1 });
@@ -167,7 +167,7 @@ public sealed class UserServiceTests : IDisposable
 
         Assert.True(wasCreated);
         Assert.NotNull(user);
-        Assert.Equal("new_clerk", user.ClerkId);
+        Assert.Equal("new_clerk", user.SupabaseUserId);
     }
 
     [Fact]
@@ -211,7 +211,7 @@ public sealed class UserServiceTests : IDisposable
     public async Task UpdateMyProfile_UsernameTaken_ThrowsInvalidOperation()
     {
         var otherId = Guid.NewGuid();
-        _db.Users.Add(new User { Id = otherId, ClerkId = "o1", Username = "taken", DisplayName = "O" });
+        _db.Users.Add(new User { Id = otherId, SupabaseUserId = "o1", Username = "taken", DisplayName = "O" });
         await _db.SaveChangesAsync();
 
         await Assert.ThrowsAsync<InvalidOperationException>(

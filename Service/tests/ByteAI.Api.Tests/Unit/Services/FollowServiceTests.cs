@@ -26,8 +26,8 @@ public sealed class FollowServiceTests : IDisposable
                   .Returns(Task.CompletedTask);
 
         _db.Users.AddRange(
-            new User { Id = _followerId, ClerkId = "f1", Username = "follower", DisplayName = "Follower" },
-            new User { Id = _targetId,   ClerkId = "t1", Username = "target",   DisplayName = "Target" });
+            new User { Id = _followerId, SupabaseUserId = "f1", Username = "follower", DisplayName = "Follower" },
+            new User { Id = _targetId,   SupabaseUserId = "t1", Username = "target",   DisplayName = "Target" });
         _db.SaveChanges();
     }
 

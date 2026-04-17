@@ -20,8 +20,8 @@ public sealed class FeatureFlagsController(IAdminBusiness adminBusiness) : Contr
     [ProducesResponseType(typeof(ApiResponse<Dictionary<string, bool>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<Dictionary<string, bool>>>> GetEnabledFlags(CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId();
-        var flags = await adminBusiness.GetEnabledFeatureFlagsAsync(clerkId, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var flags = await adminBusiness.GetEnabledFeatureFlagsAsync(supabaseUserId, ct);
         
         // Return as a dictionary { "key": true } for easy client-side lookup
         var dict = flags.ToDictionary(f => f.Key, f => true);

@@ -132,61 +132,56 @@ public sealed class UserService(AppDbContext db, ILogger<UserService> logger) : 
         return user;
     }
 
-    public async Task<(User user, bool wasCreated)> UpsertByClerkAsync(string clerkId, string displayName, string? avatarUrl, string? email, CancellationToken ct)
+    public async Task<(User user, bool wasCreated)> ProvisionAsync(string supabaseUserId, string displayName, string? avatarUrl, string? email, CancellationToken ct)
     {
-        var existing = await db.Users.FirstOrDefaultAsync(u => u.ClerkId == clerkId, ct);
+        var existing = await db.Users.FirstOrDefaultAsync(u => u.SupabaseUserId == supabaseUserId, ct);
 
-        if (existing is null)
+        if (existing is not null)
         {
-            var username = await GenerateUniqueUsernameAsync(displayName, ct);
-            var user = new User
-            {
-                ClerkId = clerkId,
-                Username = username,
-                DisplayName = displayName,
-                AvatarUrl = avatarUrl,
-            };
-
-            db.Users.Add(user);
-            await db.SaveChangesAsync(ct);
-
-            // Assign default "user" role
-            var userRoleType = await db.RoleTypes.FirstOrDefaultAsync(r => r.Name == "user", ct);
-            if (userRoleType != null)
-            {
-                db.UserRoles.Add(new UserRole { UserId = user.Id, RoleTypeId = userRoleType.Id });
-                await db.SaveChangesAsync(ct);
-            }
-
-            // Check if this email should be assigned admin role
-            var adminEmail = "sravan4262@gmail.com";
-            if (!string.IsNullOrEmpty(email) && email.Equals(adminEmail, StringComparison.OrdinalIgnoreCase))
-            {
-                var adminRoleType = await db.RoleTypes.FirstOrDefaultAsync(r => r.Name == "admin", ct);
-                if (adminRoleType != null && !await db.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleTypeId == adminRoleType.Id, ct))
-                {
-                    db.UserRoles.Add(new UserRole { UserId = user.Id, RoleTypeId = adminRoleType.Id });
-                    await db.SaveChangesAsync(ct);
-                }
-            }
-
-            return (user, true);
+            // Idempotent — already provisioned. Award daily login XP on re-entry.
+            await XpAwarder.AwardAsync(db, existing.Id, "daily_login", logger, ct);
+            return (existing, false);
         }
 
-        existing.DisplayName = displayName;
-        if (avatarUrl is not null) existing.AvatarUrl = avatarUrl;
-        existing.UpdatedAt = DateTime.UtcNow;
+        var username = await GenerateUniqueUsernameAsync(displayName, ct);
+        var user = new User
+        {
+            SupabaseUserId = supabaseUserId,
+            Email = email,
+            Username = username,
+            DisplayName = displayName,
+            AvatarUrl = avatarUrl,
+        };
+
+        db.Users.Add(user);
         await db.SaveChangesAsync(ct);
 
-        // ── daily_login XP (once per calendar day, guarded by UserXpLog) ─────
-        await XpAwarder.AwardAsync(db, existing.Id, "daily_login", logger, ct);
+        // Assign default "user" role
+        var userRoleType = await db.RoleTypes.FirstOrDefaultAsync(r => r.Name == "user", ct);
+        if (userRoleType is not null)
+        {
+            db.UserRoles.Add(new UserRole { UserId = user.Id, RoleTypeId = userRoleType.Id });
+            await db.SaveChangesAsync(ct);
+        }
 
-        return (existing, false);
+        // Auto-assign admin role for the owner email
+        var adminEmail = "sravan4262@gmail.com";
+        if (!string.IsNullOrEmpty(email) && email.Equals(adminEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            var adminRoleType = await db.RoleTypes.FirstOrDefaultAsync(r => r.Name == "admin", ct);
+            if (adminRoleType is not null && !await db.UserRoles.AnyAsync(ur => ur.UserId == user.Id && ur.RoleTypeId == adminRoleType.Id, ct))
+            {
+                db.UserRoles.Add(new UserRole { UserId = user.Id, RoleTypeId = adminRoleType.Id });
+                await db.SaveChangesAsync(ct);
+            }
+        }
+
+        return (user, true);
     }
 
-    public async Task<bool> DeleteByClerkIdAsync(string clerkId, CancellationToken ct)
+    public async Task<bool> DeleteBySupabaseUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.ClerkId == clerkId, ct);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.SupabaseUserId == supabaseUserId, ct);
         if (user is null) return false;
 
         db.Users.Remove(user);

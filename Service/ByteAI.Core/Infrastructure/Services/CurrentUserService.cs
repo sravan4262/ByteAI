@@ -6,7 +6,7 @@ namespace ByteAI.Core.Infrastructure.Services;
 
 public sealed class CurrentUserService(AppDbContext db) : ICurrentUserService
 {
-    public async Task<User?> GetCurrentUserAsync(string clerkId, CancellationToken ct = default) =>
+    public async Task<User?> GetCurrentUserAsync(string supabaseUserId, CancellationToken ct = default) =>
         await db.Users.AsNoTracking()
             .Include(u => u.UserBadges)
                 .ThenInclude(ub => ub.BadgeTypeNav)
@@ -14,12 +14,12 @@ public sealed class CurrentUserService(AppDbContext db) : ICurrentUserService
                 .ThenInclude(ur => ur.RoleType)
             .Include(u => u.UserTechStacks)
                 .ThenInclude(uts => uts.TechStack)
-            .FirstOrDefaultAsync(u => u.ClerkId == clerkId, CancellationToken.None);
+            .FirstOrDefaultAsync(u => u.SupabaseUserId == supabaseUserId, CancellationToken.None);
 
-    public async Task<Guid?> GetCurrentUserIdAsync(string clerkId, CancellationToken ct = default)
+    public async Task<Guid?> GetCurrentUserIdAsync(string supabaseUserId, CancellationToken ct = default)
     {
         var user = await db.Users.AsNoTracking()
-            .Where(u => u.ClerkId == clerkId)
+            .Where(u => u.SupabaseUserId == supabaseUserId)
             .Select(u => (Guid?)u.Id)
             .FirstOrDefaultAsync(CancellationToken.None);
         return user;

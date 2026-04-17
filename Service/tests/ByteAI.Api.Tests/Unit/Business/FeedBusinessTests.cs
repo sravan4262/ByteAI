@@ -13,7 +13,7 @@ public sealed class FeedBusinessTests
     private readonly FeedBusiness _sut;
 
     private readonly Guid _userId = Guid.NewGuid();
-    private const string ClerkId = "clerk_feed";
+    private const string SupabaseUserId = "clerk_feed";
 
     public FeedBusinessTests()
     {

@@ -24,7 +24,7 @@ public sealed record BadgeResponse(
 
 public sealed record UserResponse(
     Guid Id,
-    string ClerkId,
+    string? SupabaseUserId,
     string Username,
     string DisplayName,
     string? Bio,

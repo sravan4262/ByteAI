@@ -58,8 +58,8 @@ try
             npgsql => npgsql.UseVector()));
 
 
-    // ── Auth (Clerk JWT) ──────────────────────────────────────────────────────
-    builder.Services.AddClerkJwt(builder.Configuration);
+    // ── Auth (Supabase JWT) ───────────────────────────────────────────────────
+    builder.Services.AddSupabaseJwt(builder.Configuration);
 
     // ── Controllers ──────────────────────────────────────────────────────────
     builder.Services.AddControllers();

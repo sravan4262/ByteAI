@@ -19,8 +19,8 @@ public sealed class TrendingController(ITrendingBusiness trendingBusiness) : Con
         [FromBody] RecordClickRequest request,
         CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId();
-        await trendingBusiness.RecordClickAsync(request.ContentId, request.ContentType, clerkId, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        await trendingBusiness.RecordClickAsync(request.ContentId, request.ContentType, supabaseUserId, ct);
         return NoContent();
     }
 

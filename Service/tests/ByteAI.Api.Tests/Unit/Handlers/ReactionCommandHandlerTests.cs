@@ -26,8 +26,8 @@ public sealed class ReactionCommandHandlerTests : IDisposable
                   .Returns(Task.CompletedTask);
 
         _db.Users.AddRange(
-            new User { Id = _userId,   ClerkId = "r1", Username = "reactor", DisplayName = "Reactor" },
-            new User { Id = _authorId, ClerkId = "r2", Username = "author",  DisplayName = "Author"  });
+            new User { Id = _userId,   SupabaseUserId = "r1", Username = "reactor", DisplayName = "Reactor" },
+            new User { Id = _authorId, SupabaseUserId = "r2", Username = "author",  DisplayName = "Author"  });
 
         _db.Bytes.Add(new ByteEntity
         {

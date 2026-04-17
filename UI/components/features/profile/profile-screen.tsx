@@ -9,7 +9,7 @@ import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
 import { useAuth } from '@/hooks/use-auth'
-import { useUser } from '@clerk/nextjs'
+
 import * as api from '@/lib/api'
 
 const themes = [
@@ -195,7 +195,6 @@ const PROFILE_NAV: { id: ProfileTab; icon: React.ElementType; label: string; col
 
 export function ProfileScreen() {
   const { logout } = useAuth()
-  const { user: clerkUser } = useUser()
   const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('profile')
@@ -558,7 +557,7 @@ export function ProfileScreen() {
                     <button type="button"
                       onClick={() => { setPendingAvatarFile(null); setAvatarPreview(null); setAvatarZoom(1); setEditForm(f => ({ ...f, customAvatarUrl: '' })) }}
                       className={`flex items-center gap-3 px-3 py-2 rounded-lg border-2 transition-all w-fit ${editForm.customAvatarUrl === '' && !pendingAvatarFile ? 'border-[var(--cyan)] bg-[rgba(34,211,238,0.08)]' : 'border-[var(--border-m)] hover:border-[var(--border-h)]'}`}>
-                      {clerkUser?.imageUrl
+                      {getMeCache()?.avatarUrl ?? null
                         ? <img src={clerkUser.imageUrl} alt="provider" className="w-8 h-8 rounded-full object-cover" referrerPolicy="no-referrer" />
                         : <div className="w-8 h-8 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center font-mono text-xs text-[var(--t2)]">{(currentUser?.displayName ?? '?')[0]}</div>
                       }
@@ -756,7 +755,7 @@ export function ProfileScreen() {
                         const customAvatar = currentUser?.avatarUrl
                         const isEmoji = customAvatar && !customAvatar.startsWith('http')
                         if (isEmoji) return <span className="text-[28px] leading-none select-none">{customAvatar}</span>
-                        const imgSrc = customAvatar ?? clerkUser?.imageUrl
+                        const imgSrc = customAvatar ?? getMeCache()?.avatarUrl ?? null
                         if (imgSrc) return <img src={imgSrc} alt="avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         return (currentUser?.displayName ?? '').split(' ').filter(w => /[a-zA-Z]/.test(w[0])).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?'
                       })()}

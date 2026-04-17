@@ -14,27 +14,27 @@ public sealed class CommentsBusiness(ICommentService commentService, ICurrentUse
     public async Task<PagedResult<CommentWithAuthor>> GetCommentsWithAuthorByByteAsync(Guid byteId, int page, int pageSize, CancellationToken ct) =>
         await commentService.GetCommentsWithAuthorByByteAsync(byteId, new PaginationParams(page, Math.Min(pageSize, 200)), ct);
 
-    public async Task<Comment> CreateCommentAsync(string clerkId, Guid byteId, string body, Guid? parentCommentId, CancellationToken ct)
+    public async Task<Comment> CreateCommentAsync(string supabaseUserId, Guid byteId, string body, Guid? parentCommentId, CancellationToken ct)
     {
-        var authorId = await ResolveUserIdAsync(clerkId, ct);
+        var authorId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await commentService.CreateCommentAsync(byteId, authorId, body, parentCommentId, ct);
     }
 
-    public async Task<Comment> UpdateCommentAsync(string clerkId, Guid commentId, string body, CancellationToken ct)
+    public async Task<Comment> UpdateCommentAsync(string supabaseUserId, Guid commentId, string body, CancellationToken ct)
     {
-        var authorId = await ResolveUserIdAsync(clerkId, ct);
+        var authorId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await commentService.UpdateCommentAsync(commentId, authorId, body, ct);
     }
 
-    public async Task<bool> DeleteCommentAsync(string clerkId, Guid commentId, CancellationToken ct)
+    public async Task<bool> DeleteCommentAsync(string supabaseUserId, Guid commentId, CancellationToken ct)
     {
-        var authorId = await ResolveUserIdAsync(clerkId, ct);
+        var authorId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await commentService.DeleteCommentAsync(commentId, authorId, ct);
     }
 
-    private async Task<Guid> ResolveUserIdAsync(string clerkId, CancellationToken ct)
+    private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
-        var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);
+        var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
         if (userId is null) throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
         return userId.Value;
     }

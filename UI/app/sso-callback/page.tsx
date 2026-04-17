@@ -1,8 +1,7 @@
-import { AuthenticateWithRedirectCallback } from '@clerk/nextjs'
+// Legacy Clerk SSO callback — replaced by /auth/callback route handler.
+// This page is no longer reachable; kept to avoid 404 if old links exist.
+import { redirect } from 'next/navigation'
 
-// Clerk lands here after Google/GitHub OAuth redirect.
-// AuthenticateWithRedirectCallback exchanges the OAuth code for a session,
-// then redirects to redirectUrlComplete (set in authenticateWithRedirect call).
 export default function SSOCallbackPage() {
-  return <AuthenticateWithRedirectCallback />
+  redirect('/auth/callback')
 }

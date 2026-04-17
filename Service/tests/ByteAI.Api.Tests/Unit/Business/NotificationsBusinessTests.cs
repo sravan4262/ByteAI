@@ -13,7 +13,7 @@ public sealed class NotificationsBusinessTests
     private readonly NotificationsBusiness _sut;
 
     private readonly Guid _userId = Guid.NewGuid();
-    private const string ClerkId = "clerk_notif";
+    private const string SupabaseUserId = "clerk_notif";
 
     public NotificationsBusinessTests()
     {

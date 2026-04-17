@@ -18,8 +18,8 @@ public sealed class NotificationCommandHandlerTests : IDisposable
         _db = DbContextFactory.Create();
 
         _db.Users.AddRange(
-            new User { Id = _userId,  ClerkId = "n1", Username = "nu1", DisplayName = "N1" },
-            new User { Id = _userId2, ClerkId = "n2", Username = "nu2", DisplayName = "N2" });
+            new User { Id = _userId,  SupabaseUserId = "n1", Username = "nu1", DisplayName = "N1" },
+            new User { Id = _userId2, SupabaseUserId = "n2", Username = "nu2", DisplayName = "N2" });
 
         var notif = new Notification { UserId = _userId, Type = "follow", Read = false };
         _db.Notifications.Add(notif);

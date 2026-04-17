@@ -43,7 +43,7 @@ public sealed class UserEngagedWithByteEventHandlerTests
         var handler = new UserEngagedWithByteEventHandler(factory, NullLogger<UserEngagedWithByteEventHandler>.Instance);
 
         var vec = new float[768]; vec[0] = 1f;
-        db.Users.Add(new User { Id = _userId, ClerkId = "c1", Username = "u", DisplayName = "U" });
+        db.Users.Add(new User { Id = _userId, SupabaseUserId = "c1", Username = "u", DisplayName = "U" });
         db.Bytes.Add(new ByteEntity
         {
             Id = _byteId, AuthorId = _userId, Title = "T", Body = "b", Type = "article",
@@ -68,7 +68,7 @@ public sealed class UserEngagedWithByteEventHandlerTests
 
         db.Users.Add(new User
         {
-            Id = _userId, ClerkId = "c2", Username = "u2", DisplayName = "U2",
+            Id = _userId, SupabaseUserId = "c2", Username = "u2", DisplayName = "U2",
             InterestEmbedding = new Vector(existing)
         });
         db.Bytes.Add(new ByteEntity
@@ -96,7 +96,7 @@ public sealed class UserEngagedWithByteEventHandlerTests
         var (db, factory) = BuildScope();
         var handler = new UserEngagedWithByteEventHandler(factory, NullLogger<UserEngagedWithByteEventHandler>.Instance);
 
-        db.Users.Add(new User { Id = _userId, ClerkId = "c3", Username = "u3", DisplayName = "U3" });
+        db.Users.Add(new User { Id = _userId, SupabaseUserId = "c3", Username = "u3", DisplayName = "U3" });
         db.Bytes.Add(new ByteEntity
         {
             Id = _byteId, AuthorId = _userId, Title = "T", Body = "b", Type = "article",
@@ -118,7 +118,7 @@ public sealed class UserEngagedWithByteEventHandlerTests
         var (db, factory) = BuildScope();
         var handler = new UserEngagedWithByteEventHandler(factory, NullLogger<UserEngagedWithByteEventHandler>.Instance);
 
-        db.Users.Add(new User { Id = _userId, ClerkId = "c4", Username = "u4", DisplayName = "U4" });
+        db.Users.Add(new User { Id = _userId, SupabaseUserId = "c4", Username = "u4", DisplayName = "U4" });
         await db.SaveChangesAsync();
 
         // Should swallow silently — no byte exists

@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { getCurrentUser } from '@/lib/api'
-import { useAuth } from '@clerk/nextjs'
+import { useAuth } from '@/hooks/use-auth'
 
 export function useIsAdmin() {
-  const { isLoaded: authLoaded, isSignedIn } = useAuth()
+  const { auth } = useAuth()
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    if (!authLoaded) return
-    if (!isSignedIn) {
+    if (!auth.isLoaded) return
+    if (!auth.isAuthenticated) {
       setIsAdmin(false)
       setIsLoaded(true)
       return
@@ -26,7 +26,7 @@ export function useIsAdmin() {
         setIsAdmin(false)
         setIsLoaded(true)
       })
-  }, [authLoaded, isSignedIn])
+  }, [auth.isLoaded, auth.isAuthenticated])
 
   return { isAdmin, isLoaded }
 }

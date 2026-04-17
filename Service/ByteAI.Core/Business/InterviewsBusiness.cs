@@ -15,7 +15,7 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
         int page, int pageSize, Guid? authorId, string? company, string? role, string? location,
         List<string>? techStacks, string sort, CancellationToken ct, string? clerkId = null)
     {
-        var requesterId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
+        var requesterId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
         return await interviewService.GetInterviewsAsync(
             new PaginationParams(page, Math.Min(pageSize, 50)),
             authorId, company, role, location, techStacks, sort, ct, requesterId);
@@ -36,53 +36,53 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
     // ── Writes ───────────────────────────────────────────────────────────────
 
     public async Task<Interview> CreateInterviewAsync(
-        string clerkId, string title, string body, string? codeSnippet, string? language,
+        string supabaseUserId, string title, string body, string? codeSnippet, string? language,
         string? company, string? role, string? location, string type, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.CreateInterviewAsync(userId, title, body, codeSnippet, language, company, role, location, type, ct);
     }
 
     public async Task<Interview> CreateInterviewWithQuestionsAsync(
-        string clerkId, string title, string? company, string? role, string? location,
+        string supabaseUserId, string title, string? company, string? role, string? location,
         List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.CreateInterviewWithQuestionsAsync(userId, title, company, role, location, questions, isAnonymous, ct);
     }
 
     public async Task<Interview> UpdateInterviewAsync(
-        string clerkId, Guid id, string? title, string? body, string? codeSnippet,
+        string supabaseUserId, Guid id, string? title, string? body, string? codeSnippet,
         string? language, string? company, string? role, string? location, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.UpdateInterviewAsync(id, userId, title, body, codeSnippet, language, company, role, location, ct);
     }
 
-    public async Task<bool> DeleteInterviewAsync(string clerkId, Guid id, CancellationToken ct)
+    public async Task<bool> DeleteInterviewAsync(string supabaseUserId, Guid id, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.DeleteInterviewAsync(id, userId, ct);
     }
 
     // ── Question interactions ────────────────────────────────────────────────
 
-    public async Task LikeQuestionAsync(string clerkId, Guid questionId, CancellationToken ct)
+    public async Task LikeQuestionAsync(string supabaseUserId, Guid questionId, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         await interviewService.LikeQuestionAsync(questionId, userId, ct);
     }
 
-    public async Task UnlikeQuestionAsync(string clerkId, Guid questionId, CancellationToken ct)
+    public async Task UnlikeQuestionAsync(string supabaseUserId, Guid questionId, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         await interviewService.UnlikeQuestionAsync(questionId, userId, ct);
     }
 
     public async Task<InterviewQuestionComment> AddQuestionCommentAsync(
-        string clerkId, Guid questionId, string body, Guid? parentId, CancellationToken ct)
+        string supabaseUserId, Guid questionId, string body, Guid? parentId, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.AddQuestionCommentAsync(questionId, userId, body, parentId, ct);
     }
 
@@ -93,9 +93,9 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
     // ── Interview-level interactions ─────────────────────────────────────────
 
     public async Task<InterviewComment> AddCommentAsync(
-        string clerkId, Guid id, string body, Guid? parentId, CancellationToken ct)
+        string supabaseUserId, Guid id, string body, Guid? parentId, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.AddCommentAsync(id, userId, body, parentId, ct);
     }
 
@@ -103,53 +103,53 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
         Guid id, int page, int pageSize, CancellationToken ct) =>
         await interviewService.GetCommentsAsync(id, new PaginationParams(page, pageSize), ct);
 
-    public async Task AddReactionAsync(string clerkId, Guid id, string reactionType, CancellationToken ct)
+    public async Task AddReactionAsync(string supabaseUserId, Guid id, string reactionType, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         await interviewService.AddReactionAsync(id, userId, reactionType, ct);
     }
 
-    public async Task RemoveReactionAsync(string clerkId, Guid id, CancellationToken ct)
+    public async Task RemoveReactionAsync(string supabaseUserId, Guid id, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         await interviewService.RemoveReactionAsync(id, userId, ct);
     }
 
-    public async Task<bool> ToggleBookmarkAsync(string clerkId, Guid id, CancellationToken ct)
+    public async Task<bool> ToggleBookmarkAsync(string supabaseUserId, Guid id, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.ToggleBookmarkAsync(id, userId, ct);
     }
 
-    public async Task<bool> DeleteCommentAsync(string clerkId, Guid commentId, CancellationToken ct)
+    public async Task<bool> DeleteCommentAsync(string supabaseUserId, Guid commentId, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.DeleteCommentAsync(commentId, userId, ct);
     }
 
-    public async Task<bool> DeleteQuestionCommentAsync(string clerkId, Guid commentId, CancellationToken ct)
+    public async Task<bool> DeleteQuestionCommentAsync(string supabaseUserId, Guid commentId, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.DeleteQuestionCommentAsync(commentId, userId, ct);
     }
 
-    public async Task<PagedResult<Interview>> GetUserInterviewBookmarksAsync(string clerkId, int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<Interview>> GetUserInterviewBookmarksAsync(string supabaseUserId, int page, int pageSize, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.GetUserBookmarksAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
     }
 
-    public async Task<PagedResult<Interview>> GetMyInterviewsAsync(string clerkId, int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<Interview>> GetMyInterviewsAsync(string supabaseUserId, int page, int pageSize, CancellationToken ct)
     {
-        var authorId = await ResolveUserIdAsync(clerkId, ct);
+        var authorId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await interviewService.GetMyInterviewsAsync(authorId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private async Task<Guid> ResolveUserIdAsync(string clerkId, CancellationToken ct)
+    private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
-        var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);
+        var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
         if (userId is null) throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
         return userId.Value;
     }

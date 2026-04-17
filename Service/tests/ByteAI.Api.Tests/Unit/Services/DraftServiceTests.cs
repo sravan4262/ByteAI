@@ -16,7 +16,7 @@ public sealed class DraftServiceTests : IDisposable
         _db = DbContextFactory.Create();
         _sut = new DraftService(_db);
 
-        _db.Users.Add(new User { Id = _authorId, ClerkId = "d1", Username = "drafter", DisplayName = "Drafter" });
+        _db.Users.Add(new User { Id = _authorId, SupabaseUserId = "d1", Username = "drafter", DisplayName = "Drafter" });
         _db.SaveChanges();
     }
 
@@ -49,7 +49,7 @@ public sealed class DraftServiceTests : IDisposable
     public async Task SaveDraft_DraftIdBelongsToDifferentAuthor_CreatesNew()
     {
         var otherId = Guid.NewGuid();
-        _db.Users.Add(new User { Id = otherId, ClerkId = "o1", Username = "other", DisplayName = "Other" });
+        _db.Users.Add(new User { Id = otherId, SupabaseUserId = "o1", Username = "other", DisplayName = "Other" });
         await _db.SaveChangesAsync();
 
         var existing = await _sut.SaveDraftAsync(otherId, null, "other draft", "b", null, null, [], default);
@@ -74,7 +74,7 @@ public sealed class DraftServiceTests : IDisposable
     public async Task GetMyDrafts_ReturnsOnlyThisAuthorsDrafts()
     {
         var otherId = Guid.NewGuid();
-        _db.Users.Add(new User { Id = otherId, ClerkId = "o2", Username = "other2", DisplayName = "Other2" });
+        _db.Users.Add(new User { Id = otherId, SupabaseUserId = "o2", Username = "other2", DisplayName = "Other2" });
         await _db.SaveChangesAsync();
 
         await _sut.SaveDraftAsync(_authorId, null, "mine", "b", null, null, [], default);

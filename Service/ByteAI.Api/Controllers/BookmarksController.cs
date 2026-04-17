@@ -22,11 +22,11 @@ public sealed class BookmarksController(IBookmarksBusiness bookmarksBusiness) : 
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<object>>> ToggleBookmark(Guid byteId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var isSaved = await bookmarksBusiness.ToggleBookmarkAsync(clerkId, byteId, ct);
+            var isSaved = await bookmarksBusiness.ToggleBookmarkAsync(supabaseUserId, byteId, ct);
             return Ok(ApiResponse<object>.Success(new { isSaved }));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -40,11 +40,11 @@ public sealed class BookmarksController(IBookmarksBusiness bookmarksBusiness) : 
     public async Task<ActionResult<ApiResponse<PagedResponse<ByteResponse>>>> GetMyBookmarks(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await bookmarksBusiness.GetMyBookmarksAsync(clerkId, page, pageSize, ct);
+            var result = await bookmarksBusiness.GetMyBookmarksAsync(supabaseUserId, page, pageSize, ct);
             var response = new PagedResponse<ByteResponse>(
                 result.Items.Select(b => b.ToResponse()).ToList(),
                 result.Total, result.Page, result.PageSize);

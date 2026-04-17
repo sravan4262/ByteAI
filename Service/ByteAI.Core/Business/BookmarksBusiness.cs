@@ -8,15 +8,15 @@ namespace ByteAI.Core.Business;
 
 public sealed class BookmarksBusiness(IBookmarkService bookmarkService, ICurrentUserService currentUserService) : IBookmarksBusiness
 {
-    public async Task<bool> ToggleBookmarkAsync(string clerkId, Guid byteId, CancellationToken ct)
+    public async Task<bool> ToggleBookmarkAsync(string supabaseUserId, Guid byteId, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await bookmarkService.ToggleBookmarkAsync(byteId, userId, ct);
     }
 
-    public async Task<PagedResult<ByteResult>> GetMyBookmarksAsync(string clerkId, int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<ByteResult>> GetMyBookmarksAsync(string supabaseUserId, int page, int pageSize, CancellationToken ct)
     {
-        var userId = await ResolveUserIdAsync(clerkId, ct);
+        var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         var result = await bookmarkService.GetUserBookmarksAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
         var items = result.Items.Select(b => new ByteResult(
             b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
@@ -26,9 +26,9 @@ public sealed class BookmarksBusiness(IBookmarkService bookmarkService, ICurrent
         return new PagedResult<ByteResult>(items, result.Total, result.Page, result.PageSize);
     }
 
-    private async Task<Guid> ResolveUserIdAsync(string clerkId, CancellationToken ct)
+    private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
-        var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);
+        var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
         if (userId is null) throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
         return userId.Value;
     }

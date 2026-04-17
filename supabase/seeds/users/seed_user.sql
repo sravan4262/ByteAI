@@ -1,12 +1,13 @@
 -- ============================================================
 -- SEED: System seed user
 -- Used as author_id for all seeded bytes and interviews.
--- clerk_id = 'seed_system' — never created in Clerk, internal only.
+-- supabase_user_id = NULL — internal system user, no auth.users entry.
 -- ============================================================
 
 INSERT INTO users.users (
     id,
-    clerk_id,
+    supabase_user_id,
+    email,
     username,
     display_name,
     bio,
@@ -17,12 +18,14 @@ INSERT INTO users.users (
     xp,
     streak,
     is_verified,
+    is_onboarded,
     created_at,
     updated_at
 )
 VALUES (
     '00000000-0000-0000-0000-000000000001',
-    'seed_system',
+    NULL,
+    'system@byteai.internal',
     'byteai',
     'ByteAI',
     'Official ByteAI content — curated technical bytes across every domain.',
@@ -33,7 +36,8 @@ VALUES (
     999999,
     0,
     true,
+    true,
     now(),
     now()
 )
-ON CONFLICT (clerk_id) DO NOTHING;
+ON CONFLICT (username) DO NOTHING;

@@ -29,8 +29,8 @@ public sealed class BookmarkServiceTests : IDisposable
                   .Returns(Task.CompletedTask);
 
         // Seed user + byte
-        _db.Users.Add(new User { Id = _userId,   ClerkId = "u1", Username = "user1", DisplayName = "User One" });
-        _db.Users.Add(new User { Id = _authorId, ClerkId = "a1", Username = "author", DisplayName = "Author" });
+        _db.Users.Add(new User { Id = _userId,   SupabaseUserId = "u1", Username = "user1", DisplayName = "User One" });
+        _db.Users.Add(new User { Id = _authorId, SupabaseUserId = "a1", Username = "author", DisplayName = "Author" });
         _db.Bytes.Add(new ByteEntity { Id = _byteId, AuthorId = _authorId, Title = "B", Body = "b", Type = "article", IsActive = true });
         _db.SaveChanges();
     }
@@ -88,7 +88,7 @@ public sealed class BookmarkServiceTests : IDisposable
         var otherId = Guid.NewGuid();
         var otherByteId = Guid.NewGuid();
 
-        _db.Users.Add(new User { Id = otherId, ClerkId = "o1", Username = "other", DisplayName = "Other" });
+        _db.Users.Add(new User { Id = otherId, SupabaseUserId = "o1", Username = "other", DisplayName = "Other" });
         _db.Bytes.Add(new ByteEntity { Id = otherByteId, AuthorId = _authorId, Title = "O", Body = "o", Type = "article", IsActive = true });
 
         _db.UserBookmarks.Add(new UserBookmark { ByteId = _byteId, UserId = _userId });

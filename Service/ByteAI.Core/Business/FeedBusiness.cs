@@ -12,7 +12,7 @@ public sealed class FeedBusiness(IFeedService feedService, ICurrentUserService c
     {
         Guid? userId = null;
         if (clerkId is not null)
-            userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);
+            userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
 
         return await feedService.GetFeedAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), tags, filter, ct);
     }

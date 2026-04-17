@@ -14,7 +14,7 @@ public sealed class ReactionsBusinessTests
 
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _byteId = Guid.NewGuid();
-    private const string ClerkId = "clerk_react";
+    private const string SupabaseUserId = "clerk_react";
 
     public ReactionsBusinessTests()
     {

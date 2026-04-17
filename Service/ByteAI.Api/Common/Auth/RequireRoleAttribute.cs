@@ -20,8 +20,8 @@ public sealed class RequireRoleAttribute : TypeFilterAttribute
     {
         public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
-            var clerkId = context.HttpContext.GetClerkUserId();
-            if (string.IsNullOrEmpty(clerkId))
+            var supabaseUserId = context.HttpContext.GetSupabaseUserId();
+            if (string.IsNullOrEmpty(supabaseUserId))
             {
                 context.Result = new UnauthorizedResult();
                 return;
@@ -29,7 +29,7 @@ public sealed class RequireRoleAttribute : TypeFilterAttribute
 
             var hasRole = await db.Users
                 .AsNoTracking()
-                .Where(u => u.ClerkId == clerkId)
+                .Where(u => u.SupabaseUserId == clerkId)
                 .SelectMany(u => u.UserRoles)
                 .AnyAsync(ur => ur.RoleType.Name.ToLower() == role.ToLower(), context.HttpContext.RequestAborted);
 

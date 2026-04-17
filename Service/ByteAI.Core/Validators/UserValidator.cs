@@ -7,9 +7,8 @@ public sealed class UserValidator : AbstractValidator<User>
 {
     public UserValidator()
     {
-        RuleFor(u => u.ClerkId)
-            .NotEmpty().WithMessage("ClerkId is required")
-            .MaximumLength(255).WithMessage("ClerkId must not exceed 255 characters");
+        RuleFor(u => u.SupabaseUserId)
+            .MaximumLength(255).WithMessage("SupabaseUserId must not exceed 255 characters");
 
         RuleFor(u => u.Username)
             .NotEmpty().WithMessage("Username is required")

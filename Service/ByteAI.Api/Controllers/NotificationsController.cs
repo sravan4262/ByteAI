@@ -26,11 +26,11 @@ public sealed class NotificationsController(INotificationsBusiness notifications
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await notificationsBusiness.GetNotificationsAsync(clerkId, page, pageSize, unreadOnly, ct);
+            var result = await notificationsBusiness.GetNotificationsAsync(supabaseUserId, page, pageSize, unreadOnly, ct);
             return Ok(ApiResponse<PagedResponse<NotificationResponse>>.Success(
                 new PagedResponse<NotificationResponse>(
                     result.Items.Select(n => n.ToResponse()).ToList(),
@@ -46,11 +46,11 @@ public sealed class NotificationsController(INotificationsBusiness notifications
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> MarkRead(Guid id, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var ok = await notificationsBusiness.MarkReadAsync(clerkId, id, ct);
+            var ok = await notificationsBusiness.MarkReadAsync(supabaseUserId, id, ct);
             if (!ok) return NotFound(new ApiError("NOT_FOUND", $"Notification {id} not found."));
             return Ok(ApiResponse<bool>.Success(true));
         }
@@ -63,11 +63,11 @@ public sealed class NotificationsController(INotificationsBusiness notifications
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<bool>>> MarkAllRead(CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            await notificationsBusiness.MarkAllReadAsync(clerkId, ct);
+            await notificationsBusiness.MarkAllReadAsync(supabaseUserId, ct);
             return Ok(ApiResponse<bool>.Success(true));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -80,11 +80,11 @@ public sealed class NotificationsController(INotificationsBusiness notifications
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid id, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var ok = await notificationsBusiness.DeleteAsync(clerkId, id, ct);
+            var ok = await notificationsBusiness.DeleteAsync(supabaseUserId, id, ct);
             if (!ok) return NotFound(new ApiError("NOT_FOUND", $"Notification {id} not found."));
             return Ok(ApiResponse<bool>.Success(true));
         }
@@ -97,11 +97,11 @@ public sealed class NotificationsController(INotificationsBusiness notifications
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<int>>> GetUnreadCount(CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var count = await notificationsBusiness.GetUnreadCountAsync(clerkId, ct);
+            var count = await notificationsBusiness.GetUnreadCountAsync(supabaseUserId, ct);
             return Ok(ApiResponse<int>.Success(count));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }

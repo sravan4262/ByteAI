@@ -63,7 +63,7 @@ public sealed class ByteServiceTests : IDisposable
         _db.Users.Add(new User
         {
             Id = _authorId,
-            ClerkId = "clerk_byte",
+            SupabaseUserId = "clerk_byte",
             Username = "byteauthor",
             DisplayName = "Byte Author"
         });

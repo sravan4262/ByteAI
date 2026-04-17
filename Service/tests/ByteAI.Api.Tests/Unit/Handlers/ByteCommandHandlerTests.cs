@@ -23,7 +23,7 @@ public sealed class ByteCommandHandlerTests : IDisposable
         _publisher.Setup(p => p.Publish(It.IsAny<ByteCreatedEvent>(), It.IsAny<CancellationToken>()))
                   .Returns(Task.CompletedTask);
 
-        _db.Users.Add(new User { Id = _authorId, ClerkId = "a1", Username = "author", DisplayName = "Author" });
+        _db.Users.Add(new User { Id = _authorId, SupabaseUserId = "a1", Username = "author", DisplayName = "Author" });
         _db.Bytes.Add(new ByteEntity
         {
             Id = _byteId, AuthorId = _authorId,
@@ -177,7 +177,7 @@ public sealed class ByteCommandHandlerTests : IDisposable
     public async Task GetBytes_FilterByAuthor_ReturnsOnlyThatAuthorsBytes()
     {
         var otherId = Guid.NewGuid();
-        _db.Users.Add(new User { Id = otherId, ClerkId = "o1", Username = "other", DisplayName = "O" });
+        _db.Users.Add(new User { Id = otherId, SupabaseUserId = "o1", Username = "other", DisplayName = "O" });
         _db.Bytes.Add(new ByteEntity { AuthorId = otherId, Title = "Other", Body = "b", Type = "article", IsActive = true });
         await _db.SaveChangesAsync();
 
@@ -194,7 +194,7 @@ public sealed class ByteCommandHandlerTests : IDisposable
     public async Task GetMyBytes_ReturnsOnlyThisAuthorsBytes()
     {
         var otherId = Guid.NewGuid();
-        _db.Users.Add(new User { Id = otherId, ClerkId = "o2", Username = "other2", DisplayName = "O2" });
+        _db.Users.Add(new User { Id = otherId, SupabaseUserId = "o2", Username = "other2", DisplayName = "O2" });
         _db.Bytes.Add(new ByteEntity { AuthorId = otherId, Title = "Not mine", Body = "b", Type = "article", IsActive = true });
         await _db.SaveChangesAsync();
 

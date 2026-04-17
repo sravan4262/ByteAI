@@ -31,10 +31,10 @@ public sealed class FeedController(IFeedBusiness feedBusiness) : ControllerBase
         [FromQuery] string filter = "for_you",
         CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId();
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
         var tagList = string.IsNullOrEmpty(stack) ? null : stack.Split(',').ToList();
 
-        var result = await feedBusiness.GetFeedAsync(clerkId, page, pageSize, tagList, filter, ct);
+        var result = await feedBusiness.GetFeedAsync(supabaseUserId, page, pageSize, tagList, filter, ct);
 
         var response = new PagedResponse<ByteResponse>(
             result.Items.Select(b => b.ToResponse()).ToList(),

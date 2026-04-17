@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+
 import { DetailScreen } from '@/components/features/detail/detail-screen'
 import { getPost } from '@/lib/api'
 
@@ -8,9 +8,9 @@ interface PostPageProps {
 
 export default async function PostDetailPage({ params }: PostPageProps) {
   const { id } = await params
-  const { getToken } = await auth()
-  const token = await getToken()
-  const post = await getPost(id, token)
+
+
+  const post = await getPost(id, null)
 
   if (!post) {
     return (

@@ -4,16 +4,14 @@ import { useState, useEffect, useRef } from 'react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { useAuth } from '@/hooks/use-auth'
-import { useAuth as useClerkAuth, useUser } from '@clerk/nextjs'
+
 import { setTokenProvider } from '@/lib/api/http'
 import { handleMutationError } from '@/lib/api/handle-error'
 import * as api from '@/lib/api'
 import type { SeniorityTypeResponse, DomainResponse, TechStackResponse } from '@/lib/api'
 
 export function OnboardingScreen() {
-  const { completeOnboarding } = useAuth()
-  const { getToken } = useClerkAuth()
-  const { user: clerkUser } = useUser()
+  const { completeOnboarding, getToken } = useAuth()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Onboarding lives outside AuthGuard, so wire the token provider here
@@ -92,15 +90,15 @@ export function OnboardingScreen() {
   const progressPercent = ((currentStepIndex + 1) / steps.length) * 100
 
   const wordCount = bio.trim() ? bio.trim().split(/\s+/).length : 0
-  const initials = ((clerkUser?.firstName?.[0] ?? '') + (clerkUser?.lastName?.[0] ?? '')).toUpperCase() || '?'
+  const initials = ((getMeCache()?.displayName?.[0] ?? '') + ('')).toUpperCase() || '?'
 
   return (
     <PhoneFrame>
       {/* Header */}
       <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
         <ByteAILogo size="sm" showText />
-        {clerkUser?.imageUrl
-          ? <img src={clerkUser.imageUrl} alt="avatar" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full object-cover ring-1 ring-[var(--border-h)]" />
+        {getMeCache()?.avatarUrl
+          ? <img src={getMeCache()?.avatarUrl} alt="avatar" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full object-cover ring-1 ring-[var(--border-h)]" />
           : <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--purple)] flex items-center justify-center font-mono text-[10px] font-bold text-white">{initials}</div>
         }
       </header>
@@ -138,15 +136,15 @@ export function OnboardingScreen() {
             <div className="px-4 py-4 flex items-center gap-3 border-b border-[var(--border)] bg-[rgba(59,130,246,0.03)]">
               <div className="relative flex-shrink-0">
                 <div className="absolute -inset-[2px] rounded-full bg-[conic-gradient(from_0deg,var(--accent),var(--cyan),var(--purple),var(--accent))] animate-spin-ring opacity-60 blur-[1px]" />
-                {clerkUser?.imageUrl
-                  ? <img src={clerkUser.imageUrl} referrerPolicy="no-referrer" className="relative w-11 h-11 rounded-full object-cover ring-2 ring-[var(--bg)]" />
+                {getMeCache()?.avatarUrl
+                  ? <img src={getMeCache()?.avatarUrl} referrerPolicy="no-referrer" className="relative w-11 h-11 rounded-full object-cover ring-2 ring-[var(--bg)]" />
                   : <div className="relative w-11 h-11 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--purple)] flex items-center justify-center font-mono text-sm font-bold text-white ring-2 ring-[var(--bg)]">{initials}</div>
                 }
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="font-mono text-[12px] font-bold text-[var(--t1)] truncate">
-                  {clerkUser?.fullName ?? 'Developer'}
+                  {getMeCache()?.displayName ?? 'Developer'}
                 </div>
 
                 <div className="flex items-center gap-1 mt-1 min-w-0 overflow-hidden">

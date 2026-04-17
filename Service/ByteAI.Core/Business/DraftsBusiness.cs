@@ -8,27 +8,27 @@ namespace ByteAI.Core.Business;
 
 public sealed class DraftsBusiness(IDraftService draftService, ICurrentUserService currentUserService) : IDraftsBusiness
 {
-    public async Task<Draft> SaveDraftAsync(string clerkId, Guid? draftId, string? title, string? body, string? codeSnippet, string? language, string[] tags, CancellationToken ct)
+    public async Task<Draft> SaveDraftAsync(string supabaseUserId, Guid? draftId, string? title, string? body, string? codeSnippet, string? language, string[] tags, CancellationToken ct)
     {
-        var authorId = await ResolveUserIdAsync(clerkId, ct);
+        var authorId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await draftService.SaveDraftAsync(authorId, draftId, title, body, codeSnippet, language, tags, ct);
     }
 
-    public async Task<PagedResult<Draft>> GetMyDraftsAsync(string clerkId, int page, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<Draft>> GetMyDraftsAsync(string supabaseUserId, int page, int pageSize, CancellationToken ct)
     {
-        var authorId = await ResolveUserIdAsync(clerkId, ct);
+        var authorId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await draftService.GetMyDraftsAsync(authorId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
     }
 
-    public async Task<bool> DeleteDraftAsync(string clerkId, Guid draftId, CancellationToken ct)
+    public async Task<bool> DeleteDraftAsync(string supabaseUserId, Guid draftId, CancellationToken ct)
     {
-        var authorId = await ResolveUserIdAsync(clerkId, ct);
+        var authorId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await draftService.DeleteDraftAsync(draftId, authorId, ct);
     }
 
-    private async Task<Guid> ResolveUserIdAsync(string clerkId, CancellationToken ct)
+    private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
-        var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);
+        var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
         if (userId is null) throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
         return userId.Value;
     }

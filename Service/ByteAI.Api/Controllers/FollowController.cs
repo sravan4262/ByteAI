@@ -21,11 +21,11 @@ public sealed class FollowController(IFollowBusiness followBusiness) : Controlle
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<bool>>> FollowUser(Guid userId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var ok = await followBusiness.FollowUserAsync(clerkId, userId, ct);
+            var ok = await followBusiness.FollowUserAsync(supabaseUserId, userId, ct);
             return Ok(ApiResponse<bool>.Success(ok));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -40,11 +40,11 @@ public sealed class FollowController(IFollowBusiness followBusiness) : Controlle
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> UnfollowUser(Guid userId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var ok = await followBusiness.UnfollowUserAsync(clerkId, userId, ct);
+            var ok = await followBusiness.UnfollowUserAsync(supabaseUserId, userId, ct);
             if (!ok) return NotFound(new { message = "Follow relationship not found" });
             return Ok(ApiResponse<bool>.Success(true));
         }

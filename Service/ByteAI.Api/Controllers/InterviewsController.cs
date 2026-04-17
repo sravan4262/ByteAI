@@ -89,10 +89,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         [FromQuery] string sort = "recent",
         CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId();
-        var userId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var userId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
         var techStacks = string.IsNullOrEmpty(stack) ? null : stack.Split(',').Select(s => s.Trim()).ToList();
-        var result = await interviewsBusiness.GetInterviewsAsync(page, pageSize, authorId, company, role, location, techStacks, sort, ct, clerkId);
+        var result = await interviewsBusiness.GetInterviewsAsync(page, pageSize, authorId, company, role, location, techStacks, sort, ct, supabaseUserId);
 
         var response = new PagedResponse<InterviewWithQuestionsResponse>(
             result.Items.Select(i => ToFullResponse(i, userId)).ToList(),
@@ -106,9 +106,9 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [ProducesResponseType(404)]
     public async Task<ActionResult<ApiResponse<InterviewWithQuestionsResponse>>> GetById(Guid id, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId();
-        var userId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(clerkId, ct) : null;
-        var result = await interviewsBusiness.GetInterviewByIdAsync(id, ct, clerkId);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var userId = clerkId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        var result = await interviewsBusiness.GetInterviewByIdAsync(id, ct, supabaseUserId);
         if (result is null) return NotFound();
         return Ok(ApiResponse<InterviewWithQuestionsResponse>.Success(ToFullResponse(result, userId)));
     }
@@ -121,7 +121,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     public async Task<ActionResult<ApiResponse<InterviewResponse>>> Create(
         [FromBody] CreateInterviewRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
@@ -141,7 +141,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     public async Task<ActionResult<ApiResponse<InterviewWithQuestionsResponse>>> CreateWithQuestions(
         [FromBody] CreateInterviewWithQuestionsRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         if (request.Questions is null || request.Questions.Count == 0)
             return BadRequest(new { error = "At least one question is required." });
@@ -167,7 +167,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     public async Task<ActionResult<ApiResponse<InterviewResponse>>> Update(
         Guid id, [FromBody] UpdateInterviewRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
@@ -185,11 +185,11 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid id, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var ok = await interviewsBusiness.DeleteInterviewAsync(clerkId, id, ct);
+            var ok = await interviewsBusiness.DeleteInterviewAsync(supabaseUserId, id, ct);
             if (!ok) return NotFound();
             return Ok(ApiResponse<bool>.Success(true));
         }
@@ -202,10 +202,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [Authorize]
     public async Task<ActionResult> LikeQuestion(Guid questionId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            await interviewsBusiness.LikeQuestionAsync(clerkId, questionId, ct);
+            await interviewsBusiness.LikeQuestionAsync(supabaseUserId, questionId, ct);
             return Ok(ApiResponse<bool>.Success(true));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -215,10 +215,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [Authorize]
     public async Task<ActionResult> UnlikeQuestion(Guid questionId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            await interviewsBusiness.UnlikeQuestionAsync(clerkId, questionId, ct);
+            await interviewsBusiness.UnlikeQuestionAsync(supabaseUserId, questionId, ct);
             return Ok(ApiResponse<bool>.Success(true));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -231,10 +231,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     public async Task<ActionResult> AddQuestionComment(
         Guid questionId, [FromBody] AddInterviewCommentRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            var result = await interviewsBusiness.AddQuestionCommentAsync(clerkId, questionId, request.Body, request.ParentId, ct);
+            var result = await interviewsBusiness.AddQuestionCommentAsync(supabaseUserId, questionId, request.Body, request.ParentId, ct);
             return Ok(ApiResponse<object>.Success(new
             {
                 result.Id, result.Body, result.AuthorId, result.CreatedAt,
@@ -272,10 +272,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [Authorize]
     public async Task<ActionResult> AddComment(Guid id, [FromBody] AddInterviewCommentRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            var result = await interviewsBusiness.AddCommentAsync(clerkId, id, request.Body, request.ParentId, ct);
+            var result = await interviewsBusiness.AddCommentAsync(supabaseUserId, id, request.Body, request.ParentId, ct);
             return Ok(ApiResponse<object>.Success(new
             {
                 result.Id, result.Body, result.AuthorId, result.CreatedAt,
@@ -313,10 +313,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [Authorize]
     public async Task<ActionResult> AddReaction(Guid id, [FromBody] AddInterviewReactionRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            await interviewsBusiness.AddReactionAsync(clerkId, id, request.Type, ct);
+            await interviewsBusiness.AddReactionAsync(supabaseUserId, id, request.Type, ct);
             return Ok(ApiResponse<bool>.Success(true));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -326,10 +326,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [Authorize]
     public async Task<ActionResult> RemoveReaction(Guid id, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            await interviewsBusiness.RemoveReactionAsync(clerkId, id, ct);
+            await interviewsBusiness.RemoveReactionAsync(supabaseUserId, id, ct);
             return Ok(ApiResponse<bool>.Success(true));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -342,10 +342,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [Authorize]
     public async Task<ActionResult> ToggleBookmark(Guid id, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            var isSaved = await interviewsBusiness.ToggleBookmarkAsync(clerkId, id, ct);
+            var isSaved = await interviewsBusiness.ToggleBookmarkAsync(supabaseUserId, id, ct);
             return Ok(ApiResponse<object>.Success(new { isSaved }));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -357,10 +357,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [Authorize]
     public async Task<ActionResult> DeleteComment(Guid id, Guid commentId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            var ok = await interviewsBusiness.DeleteCommentAsync(clerkId, commentId, ct);
+            var ok = await interviewsBusiness.DeleteCommentAsync(supabaseUserId, commentId, ct);
             if (!ok) return NotFound();
             return Ok(ApiResponse<bool>.Success(true));
         }
@@ -371,10 +371,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     [Authorize]
     public async Task<ActionResult> DeleteQuestionComment(Guid commentId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            var ok = await interviewsBusiness.DeleteQuestionCommentAsync(clerkId, commentId, ct);
+            var ok = await interviewsBusiness.DeleteQuestionCommentAsync(supabaseUserId, commentId, ct);
             if (!ok) return NotFound();
             return Ok(ApiResponse<bool>.Success(true));
         }
@@ -388,10 +388,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     public async Task<ActionResult> GetMyInterviews(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            var result = await interviewsBusiness.GetMyInterviewsAsync(clerkId, page, pageSize, ct);
+            var result = await interviewsBusiness.GetMyInterviewsAsync(supabaseUserId, page, pageSize, ct);
             var response = new PagedResponse<InterviewWithQuestionsResponse>(
                 result.Items.Select(i => ToFullResponse(i)).ToList(),
                 result.Total, result.Page, result.PageSize);
@@ -407,10 +407,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     public async Task<ActionResult> GetMyInterviewBookmarks(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
         try
         {
-            var result = await interviewsBusiness.GetUserInterviewBookmarksAsync(clerkId, page, pageSize, ct);
+            var result = await interviewsBusiness.GetUserInterviewBookmarksAsync(supabaseUserId, page, pageSize, ct);
             var response = new PagedResponse<InterviewWithQuestionsResponse>(
                 result.Items.Select(i => ToFullResponse(i)).ToList(),
                 result.Total, result.Page, result.PageSize);

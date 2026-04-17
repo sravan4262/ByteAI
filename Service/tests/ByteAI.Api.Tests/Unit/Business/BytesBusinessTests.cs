@@ -14,7 +14,7 @@ public sealed class BytesBusinessTests
     private readonly BytesBusiness _sut;
 
     private readonly Guid _userId = Guid.NewGuid();
-    private const string ClerkId = "clerk_test_123";
+    private const string SupabaseUserId = "clerk_test_123";
 
     public BytesBusinessTests()
     {

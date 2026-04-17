@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Bell, Zap } from 'lucide-react'
 import { Avatar } from '@/components/layout/avatar'
-import { useUser } from '@clerk/nextjs'
+
 import { useNotifications } from '@/components/layout/notification-context'
 import { getMeCache } from '@/lib/user-cache'
 
@@ -12,7 +12,6 @@ interface FeedHeaderProps {
 }
 
 export function FeedHeader({ contentType }: FeedHeaderProps) {
-  const { user } = useUser()
   const { openNotifications, unreadCount } = useNotifications()
   const cache = getMeCache()
 

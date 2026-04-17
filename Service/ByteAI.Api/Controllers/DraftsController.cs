@@ -22,7 +22,7 @@ public sealed class DraftsController(IDraftsBusiness draftsBusiness) : Controlle
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<DraftResponse>>> SaveDraft([FromBody] SaveDraftRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
@@ -48,11 +48,11 @@ public sealed class DraftsController(IDraftsBusiness draftsBusiness) : Controlle
     public async Task<ActionResult<ApiResponse<PagedResponse<DraftResponse>>>> GetMyDrafts(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await draftsBusiness.GetMyDraftsAsync(clerkId, page, pageSize, ct);
+            var result = await draftsBusiness.GetMyDraftsAsync(supabaseUserId, page, pageSize, ct);
             var response = new PagedResponse<DraftResponse>(
                 result.Items.Select(d => d.ToResponse()).ToList(),
                 result.Total, result.Page, result.PageSize);
@@ -68,11 +68,11 @@ public sealed class DraftsController(IDraftsBusiness draftsBusiness) : Controlle
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteDraft(Guid draftId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var ok = await draftsBusiness.DeleteDraftAsync(clerkId, draftId, ct);
+            var ok = await draftsBusiness.DeleteDraftAsync(supabaseUserId, draftId, ct);
             if (!ok) return NotFound(new { message = $"Draft {draftId} not found" });
             return Ok(ApiResponse<bool>.Success(true));
         }

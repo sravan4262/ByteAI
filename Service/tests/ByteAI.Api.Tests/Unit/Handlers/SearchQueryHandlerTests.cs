@@ -27,8 +27,8 @@ public sealed class SearchQueryHandlerTests : IDisposable
     {
         _db = DbContextFactory.Create();
 
-        _db.Users.Add(new User { Id = _userId,   ClerkId = "s1", Username = "searcher", DisplayName = "S" });
-        _db.Users.Add(new User { Id = _authorId, ClerkId = "s2", Username = "author",   DisplayName = "A" });
+        _db.Users.Add(new User { Id = _userId,   SupabaseUserId = "s1", Username = "searcher", DisplayName = "S" });
+        _db.Users.Add(new User { Id = _authorId, SupabaseUserId = "s2", Username = "author",   DisplayName = "A" });
         _db.SaveChanges();
 
         // Default: embedding returns a zero vector

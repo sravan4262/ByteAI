@@ -20,9 +20,9 @@ public sealed class FeedQueryHandlerTests : IDisposable
         _db = DbContextFactory.Create();
 
         _db.Users.AddRange(
-            new User { Id = _userId,   ClerkId = "f1", Username = "viewer", DisplayName = "Viewer" },
-            new User { Id = _authorId, ClerkId = "f2", Username = "author", DisplayName = "Author" },
-            new User { Id = _otherId,  ClerkId = "f3", Username = "other",  DisplayName = "Other"  });
+            new User { Id = _userId,   SupabaseUserId = "f1", Username = "viewer", DisplayName = "Viewer" },
+            new User { Id = _authorId, SupabaseUserId = "f2", Username = "author", DisplayName = "Author" },
+            new User { Id = _otherId,  SupabaseUserId = "f3", Username = "other",  DisplayName = "Other"  });
 
         _db.Bytes.Add(new ByteEntity
         {

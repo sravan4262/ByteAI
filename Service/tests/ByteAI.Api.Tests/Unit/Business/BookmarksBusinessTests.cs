@@ -16,7 +16,7 @@ public sealed class BookmarksBusinessTests
 
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _byteId = Guid.NewGuid();
-    private const string ClerkId = "clerk_bookmark";
+    private const string SupabaseUserId = "clerk_bookmark";
 
     public BookmarksBusinessTests()
     {

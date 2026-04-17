@@ -13,7 +13,7 @@ public static class UserMappers
         bool? isFollowedByMe = null) =>
         new(
             Id: entity.Id,
-            ClerkId: entity.ClerkId,
+            SupabaseUserId: entity.SupabaseUserId,
             Username: entity.Username,
             DisplayName: entity.DisplayName,
             Bio: entity.Bio,

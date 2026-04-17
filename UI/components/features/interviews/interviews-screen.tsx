@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
 import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
 import { getMeCache } from '@/lib/user-cache'
-import { useUser } from '@clerk/nextjs'
+
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
 import * as api from '@/lib/api'
 import type { InterviewWithQuestions, InterviewQuestion } from '@/lib/api'
@@ -268,11 +268,10 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
 
 export function InterviewsScreen() {
   const { openNotifications, unreadCount } = useNotifications()
-  const { user: clerkUser } = useUser()
   const cache = getMeCache()
-  const avatarSrc = cache?.avatarUrl || clerkUser?.imageUrl || null
+  const avatarSrc = cache?.avatarUrl || getMeCache()?.avatarUrl ?? null || null
   const isEmoji = avatarSrc && !avatarSrc.startsWith('http')
-  const initials = ((clerkUser?.firstName?.[0] ?? '') + (clerkUser?.lastName?.[0] ?? '')).toUpperCase() || cache?.username?.[0]?.toUpperCase() || '?'
+  const initials = ((getMeCache()?.displayName?.split(" ")[0] ?? ""?.[0] ?? '') + (""?.[0] ?? '')).toUpperCase() || cache?.username?.[0]?.toUpperCase() || '?'
   const [companyFilter, setCompanyFilter] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<string | null>(null)
   const [locationFilter, setLocationFilter] = useState<string | null>(null)

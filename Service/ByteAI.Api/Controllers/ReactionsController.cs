@@ -33,11 +33,11 @@ public sealed class ReactionsController(IReactionsBusiness reactionsBusiness) : 
     public async Task<ActionResult<ApiResponse<ToggleLikeResponse>>> ToggleReaction(
         Guid byteId, [FromBody] CreateReactionRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await reactionsBusiness.ToggleReactionAsync(clerkId, byteId, request.Type, ct);
+            var result = await reactionsBusiness.ToggleReactionAsync(supabaseUserId, byteId, request.Type, ct);
             return Ok(ApiResponse<ToggleLikeResponse>.Success(new ToggleLikeResponse(result.ByteId, result.UserId, result.IsLiked)));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
@@ -52,11 +52,11 @@ public sealed class ReactionsController(IReactionsBusiness reactionsBusiness) : 
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteReaction(Guid byteId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var ok = await reactionsBusiness.DeleteReactionAsync(clerkId, byteId, ct);
+            var ok = await reactionsBusiness.DeleteReactionAsync(supabaseUserId, byteId, ct);
             if (!ok) return NotFound(new { message = "Reaction not found" });
             return Ok(ApiResponse<bool>.Success(true));
         }

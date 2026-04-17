@@ -16,11 +16,11 @@ public sealed class FeatureFlagService(AppDbContext db) : IFeatureFlagService
     {
         var query = db.FeatureFlagTypes.AsNoTracking().Where(f => f.GlobalOpen);
 
-        if (!string.IsNullOrEmpty(clerkId))
+        if (!string.IsNullOrEmpty(supabaseUserId))
         {
             var userFlags = db.UserFeatureFlags
                 .AsNoTracking()
-                .Where(uf => uf.User.ClerkId == clerkId)
+                .Where(uf => uf.User.SupabaseUserId == clerkId)
                 .Select(uf => uf.FeatureFlagType);
             
             query = query.Union(userFlags);

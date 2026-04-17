@@ -33,7 +33,7 @@ public sealed class CommentServiceTests : IDisposable
         _publisher.Setup(p => p.Publish(It.IsAny<CommentCreatedEvent>(), It.IsAny<CancellationToken>()))
                   .Returns(Task.CompletedTask);
 
-        _db.Users.Add(new User { Id = _authorId, ClerkId = "c1", Username = "commenter", DisplayName = "Commenter" });
+        _db.Users.Add(new User { Id = _authorId, SupabaseUserId = "c1", Username = "commenter", DisplayName = "Commenter" });
         _db.Bytes.Add(new ByteEntity { Id = _byteId, AuthorId = _authorId, Title = "T", Body = "b", Type = "article", IsActive = true });
         _db.SaveChanges();
     }
@@ -95,7 +95,7 @@ public sealed class CommentServiceTests : IDisposable
     public async Task CreateComment_CreatesNotificationForByteAuthor()
     {
         var commenterId = Guid.NewGuid();
-        _db.Users.Add(new User { Id = commenterId, ClerkId = "c2", Username = "other", DisplayName = "Other" });
+        _db.Users.Add(new User { Id = commenterId, SupabaseUserId = "c2", Username = "other", DisplayName = "Other" });
         await _db.SaveChangesAsync();
 
         await _sut.CreateCommentAsync(_byteId, commenterId, "Comment!", null, default);

@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+
 import { CommentsScreen } from '@/components/features/comments/comments-screen'
 import { getPost } from '@/lib/api'
 
@@ -8,9 +8,9 @@ interface PostCommentsPageProps {
 
 export default async function PostCommentsPage({ params }: PostCommentsPageProps) {
   const { id } = await params
-  const { getToken } = await auth()
-  const token = await getToken()
-  const post = await getPost(id, token)
+
+
+  const post = await getPost(id, null)
 
   if (!post) {
     return (

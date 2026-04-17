@@ -18,8 +18,8 @@ public sealed class UsersBusiness(
     public async Task<User?> GetUserByUsernameAsync(string username, CancellationToken ct) =>
         await userService.GetByUsernameAsync(username, ct);
 
-    public async Task<User?> GetCurrentUserAsync(string clerkId, CancellationToken ct) =>
-        await currentUserService.GetCurrentUserAsync(clerkId, ct);
+    public async Task<User?> GetCurrentUserAsync(string supabaseUserId, CancellationToken ct) =>
+        await currentUserService.GetCurrentUserAsync(supabaseUserId, ct);
 
     public Task<(int BytesCount, int FollowersCount, int FollowingCount)> GetUserStatsAsync(Guid userId, CancellationToken ct) =>
         userService.GetUserStatsAsync(userId, ct);
@@ -33,27 +33,27 @@ public sealed class UsersBusiness(
     public async Task<PagedResult<User>> GetFollowingAsync(Guid userId, int page, int pageSize, CancellationToken ct) =>
         await userService.GetFollowingAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
 
-    public async Task<User> UpdateProfileAsync(string clerkId, Guid userId, string? displayName, string? bio, CancellationToken ct)
+    public async Task<User> UpdateProfileAsync(string supabaseUserId, Guid userId, string? displayName, string? bio, CancellationToken ct)
     {
-        var requestingId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);
+        var requestingId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
         if (requestingId is null || requestingId != userId)
             throw new UnauthorizedAccessException("You may only update your own profile.");
         return await userService.UpdateProfileAsync(userId, displayName, bio, ct);
     }
 
-    public async Task<User> SyncClerkUserAsync(string clerkId, string displayName, string? avatarUrl, string? email, CancellationToken ct)
+    public async Task<User> ProvisionUserAsync(string supabaseUserId, string displayName, string? avatarUrl, string? email, CancellationToken ct)
     {
-        var (user, wasCreated) = await userService.UpsertByClerkAsync(clerkId, displayName, avatarUrl, email, ct);
+        var (user, wasCreated) = await userService.ProvisionAsync(supabaseUserId, displayName, avatarUrl, email, ct);
         if (wasCreated)
             await badgeService.CheckAndAwardAsync(user.Id, BadgeTrigger.UserRegistered, ct);
         return user;
     }
 
-    public Task<bool> DeleteClerkUserAsync(string clerkId, CancellationToken ct) =>
-        userService.DeleteByClerkIdAsync(clerkId, ct);
+    public Task<bool> DeleteUserAsync(string supabaseUserId, CancellationToken ct) =>
+        userService.DeleteBySupabaseUserIdAsync(supabaseUserId, ct);
 
     public async Task<User> UpdateMyProfileAsync(
-        string clerkId,
+        string supabaseUserId,
         string? username,
         string? displayName,
         string? bio,
@@ -65,22 +65,22 @@ public sealed class UsersBusiness(
         string? customAvatarUrl,
         CancellationToken ct)
     {
-        var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct)
+        var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct)
             ?? throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
 
         return await userService.UpdateMyProfileAsync(userId, username, displayName, bio, company, roleTitle, seniority, domain, techStack, customAvatarUrl, ct);
     }
 
-    public async Task<List<Social>> GetMySocialsAsync(string clerkId, CancellationToken ct)
+    public async Task<List<Social>> GetMySocialsAsync(string supabaseUserId, CancellationToken ct)
     {
-        var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct)
+        var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct)
             ?? throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
         return await userService.GetUserSocialsAsync(userId, ct);
     }
 
-    public async Task UpsertMySocialsAsync(string clerkId, List<(string Platform, string Url, string? Label)> socials, CancellationToken ct)
+    public async Task UpsertMySocialsAsync(string supabaseUserId, List<(string Platform, string Url, string? Label)> socials, CancellationToken ct)
     {
-        var userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct)
+        var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct)
             ?? throw new UnauthorizedAccessException("User not found for the given Clerk ID.");
         await userService.UpsertUserSocialsAsync(userId, socials, ct);
     }

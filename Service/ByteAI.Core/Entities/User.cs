@@ -5,7 +5,8 @@ namespace ByteAI.Core.Entities;
 public sealed class User
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public string ClerkId { get; set; } = string.Empty;
+    public string? SupabaseUserId { get; set; }
+    public string? Email { get; set; }
     public string Username { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string? Bio { get; set; }

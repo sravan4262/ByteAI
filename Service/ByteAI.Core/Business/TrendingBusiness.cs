@@ -11,7 +11,7 @@ public sealed class TrendingBusiness(ITrendingService trendingService, ICurrentU
     {
         Guid? userId = null;
         if (clerkId is not null)
-            userId = await currentUserService.GetCurrentUserIdAsync(clerkId, ct);
+            userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
         await trendingService.RecordClickAsync(contentId, contentType, userId, ct);
     }
 

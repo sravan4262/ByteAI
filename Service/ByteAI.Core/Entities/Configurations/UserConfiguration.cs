@@ -12,7 +12,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasKey(u => u.Id);
         builder.Property(u => u.Id).HasColumnName("id").HasDefaultValueSql("gen_random_uuid()");
-        builder.Property(u => u.ClerkId).HasColumnName("clerk_id").IsRequired();
+        builder.Property(u => u.SupabaseUserId).HasColumnName("supabase_user_id");
+        builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(320);
         builder.Property(u => u.Username).HasColumnName("username").HasMaxLength(50).IsRequired();
         builder.Property(u => u.DisplayName).HasColumnName("display_name").HasMaxLength(100).IsRequired();
         builder.Property(u => u.Bio).HasColumnName("bio");
@@ -42,7 +43,8 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasOne(u => u.LevelType).WithMany(l => l.Users)
             .HasForeignKey(u => u.LevelTypeId).OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(u => u.ClerkId).IsUnique().HasDatabaseName("uq_users_clerk_id");
+        builder.HasIndex(u => u.SupabaseUserId).IsUnique().HasDatabaseName("uq_users_supabase_user_id");
+        builder.HasIndex(u => u.Email).IsUnique().HasDatabaseName("uq_users_email");
         builder.HasIndex(u => u.Username).IsUnique().HasDatabaseName("uq_users_username");
     }
 }

@@ -26,8 +26,8 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
         [FromQuery] string sort = "recent",
         CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId();
-        var result = await bytesBusiness.GetBytesAsync(page, pageSize, authorId, sort, ct, clerkId);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var result = await bytesBusiness.GetBytesAsync(page, pageSize, authorId, sort, ct, supabaseUserId);
         var response = new PagedResponse<ByteResponse>(result.Items.Select(b => b.ToResponse()).ToList(), result.Total, result.Page, result.PageSize);
         return Ok(ApiResponse<PagedResponse<ByteResponse>>.Success(response));
     }
@@ -38,8 +38,8 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<ByteResponse>>> GetByteById(Guid byteId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId();
-        var result = await bytesBusiness.GetByteByIdAsync(byteId, ct, clerkId);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var result = await bytesBusiness.GetByteByIdAsync(byteId, ct, supabaseUserId);
         if (result is null) return NotFound(new { message = $"Byte {byteId} not found" });
         return Ok(ApiResponse<ByteResponse>.Success(result.ToResponse()));
     }
@@ -56,11 +56,11 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateByte([FromBody] CreateByteRequest request, [FromQuery] bool force = false, CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await bytesBusiness.CreateByteAsync(clerkId, request.Title, request.Body, request.CodeSnippet, request.Language, request.Type, ct, force);
+            var result = await bytesBusiness.CreateByteAsync(supabaseUserId, request.Title, request.Body, request.CodeSnippet, request.Language, request.Type, ct, force);
             return CreatedAtAction(nameof(GetByteById), new { byteId = result.Id },
                 ApiResponse<object>.Success(new { result.Id, result.AuthorId, result.Title, result.Body, result.Type, result.CreatedAt }));
         }
@@ -87,11 +87,11 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
     [ProducesResponseType(typeof(ApiResponse<ByteResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<ByteResponse>>> UpdateByte(Guid byteId, [FromBody] UpdateByteRequest request, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var result = await bytesBusiness.UpdateByteAsync(clerkId, byteId, request.Title, request.Body, request.CodeSnippet, request.Language, ct);
+            var result = await bytesBusiness.UpdateByteAsync(supabaseUserId, byteId, request.Title, request.Body, request.CodeSnippet, request.Language, ct);
             return Ok(ApiResponse<ByteResponse>.Success(result.ToResponse()));
         }
         catch (InvalidContentException ex) { return BadRequest(new { error = "INVALID_CONTENT", reason = ex.Reason }); }
@@ -106,8 +106,8 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
     public async Task<ActionResult<ApiResponse<PagedResponse<ByteResponse>>>> GetMyBytes(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
-        var result = await bytesBusiness.GetMyBytesAsync(clerkId, page, pageSize, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var result = await bytesBusiness.GetMyBytesAsync(supabaseUserId, page, pageSize, ct);
         var response = new PagedResponse<ByteResponse>(result.Items.Select(b => b.ToResponse()).ToList(), result.Total, result.Page, result.PageSize);
         return Ok(ApiResponse<PagedResponse<ByteResponse>>.Success(response));
     }
@@ -118,11 +118,11 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteByte(Guid byteId, CancellationToken ct)
     {
-        var clerkId = HttpContext.GetClerkUserId() ?? throw new UnauthorizedAccessException();
+        var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
         try
         {
-            var ok = await bytesBusiness.DeleteByteAsync(clerkId, byteId, ct);
+            var ok = await bytesBusiness.DeleteByteAsync(supabaseUserId, byteId, ct);
             if (!ok) return NotFound(new { message = $"Byte {byteId} not found" });
             return Ok(ApiResponse<bool>.Success(true));
         }

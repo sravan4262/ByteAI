@@ -12,7 +12,7 @@ public sealed class FollowBusinessTests
 
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _targetId = Guid.NewGuid();
-    private const string ClerkId = "clerk_follow";
+    private const string SupabaseUserId = "clerk_follow";
 
     public FollowBusinessTests()
     {

@@ -16,7 +16,7 @@ public sealed class NotificationServiceTests : IDisposable
         _db = DbContextFactory.Create();
         _sut = new NotificationService(_db);
 
-        _db.Users.Add(new User { Id = _userId, ClerkId = "n1", Username = "notifuser", DisplayName = "Notif User" });
+        _db.Users.Add(new User { Id = _userId, SupabaseUserId = "n1", Username = "notifuser", DisplayName = "Notif User" });
         _db.SaveChanges();
     }
 

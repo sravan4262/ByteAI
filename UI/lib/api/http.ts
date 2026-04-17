@@ -4,7 +4,7 @@ type TokenProvider = () => Promise<string | null>
 
 let tokenProvider: TokenProvider | null = null
 
-/** Called once from AuthGuard to wire in Clerk's getToken() */
+/** Called once from AuthGuard to wire in Supabase session token getter */
 export function setTokenProvider(fn: TokenProvider) {
   tokenProvider = fn
 }

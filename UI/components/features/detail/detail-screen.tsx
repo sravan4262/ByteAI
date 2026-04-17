@@ -12,7 +12,7 @@ import { LikersSheet } from '@/components/ui/likers-sheet'
 import * as api from '@/lib/api'
 import type { Post, Comment } from '@/lib/api'
 import { getMeCache } from '@/lib/user-cache'
-import { useUser } from '@clerk/nextjs'
+
 
 interface DetailScreenProps {
   post: Post
@@ -20,10 +20,9 @@ interface DetailScreenProps {
 
 export function DetailScreen({ post }: DetailScreenProps) {
   const router = useRouter()
-  const { user: clerkUser } = useUser()
   const meCache = getMeCache()
-  const myAvatarUrl = meCache?.avatarUrl || clerkUser?.imageUrl || null
-  const myInitials = ((clerkUser?.firstName?.[0] ?? '') + (clerkUser?.lastName?.[0] ?? '')).toUpperCase()
+  const myAvatarUrl = meCache?.avatarUrl || getMeCache()?.avatarUrl ?? null || null
+  const myInitials = ((getMeCache()?.displayName?.split(" ")[0] ?? ""?.[0] ?? '') + (""?.[0] ?? '')).toUpperCase()
     || meCache?.username?.[0]?.toUpperCase() || 'U'
   const [comments, setComments] = useState<Comment[]>([])
   const [commentCount, setCommentCount] = useState(post.comments ?? 0)

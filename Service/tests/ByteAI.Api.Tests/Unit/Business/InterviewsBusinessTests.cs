@@ -14,7 +14,7 @@ public sealed class InterviewsBusinessTests
     private readonly InterviewsBusiness _sut;
 
     private readonly Guid _userId = Guid.NewGuid();
-    private const string ClerkId = "clerk_abc";
+    private const string SupabaseUserId = "clerk_abc";
 
     public InterviewsBusinessTests()
     {

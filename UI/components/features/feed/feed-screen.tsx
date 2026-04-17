@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useUser } from '@clerk/nextjs'
+
 import { FeedHeader } from './feed-header'
 import { FeedFilters } from './feed-filters'
 import { PostCard } from './post-card'
@@ -26,7 +26,6 @@ function parseTime(timeStr: string): number {
 }
 
 export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
-  const { user: clerkUser } = useUser()
   const [activeTab, setActiveTab] = useState('for_you')
   const [sortBy, setSortBy] = useState('relevant')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
@@ -44,19 +43,14 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
     api.getCurrentUser().then(u => { if (u) setCurrentUserId(u.id) })
   }, [])
 
-  // Hydrate a post list: replace own posts with real profile data
-  // Prefers Clerk user object, falls back to MeCache for instant hydration
+  // Hydrate a post list: replace own posts with real profile data from MeCache
   const hydrateWithClerk = useCallback((fetched: Post[]): Post[] => {
     if (!currentUserId) return fetched
     const cache = getMeCache()
-    const firstName = clerkUser?.firstName ?? ''
-    const lastName = clerkUser?.lastName ?? ''
-    const fullName = [firstName, lastName].filter(Boolean).join(' ')
-    const resolvedUsername = clerkUser?.username || cache?.username || ''
-    const resolvedDisplayName = fullName || resolvedUsername || cache?.displayName || ''
-    const resolvedAvatar = cache?.avatarUrl || clerkUser?.imageUrl || null
-    const initials = ((firstName[0] ?? '') + (lastName[0] ?? '')).toUpperCase()
-      || resolvedUsername[0]?.toUpperCase() || 'U'
+    const resolvedUsername = cache?.username || ''
+    const resolvedDisplayName = cache?.displayName || resolvedUsername
+    const resolvedAvatar = cache?.avatarUrl || null
+    const initials = resolvedDisplayName[0]?.toUpperCase() || resolvedUsername[0]?.toUpperCase() || 'U'
 
     return fetched.map(p => {
       if (p.author.id !== currentUserId) return p
@@ -71,7 +65,7 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
         },
       }
     })
-  }, [clerkUser, currentUserId])
+  }, [currentUserId])
 
   // Fetch raw feed whenever tab/filter changes
   useEffect(() => {

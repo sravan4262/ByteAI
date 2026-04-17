@@ -19,7 +19,7 @@ public sealed class XpAwarderTests : IDisposable
         _db.Users.Add(new User
         {
             Id = _userId,
-            ClerkId = "clerk_xp",
+            SupabaseUserId = "clerk_xp",
             Username = "xpuser",
             DisplayName = "Xp User",
             Xp = 0

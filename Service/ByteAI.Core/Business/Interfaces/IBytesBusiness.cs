@@ -16,8 +16,8 @@ public interface IBytesBusiness
 {
     Task<PagedResult<ByteResult>> GetBytesAsync(int page, int pageSize, Guid? authorId, string sort, CancellationToken ct, string? clerkId = null);
     Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct, string? clerkId = null);
-    Task<CreateByteResult> CreateByteAsync(string clerkId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false);
-    Task<Byte> UpdateByteAsync(string clerkId, Guid byteId, string? title, string? body, string? codeSnippet, string? language, CancellationToken ct);
-    Task<bool> DeleteByteAsync(string clerkId, Guid byteId, CancellationToken ct);
-    Task<PagedResult<ByteResult>> GetMyBytesAsync(string clerkId, int page, int pageSize, CancellationToken ct);
+    Task<CreateByteResult> CreateByteAsync(string supabaseUserId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false);
+    Task<Byte> UpdateByteAsync(string supabaseUserId, Guid byteId, string? title, string? body, string? codeSnippet, string? language, CancellationToken ct);
+    Task<bool> DeleteByteAsync(string supabaseUserId, Guid byteId, CancellationToken ct);
+    Task<PagedResult<ByteResult>> GetMyBytesAsync(string supabaseUserId, int page, int pageSize, CancellationToken ct);
 }
