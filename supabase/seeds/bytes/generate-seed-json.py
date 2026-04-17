@@ -40,13 +40,15 @@ parser.add_argument("--subdomain",  default=None)
 parser.add_argument("--tech_stack", default=None)
 parser.add_argument("--max-topics", type=int, default=None,
                     help="Max topics per stack (blockchain auto-sets to 2)")
+parser.add_argument("--sequential", action="store_true",
+                    help="Process topics one at a time (no threads). Recommended for Claude CLI domains.")
 args = parser.parse_args()
 
 # ── Config (Claude CLI) ───────────────────────────────────────────────────────
 SEEDS_BASE  = os.path.dirname(__file__)
 RETRY_LIMIT = 3
 RETRY_DELAY = 3
-CLAUDE_CMD  = "/Users/sravanravula/Library/Application Support/Claude/claude-code/2.1.92/claude.app/Contents/MacOS/claude"
+CLAUDE_CMD  = "/Users/sravanravula/Library/Application Support/Claude/claude-code/2.1.101/claude.app/Contents/MacOS/claude"
 
 # ── Config (Groq) ─────────────────────────────────────────────────────────────
 GROQ_API_KEY          = os.environ.get("GROQ_API_KEY", "")
@@ -290,10 +292,10 @@ def process_tech_stack_groq(seed_meta: dict, ts: str, ts_json_path: str,
 
 # ── Claude CLI: Stack Processor ───────────────────────────────────────────────
 def process_tech_stack(seed_meta: dict, ts: str, ts_json_path: str):
-    """Generate bytes for one tech stack, skipping already-done topics."""
+    """Generate bytes for one tech stack via Claude CLI, skipping already-done topics.
+    Uses a plain sequential loop when --sequential is set, ThreadPoolExecutor otherwise."""
     data = load_json(ts_json_path)
 
-    # Build a set of already-done topic strings
     done_topics = {
         b["topic"]
         for b in data.get("bytes", [])
@@ -308,21 +310,13 @@ def process_tech_stack(seed_meta: dict, ts: str, ts_json_path: str):
 
     print(f"  [{ts}] {len(done_topics)} done, {len(pending)} to generate")
 
-    lock = threading.Lock()
-    completed = 0
-
-    def process_topic(topic: str):
-        result = call_claude(ts, seed_meta["domain"], seed_meta["subdomain"], topic)
+    def build_entry(topic: str, result: dict) -> tuple:
         if not result or not result.get("title") or not result.get("body"):
             entry = {
-                "topic":        topic,
-                "status":       "failed",
-                "title":        None,
-                "body":         None,
-                "code_snippet": None,
-                "language":     None,
+                "topic": topic, "status": "failed",
+                "title": None, "body": None, "code_snippet": None, "language": None,
             }
-            label = f"✗ FAILED"
+            label = "✗ FAILED"
         else:
             entry = {
                 "topic":        topic,
@@ -337,17 +331,34 @@ def process_tech_stack(seed_meta: dict, ts: str, ts_json_path: str):
                 "overall":      result.get("overall"),
             }
             label = f"✓ {result.get('title', '')[:50]}"
-        return topic, entry, label
+        return entry, label
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {executor.submit(process_topic, t): t for t in pending}
-        for future in as_completed(futures):
-            topic, entry, label = future.result()
-            with lock:
-                completed += 1
-                data["bytes"].append(entry)
-                save_json(ts_json_path, data)
-                print(f"    ({completed}/{len(pending)}) {label}")
+    if args.sequential:
+        # ── Sequential: one topic at a time, save after each ──────────────────
+        for i, topic in enumerate(pending, 1):
+            result = call_claude(ts, seed_meta["domain"], seed_meta["subdomain"], topic)
+            entry, label = build_entry(topic, result)
+            data["bytes"].append(entry)
+            save_json(ts_json_path, data)
+            print(f"    ({i}/{len(pending)}) {label}")
+    else:
+        # ── Parallel: ThreadPoolExecutor ──────────────────────────────────────
+        lock      = threading.Lock()
+        completed = 0
+
+        def process_topic(topic: str):
+            result = call_claude(ts, seed_meta["domain"], seed_meta["subdomain"], topic)
+            return topic, *build_entry(topic, result)
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(process_topic, t): t for t in pending}
+            for future in as_completed(futures):
+                topic, entry, label = future.result()
+                with lock:
+                    completed += 1
+                    data["bytes"].append(entry)
+                    save_json(ts_json_path, data)
+                    print(f"    ({completed}/{len(pending)}) {label}")
 
 
 def run():
