@@ -40,18 +40,6 @@
       "overall": 8
     },
     {
-      "topic": "Layer 2 Scaling — why L1 is expensive, rollup approach, optimistic vs ZK",
-      "status": "done",
-      "title": "Optimism L2 Scaling: Rollup Approach and Optimistic vs ZK",
-      "body": "Optimism's L2 scaling solution uses rollups to aggregate transactions and reduce the load on the Ethereum mainnet. This approach is more efficient than direct L1 transactions, but it also introduces additional complexity. Optimism's Optimistic Rollup (ORU) uses two-stage validation, where transactions are first executed on L2 and then validated on L1 if no challenges are raised. In contrast, Zero-Knowledge (ZK) rollups use zk-SNARKs to prove transactions without revealing the underlying data. While ZK rollups are more gas-efficient, they require significant computational resources to generate and verify the proofs. Optimism's ORU balances security and efficiency, making it a suitable choice for many use cases.",
-      "code_snippet": null,
-      "language": "solidity",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
       "topic": "Optimistic Rollups — fraud proofs, challenge period, withdrawal delay (Arbitrum, Optimism)",
       "status": "done",
       "title": "Optimism Rollups: Fraud Proofs, Challenge Period, and Withdrawal Delay",
@@ -110,14 +98,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "MEV — maximal extractable value, frontrunning, sandwich attacks, PBS",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

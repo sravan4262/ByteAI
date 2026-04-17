@@ -124,30 +124,6 @@
       "overall": 8
     },
     {
-      "topic": "Shaders — vertex shaders, fragment shaders, compute shaders, GLSL/HLSL/MSL/WGSL",
-      "status": "done",
-      "title": "WebGPU Shaders - Optimizing Performance with WGSL",
-      "body": "WebGPU shaders can significantly impact graphics performance. The WGSL (WebGPU Shading Language) allows for efficient shader optimization by utilizing features like uniform buffers and bindingless resources. To optimize performance, use uniforms instead of pushing large data through attributes. This reduces the number of shader invocations and minimizes pipeline setup overhead.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Textures & Materials — UV mapping, mipmaps, texture compression, PBR material workflow",
-      "status": "done",
-      "title": "Optimizing Textures with WebGPU: UV Mapping, Mipmaps, and PBR Materials",
-      "body": "When working with WebGPU, efficient texture management is crucial for smooth gaming experiences. UV mapping is used to position 2D textures on 3D models. WebGPU's `TextureDescriptor` API allows you to specify the texture's dimensions, format, and sampling properties. To reduce memory usage, WebGPU supports texture compression using formats like ETC2 and ASTC. For physically-based rendering (PBR), WebGPU's `Material` API enables you to create complex materials with textures, metallic-roughness values, and other properties. To optimize performance, use mipmapping and anisotropic filtering when rendering textures.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "OpenGL — core profile, VAOs, VBOs, texture units, modern OpenGL vs legacy",
       "status": "done",
       "title": "WebGPU: Mastering Modern OpenGL with VAOs, VBOs, and Texture Units",
@@ -158,54 +134,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "Cross-platform — SPIR-V, shader transpilation, abstraction libraries (wgpu, bgfx)",
-      "status": "done",
-      "title": "WebGPU: SPIR-V Shader Transpilation for Cross-Platform Gaming",
-      "body": "WebGPU's SPIR-V shader compilation step is a key component in achieving cross-platform graphics rendering. To further simplify this process, libraries like wgpu and bgfx provide abstraction layers for shader transpilation. wgpu's `ShaderModule` API allows for transparent SPIR-V compilation, eliminating the need for manual transpilation. For instance, when creating a shader module, you can pass the shader source code and let wgpu handle the compilation.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Metal — Apple's API, command encoders, resource heaps, iOS/macOS/visionOS",
-      "status": "done",
-      "title": "webgpu - Optimizing Command Encoder with Metal on iOS/macOS/visionOS",
-      "body": "When targeting Metal on iOS, macOS or visionOS with webgpu, command encoder optimization is crucial for achieving high frame rates. To minimize GPU overhead, use `device.createCommandEncoder({ type: 'direct' })` instead of `device.createCommandEncoder()` to bypass the indirect encoding path. Additionally, ensure to reuse and reset `CommandEncoder` instances to minimize heap allocations. For example, when using a single `CommandEncoder` instance for multiple draws, call `encoder.finish()` after each draw to reset the encoder and prevent unnecessary resource heap allocations.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Compute Shaders — GPGPU, parallel computation, particle systems, physics on GPU",
-      "status": "done",
-      "title": "WebGPU Compute Shaders — Accelerating Particle Systems",
-      "body": "Compute shaders are a powerful feature of WebGPU, enabling developers to harness the parallel processing capabilities of the GPU for general-purpose computing (GPGPU). By offloading physics simulations and particle system updates to the GPU, you can achieve significant performance boosts. To create a compute shader in WebGPU, start by defining a compute pipeline state object and creating a compute pipeline. Within the compute shader itself, use the `group` and `thread` keywords to define parallel workgroups and threads. Here's an example compute shader function that updates particle positions based on velocity and gravity.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Anti-aliasing — MSAA, TAA, FXAA, trade-offs between quality and performance",
-      "status": "done",
-      "title": "WebGPU: Choosing the Right Anti-Aliasing Technique",
-      "body": "WebGPU provides three primary anti-aliasing techniques: Multisample Anti-Aliasing (MSAA), Temporal Anti-Aliasing (TAA), and Full-Scene Anti-Aliasing (FXAA). MSAA samples multiple pixels within a single primitive, while TAA reduces aliasing artifacts over time. FXAA, on the other hand, applies anti-aliasing at the full-scene level. When choosing between these techniques, consider the trade-off between quality and performance.\n\nMSAA provides high-quality results but can be computationally expensive. TAA is more efficient but may require more render passes. FXAA is the fastest but can introduce artifacts. To achieve the best balance, use MSAA for high-priority objects and TAA or FXAA for background elements.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     },
     {
       "topic": "Post-processing — bloom, depth of field, tone mapping, screen-space effects",

@@ -124,18 +124,6 @@
       "overall": 8
     },
     {
-      "topic": "Learning Curve — GDScript for beginners, C# for Unity veterans, C++ for Unreal performance",
-      "status": "done",
-      "title": "csharp_game: Smoothing the Learning Curve with GDScript and C#",
-      "body": "For csharp_game developers looking to expand their skillset, GDScript and C# are two popular choices. GDScript is ideal for beginners, offering a gentle learning curve and native integration with the Godot game engine. On the other hand, C# is a more versatile language, widely used in Unity game development. To get started with GDScript, focus on its signal-based architecture and built-in support for coroutines. For C# veterans, Unity's API provides a comprehensive set of tools for building high-performance games. When transitioning from C# to GDScript, pay attention to the differences in syntax and data types.",
-      "code_snippet": null,
-      "language": "csharp",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
       "topic": "Cross-language in One Project — C#/native plugins in Unity, C++/Blueprint in Unreal",
       "status": "done",
       "title": "csharp_game: Integrating Native C# Plugins in Unity",
@@ -146,78 +134,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "C# in Unity — Unity's C# subset, coroutines, async/await in Unity, performance pitfalls",
-      "status": "done",
-      "title": "C# in Unity: Mastering Unity's C# Subset, Coroutines, and Async/Await",
-      "body": "When working with Unity's C# subset, it's essential to understand the nuances of coroutines and async/await. Coroutines are used for asynchronous operations, allowing your code to yield execution back to the Unity engine. However, excessive coroutine usage can lead to performance issues due to the added overhead of state machine management. To mitigate this, use async/await for I/O-bound operations and coroutines for CPU-bound tasks. For example, when loading assets, use async/await to wait for the asset bundle to load, while using coroutines for complex calculations.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Design Patterns in Games — state machine, observer (signals), command, flyweight",
-      "status": "done",
-      "title": "csharp_game Game Programming — 4 Essential Design Patterns",
-      "body": "State machines are crucial in games for managing complex states, such as player death or level transitions. In csharp_game, you can implement a state machine using a finite state machine (FSM) class with an enum-based state type. The Observer pattern can help decouple game logic from UI updates using signals. The Command pattern enables you to encapsulate game actions as objects, making it easier to undo or redo actions. Lastly, the Flyweight pattern optimizes game object representation by sharing data among instances.",
-      "code_snippet": "",
-      "language": "csharp",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Blueprint — visual scripting in Unreal, when to use vs C++, performance considerations",
-      "status": "done",
-      "title": "csharp_game — Blueprint vs C++: Choosing the Right Visual Scripting Approach",
-      "body": "When working with Unreal Engine's visual scripting system, Blueprint, and C++ code in csharp_game, it's essential to understand when to use each. Blueprints are ideal for rapid prototyping, game logic, and level design, whereas C++ is better suited for high-performance, low-level programming. To optimize performance, use Blueprints for state machines, animation logic, and collision detection, reserving C++ for physics simulations, rendering, and AI. Consider this example for a simple state machine in a Blueprint graph: `+> Enum > State > A > Transition > A > B`",
-      "code_snippet": null,
-      "language": "csharp_game",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Scripting Architecture — separating game logic from engine code, mod support via scripting",
-      "status": "done",
-      "title": "csharp_game: Decoupling Game Logic from Engine Code with Scripting",
-      "body": "csharp_game's scripting architecture allows developers to separate game logic from engine code. This is achieved through the use of ScriptableObjects, which encapsulate game logic and can be easily modified or extended. To enable mod support, create a ScriptableObject that represents the mod's configuration. Then, use the AssetBundle Manager to load the mod's assets and ScriptableObject at runtime. This way, modders can create custom game logic without modifying engine code.",
-      "code_snippet": "",
-      "language": "csharp",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Data-Oriented Design — structs of arrays, cache efficiency, ECS thinking in OOP languages",
-      "status": "done",
-      "title": "csharp_game: Leveraging Structs of Arrays for Efficient Game Logic",
-      "body": "Structs of arrays (SoA) is a data-oriented design pattern where each struct represents a single component of your game world, and arrays store these components' properties. This approach minimizes cache thrashing and improves data locality. In csharp_game, you can create SoA using a combination of structs and arrays. For example, consider a game object with properties like position, velocity, and rotation. You can define separate structs for each property and store them in an array.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Debugging Game Code — breakpoints in game loop, watch variables, visual debuggers",
-      "status": "done",
-      "title": "csharp_game: Mastering Breakpoints in the Game Loop",
-      "body": "To debug game code efficiently, use the Game Debugger window in csharp_game to set breakpoints in the game loop. This allows you to pause execution at specific points, inspect variables, and step through code. Use the `Debug.Break()` method to force a breakpoint. When stepping through code, use the `Watch` window to observe variable values. For complex scenes, leverage the Visual Debugger to visualize game objects, components, and scripts.",
-      "code_snippet": "",
-      "language": "csharp",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 9
     }
   ]
 }

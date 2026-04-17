@@ -52,18 +52,6 @@
       "overall": 8.5
     },
     {
-      "topic": "Optimistic Rollups — fraud proofs, challenge period, withdrawal delay (Arbitrum, Optimism)",
-      "status": "done",
-      "title": "Optimistic Rollups on base: Understanding Fraud Proofs",
-      "body": "Optimistic Rollups, like Arbitrum and Optimism, use a challenge period to detect potential fraud proofs. When a user submits a batch of transactions, a fraud proof is generated to ensure the transactions are valid. The challenge period is the time during which anyone can challenge the fraud proof. If a challenge is made, the batch is reverted and the challenge period is extended. For base, the challenge period is set to 2 minutes. Additionally, withdrawals are delayed for 10 minutes to prevent sudden large transfers. This delay allows for more time to detect and respond to potential fraud proofs.",
-      "code_snippet": null,
-      "language": "solidity",
-      "clarity": 9,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
       "topic": "Polygon — PoS chain, AggLayer, zkEVM, bridging assets",
       "status": "done",
       "title": "Base on Polygon: Bridging Assets with AggLayer and zkEVM",
@@ -74,18 +62,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "Bridges — locking/minting, canonical vs third-party bridges, bridge risks",
-      "status": "done",
-      "title": "base: Safe Bridge Implementation with Locking and Minting",
-      "body": "When building bridges on base, you must consider locking and minting mechanisms. Locking ensures that assets are transferred from the source chain to the destination chain, while minting creates new assets on the destination chain. base provides the `Bridge` contract, which offers a locking mechanism with the `lock` function. To mint assets, use the `mint` function in the `Bridge` contract. However, third-party bridges can be more versatile, but they introduce additional risks. To mitigate these risks, use a canonical bridge that follows the base guidelines.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     },
     {
       "topic": "Base — Coinbase's L2, OP Stack, Superchain vision",
@@ -110,14 +86,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "MEV — maximal extractable value, frontrunning, sandwich attacks, PBS",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

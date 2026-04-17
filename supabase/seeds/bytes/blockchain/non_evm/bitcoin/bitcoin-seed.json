@@ -64,42 +64,6 @@
       "overall": 9.5
     },
     {
-      "topic": "Consensus Mechanisms — PoW, PoS, PoH, BFT variants, trade-offs",
-      "status": "done",
-      "title": "Bitcoin - A Deep Dive into its Consensus Mechanism",
-      "body": "Bitcoin's consensus mechanism is based on Proof of Work (PoW), which requires miners to compete to solve a complex mathematical puzzle. The puzzle solver is rewarded with newly minted bitcoins and transaction fees. This mechanism incentivizes miners to maintain the integrity of the blockchain by ensuring that only valid transactions are included in a block. The difficulty level of the puzzle is adjusted every 2016 blocks to maintain a consistent block time of 10 minutes. This ensures that on average, one block is added to the blockchain every 10 minutes.",
-      "code_snippet": "null",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
-      "topic": "Solana Development — programs in Rust, Anchor framework, PDAs, CPIs",
-      "status": "done",
-      "title": "Bitcoin Development — Solana-style Programs in Rust: PDAs and CPIs",
-      "body": "Solana's Anchor framework simplifies developing smart contracts, but how does it fare with Bitcoin's unique constraints? In Bitcoin, smart contracts are executed as programs written in Rust, utilizing Procedural Data Assets (PDAs) for data storage and Callable Programs (CPIs) for inter-program communication. Let's explore how to use these constructs to create efficient and secure programs.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Solana Performance — parallel execution, Gulf Stream, Turbine, Sealevel",
-      "status": "done",
-      "title": "Bitcoin on Solana: Optimizing Performance with Gulf Stream, Turbine, and Sealevel",
-      "body": "Solana, a proof-of-stake blockchain, boasts parallel execution and sharding through its Gulf Stream and Turbine components. However, Bitcoin's UTXO model and transaction scripting language require modifications to achieve similar performance. Sealevel, a proof-of-stake variant of Bitcoin, leverages these Solana features to increase throughput. By utilizing Gulf Stream's parallel execution and Turbine's sharding, Sealevel achieves faster transaction processing and higher scalability.",
-      "code_snippet": null,
-      "language": "null",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 8,
-      "overall": 8
-    },
-    {
       "topic": "Bitcoin Script — stack-based, intentionally limited, P2PKH, P2SH, multisig",
       "status": "done",
       "title": "Bitcoin Script - Stack-Based and Intentionally Limited",
@@ -110,26 +74,6 @@
       "specificity": 10,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "Lightning Network — payment channels, routing, HTLC, liquidity management",
-      "status": "done",
-      "title": "Bitcoin: Optimizing HTLCs with Route Selection in Lightning Network",
-      "body": "When establishing a payment channel in the Bitcoin Lightning Network, a sender must select a suitable route to forward the payment. The sender's node and the receiver's node can be connected through multiple routes. To optimize the route selection, the sender can use the `getroute` method, which returns a list of candidate routes. Each route is evaluated based on its hop count, latency, and fee. The sender can then choose the optimal route based on these factors. For instance, a sender can prioritize routes with lower fees or shorter hop counts.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "IBC — Inter-Blockchain Communication, packet relaying, channel/port model",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

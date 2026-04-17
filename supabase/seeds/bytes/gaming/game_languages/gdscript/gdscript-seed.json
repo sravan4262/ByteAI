@@ -148,30 +148,6 @@
       "overall": 9
     },
     {
-      "topic": "GDScript — Godot-native, Python-like, typed GDScript, signal system integration",
-      "status": "done",
-      "title": "GDScript - Leverage the Typed Variant and Signal System",
-      "body": "GDScript's typed variant system enables developers to define custom data types, enhancing code readability and maintainability. By utilizing the `_variant` property, you can create typed variants and ensure correct type checking at runtime. When combined with Godot's signal system, typed variants enable robust and flexible event handling. For instance, consider a Node2D with a custom `Position` variant.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Blueprint — visual scripting in Unreal, when to use vs C++, performance considerations",
-      "status": "done",
-      "title": "gdscript: Blueprint vs C++ Performance Considerations",
-      "body": "When to use visual scripting in GDScript, a game development language for Godot Engine. Visual scripting simplifies complex logic by creating a flowchart-like representation. However, it incurs performance overhead due to function calls and data serialization. Use it for prototyping, testing, or when working with non-technical team members. For performance-critical code, switch to C++. Consider using GDScript's `native` function to call C++ code directly, reducing overhead.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Scripting Architecture — separating game logic from engine code, mod support via scripting",
       "status": "done",
       "title": "gdscript - Decoupling Game Logic from Engine Code",
@@ -194,18 +170,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "Debugging Game Code — breakpoints in game loop, watch variables, visual debuggers",
-      "status": "done",
-      "title": "gdscript — Mastering Breakpoints in the Game Loop",
-      "body": "To debug game logic, use the `set_breakpoint` function in the GDScript debugger. This allows you to pause execution at specific lines, inspect variables, and step through code. In the game loop, set breakpoints in the `_ready()`, `_process()`, and `_physics_process()` functions. Use `watch` to monitor variable changes. Visual debuggers like the Godot built-in debugger or third-party tools like GDScript Debugger can also be used to visualize and debug game code.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     },
     {
       "topic": "Cross-language in One Project — C#/native plugins in Unity, C++/Blueprint in Unreal",

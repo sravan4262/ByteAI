@@ -28,18 +28,6 @@
       "overall": 8.5
     },
     {
-      "topic": "Hardware Abstraction — GPIO, UART, SPI, I2C, PWM — what they are and when to use them",
-      "status": "done",
-      "title": "Mastering GPIO, UART, SPI, I2C, and PWM on ESP32",
-      "body": "GPIO (General Purpose Input/Output) pins facilitate digital communication between the ESP32 and external components. Use `pinMode` to configure pins as inputs or outputs. UART (Universal Asynchronous Receiver-Transmitter) handles serial communication using `Serial.begin` and `Serial.print`. SPI (Serial Peripheral Interface) and I2C (Inter-Integrated Circuit) are for high-speed serial communication with peripherals like displays and sensors. SPI uses `SPI.begin` and `SPI.setDataMode`, while I2C utilizes `Wire.begin` and `Wire.requestFrom`. PWM (Pulse Width Modulation) generates analog signals through `analogWrite`.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Arduino — setup/loop model, libraries, shields, hardware vs software serial",
       "status": "done",
       "title": "ESP32 — Optimizing Arduino Setup/Loop with Serial Communication",
@@ -50,45 +38,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Memory Constraints — RAM/flash limitations, stack sizing, heap fragmentation",
-      "status": "done",
-      "title": "esp32 RAM Optimization — Managing Stack and Heap",
-      "body": "The esp32 has 512 KB of flash and 80 KB of RAM. To optimize memory usage, it's crucial to understand the stack and heap. The stack is a region where local variables and function call information are stored. The esp32's stack size can be set using the `configSTACK_SIZE` macro in `sdkconfig`. The heap, on the other hand, is a region where dynamically allocated memory is stored. The esp32 uses a first-in, first-out (FIFO) approach for heap memory allocation. To avoid heap fragmentation, use `malloc()` with the `MALLOC_NOINITIALIZE` flag. For example, `malloc(1024, MALLOC_NOINITIALIZE)` allocates 1024 bytes of memory without initializing it.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "ESP32 — dual-core, WiFi/BT built-in, FreeRTOS integration, power modes",
-      "status": "done",
-      "title": "Leveraging ESP32's Dual-Core Architecture for Efficient IoT Applications",
-      "body": "The ESP32's dual-core architecture allows for simultaneous execution of tasks, improving overall system responsiveness. By utilizing the FreeRTOS API, developers can create and manage tasks, ensuring efficient utilization of CPU resources. To take advantage of this feature, initialize the FreeRTOS system by calling `xTaskCreate()` for each task. For instance, one task can handle WiFi connectivity, while another handles sensor data processing. Use the `xTaskResume()` function to resume tasks that have been suspended.",
-      "code_snippet": {
-        "language": "c",
-        "code": null
-      },
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Interrupts — ISR design, interrupt priorities, avoiding blocking in ISRs",
-      "status": "done",
-      "title": "esp32 - Mastering Interrupt Priorities and Avoiding Blocking in ISRs",
-      "body": "When using the esp32, interrupts are crucial for handling events asynchronously. The Interrupt Priority level (IPL) determines the order in which interrupts are serviced. Lower IPL values have higher priority. The esp32 supports up to 6 priority levels. It's essential to avoid blocking in Interrupt Service Routines (ISRs) as it prevents other interrupts from being serviced. Use the `delay()` function sparingly and opt for non-blocking APIs like `esp_task_wdt_new()` for watchdog timer management.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     },
     {
       "topic": "Real-time Constraints — deadlines, jitter, priority inversion, watchdog timers",
@@ -115,14 +64,6 @@
       "overall": 8
     },
     {
-      "topic": "FreeRTOS — tasks, queues, semaphores, mutexes, interrupt service routines",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "Power Management — sleep modes, wake sources, battery life optimization",
       "status": "done",
       "title": "esp32 Power Management: Maximizing Battery Life with Sleep Modes",
@@ -133,14 +74,6 @@
       "specificity": 10,
       "relevance": 9,
       "overall": 9
-    },
-    {
-      "topic": "Zephyr RTOS — device tree, Kconfig, west tool, multi-platform support",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     },
     {
       "topic": "Peripheral Communication — reading sensors, driving actuators, protocol selection",
@@ -155,30 +88,6 @@
       "overall": 9
     },
     {
-      "topic": "Safety-Critical Systems — MISRA C, functional safety, certification considerations",
-      "status": "done",
-      "title": "esp32 Safety-Critical Systems — MISRA C Compliance",
-      "body": "To ensure compliance with MISRA C on the esp32, update your project settings to enable static analysis. For example, using the ESP-IDF, add the following flag to `idf.py set_target_property`: `-DMISRA`. Then, use the `idf.py check` command to run static analysis. Additionally, consider enabling the `lint` tool to catch code issues. For functional safety, use the `freertos` library with the `configUSE_APPLICATION_TASK_TAG` set to `1` to enable task tagging. Finally, ensure your code adheres to the MISRA C guidelines by avoiding implicit type conversions and keeping code concise.",
-      "code_snippet": null,
-      "language": "c",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
-      "topic": "Bootloaders — what they do, OTA update mechanisms, secure boot",
-      "status": "done",
-      "title": "esp32 Bootloaders — OTA Updates and Secure Boot",
-      "body": "esp32 boards typically employ the ESP32 Bootloader, which loads the main firmware. The bootloader also enables Over-The-Air (OTA) updates. To ensure secure boot, the esp32 uses the Secure Boot feature, which verifies the digital signature of the firmware. The ESP32 chip includes a dedicated hardware-based secure boot mechanism. To implement OTA updates, you can use the `esp_http_client` API to fetch the updated firmware and then use the `esp_partition` API to write it to the correct partition.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Choosing a Platform — Arduino vs ESP32 vs Raspberry Pi vs STM32 decision framework",
       "status": "done",
       "title": "ESP32 Dev: Arduino vs ESP32 vs Raspberry Pi vs STM32 — Decision Framework",
@@ -191,14 +100,6 @@
       "overall": 8.5
     },
     {
-      "topic": "Debugging Embedded — JTAG/SWD, logic analyzers, printf debugging limitations",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "Networking on Embedded — MQTT, CoAP, HTTP on constrained devices",
       "status": "done",
       "title": "esp32: Choosing the Right Networking Protocol for Constrained Devices",
@@ -209,82 +110,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Testing Embedded — hardware-in-the-loop, unit testing on host, mocking hardware",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "FreeRTOS — tasks, queues, semaphores, mutexes, interrupt service routines",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Zephyr RTOS — device tree, Kconfig, west tool, multi-platform support",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Debugging Embedded — JTAG/SWD, logic analyzers, printf debugging limitations",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Testing Embedded — hardware-in-the-loop, unit testing on host, mocking hardware",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "FreeRTOS — tasks, queues, semaphores, mutexes, interrupt service routines",
-      "status": "done",
-      "title": "Scheduling Tasks with FreeRTOS on esp32",
-      "body": "To create a task with FreeRTOS on esp32, use `xTaskCreate` with the `TaskHandle_t` type. The task should be created with the `pdTRUE` priority to ensure it's executed immediately. You can also specify the task stack size, which should be at least 2048 bytes for the esp32. To interact with tasks, use queues, semaphores, or mutexes. For example, to send a character to a task, `xQueueSend` is used. The `xSemaphoreTake` function can be used to acquire a semaphore, while `xSemaphoreGive` is used to release it. `xMutexCreate` and `xMutexTake` are used to create and acquire a mutex. Interrupt service routines (ISRs) can be used to handle interrupts, but should be kept short and light to avoid context switching.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Zephyr RTOS — device tree, Kconfig, west tool, multi-platform support",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Debugging Embedded — JTAG/SWD, logic analyzers, printf debugging limitations",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Testing Embedded — hardware-in-the-loop, unit testing on host, mocking hardware",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

@@ -206,18 +206,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Security — reentrancy, oracle manipulation, private key management",
-      "status": "done",
-      "title": "Polygon EVM: Mitigating Reentrancy Attacks",
-      "body": "Polygon's EVM implementation uses the Check-Effects-Interaction (CEI) pattern to prevent reentrancy attacks. However, this doesn't entirely eliminate the risk. To further secure your contracts, use the `reentrancyGuard` modifier, which checks if the current call is a reentrant one. Example usage:\n\n```solidity\npragma solidity ^0.8.0;\n\ncontract ReentrancyGuard {\n    bool private reentrancyLocked;\n\n    modifier reentrancyGuard() {\n        require(!reentrancyLocked, \"ReentrancyGuard: Reentrant call detected\");\n        reentrancyLocked = true;\n        _;\n        reentrancyLocked = false;\n    }\n}\n```",
-      "code_snippet": "solidity",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 10,
-      "overall": 9
     }
   ]
 }

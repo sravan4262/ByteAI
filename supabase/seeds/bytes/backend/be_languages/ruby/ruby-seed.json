@@ -40,18 +40,6 @@
       "overall": 9
     },
     {
-      "topic": "Error Handling — exceptions vs Result types, error propagation patterns per language",
-      "status": "done",
-      "title": "Ruby Error Handling — Exceptions vs dry-monads Result Types",
-      "body": "Ruby's exception system is expressive but silent — `rescue StandardError` catches broadly, and errors propagate invisibly up the call stack. For predictable failure paths (user not found, invalid input), the `dry-monads` gem's `Result` monad makes failures explicit in the return type. `Success(value)` and `Failure(reason)` force callers to handle both branches at the call site.\n\nThe critical Ruby-specific rule: always inherit custom exceptions from `StandardError`, never from `Exception` — bare `rescue` only catches `StandardError` and below. Use exceptions for truly unexpected conditions (network timeout, disk full); use `Result` for domain failures.\n\n`dry-monads`' `Do` notation lets you propagate failures with `yield`, mirroring Rust's `?` operator without nested `bind` chains. For existing exception-raising code, wrap it with `rescue => e; Failure(e.message)` to bridge both worlds. This pattern is especially clean in service objects and command patterns where error paths are treated as first-class return values, not invisible side exits.",
-      "code_snippet": "require 'dry/monads'\nrequire 'dry/monads/do'\n\nclass UserService\n  include Dry::Monads[:result]\n  include Dry::Monads::Do.for(:call)\n\n  def call(user_id)\n    user  = yield find_user(user_id)\n    yield validate_active(user)\n    Success(user)\n  end\n\n  private\n\n  def find_user(id)\n    user = User.find_by(id: id)\n    user ? Success(user) : Failure(:not_found)\n  end\n\n  def validate_active(user)\n    user.active? ? Success(user) : Failure(:inactive)\n  end\nend",
-      "language": null,
-      "clarity": 9,
-      "specificity": 9,
-      "relevance": 10,
-      "overall": 9
-    },
-    {
       "topic": "Performance — benchmarking, profiling, runtime characteristics per language",
       "status": "done",
       "title": "Ruby Performance — benchmark-ips, stackprof, and YJIT Profiling",
@@ -61,18 +49,6 @@
       "clarity": 8,
       "specificity": 9,
       "relevance": 10,
-      "overall": 9
-    },
-    {
-      "topic": "Concurrency Model — async/await, goroutines, threads, actors — how each language handles it",
-      "status": "done",
-      "title": "Ruby's Concurrency Model — GVL, Fibers, and Ractors Explained",
-      "body": "Ruby's concurrency story is defined by the GVL (Global VM Lock) in MRI — only one thread executes Ruby bytecode at a time. Threads are real OS threads, but the GVL serializes CPU-bound work. The payoff comes with I/O: network calls, file reads, and `sleep` release the GVL, so a thread pool genuinely improves throughput in a Rails app under load.\n\nFibers are Ruby's cooperative coroutine primitive — lightweight, manually scheduled via `Fiber#resume` and `Fiber.yield`. They're the foundation of the `async` gem (by Samuel Williams), which layers a non-blocking event loop on top without new syntax. No `async`/`await` keywords; just Fibers managed by a reactor.\n\nRactors (Ruby 3.0+) unlock true parallelism. Each Ractor gets its own GVL, communicates via `send`/`take` message passing, and enforces isolated or frozen shared state. The trade-off is sharp: most gems aren't Ractor-safe yet, so adoption is constrained to greenfield CPU-parallel workloads.\n\nThe mental model: reach for threads on I/O-bound concurrency, the `async` gem for high-connection servers, and Ractors only when you can control the dependency surface.",
-      "code_snippet": "# Threads — I/O releases the GVL, so this runs in ~1s not 4s\nthreads = 4.times.map { Thread.new { sleep 1 } }\nthreads.each(&:join)\n\n# Ractors — true CPU parallelism, isolated memory\nworkers = 4.times.map { |i| Ractor.new(i) { |n| n ** 2 } }\np workers.map(&:take)   # => [0, 1, 4, 9], runs in parallel\n\n# Fibers — cooperative coroutines, single-threaded\ncounter = Fiber.new do\n  n = 0\n  loop { Fiber.yield(n += 1) }\nend\np counter.resume   # => 1\np counter.resume   # => 2",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
       "overall": 9
     },
     {
@@ -160,18 +136,6 @@
       "overall": 9
     },
     {
-      "topic": "Scalability — horizontal scaling characteristics, thread model implications",
-      "status": "done",
-      "title": "Ruby Horizontal Scaling — GVL Constraints and the Puma Cluster Model",
-      "body": "MRI Ruby's Global VM Lock (GVL) serializes bytecode execution across threads within a single process — only one thread runs Ruby code at a time. CPU-bound workloads gain nothing from adding threads; IO-bound tasks do, since the GVL is released during blocking IO (network calls, disk reads, `sleep`). This makes horizontal scaling the primary throughput lever.\n\nPuma's cluster mode forks N worker processes, each owning its own GVL, enabling true parallelism across cores. Threads within each worker handle IO concurrency cheaply. The canonical production formula: `WEB_CONCURRENCY = vCPU count` workers, `RAILS_MAX_THREADS = 5` threads per worker. Connection pool size in `database.yml` must match thread count or you'll exhaust `ActiveRecord::Base.connection_pool`.\n\nRuby 3.x Ractors offer GVL-free parallelism in-process, but their strict object isolation — no shared mutable state across Ractor boundaries — limits adoption for typical Rails workloads. JRuby and TruffleRuby remove the GVL entirely, making thread-per-request viable, at the cost of native gem compatibility.\n\nFor most Rails deployments: replicate stateless containers horizontally, size Puma workers to CPU, and use threads purely for IO overlap — not CPU parallelism.",
-      "code_snippet": "# config/puma.rb\nworkers ENV.fetch(\"WEB_CONCURRENCY\") { 2 }\nthreads_count = ENV.fetch(\"RAILS_MAX_THREADS\") { 5 }\nthreads threads_count, threads_count\n\npreload_app!\n\non_worker_boot do\n  # Each forked worker needs its own DB connection pool\n  ActiveRecord::Base.establish_connection if defined?(ActiveRecord)\nend",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
       "topic": "Ecosystem Maturity — library quality, community size, long-term viability",
       "status": "done",
       "title": "Ruby's Ecosystem Maturity — Signal-to-Noise Ratio That npm Envies",
@@ -179,30 +143,6 @@
       "code_snippet": "# Gemfile — version pinning with ecosystem-mature gems\nsource 'https://rubygems.org'\n\ngem 'rails',   '~> 7.1'\ngem 'sidekiq', '~> 7.0'   # battle-tested background jobs since 2012\ngem 'devise',  '~> 4.9'   # auth; 1B+ downloads\ngem 'faraday', '~> 2.9'   # HTTP client with middleware stack\n\ngroup :development, :test do\n  gem 'rspec-rails', '~> 6.1'\n  gem 'factory_bot_rails'\nend\n\n# Check installed gem metadata at runtime\nputs Gem::Specification.find_by_name('sidekiq').version\nputs Gem::Specification.find_by_name('sidekiq').homepage",
       "language": "ruby",
       "clarity": 9,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Language-specific — Node.js event loop, Python GIL, Go channels, Rust ownership, Elixir OTP",
-      "status": "done",
-      "title": "Ruby's GVL — Why Threads Don't Buy You True Parallelism (And What Does)",
-      "body": "MRI Ruby's Global VM Lock (GVL, formerly GIL) ensures only one thread executes Ruby bytecode at a time. CPU-bound work — parsing, hashing, number crunching — sees zero parallelism with Ruby threads. Four threads computing Fibonacci across 4 cores runs serially, not in parallel.\n\nThreads still shine for I/O-bound work. When a thread blocks on a DB query or HTTP call, MRI releases the GVL, letting other threads run. That's why Puma works well for concurrent web traffic — most wall time is spent waiting on network, not executing bytecode.\n\nRuby 3.x introduces Ractors as the path to true CPU parallelism. Each Ractor owns its own GVL copy, runs on a dedicated OS thread, and communicates via message passing rather than shared memory. The constraint: only shareable objects cross Ractor boundaries — frozen values or objects explicitly wrapped with `Ractor.make_shareable`. Most gems remain Ractor-unsafe, limiting production adoption today.\n\nFor CPU-bound parallelism right now, `Process.fork` with `IO.pipe` or a Sidekiq-based process pool is the pragmatic path. Ractors are the future, but fork is the present.",
-      "code_snippet": "require 'benchmark'\n\ndef fib(n) = n < 2 ? n : fib(n - 1) + fib(n - 2)\n\n# Threads: GVL-bound, runs serially despite 4 OS threads\nthreads_time = Benchmark.realtime do\n  4.times.map { Thread.new { fib(35) } }.each(&:join)\nend\n\n# Ractors: each gets its own GVL — true parallelism\nractors_time = Benchmark.realtime do\n  4.times.map { Ractor.new { fib(35) } }.each(&:take)\nend\n\nputs \"Threads : #{threads_time.round(2)}s\"\nputs \"Ractors : #{ractors_time.round(2)}s\"\n# On a 4-core machine, Ractors run ~3-4x faster",
-      "language": null,
-      "clarity": 9,
-      "specificity": 9,
-      "relevance": 8,
-      "overall": 9
-    },
-    {
-      "topic": "When to Choose — use cases where each language excels vs where it struggles",
-      "status": "done",
-      "title": "Ruby — Where It Wins and Where the GVL Will Hurt You",
-      "body": "Ruby dominates where developer velocity and expressiveness matter most: convention-driven web apps (Rails), internal tooling with rich DSLs, and script automation. Its metaprogramming — `method_missing`, `define_method`, `Module#prepend` — lets you build Rake tasks, RSpec matchers, and ActiveRecord scopes that read like prose. Sidekiq handles I/O-bound workloads (HTTP calls, DB queries) efficiently because MRI threads release the GVL during blocking I/O, so concurrency is real where it matters for web apps.\n\nWhere Ruby buckles: CPU-bound parallelism. The Global VM Lock means MRI threads cannot execute Ruby bytecode in parallel. You need `Ractor` (still maturing in 3.x) or process-level concurrency via `fork`/Puma clustered mode. Memory is another ceiling — a single Rails process routinely reaches 200–500 MB, making serverless deployments expensive. For ML inference pipelines, game servers, or high-frequency systems, reach for Go or Rust. Ruby 3.x's YJIT JIT compiler narrows the throughput gap meaningfully for request/response workloads, but raw CPU performance remains the deliberate trade-off you accept in exchange for productivity.",
-      "code_snippet": "# Ruby shines: expressive DSL via method_missing\nclass QueryBuilder\n  def initialize = (@conditions = [])\n\n  def method_missing(name, value)\n    tap { @conditions << \"#{name} = #{value.inspect}\" }\n  end\n\n  def to_sql = \"WHERE #{@conditions.join(' AND ')}\"\nend\n\nputs QueryBuilder.new.status(\"active\").role(\"admin\").to_sql\n# => WHERE status = \"active\" AND role = \"admin\"\n\n# Ruby struggles: GVL blocks true CPU parallelism\nthreads = 4.times.map { Thread.new { 10_000_000.times {} } }\nthreads.each(&:join) # No speedup — all contend on one GVL",
-      "language": null,
-      "clarity": 8,
       "specificity": 9,
       "relevance": 9,
       "overall": 9

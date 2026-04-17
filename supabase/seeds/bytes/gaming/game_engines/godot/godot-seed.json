@@ -158,66 +158,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "Game Loop — update, fixed update, late update, frame rate independence with delta time",
-      "status": "done",
-      "title": "Mastering Godot's Game Loop: Understanding Update, Fixed Update, Late Update, and Delta Time",
-      "body": "In Godot, the game loop is divided into three main types: update, fixed update, and late update. The update function is called every frame, but its execution time is not guaranteed. Fixed update is called at a fixed interval (usually 1/60th of a second), ensuring consistent execution time. Late update is called after all physics simulations have been processed. Delta time is used to account for variable frame rates by scaling time-sensitive operations. When implementing the game loop, use delta time to ensure smooth gameplay and physics simulations.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Camera Systems — follow camera, camera shake, culling, FOV considerations",
-      "status": "done",
-      "title": "Godot Camera Systems — Follow Camera, Shake, Culling, and FOV Tweaks",
-      "body": "To implement a smooth follow camera, use `Camera2D` and `KinematicBody2D` with `follow_distance` set to a suitable value. For camera shake, apply a `CameraShakeInput` to the camera node. Culling can be achieved by using `Camera2D`'s `use_depth_test` property. When adjusting FOV, use `Camera2D`'s `field_of_view` property, which accepts degrees. You can also use `Camera2D`'s `orthographic_size` property to adjust the vertical FOV for 2D scenes.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Unity — MonoBehaviour lifecycle, prefabs, ScriptableObjects, asset database",
-      "status": "done",
-      "title": "Godot: Understanding Node Lifecycles and ScriptableObjects",
-      "body": "Godot's scene tree is composed of nodes, which can be created, modified, and deleted dynamically. When a node is instantiated, it goes through several lifecycle events, including `_ready()`, `_process()` and `_physics_process()`. These events can be used to initialize and update node properties. ScriptableObjects, on the other hand, are designed for storing reusable data. They can be used to create prefabs, which are instantiable scenes that can be reused throughout the project. By attaching a ScriptableObject to a node, you can manage its properties and behavior more efficiently.",
-      "code_snippet": null,
-      "language": "gdscript",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
-      "topic": "Asset Pipeline — importing models, textures, audio, LOD, asset optimization",
-      "status": "done",
-      "title": "Optimize Your Godot Game with Efficient Asset Pipeline",
-      "body": "To reduce loading times and improve performance, Godot's asset pipeline is optimized for importing models, textures, and audio. When importing 3D models, use the `MeshInstance` scene node and `load` function to load .OBJ or .GODOT files. For textures, use the `Texture` resource and `load` function to load .PNG or .JPG files. Audio files are loaded using the `AudioStream` resource and `load` function. Level of detail (LOD) is implemented using the `LODNode` scene node and its `set_lod` method. To optimize assets, use Godot's built-in texture compression and mesh simplification tools.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Audio — positional audio, audio mixing, music vs SFX, compression formats",
-      "status": "done",
-      "title": "Godot Audio 101: Positional Audio, Mixing, and Compression",
-      "body": "Godot's `AudioStreamPlayer3D` node allows for positional audio, creating an immersive experience. To mix audio, use the `AudioEffect` node with `Reverb` or `Distortion` effects. Separate music from SFX using the `AudioStream` node or by creating separate `AudioStreamPlayer` instances. For compression, use the `FLAC` or `OggVorbis` formats, which are supported by Godot natively.",
-      "code_snippet": null,
-      "language": "gdscript",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 10,
-      "overall": 8.5
     }
   ]
 }

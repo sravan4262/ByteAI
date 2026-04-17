@@ -40,18 +40,6 @@
       "overall": 8
     },
     {
-      "topic": "wagmi — React hooks for Ethereum, connector system, TanStack Query integration",
-      "status": "done",
-      "title": "the_graph & Wagmi: Seamlessly Integrating TanStack Query",
-      "body": "When building Ethereum applications on the_graph, you can leverage the power of React hooks and TanStack Query with Wagmi. This library provides a connector system that simplifies data fetching and caching. To use it, create a connector instance and pass it to the `useQuery` hook from TanStack Query. For example, you can fetch user data from the graph API like this:\n```typescript\nimport { useQuery, useMutation } from '@tanstack/query-react-query';\nimport { useAccount, useContractRead } from '@wagmi/core';\n\nconst { data, isLoading, error } = useQuery(\n  ['user'],\n  async () => {\n    const account = useAccount();\n    const userData = await useContractRead(\n      account.connect().address,\n      'userData'\n    );\n    return userData;\n  },\n  { refetchOnWindowFocus: false, staleTime: 1000 * 60 * 5 }\n);\n```\nThis code snippet fetches user data from the graph API when the component mounts and updates it every 5 minutes. You can customize the fetcher function to suit your specific use case.",
-      "code_snippet": "typescript",
-      "language": null,
-      "clarity": 9,
-      "specificity": 8,
-      "relevance": 9,
-      "overall": 8.6
-    },
-    {
       "topic": "viem — TypeScript-first, lightweight, low-level, replacing ethers in modern stacks",
       "status": "done",
       "title": "the_graph: Migrate from Ethers to Viem for Modern Web3 Stacks",
@@ -74,62 +62,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "Reading On-chain Data — eth_call, getLogs, event filtering, batch requests",
-      "status": "done",
-      "title": "the_graph Tip: Efficient On-chain Data Retrieval",
-      "body": "To retrieve on-chain data using the_graph, you can leverage eth_call or getLogs. eth_call allows you to execute a single read-only call on a contract, while getLogs fetches a batch of logs. event filtering can be applied to getLogs to narrow down the results. Additionally, you can use batch requests to optimize data retrieval by combining multiple getLogs queries into a single request. the_graph's GraphQL API enables you to construct complex queries to fetch specific data efficiently.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "ENS — name resolution, avatar, records, reverse resolution",
-      "status": "done",
-      "title": "the_graph: Leveraging ENS for Efficient Name Resolution and Avatar Management",
-      "body": "When working with the_graph, ENS (Ethereum Name Service) enables efficient name resolution and avatar management. You can utilize the `getResolver` function from the `@the_graph/graphql-api` package to fetch a resolver for a specific ENS name. For example, to retrieve the resolver for the ENS name `example.eth`, you can use the following code snippet:\n```typescript\nimport { getResolver } from '@the_graph/graphql-api';\n\nconst resolver = await getResolver('example.eth');\nconsole.log(resolver);\n```\nAdditionally, you can leverage the `getAvatar` function to retrieve the avatar associated with an ENS name. The following code snippet demonstrates how to fetch the avatar for the ENS name `example.eth`:\n```typescript\nimport { getAvatar } from '@the_graph/graphql-api';\n\nconst avatar = await getAvatar('example.eth');\nconsole.log(avatar);\n```\nTo store and manage ENS records, you can utilize the `createRecord` and `updateRecord` functions. For instance, to create a new record for the ENS name `example.eth`, you can use the following code snippet:\n```typescript\nimport { createRecord } from '@the_graph/graphql-api';\n\nconst record = await createRecord('example.eth', { foo: 'bar' });\nconsole.log(record);\n```\nFor reverse resolution, you can use the `resolve` function from the `@the_graph/graphql-api` package. The following code snippet demonstrates how to resolve the ENS name associated with a given Ethereum address:\n```typescript\nimport { resolve } from '@the_graph/graphql-api';\n\nconst ensName = await resolve('0x...');\nconsole.log(ensName);\n```\n",
-      "code_snippet": null,
-      "language": "typescript",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 8,
-      "overall": 8
-    },
-    {
-      "topic": "Writing Transactions — signing, gas estimation, nonce management, transaction monitoring",
-      "status": "done",
-      "title": "the_graph Transaction Writing Best Practices",
-      "body": "When writing transactions with the_graph, managing gas estimation and nonces is crucial. Use the `estimateGas` method to predict gas usage before executing a transaction. The_graph's `eth_estimateGas` function returns a `GasEstimate` object with a `gas` property and an `error` property. For nonce management, use the `getTransactionCount` method to retrieve the current nonce value. Remember to update the nonce when retrying transactions. Monitor transactions with the_graph's `eth_getTransactionReceipt` function.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "IPFS Pinning — Pinata, web3.storage, NFT.Storage, self-hosted nodes",
-      "status": "done",
-      "title": "Pinning NFTs with the_graph and IPFS",
-      "body": "When working with NFTs on the_graph, it's essential to pin them to IPFS to ensure persistence. You can use Pinata, web3.storage, or NFT.Storage for this purpose. For a more customized solution, consider self-hosting an IPFS node. To pin an NFT, first, upload it to the storage service of your choice using the_graph's `ipfs.add()` method. Then, use the service's API to retrieve the CID and pin it to IPFS.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Contract ABIs — what ABIs are, encoding/decoding, generating typed ABIs",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

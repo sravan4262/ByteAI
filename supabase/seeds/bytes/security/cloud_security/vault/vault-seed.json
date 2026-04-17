@@ -4,42 +4,6 @@
   "domain": "security",
   "bytes": [
     {
-      "topic": "IAM Fundamentals — identity vs principal, authentication vs authorization",
-      "status": "done",
-      "title": "Vault — Identity vs Principal, Authentication vs Authorization",
-      "body": "In Vault, identities and principals are often used interchangeably but differ in scope. An identity represents a user, group, or service account, while a principal is an entity allowed to perform actions within a specific namespace. Authentication ensures the identity of a user or service, whereas authorization determines their access to sensitive data. When authenticating with Vault, users are mapped to identities and principals. For example, a user can be authenticated as an engineer and assigned to a principal with read-only access to a namespace.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Least Privilege — start with no permissions, grant what's needed, regular access review",
-      "status": "done",
-      "title": "Vault - Least Privilege Principle: Grant Only What's Needed",
-      "body": "Least privilege is a security best practice where users and systems are granted only the permissions necessary to perform their tasks. In Vault, this is achieved by creating dynamic secrets engines with tightly controlled access. Start by creating a secrets engine with no policies or roles assigned, then incrementally add policies and roles as needed. Regularly review access to ensure it remains least privilege.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "IAM Policies — allow vs deny, condition keys, policy evaluation logic",
-      "status": "done",
-      "title": "Vault IAM Policies — Allow vs Deny, Condition Keys, and Policy Evaluation Logic",
-      "body": "Vault IAM policies use a unique logic to evaluate access. Unlike traditional allow/deny models, Vault uses a logical AND operation to combine rules. Condition keys play a crucial role in policy evaluation. A condition key is a key-value pair that can be used to grant or deny access. When evaluating a policy, Vault checks if the condition key exists and matches the specified value. If the condition key is missing or does not match, the policy is denied. The policy evaluation logic also considers the `path` and `capabilities` fields. The `path` field specifies the resource or API endpoint being accessed, while the `capabilities` field specifies the actions that can be performed on that resource.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Zero Trust Architecture — never trust, always verify, microsegmentation",
       "status": "done",
       "title": "Vault Zero Trust Architecture: Segregating Secrets with Dynamic Group Membership",
@@ -62,18 +26,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Service Accounts & Roles — machine identities, workload identity federation, no long-lived keys",
-      "status": "done",
-      "title": "Vault - Service Accounts & Roles: No Long-Lived Keys",
-      "body": "Vault supports service accounts and roles for secure authentication and authorization. When creating a service account, you can assign roles to it using the `vault auth service-account create` command. This command takes the service account name, the role name, and the role ID as arguments. You can also use the `vault auth service-account update` command to update the role assignments for a service account. To list all roles assigned to a service account, use the `vault auth service-account read` command with the `-output` option set to `json`. This will return a JSON object containing the service account details, including the assigned roles.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     },
     {
       "topic": "Encryption — KMS, customer-managed keys, envelope encryption",
@@ -112,18 +64,6 @@
       "overall": 8
     },
     {
-      "topic": "Audit Logging — CloudTrail/Cloud Audit Logs, what to capture, retention",
-      "status": "done",
-      "title": "Vault Audit Logging - Best Practices for Cloud Security with Vault",
-      "body": "Vault's audit logging capabilities mirror AWS CloudTrail and Azure Cloud Audit Logs, but with a unique set of requirements. To ensure secure cloud operations, capture the following events: API calls, secret access, and policy management changes. Set the minimum retention period to 24 hours for audit logs to comply with regulatory standards. To configure audit logging in Vault, use the `audit_log_config` API endpoint, specifying the desired retention period and storage backend.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Incident Response — isolation playbooks, forensics, blast radius containment",
       "status": "done",
       "title": "Vault Incident Response: Containing Blast Radius with Isolation Playbooks",
@@ -148,74 +88,6 @@
       "overall": 9
     },
     {
-      "topic": "HashiCorp Vault — secret engines, dynamic secrets, lease TTL, auth methods",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Secrets Rotation — automated rotation, zero-downtime rotation, audit trails",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Federated Identity — SSO, SAML, OIDC, cross-account access patterns",
-      "status": "done",
-      "title": "Vault Federated Identity — Secure Cross-Account Access with SAML, OIDC, and SSO",
-      "body": "To enable secure cross-account access in Vault, create a SAML or OIDC authentication method and associate it with an entity. Use the `auth/entity/login` endpoint to authenticate users from the external identity provider. Once authenticated, Vault creates a new entity-based login token. Use the `login/token/lookup` endpoint to retrieve the login token and access the desired secrets. For SSO, configure the `sso` parameter in the `auth/entity/login` endpoint to enable single sign-on. Set `sso` to `true` to allow users to authenticate without a password.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Data Classification — tagging sensitive data, enforcing access based on classification",
-      "status": "done",
-      "title": "Vault Data Classification — Tagging Sensitive Data with Custom Attributes",
-      "body": "Vault allows you to classify sensitive data using custom attributes. You can tag a secret with a specific classification, such as 'pii' for personally identifiable information. To enforce access based on classification, you can create a dynamic secret engine using Vault's built-in `sys/mounts` API. This engine can check the classification of a secret and deny access if it's not within the allowed classifications. For example, you can use the `path` parameter to specify the allowed classifications.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Security Benchmarks — CIS benchmarks, cloud provider security best practices",
-      "status": "done",
-      "title": "Vault Security - Enforcing CIS Benchmarks and Cloud Provider Best Practices",
-      "body": "Vault provides a built-in feature to enforce CIS benchmarks and cloud provider security best practices. To enable this feature, configure the `cis_benchmark` and `cloud_provider` options in the `vault` configuration file. For example, to enable AWS CIS benchmark, set `cloud_provider` to `aws` and `cis_benchmark` to `aws_cis_1_2_0`. Then, use the `vault write` command to update the `cis_benchmark` configuration. You can also use the `vault read` command to verify the CIS benchmark configuration.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Compliance as Code — policy as code with OPA, cloud guardrails",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "HashiCorp Vault — secret engines, dynamic secrets, lease TTL, auth methods",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "Secrets Rotation — automated rotation, zero-downtime rotation, audit trails",
       "status": "done",
       "title": "Vault Secrets Rotation — Automated, Zero-Downtime, and Audit Trails",
@@ -228,14 +100,6 @@
       "overall": 8
     },
     {
-      "topic": "Compliance as Code — policy as code with OPA, cloud guardrails",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "HashiCorp Vault — secret engines, dynamic secrets, lease TTL, auth methods",
       "status": "done",
       "title": "Vault - Mastering Secret Engines and Dynamic Secrets",
@@ -246,14 +110,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 9
-    },
-    {
-      "topic": "Compliance as Code — policy as code with OPA, cloud guardrails",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

@@ -40,38 +40,6 @@
       "overall": 9.5
     },
     {
-      "topic": "UDP — stateless, use cases (DNS, media, gaming), reliability built on top",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "IP — IPv4 vs IPv6, subnetting, routing, NAT, CIDR",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "TLS over TCP — handshake, session resumption, 0-RTT trade-offs",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "HTTP/1.1 vs HTTP/2 vs HTTP/3 — multiplexing, head-of-line blocking, QUIC",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "QUIC — UDP-based transport, connection migration, 0-RTT, loss recovery",
       "status": "done",
       "title": "tcp_ip: Understanding QUIC's Connection Migration",
@@ -82,182 +50,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "DPDK — kernel bypass, poll-mode drivers, hugepages, ultra-low latency use cases",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Socket Programming — blocking vs non-blocking, epoll/kqueue, io_uring",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Load Balancing — L4 vs L7, algorithms, health checks, sticky sessions",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Congestion Control — CUBIC, BBR, QUIC's approach, buffer bloat",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Network Observability — tcpdump, Wireshark, ss/netstat, eBPF for networking",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Firewalls & NAT — iptables/nftables, connection tracking, SNAT/DNAT",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Service Mesh — sidecar proxy model, mTLS between services, observability",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Zero-copy Networking — sendfile, splice, DMA, reducing CPU in data path",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Latency vs Throughput — trade-offs, tuning kernel network stack",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Debugging Network Issues — systematic approach, tools per OSI layer",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "UDP — stateless, use cases (DNS, media, gaming), reliability built on top",
-      "status": "done",
-      "title": "tcp_ip: Reliability on Top of UDP for Media Streaming",
-      "body": "UDP's statelessness makes it ideal for real-time media streaming. However, this comes at the cost of reliability. To build reliable media streaming, you can use TCP's reliability features on top of UDP. This is achieved by implementing a protocol like TCP's Selective Acknowledgment (SACK) or UDP-based reliability protocols like Forward Error Correction (FEC). For example, you can use a FEC algorithm to detect and correct packet errors. In tcp_ip, you can use the `IPPROTO_UDP` protocol family and the `SO_REUSEADDR` option to enable datagram sockets for media streaming.",
-      "code_snippet": "",
-      "language": "javascript",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
-      "topic": "IP — IPv4 vs IPv6, subnetting, routing, NAT, CIDR",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "TLS over TCP — handshake, session resumption, 0-RTT trade-offs",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "HTTP/1.1 vs HTTP/2 vs HTTP/3 — multiplexing, head-of-line blocking, QUIC",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "DPDK — kernel bypass, poll-mode drivers, hugepages, ultra-low latency use cases",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Socket Programming — blocking vs non-blocking, epoll/kqueue, io_uring",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Load Balancing — L4 vs L7, algorithms, health checks, sticky sessions",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Congestion Control — CUBIC, BBR, QUIC's approach, buffer bloat",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Network Observability — tcpdump, Wireshark, ss/netstat, eBPF for networking",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Debugging Network Issues — systematic approach, tools per OSI layer",
-      "status": "done",
-      "title": "tcp_ip — Debugging Network Issues with a Systematic Approach",
-      "body": "When debugging network issues with tcp_ip, start by identifying the OSI layer where the problem occurs. Use tools like Wireshark for the Physical (Layer 1) and Data Link (Layer 2) layers, and tcpdump for Network (Layer 3), Transport (Layer 4), Session (Layer 5), Presentation (Layer 6), and Application (Layer 7) layers. For the Transport layer, use the SO_LINGER option to enable lingered closes and tcpdump's -s option to capture large packets. For example, to capture and print packets larger than 1KB using tcpdump:\n```bash\n$ tcpdump -s 1024 -i any -w large_packets.pcap\n```\n   For the Application layer, use tools like netstat to identify active connections and their associated ports.",
-      "code_snippet": null,
-      "language": "bash",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 8,
-      "overall": 8
-    },
-    {
-      "topic": "Firewalls & NAT — iptables/nftables, connection tracking, SNAT/DNAT",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     },
     {
       "topic": "Service Mesh — sidecar proxy model, mTLS between services, observability",
@@ -287,22 +79,6 @@
       "overall": 8
     },
     {
-      "topic": "Zero-copy Networking — sendfile, splice, DMA, reducing CPU in data path",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Latency vs Throughput — trade-offs, tuning kernel network stack",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "IP — IPv4 vs IPv6, subnetting, routing, NAT, CIDR",
       "status": "done",
       "title": "tcp_ip — IPv4 vs IPv6: Choosing the Right IP Version",
@@ -313,14 +89,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "TLS over TCP — handshake, session resumption, 0-RTT trade-offs",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     },
     {
       "topic": "Congestion Control — CUBIC, BBR, QUIC's approach, buffer bloat",
@@ -335,54 +103,6 @@
       "overall": 8
     },
     {
-      "topic": "HTTP/1.1 vs HTTP/2 vs HTTP/3 — multiplexing, head-of-line blocking, QUIC",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "DPDK — kernel bypass, poll-mode drivers, hugepages, ultra-low latency use cases",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Socket Programming — blocking vs non-blocking, epoll/kqueue, io_uring",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Load Balancing — L4 vs L7, algorithms, health checks, sticky sessions",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Network Observability — tcpdump, Wireshark, ss/netstat, eBPF for networking",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Firewalls & NAT — iptables/nftables, connection tracking, SNAT/DNAT",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "Zero-copy Networking — sendfile, splice, DMA, reducing CPU in data path",
       "status": "done",
       "title": "tcp_ip - Zero-Copy Networking with sendfile and splice",
@@ -393,14 +113,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 8
-    },
-    {
-      "topic": "Latency vs Throughput — trade-offs, tuning kernel network stack",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

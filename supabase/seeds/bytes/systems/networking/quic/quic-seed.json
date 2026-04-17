@@ -4,118 +4,6 @@
   "domain": "systems",
   "bytes": [
     {
-      "topic": "TCP — three-way handshake, flow control, congestion control, TIME_WAIT",
-      "status": "done",
-      "title": "quic — Avoiding TIME_WAIT with RST, ACK",
-      "body": "When a quic connection is terminated, it may enter the TIME_WAIT state. This can lead to a significant delay before the connection can be re-established. To avoid TIME_Wait, a RST (Reset) packet with an ACK (Acknowledgment) flag set can be sent by the server, allowing the client to immediately close the connection.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "OSI Model — layers, what lives at each layer, why it matters for debugging",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "UDP — stateless, use cases (DNS, media, gaming), reliability built on top",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "IP — IPv4 vs IPv6, subnetting, routing, NAT, CIDR",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "DNS — resolution chain, TTL, record types, DNS over HTTPS, split horizon",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "TLS over TCP — handshake, session resumption, 0-RTT trade-offs",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "HTTP/1.1 vs HTTP/2 vs HTTP/3 — multiplexing, head-of-line blocking, QUIC",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "QUIC — UDP-based transport, connection migration, 0-RTT, loss recovery",
-      "status": "done",
-      "title": "QUIC Connection Migration — A Deep Dive",
-      "body": "When a client or server migrates a QUIC connection to a new IP address or port, the protocol employs a process called connection migration. This involves exchanging new connection IDs (CIDs) between the endpoints, which are used to identify the connection. To ensure seamless migration, QUIC supports 0-RTT (zero round-trip time) handshake, allowing the client to resume a previous connection without waiting for a response from the server. However, to minimize the risk of packet loss during migration, QUIC introduces a mechanism called loss recovery, which enables the endpoints to detect and recover from packet losses.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "DPDK — kernel bypass, poll-mode drivers, hugepages, ultra-low latency use cases",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Socket Programming — blocking vs non-blocking, epoll/kqueue, io_uring",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Load Balancing — L4 vs L7, algorithms, health checks, sticky sessions",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Congestion Control — CUBIC, BBR, QUIC's approach, buffer bloat",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Network Observability — tcpdump, Wireshark, ss/netstat, eBPF for networking",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "Firewalls & NAT — iptables/nftables, connection tracking, SNAT/DNAT",
       "status": "done",
       "title": "quic — Connection Tracking with NAT and Firewall Rules",
@@ -126,78 +14,6 @@
       "specificity": 10,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Service Mesh — sidecar proxy model, mTLS between services, observability",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Zero-copy Networking — sendfile, splice, DMA, reducing CPU in data path",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Latency vs Throughput — trade-offs, tuning kernel network stack",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Debugging Network Issues — systematic approach, tools per OSI layer",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "OSI Model — layers, what lives at each layer, why it matters for debugging",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "UDP — stateless, use cases (DNS, media, gaming), reliability built on top",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "IP — IPv4 vs IPv6, subnetting, routing, NAT, CIDR",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "DNS — resolution chain, TTL, record types, DNS over HTTPS, split horizon",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "TLS over TCP — handshake, session resumption, 0-RTT trade-offs",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     },
     {
       "topic": "HTTP/1.1 vs HTTP/2 vs HTTP/3 — multiplexing, head-of-line blocking, QUIC",
@@ -212,78 +28,6 @@
       "overall": 8
     },
     {
-      "topic": "DPDK — kernel bypass, poll-mode drivers, hugepages, ultra-low latency use cases",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Socket Programming — blocking vs non-blocking, epoll/kqueue, io_uring",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Load Balancing — L4 vs L7, algorithms, health checks, sticky sessions",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Congestion Control — CUBIC, BBR, QUIC's approach, buffer bloat",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Network Observability — tcpdump, Wireshark, ss/netstat, eBPF for networking",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Service Mesh — sidecar proxy model, mTLS between services, observability",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Zero-copy Networking — sendfile, splice, DMA, reducing CPU in data path",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Latency vs Throughput — trade-offs, tuning kernel network stack",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Debugging Network Issues — systematic approach, tools per OSI layer",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "TLS over TCP — handshake, session resumption, 0-RTT trade-offs",
       "status": "done",
       "title": "QuIC TLS Handshake: Session Resumption and 0-RTT Trade-Offs",
@@ -294,38 +38,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "OSI Model — layers, what lives at each layer, why it matters for debugging",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "UDP — stateless, use cases (DNS, media, gaming), reliability built on top",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "IP — IPv4 vs IPv6, subnetting, routing, NAT, CIDR",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "DNS — resolution chain, TTL, record types, DNS over HTTPS, split horizon",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     },
     {
       "topic": "Congestion Control — CUBIC, BBR, QUIC's approach, buffer bloat",
@@ -340,38 +52,6 @@
       "overall": 8.5
     },
     {
-      "topic": "DPDK — kernel bypass, poll-mode drivers, hugepages, ultra-low latency use cases",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Socket Programming — blocking vs non-blocking, epoll/kqueue, io_uring",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Load Balancing — L4 vs L7, algorithms, health checks, sticky sessions",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Network Observability — tcpdump, Wireshark, ss/netstat, eBPF for networking",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "Latency vs Throughput — trade-offs, tuning kernel network stack",
       "status": "done",
       "title": "Quic: Tuning Latency vs Throughput with MaxUplinkBandwidth",
@@ -382,30 +62,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "Service Mesh — sidecar proxy model, mTLS between services, observability",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Zero-copy Networking — sendfile, splice, DMA, reducing CPU in data path",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Debugging Network Issues — systematic approach, tools per OSI layer",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

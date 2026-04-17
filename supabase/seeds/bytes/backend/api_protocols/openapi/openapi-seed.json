@@ -194,30 +194,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Choosing a Protocol — REST vs GraphQL vs gRPC decision framework",
-      "status": "done",
-      "title": "OpenAPI Protocol Decision — REST vs GraphQL vs gRPC Decision Framework",
-      "body": "OpenAPI is REST-native: the moment you write an openapi.yaml, you've committed to HTTP semantics — paths, verbs, status codes, and schema-validated bodies. That commitment pays off when your API is resource-oriented, consumed by diverse clients, or needs a rich toolchain (Swagger UI, Prism mocking, OpenAPI Generator, Spectral linting).\n\nChoose REST + OpenAPI when contracts are stable and discoverable. The components/schemas section gives you a single source of truth, and securitySchemes natively models OAuth2, OIDC, and API keys — no extra layer needed.\n\nChoose GraphQL when consumers demand flexible querying across deeply nested resources, or when multiple front-ends need different projections of the same data. OpenAPI can't express a query language — its paths are fixed by definition.\n\nChoose gRPC when you need bidirectional streaming, sub-millisecond latency, or tight internal service contracts via Protobuf. Notably, gRPC-gateway can emit an openapi.yaml from your .proto, bridging both worlds for HTTP/JSON consumers without rewriting the service.\n\nThe litmus test: if your API surface maps cleanly to CRUD over nouns with predictable schemas, REST + OpenAPI wins on tooling ROI alone.",
-      "code_snippet": "# REST + OpenAPI: generate type-safe client from contract\nnpx @openapitools/openapi-generator-cli generate \\\n  -i openapi.yaml \\\n  -g typescript-fetch \\\n  -o ./src/generated\n\n# gRPC: generate from proto (no openapi.yaml)\nprotoc --go_out=. --go-grpc_out=. article.proto\n\n# gRPC-gateway bridge: emit openapi.yaml FROM proto\n# lets REST clients consume gRPC service via HTTP/JSON\nprotoc --openapiv2_out=./docs article.proto",
-      "language": null,
-      "clarity": 9,
-      "specificity": 8,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Performance — payload size, compression, connection reuse, multiplexing",
-      "status": "done",
-      "title": "OpenAPI Performance: Compression Headers, Content Negotiation, and $ref Bundle Strategy",
-      "body": "OpenAPI's `responses[code].headers` object is the authoritative place to declare compression behavior — not just for documentation, but because generators like `oapi-codegen` and `@hey-api/openapi-ts` wire declared headers into typed client interceptors. Declare `Content-Encoding` with an enum of `[gzip, br, identity]` and always co-document `Vary: Accept-Encoding` to prevent CDN cache poisoning on compressed responses.\n\nFor payload size, OpenAPI 3.1's `content` map supports multiple media types per operation. Registering both `application/json` and `application/msgpack` pointing to the same `$ref` schema lets negotiation-aware clients opt into binary encoding — typically 20–40% smaller than JSON — without duplicating your schema definition.\n\n`$ref` reuse in `components/schemas` also directly reduces generated client bundle size: tools emit one TypeScript interface or Go struct per component, not one per inline occurrence. Inline schemas in 50-endpoint specs can balloon generated output by 3–5×.\n\nHTTP/2 multiplexing isn't modeled in the OpenAPI spec itself, but document `Link` preload headers in responses — generators can surface these as typed accessors, enabling clients to pipeline dependent fetches without custom glue code.",
-      "code_snippet": "paths:\n  /feed:\n    get:\n      responses:\n        \"200\":\n          headers:\n            Content-Encoding:\n              schema: { type: string, enum: [gzip, br, identity] }\n            Vary:\n              schema: { type: string, example: \"Accept-Encoding, Accept\" }\n          content:\n            application/json:\n              schema: { $ref: \"#/components/schemas/FeedResponse\" }\n            application/msgpack:\n              schema: { $ref: \"#/components/schemas/FeedResponse\" }",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
     }
   ]
 }

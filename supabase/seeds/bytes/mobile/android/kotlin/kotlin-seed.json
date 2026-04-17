@@ -16,42 +16,6 @@
       "overall": 8
     },
     {
-      "topic": "Jetpack Compose vs View System — when to use each, interop",
-      "status": "done",
-      "title": "Kotlin: Jetpack Compose vs View System — UI Rendering Choices",
-      "body": "When building Android apps in Kotlin, you'll often face a choice between Jetpack Compose and the traditional View System. Compose is a declarative UI framework that simplifies UI creation with a functional programming approach. The View System, on the other hand, is a procedural framework that requires manual layout and drawing. Use Compose for complex, data-driven UIs and rapid prototyping. For simple, static layouts or legacy app maintenance, the View System might be more suitable. Interoperability between Compose and the View System is possible through the `androidx.compose.ui.platform.ComposeView` class, allowing you to embed Compose views within View-based layouts.",
-      "code_snippet": null,
-      "language": "kotlin",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
-      "topic": "Navigation — Navigation Component, Compose Navigation, deep links, back stack",
-      "status": "done",
-      "title": "Kotlin — Mastering Navigation with Navigation Component and Compose Navigation",
-      "body": "To create a navigation graph in Kotlin using the Navigation Component, define a navigation resource file (e.g., nav_graph.xml) and inflate it in the onCreate() method of the application class. For Compose Navigation, use the NavGraphBuilder and NavHost to create a navigation graph. To handle deep links, use the NavigationUI and NavigationUI.setupActionBarWithNavController() methods. When managing the back stack, use the NavController and its popBackStack() method to remove the topmost destination.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Kotlin Language — coroutines, flows, extension functions, data classes, sealed classes",
-      "status": "done",
-      "title": "Kotlin Language - Mastering Coroutines with async/await",
-      "body": "Kotlin coroutines simplify asynchronous code with the async/await syntax. Use async to launch a coroutine and await to suspend execution until the result is available. Combine with flows for data streaming. Example: val result = async { computeExpensiveOperation() }.await()",
-      "code_snippet": null,
-      "language": "kotlin",
-      "clarity": 10,
-      "specificity": 10,
-      "relevance": 10,
-      "overall": 9.5
-    },
-    {
       "topic": "Data Persistence — Room, DataStore, SharedPreferences, file storage",
       "status": "done",
       "title": "Kotlin — Choosing the Right Data Storage for Android Apps",
@@ -88,78 +52,6 @@
       "overall": 9
     },
     {
-      "topic": "State Management — ViewModel, StateFlow, remember, rememberSaveable in Compose",
-      "status": "done",
-      "title": "Kotlin for Android - Choosing the Right State Management Tool",
-      "body": "ViewModel is ideal for data that changes due to user input, such as form data. StateFlow is suitable for data that changes asynchronously, like API responses. When using Compose, consider using remember for simple, local state, while rememberSaveable is preferred for preserving state across configuration changes.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Push Notifications — FCM setup, notification channels, foreground vs background",
-      "status": "done",
-      "title": "Kotlin — Configuring FCM Notification Channels",
-      "body": "To set up Firebase Cloud Messaging (FCM) notification channels in a Kotlin Android app, use the FirebaseMessagingService class. Create a channel in the app's manifest.xml file with a unique ID and a display name. In your Kotlin code, retrieve the channel and set its importance level using the NotificationManagerCompat class.",
-      "code_snippet": "",
-      "language": "kotlin",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Networking — Retrofit, OkHttp, Kotlin serialization, error handling",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Coroutines & Flows — structured concurrency, viewModelScope, collectAsState",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Performance — StrictMode, Baseline Profiles, lazy lists in Compose",
-      "status": "done",
-      "title": "Kotlin: Taming Performance with StrictMode, Baseline Profiles, and Lazy Lists in Compose",
-      "body": "When working with Kotlin on Android, performance optimization is crucial. Kotlin's StrictMode helps detect potential memory leaks and performance bottlenecks. Baseline profiles provide a baseline for your app's performance, allowing you to identify improvements. Compose's lazy lists can significantly reduce unnecessary work by deferring computations. To leverage these features, use StrictMode to detect potential issues, baseline profiles to measure performance, and lazy lists to optimize list rendering.",
-      "code_snippet": null,
-      "language": "kotlin",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
-      "topic": "Background Work — WorkManager, Services, foreground services",
-      "status": "done",
-      "title": "Kotlin: Choosing Between WorkManager, Services, and Foreground Services",
-      "body": "When performing background work in Kotlin, you have three primary options: WorkManager, Services, and Foreground Services. WorkManager is a recommended choice for Android 9.0 (API level 28) and higher, as it provides guaranteed execution and scheduling of tasks. Services, on the other hand, are ideal for longer-running operations that require interaction with the UI. Foreground Services are suitable for tasks that need to keep running in the background and provide a notification to the user. To choose the right option, consider the type of work you need to perform and the level of interaction required.",
-      "code_snippet": "",
-      "language": "kotlin",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 10,
-      "overall": 9
-    },
-    {
-      "topic": "Security — Android Keystore, network security config, ProGuard/R8",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "Build System — Gradle, build variants, product flavors, build types",
       "status": "done",
       "title": "Kotlin: Mastering Build Variants with Gradle",
@@ -170,86 +62,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "Material Design — Material3 in Compose, theming, dynamic color",
-      "status": "done",
-      "title": "Kotlin | Dynamic Colors in Material3 Compose",
-      "body": "Material3 Compose introduces a new dynamic color system, allowing for more flexible and adaptive color schemes in your Kotlin Android app. To utilize dynamic colors, create a `colors` resource file in `res/values/color.xml` and define your color palette using the `<color>` element. For example: `<color name=\"primary\">#6200EE</color><color name=\"onPrimary\">#FFFFFF</color><color name=\"background\">#F5F5F5</color><color name=\"onBackground\">#000000</color>`. Then, in your Compose layout, apply the colors using the `MaterialTheme` composable, like this: `MaterialTheme(colors = Colors.fromResource(R.color.primary)) { // your layout }`. To update the colors dynamically, you can use the `Colors` class's `onPrimary` property and apply the new color as needed.",
-      "code_snippet": null,
-      "language": "kotlin",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 10,
-      "overall": 9
-    },
-    {
-      "topic": "Accessibility — TalkBack, content descriptions, accessibility in Compose",
-      "status": "done",
-      "title": "Kotlin Compose: Enabling Accessibility with TalkBack and Content Descriptions",
-      "body": "To make your Kotlin Compose app accessible to users with visual impairments, you need to provide alternative text for UI components through content descriptions. This can be achieved using the `setContentDescription()` function. For example, you can add a content description to a button as follows: `Button(onClick = { /* button click handler */ }) { Text(\"Click me\") }.setContentDescription(\"Click the button\")`. Additionally, Compose provides built-in support for TalkBack, a screen reader for Android. To enable TalkBack, you can use the `MaterialTheme` and `MaterialThemeProvider` APIs. You can also customize the TalkBack experience by using the `AccessibilityManager` API.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Google Play — release tracks, in-app review, Play Feature Delivery",
-      "status": "done",
-      "title": "Kotlin - Optimizing Google Play Release Tracks with Play Feature Delivery",
-      "body": "To leverage Play Feature Delivery in Kotlin, create a `FeatureManager` instance, specifying the feature's unique ID and a `FeatureState` enum value. Use the `deliver` method to deliver the feature to the app, and `undeliver` to undo delivery. For in-app reviews, use the `ReviewManager` class to request reviews. In Kotlin, you can use the `ContextCompat` class to access the app context.",
-      "code_snippet": "",
-      "language": "kotlin",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
-      "topic": "Networking — Retrofit, OkHttp, Kotlin serialization, error handling",
-      "status": "done",
-      "title": "Kotlin Networking with Retrofit, OkHttp, and Serialization",
-      "body": "When using Retrofit with Kotlin, it's essential to handle errors and serialization correctly. You can achieve this by creating a custom Retrofit converter using Kotlin's built-in serialization. Create a converter factory that implements `Converter.Factory` and override the `createConverter` method to use Kotlin's serialization. For error handling, Retrofit provides a `Response` object that contains an error body or a successful response. You can use OkHttp's `Response` class to handle errors and exceptions.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Coroutines & Flows — structured concurrency, viewModelScope, collectAsState",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Security — Android Keystore, network security config, ProGuard/R8",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Coroutines & Flows — structured concurrency, viewModelScope, collectAsState",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Security — Android Keystore, network security config, ProGuard/R8",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

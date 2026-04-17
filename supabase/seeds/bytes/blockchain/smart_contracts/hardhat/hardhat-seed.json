@@ -28,42 +28,6 @@
       "overall": 8
     },
     {
-      "topic": "Storage Layout — slots, packing, SLOAD/SSTORE cost, avoiding storage collisions",
-      "status": "done",
-      "title": "Hardhat Smart Contracts: Optimizing Storage Layout with Slots and Packing",
-      "body": "When working with Solidity contracts in Hardhat, storage layout is crucial for performance. You can use slots to store multiple variables in a single storage location, reducing SLOAD costs. However, packing variables can lead to storage collisions if not done correctly. Use `keccak256` to generate unique storage keys and Hardhat's `web3.utils.soliditySha3` function to pack variables safely. To avoid collisions, use separate slots for each variable or use a library like `openzeppelin-solidity` that provides a robust storage solution.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Gas Optimization — storage vs memory vs calldata, packing structs, avoiding loops",
-      "status": "done",
-      "title": "Hardhat Gas Optimization — Storage vs Memory vs Calldata",
-      "body": "When writing smart contracts in Solidity for Hardhat, gas efficiency is crucial. Storage, memory, and calldata are three primary storage options, each with its own implications on gas consumption. Storage is suitable for large, infrequently updated data, while memory is best for temporary, frequently accessed data. Calldata is an ideal choice for function arguments and return values. To save gas, pack related variables into a single struct and avoid unnecessary loop iterations. In Hardhat, use the `console.log` method to debug gas usage.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Hardhat — tasks, plugins, testing with ethers.js, local node, forking",
-      "status": "done",
-      "title": "Hardhat — Tasking with Ethers.js and Forking a Local Node",
-      "body": "To integrate Ethers.js with Hardhat for testing, create a new task using the `task` function. This function takes a name and a callback function that runs on task execution. To fork a local node, use the `ethers.provider` API with the `hardhat` fork method.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Foundry — Forge tests in Solidity, fuzz testing, cast for interactions, anvil for local node",
       "status": "done",
       "title": "Hardhat — Leverage Foundry for Efficient Solidity Testing",
@@ -74,26 +38,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "Testing Smart Contracts — unit tests, fork tests, invariant testing, fuzzing",
-      "status": "done",
-      "title": "Hardhat — Mastering Smart Contract Tests with Unit, Fork, Invariant, and Fuzzing",
-      "body": "Hardhat's testing capabilities extend beyond unit tests. Fork tests allow you to execute a single block or multiple blocks within a test environment, simulating real-world scenarios. Invariant testing is achieved with `@nomiclabs/hardhat-ethers`'s `expect.revert`, ensuring your contract behaves as expected. For fuzz testing, use `@nomiclabs/hardhat-ethers`'s `ethers.utils.fuzz` to generate random input values.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Security Patterns — checks-effects-interactions, reentrancy guard, pull over push",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

@@ -40,18 +40,6 @@
       "overall": 8.5
     },
     {
-      "topic": "Gas Optimization — storage vs memory vs calldata, packing structs, avoiding loops",
-      "status": "done",
-      "title": "Foundry Smart Contracts: Gas Optimization with Storage, Memory, and Calldata",
-      "body": "When writing smart contracts with Foundry, gas efficiency is crucial. Storage, memory, and calldata are three primary ways to store data, each with its own gas implications. Storage is the most expensive, with a gas cost of 200,000 per storage slot. Memory, on the other hand, is relatively inexpensive, with a gas cost of 3 per byte. Calldata is the cheapest option, with a gas cost of 1 per byte, but it's read-only. Packing structs and avoiding loops can help reduce gas consumption. For example, instead of `uint256 x = y;`, use `uint256 x; x = y;`. This reduces gas by 3,000. To avoid loops, use array indexing instead of conditional statements. For example, `if (i == 0) { ... }` becomes `uint256 i; ... i = 0;`.",
-      "code_snippet": null,
-      "language": "solidity",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
       "topic": "Hardhat — tasks, plugins, testing with ethers.js, local node, forking",
       "status": "done",
       "title": "Foundry: Efficient Testing with Hardhat Tasks and Plugins",
@@ -62,18 +50,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Testing Smart Contracts — unit tests, fork tests, invariant testing, fuzzing",
-      "status": "done",
-      "title": "Foundry Smart Contract Testing: Unit Tests, Fork Tests, and Invariant Validation",
-      "body": "Foundry provides a robust testing framework for smart contracts, including unit tests, fork tests, and invariant validation. Unit tests are written using the `vm` module and can be executed using the `run script` command. Fork tests, on the other hand, utilize the `fork` module to create a temporary copy of the blockchain, allowing for isolated testing of smart contract interactions. Invariant validation is performed using the `InvariantChecker` class, which ensures that contract state remains consistent. For example, to write a unit test for a simple contract, you can use the following code:",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     },
     {
       "topic": "Foundry — Forge tests in Solidity, fuzz testing, cast for interactions, anvil for local node",
@@ -88,18 +64,6 @@
       "overall": 9
     },
     {
-      "topic": "Security Patterns — checks-effects-interactions, reentrancy guard, pull over push",
-      "status": "done",
-      "title": "Foundry Smart Contracts — Mastering Checks-Effects-Interactions and Reentrancy Guard",
-      "body": "When working with Foundry smart contracts, it's essential to employ checks-effects-interactions (CEI) patterns to ensure predictable and reproducible behavior. The CEI pattern involves separating a contract's logic into three distinct sections: checks, effects, and interactions. Checks verify the conditions for a function execution, effects perform the necessary actions, and interactions handle external calls. To prevent reentrancy attacks, use the `reentrancy-guard` modifier to limit the number of times a function can be called recursively.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Common Vulnerabilities — reentrancy, integer overflow, access control, oracle manipulation",
       "status": "done",
       "title": "Foundry Smart Contracts: Mitigating Common Vulnerabilities",
@@ -110,22 +74,6 @@
       "specificity": 10,
       "relevance": 10,
       "overall": 9.5
-    },
-    {
-      "topic": "Upgradeable Contracts — transparent proxy, UUPS, diamond pattern, storage collision risks",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Events & Logs — why events, indexing, off-chain consumption, log-based state reconstruction",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

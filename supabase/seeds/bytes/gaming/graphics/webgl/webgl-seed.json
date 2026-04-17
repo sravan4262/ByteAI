@@ -124,18 +124,6 @@
       "overall": 8
     },
     {
-      "topic": "Shaders — vertex shaders, fragment shaders, compute shaders, GLSL/HLSL/MSL/WGSL",
-      "status": "done",
-      "title": "WebGL Shaders: Choosing the Right Type for Performance",
-      "body": "When working with WebGL, shaders are the backbone of rendering 3D graphics. There are three primary types: vertex shaders, fragment shaders, and compute shaders. Vertex shaders operate on vertices, transforming them into screen space. Fragment shaders compute the final color of each pixel. Compute shaders, introduced in WebGL 2, allow for parallel processing on the GPU. For performance-critical applications, choose the type that minimizes memory access and computation overhead. For example, using a vertex shader to compute lighting effects can reduce the workload on fragment shaders.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Metal — Apple's API, command encoders, resource heaps, iOS/macOS/visionOS",
       "status": "done",
       "title": "Metal Command Encoders in WebGL — Optimizing iOS/macOS/visionOS Rendering",
@@ -148,18 +136,6 @@
       "overall": 8
     },
     {
-      "topic": "Compute Shaders — GPGPU, parallel computation, particle systems, physics on GPU",
-      "status": "done",
-      "title": "WebGL Compute Shaders — Harnessing GPGPU Power",
-      "body": "Compute shaders in WebGL allow you to offload computations from the CPU to the GPU, significantly improving performance. They're particularly useful for tasks like particle systems and physics simulations. To create a compute shader, you must specify the `computeShader` property in the `Program` class and attach a `ComputeShader` object to it. The compute shader is then executed using the `dispatchCompute` method on the `WebGL2RenderingContext`.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "DirectX — D3D12, DXIL bytecode, Windows-native, Xbox development",
       "status": "done",
       "title": "WebGL: DirectX D3D12 — A Windows-native Rendering Pipeline",
@@ -170,54 +146,6 @@
       "specificity": 8,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "Rendering Techniques — forward vs deferred rendering, PBR, shadow mapping",
-      "status": "done",
-      "title": "WebGL - Forward vs Deferred Rendering: When to Use PBR and Shadow Mapping",
-      "body": "Forward rendering is ideal for simple scenes with few lights, where each light's effect is computed in a single pass. In WebGL, use `gl.drawArrays()` or `gl.drawElements()` to render objects. Deferred rendering, on the other hand, is better suited for complex scenes with many lights. It involves two passes: one for gathering depth and color information, and another for applying light effects. For PBR (Physically-Based Rendering) and shadow mapping, use WebGL2 features like `gl.getFragData()` and `gl.getFramebufferParameter()`.",
-      "code_snippet": null,
-      "language": "glsl",
-      "clarity": 9,
-      "specificity": 9,
-      "relevance": 10,
-      "overall": 8
-    },
-    {
-      "topic": "Transformations — model/view/projection matrices, coordinate spaces, quaternions",
-      "status": "done",
-      "title": "WebGL: Mastering Model/View/Projection Matrices",
-      "body": "In WebGL, transformations are represented by a series of 4x4 matrices. The model matrix stores object positions and orientations, while the view matrix represents the camera's position and orientation. The projection matrix, on the other hand, handles perspective and orthographic projections. Understanding these matrices is crucial for proper transformation and rendering. The GL_MATRIX_MODE WebGL property determines which matrix is used for transformations.",
-      "code_snippet": null,
-      "language": "javascript",
-      "clarity": 8,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
-      "topic": "Anti-aliasing — MSAA, TAA, FXAA, trade-offs between quality and performance",
-      "status": "done",
-      "title": "WebGL: Trading Off Quality and Performance with AA Techniques",
-      "body": "WebGL supports multiple anti-aliasing (AA) techniques, each with its own trade-offs. Multisample Anti-Aliasing (MSAA) reduces jagged edges by sampling multiple points within a pixel. However, it can increase memory bandwidth usage and GPU load. Temporal Anti-Aliasing (TAA) addresses motion blur by interpolating samples between frames, but may introduce artifacts like ghosting. Fast Approximate Anti-Aliasing (FXAA) is a more efficient technique that applies a post-processing filter to soften edges, but may not be suitable for high-contrast scenes. When choosing an AA technique, consider the game's performance requirements and the desired visual quality.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Cross-platform — SPIR-V, shader transpilation, abstraction libraries (wgpu, bgfx)",
-      "status": "done",
-      "title": "WebGL: Bridging SPIR-V with Cross-Platform Graphics Abstraction",
-      "body": "When targeting multiple platforms with WebGL, SPIR-V shader modules can be used to achieve cross-compilation. However, this requires manual shader transpilation, a time-consuming and error-prone process. Abstraction libraries like wgpu and bgfx simplify this process by providing a unified API for graphics programming. wgpu, for instance, allows developers to write shaders in GLSL and then converts them to SPIR-V for cross-platform deployment. Similarly, bgfx provides a shader transpilation feature that can automatically translate GLSL shaders to SPIR-V. By leveraging these abstraction libraries, developers can streamline their graphics programming workflow and focus on writing platform-agnostic code.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     }
   ]
 }

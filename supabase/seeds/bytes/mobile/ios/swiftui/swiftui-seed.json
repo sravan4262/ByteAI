@@ -4,18 +4,6 @@
   "domain": "mobile",
   "bytes": [
     {
-      "topic": "SwiftUI vs UIKit — when to use each, interop, migration strategy",
-      "status": "done",
-      "title": "SwiftUI vs UIKit — Interop and Migration Strategy for iOS Developers",
-      "body": "When to use SwiftUI: Use SwiftUI for new iOS projects that require modern UI components and declarative views. SwiftUI's built-in support for animations, gestures, and layout makes it ideal for creating dynamic and engaging user interfaces. When to use UIKit: Use UIKit for legacy iOS projects that require tight control over UI components or when working with existing UIKit-based codebases. Interop: Use UIViewRepresentable and UIViewControllerRepresentable to integrate UIKit views into SwiftUI apps. Migration strategy: Start by isolating UIKit code in separate modules and then gradually replace UIKit views with SwiftUI equivalents.",
-      "code_snippet": null,
-      "language": "swift",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 10,
-      "overall": 9.5
-    },
-    {
       "topic": "Swift Language — optionals, value types vs reference types, protocols, generics",
       "status": "done",
       "title": "SwiftUI - Mastering Optional Binding with .if",
@@ -40,42 +28,6 @@
       "overall": 8.5
     },
     {
-      "topic": "Memory Management — ARC, retain cycles, weak vs unowned references",
-      "status": "done",
-      "title": "SwiftUI — Avoiding Retain Cycles with @StateObject and @ObservedObject",
-      "body": "In SwiftUI, views often depend on other views, which can lead to retain cycles. A retain cycle occurs when two objects hold strong references to each other, preventing them from being deallocated. To avoid retain cycles, use @StateObject and @ObservedObject instead of @State. @StateObject and @ObservedObject create weak references, allowing views to observe and react to changes without holding strong references.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Navigation — NavigationStack, NavigationSplitView, deep linking, universal links",
-      "status": "done",
-      "title": "SwiftUI — Mastering NavigationStack and NavigationSplitView",
-      "body": "NavigationStack and NavigationSplitView are two powerful navigation tools in SwiftUI. NavigationStack is ideal for single-column navigation, while NavigationSplitView provides a split-screen interface. To enable deep linking, use the @Environment property wrapper to access the UIApplication.shared.openURL() function. Universal links can be achieved by adding the 'applinks' scheme to your app's Info.plist file and handling the openURL() function in your AppDelegate. To integrate, use the 'canOpenURL' function to check if the URL scheme is supported.",
-      "code_snippet": null,
-      "language": "swift",
-      "clarity": 8,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Performance — Instruments profiling, lazy loading, image caching",
-      "status": "done",
-      "title": "SwiftUI Performance — Mastering Instruments Profiling and Lazy Loading",
-      "body": "SwiftUI's view system provides a high-level abstraction for building iOS apps. However, complex views can lead to performance issues. Instruments profiling helps identify bottlenecks. Use `View.onAppear()` to delay computationally expensive operations until the view appears on screen. For lazy loading, employ `LazyVStack` or `LazyHStack` in conjunction with `if` conditions or `@State` variables to conditionally render content.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Testing — XCTest, XCUITest, test plans, mocking with protocols",
       "status": "done",
       "title": "SwiftUI: Efficient Testing with XCTest and XCUITest",
@@ -88,74 +40,6 @@
       "overall": 8.5
     },
     {
-      "topic": "Data Persistence — Core Data, SwiftData, UserDefaults, Keychain, file system",
-      "status": "done",
-      "title": "SwiftUI - Choosing the Right Data Persistence for Your iOS App",
-      "body": "When working with SwiftUI, developers often struggle with data persistence. A popular choice is Core Data, which provides a managed object context for storing and retrieving data. However, for smaller apps or simple data storage needs, UserDefaults and Keychain offer a more lightweight solution. For larger datasets or more complex storage needs, consider using a file system-based approach with SwiftUI's FileDocument protocol. To integrate Core Data, add the Core Data framework to your project and create a managed object model.",
-      "code_snippet": null,
-      "language": "swift",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
-      "topic": "Push Notifications — APNs setup, notification handling, rich notifications",
-      "status": "done",
-      "title": "SwiftUI - Setting Up APNs and Handling Push Notifications",
-      "body": "To set up Apple Push Notification Service (APNs) with SwiftUI, create an Xcode project and add the APNs capability to the target. In your SwiftUI app, call `UNUserNotificationCenterDelegate` and override `userNotificationCenter(_:willPresent:withCompletionHandler:)` to handle incoming notifications. For rich notifications, use `UNMutableNotificationContent` and add `UNNotificationAttachment` to include images or media. Use a third-party library like `PushKit` to handle push notifications on iOS 12 and earlier.",
-      "code_snippet": null,
-      "language": "swift",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
-      "topic": "Networking — URLSession, async/await, Codable, error handling",
-      "status": "done",
-      "title": "SwiftUI — Simplifying URLSession with async/await and Codable",
-      "body": "In SwiftUI, fetching data from a URL can be as simple as using a `@State` variable to hold the result. This approach leverages SwiftUI's built-in support for async/await and Codable. When making a request, use `URLSession.shared.dataTask(with: completionHandler:)` and wrap the response data in a `Decodable` struct. The `@State` variable will automatically update when the data is received. For error handling, use `try?` to attempt to decode the response data, and provide a default value for the struct to handle cases where the data is invalid.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Concurrency — Swift async/await, actors, MainActor, structured concurrency",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Xcode — build settings, schemes, targets, debugging tools, Instruments",
-      "status": "done",
-      "title": "SwiftUI — Mastering Xcode Build Settings for SwiftUI Apps",
-      "body": "When building SwiftUI apps, Xcode build settings can significantly impact your app's performance and reliability. To optimize your app, set the \"Optimization Level\" to \"Fastest, Smallest\" under \"Build Settings\" in the project navigator. Additionally, ensure that the \"Enable Bitcode\" setting is disabled, as it can increase app size. You can also customize the build configuration by creating separate schemes for debugging and releasing.",
-      "code_snippet": null,
-      "language": "swift",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
-      "topic": "Security — Keychain for secrets, certificate pinning, App Transport Security",
-      "status": "done",
-      "title": "SwiftUI Secure: Keychain, Certificate Pinning, and App Transport Security",
-      "body": "When handling sensitive data in SwiftUI apps, use the Keychain to store and retrieve secrets. For HTTPS connections, enable App Transport Security (ATS) with `allowsArbitraryLoads` set to `false`. To prevent man-in-the-middle attacks, implement certificate pinning with a `URLSession` configuration. For example, create a `URLSession` configuration with a pinned certificate and set it to a `NetworkSession` in your app's `@main` view model.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Dependency Management — Swift Package Manager vs CocoaPods vs Carthage",
       "status": "done",
       "title": "SwiftUI Dependency Management: Swift Package Manager vs CocoaPods vs Carthage",
@@ -166,38 +50,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "App Architecture — MVVM, TCA (The Composable Architecture), clean architecture",
-      "status": "done",
-      "title": "SwiftUI App Architecture: When to Choose MVVM, TCA or Clean Architecture",
-      "body": "When building SwiftUI apps, you often encounter the conundrum of choosing the right architecture. MVVM (Model-View-ViewModel), TCA (The Composable Architecture), and Clean Architecture are popular contenders. SwiftUI's declarative nature makes it an ideal fit for MVVM and TCA. MVVM is suitable for small to medium-sized apps with a straightforward data flow. In contrast, TCA excels in large-scale apps with complex data dependencies. Clean Architecture, on the other hand, prioritizes separation of concerns and a clear, layered structure. When deciding between these architectures, consider the app's size, data complexity, and scalability needs.",
-      "code_snippet": null,
-      "language": "swift",
-      "clarity": 9,
-      "specificity": 9,
-      "relevance": 10,
-      "overall": 8
-    },
-    {
-      "topic": "Accessibility — VoiceOver, Dynamic Type, accessibility modifiers in SwiftUI",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "App Store — TestFlight, submission process, App Review guidelines",
-      "status": "done",
-      "title": "SwiftUI — Preparing Apps for App Store Submission",
-      "body": "When publishing SwiftUI apps on the App Store, ensure they comply with App Review guidelines. For iOS 14 and later, use `SceneConfiguration` to configure your app's scenes. This involves creating a `SceneDelegate` that implements `UISceneSession`'s `delegate` protocol. For example, to configure the home screen scene:",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     },
     {
       "topic": "Widgets & Extensions — WidgetKit, app extensions, share extension",
@@ -222,22 +74,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "Accessibility — VoiceOver, Dynamic Type, accessibility modifiers in SwiftUI",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Accessibility — VoiceOver, Dynamic Type, accessibility modifiers in SwiftUI",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

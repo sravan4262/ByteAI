@@ -4,150 +4,6 @@
   "domain": "backend",
   "bytes": [
     {
-      "topic": "Memory Management — GC vs ownership model, stack vs heap, memory safety",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Package Management — lock files, versioning, dependency auditing",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Type Safety — static vs dynamic typing, type inference, generics across languages",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Error Handling — exceptions vs Result types, error propagation patterns per language",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Concurrency Model — async/await, goroutines, threads, actors — how each language handles it",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Performance — benchmarking, profiling, runtime characteristics per language",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Standard Library — what's built in vs what needs a third-party library",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Security — memory safety, injection prevention, dependency vulnerability scanning",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Testing — unit testing philosophy and test runner per language",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Code Quality — linting, formatting, language-specific idioms",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Dev Tooling — REPL, debugger, language server protocol support",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Language-specific — Node.js event loop, Python GIL, Go channels, Rust ownership, Elixir OTP",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Deployment — binary size, containerization, runtime dependencies",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Scalability — horizontal scaling characteristics, thread model implications",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Ecosystem Maturity — library quality, community size, long-term viability",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "When to Choose — use cases where each language excels vs where it struggles",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "Package Management — lock files, versioning, dependency auditing",
       "status": "done",
       "title": "Scala sbt — Lock Files, Version Pinning, and Dependency Auditing",
@@ -172,18 +28,6 @@
       "overall": 9
     },
     {
-      "topic": "Type Safety — static vs dynamic typing, type inference, generics across languages",
-      "status": "done",
-      "title": "Scala Type Safety — Inference, Variance, and Opaque Types",
-      "body": "Scala's type system is statically checked at compile time, but type inference — powered by its Hindley-Milner-influenced engine — means you rarely write explicit types. `val x = 42` infers `Int`; `val m = Map(\"a\" -> 1)` infers `Map[String, Int]`.\n\nWhere Scala diverges from Java is generics with variance annotations. Declaring `class Box[+A]` makes `Box` covariant — a `Box[Dog]` is a subtype of `Box[Animal]`. Contravariance (`-A`) flips that: `Function1[-A, +B]` is contravariant in its input, so an `Animal => String` function is safely assignable to a `Dog => String` slot. This models real subtyping relationships that Java papers over with unbounded wildcards.\n\nType bounds tighten safety further: `[A <: Serializable]` constrains callers at compile time, not runtime. Combined with Scala 3 opaque types (`opaque type UserId = Long`), you get zero-overhead newtype wrappers — `UserId` and `Long` are identical at runtime but incompatible at compile time, eliminating entire classes of primitive-obsession bugs without any boxing cost.",
-      "code_snippet": "opaque type UserId = Long\nobject UserId:\n  def apply(v: Long): UserId = v\n\nsealed trait Animal\ncase class Dog(name: String) extends Animal\n\n// Covariance: List[+A] means List[Dog] <: List[Animal]\ndef describe[A <: Animal](xs: List[A]): List[String] = xs.map(_.toString)\n\n// Contravariance: Function1[-A, +B] — wider input is safe\nval showAnimal: Animal => String = _.toString\nval showDog: Dog => String = showAnimal  // compiles — contravariant in A\n\nval id: UserId = UserId(42L)\n// val raw: Long = id  // compile error — opaque boundary holds",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
       "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
       "status": "done",
       "title": "Scala on the JVM — JIT Warmup, Cold Starts, and What GraalVM Native Changes",
@@ -194,46 +38,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Error Handling — exceptions vs Result types, error propagation patterns per language",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Concurrency Model — async/await, goroutines, threads, actors — how each language handles it",
-      "status": "done",
-      "title": "Scala's Concurrency Model: Futures, Fibers, and Actors",
-      "body": "Scala offers three distinct concurrency models, each solving different problems. The standard library's `Future[T]` composes via `map`/`flatMap` over a thread pool driven by an implicit `ExecutionContext`, but lacks cancellation and splits error handling awkwardly between `Try` and thrown exceptions.\n\nZIO and Cats Effect represent the modern functional approach: lightweight fibers scheduled over a fixed-size thread pool. A ZIO fiber costs ~200 bytes vs ~1 MB for a JVM thread, supports structured concurrency via `ZIO.fork`/`fiber.join`, and encodes typed errors directly in `ZIO[R, E, A]`. Cancellation is safe and compositional — no `Thread.interrupt` footguns.\n\nApache Pekko (the community fork of Akka post-Lightbend licensing) implements the actor model: isolated mutable state inside actors communicates purely via message-passing. This eliminates shared-memory data races entirely and scales naturally across distributed nodes using Pekko Cluster.\n\nJava 21 virtual threads (Project Loom) work in Scala but give up ZIO's typed error channel. Scala 3 adds no new concurrency primitives itself — the ecosystem split between effects (ZIO/Cats Effect) and actors (Pekko) is intentional and stable.",
-      "code_snippet": "import zio._\n\nobject ConcurrencyDemo extends ZIOAppDefault:\n  def run =\n    for\n      f1 <- ZIO.attempt(fetchData(\"users\")).fork\n      f2 <- ZIO.attempt(fetchData(\"posts\")).fork\n      users <- f1.join\n      posts  <- f2.join\n      _      <- Console.printLine(s\"Got: $users, $posts\")\n    yield ()\n\n  def fetchData(endpoint: String): String = s\"data-from-$endpoint\"",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
-      "topic": "Standard Library — what's built in vs what needs a third-party library",
-      "status": "done",
-      "title": "Scala Standard Library — What's Built In vs What You'll Always Add",
-      "body": "Scala's stdlib covers pure computation and data structures well — but deliberately stops before I/O, serialization, and effects.\n\nBuilt in: `scala.collection.immutable` provides `List`, `Vector`, `Map`, and `Set` with full functional combinators (`map`, `flatMap`, `foldLeft`). `Option`, `Try`, and `Either` handle absence and errors without exceptions. `scala.concurrent.Future` gives basic async execution. `scala.io.Source` handles file and stream reading.\n\nAlways external: There is no built-in JSON parser. Every project picks one — `circe` (codec derivation via `io.circe.generic.auto._`), `upickle` (zero-dependency, fast), or `play-json`. HTTP is absent too; `sttp` and `http4s` are the defaults. For production async, `cats-effect` or `ZIO` replace `Future` with referential transparency and structured cancellation. Configuration parsing needs `pureconfig` or `ciris`. Testing requires `ScalaTest`, `MUnit`, or `Specs2` — nothing is bundled.\n\nThe dividing line is intentional: stdlib owns immutable data and control flow; the Typelevel and ZIO ecosystems own effects, I/O, and serialization. Knowing this boundary prevents the classic mistake of stretching `Future` into production workloads where `IO` belongs.",
-      "code_snippet": "import scala.util.Try\nimport scala.io.Source\nimport scala.concurrent.Future\nimport scala.concurrent.ExecutionContext.Implicits.global\n\n// stdlib: safe file reading and error handling\nval lines: Try[List[String]] =\n  Try(Source.fromFile(\"data.txt\").getLines().toList)\n\n// stdlib Future works, but has no cancellation or retry\nval fetch: Future[String] = Future { \"computed\" }\n\n// JSON requires an external lib — this won't compile without circe:\n// import io.circe.parser.decode\n// val result = decode[MyModel](jsonString)",
-      "language": null,
-      "clarity": 9,
-      "specificity": 9,
-      "relevance": 10,
-      "overall": 9
-    },
-    {
-      "topic": "Memory Management — GC vs ownership model, stack vs heap, memory safety",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     },
     {
       "topic": "Code Quality — linting, formatting, language-specific idioms",
@@ -260,36 +64,12 @@
       "overall": 9
     },
     {
-      "topic": "Security — memory safety, injection prevention, dependency vulnerability scanning",
-      "status": "done",
-      "title": "Scala Security — Injection-Safe Queries with Doobie, Immutability, and sbt Vulnerability Scanning",
-      "body": "Scala's immutable-by-default collections eliminate entire categories of memory bugs — concurrent mutation, unintended aliasing, and null reference panics. Prefer `Option[A]` over null and lean on `val` + case classes to prevent shared mutable state entirely.\n\nFor injection prevention, the rule is strict: never pass user input through `Fragment.const` or string concatenation. Doobie's `sql\"\"` interpolator lifts every interpolated value into a JDBC prepared statement parameter, making injection structurally impossible. For dynamically composed queries, use `fr\"\"` fragments — they carry identical parameterization guarantees. Reserve `Fragment.const` exclusively for SQL identifiers (table/column names) that you fully control at compile time.\n\nFor dependency vulnerability scanning, add the sbt-dependency-check plugin to `project/plugins.sbt`. It wraps OWASP DependencyCheck and cross-references your classpath against the NVD. Run `sbt dependencyCheck` in CI with `dependencyCheckFailBuildOnCVSS := 7` to gate merges on severity. For ZIO or Cats Effect projects, audit transitive dependencies explicitly — deep effect stacks pull in many indirect libraries that Dependabot or Snyk's sbt integration can surface automatically.",
-      "code_snippet": "import doobie._\nimport doobie.implicits._\n\n// UNSAFE: Fragment.const with user input — SQL injection risk\ndef unsafeUsers(role: String): Query0[String] =\n  Fragment.const(s\"SELECT name FROM users WHERE role = '$role'\").query[String]\n\n// SAFE: sql\"\" interpolator — values become JDBC prepared parameters\ndef safeUsers(role: String): Query0[String] =\n  sql\"SELECT name FROM users WHERE role = $role\".query[String]\n\n// Dynamic predicates stay safe via fr\"\" composition\ndef usersWithFilter(role: Option[String]): Fragment =\n  sql\"SELECT name FROM users\" ++\n    role.map(r => fr\"WHERE role = $r\").getOrElse(Fragment.empty)",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
       "topic": "Scalability — horizontal scaling characteristics, thread model implications",
       "status": "done",
       "title": "Scala Horizontal Scaling — Actor Systems and Thread Model Implications",
       "body": "Scala's horizontal scaling story is inseparable from its concurrency model. Akka's actor system uses a fixed fork-join thread pool (`akka.actor.default-dispatcher`) shared across all actors — by default sized to available CPU cores. This means a single blocking call inside an actor (e.g., a synchronous JDBC query) starves the dispatcher, causing cascading mailbox backlogs across the entire node.\n\nFor horizontal scaling, this matters because your throughput ceiling is not network or CPU — it's dispatcher saturation. The fix is isolation: route blocking operations to a dedicated dispatcher via `context.system.dispatchers.lookup(\"blocking-io-dispatcher\")`, configured with a thread-pool-executor rather than fork-join.\n\nWith Akka Cluster, actors gain location transparency via `ActorSelection` and `ClusterSharding`. Sharding distributes entity actors across nodes deterministically by key hash, enabling stateful horizontal scaling without a shared-state bottleneck. Combined with `BackpressureStrategy` in Akka Streams, you get end-to-end flow control across a cluster — critical when scaling out consumer nodes faster than producers.",
       "code_snippet": "// application.conf — isolate blocking I/O from actor dispatcher\nblocking-io-dispatcher {\n  type = Dispatcher\n  executor = \"thread-pool-executor\"\n  thread-pool-executor {\n    fixed-pool-size = 32\n  }\n  throughput = 1\n}\n\n// Inside an actor — offload blocking work\nval blockingDispatcher = context.system.dispatchers.lookup(\"blocking-io-dispatcher\")\nFuture {\n  // JDBC / blocking HTTP call here\n  database.query(\"SELECT ...\")\n}(blockingDispatcher).pipeTo(self)",
       "language": "bash",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Ecosystem Maturity — library quality, community size, long-term viability",
-      "status": "done",
-      "title": "Scala's Ecosystem Maturity — Typelevel, ZIO, and the Pekko Fork",
-      "body": "Scala's ecosystem is split between two production-grade functional effect systems: Typelevel (Cats Effect 3, FS2, Http4s, Doobie) and ZIO (ZIO 2, ZIO HTTP, ZIO Quill). Both are Scala 3-native, actively maintained, and backed by large community investments. The defining ecosystem event of recent years was Lightbend moving Akka to a Business Source License — Apache Pekko emerged as the drop-in open-source fork, preserving the actor model without the licensing risk. Binary compatibility remains a real friction point: Scala publishes separate artifacts per major version (_2.13, _3), so greenfield projects should default to Scala 3 to avoid dependency version hell. The Scala Center (EPFL-backed) guarantees language longevity and drives tooling like scala-cli and Metals. Community size is smaller than Kotlin or Go, but substantially deeper — the average Scala contributor understands type systems and effect theory at a level rare in other ecosystems. For new services, commit fully to either the Typelevel or ZIO stack; cross-stack interop is possible but adds cognitive overhead that compounds at scale.",
-      "code_snippet": "// build.sbt — pick a stack and go all-in\nscalaVersion := \"3.4.2\"\n\n// Typelevel stack\nlibraryDependencies ++= Seq(\n  \"org.typelevel\" %% \"cats-effect\"         % \"3.5.4\",\n  \"co.fs2\"        %% \"fs2-core\"            % \"3.10.2\",\n  \"org.http4s\"    %% \"http4s-ember-server\" % \"0.23.27\",\n  \"org.tpolecat\"  %% \"doobie-core\"         % \"1.0.0-RC5\"\n)\n\n// ZIO stack (alternative — not both)\nlibraryDependencies ++= Seq(\n  \"dev.zio\" %% \"zio\"      % \"2.1.1\",\n  \"dev.zio\" %% \"zio-http\" % \"3.0.0-RC8\"\n)",
-      "language": null,
       "clarity": 8,
       "specificity": 9,
       "relevance": 9,
@@ -308,88 +88,12 @@
       "overall": 9
     },
     {
-      "topic": "Testing — unit testing philosophy and test runner per language",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "When to Choose — use cases where each language excels vs where it struggles",
       "status": "done",
       "title": "Scala — When Its Type System and Concurrency Model Work For You (and When They Fight Back)",
       "body": "Scala shines when your domain maps naturally to algebraic data types and functional transformations. Sealed trait hierarchies with exhaustive pattern matching eliminate entire bug classes at compile time — the compiler rejects unhandled cases. For distributed data pipelines, Scala owns the space: Spark, Flink, and Kafka Streams all have first-class Scala APIs with idiomatic functional combinators.\n\nScala's implicit resolution and typeclass pattern enable zero-cost abstractions impossible in Java — libraries like Cats and ZIO express effect systems, resource safety, and concurrency without runtime overhead. For high-throughput async services, ZIO's fiber-based runtime outperforms thread-per-request models at scale.\n\nWhere Scala struggles: cold JVM startup makes it a poor fit for short-lived serverless functions (GraalVM native helps, but compile times worsen). The implicit/given machinery creates steep onboarding cliffs — new team members hit cryptic diverging implicit expansion errors. Build times with sbt on large projects are genuinely painful. For simple CRUD APIs where Java or Go suffice, Scala's expressiveness buys nothing and costs compile-time budget.",
       "code_snippet": "import zio.*\nimport zio.http.*\n\n// ZIO fibers handle 100k+ concurrent connections on a small thread pool\nval app: HttpApp[Any] =\n  Routes(\n    Method.GET / \"items\" / int(\"id\") -> handler { (id: Int, _: Request) =>\n      ZIO\n        .attemptBlocking(db.fetchItem(id))   // blocking op isolated to separate pool\n        .map(item => Response.json(item.toJson))\n        .catchAll(e => ZIO.succeed(Response.internalServerError(e.getMessage)))\n    }\n  ).toHttpApp\n\nobject Main extends ZIOAppDefault:\n  def run = Server.serve(app).provide(Server.default)",
       "language": "kotlin",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Language-specific — Node.js event loop, Python GIL, Go channels, Rust ownership, Elixir OTP",
-      "status": "done",
-      "title": "Scala Akka Typed — Behavior[T] Is Your Concurrency Primitive",
-      "body": "Akka Typed replaces Classic's untyped `receive: PartialFunction[Any, Unit]` with `Behavior[T]` — a pure function from `(ActorContext[T], T)` to the next `Behavior[T]`. This makes invalid messages a compile-time error, not a runtime `UnhandledMessage` log.\n\nEach actor processes one message at a time from its mailbox — no shared mutable state, no locks. State transitions happen by returning a new `Behavior` (e.g., `count(n + 1)`), making actors functionally immutable even while modeling stateful systems. The type parameter `T` enforces protocol contracts at the call site: `ref ! WrongMessage` simply won't compile.\n\nWhere Go uses channels for CSP-style concurrency and Elixir uses OTP GenServers backed by the BEAM scheduler, Scala uses `Behavior[T]` hierarchies supervised via `Behaviors.supervise(...).onFailure[SomeException](SupervisorStrategy.restart)` — declarative, composable, no subclassing required.\n\n`ActorContext` exposes `spawn`, `watch`, and `scheduleOnce` without breaking purity. For purely functional stacks, ZIO's `Hub`/`Queue` or Cats Effect's `Ref` + `Channel` deliver the same isolation without the Akka runtime, but Akka's location transparency and clustering remain unmatched for distributed state.",
-      "code_snippet": "import akka.actor.typed.{ActorSystem, Behavior, ActorRef}\nimport akka.actor.typed.scaladsl.Behaviors\n\nobject Counter:\n  sealed trait Cmd\n  case object Inc                        extends Cmd\n  case class Get(replyTo: ActorRef[Int]) extends Cmd\n\n  def apply(): Behavior[Cmd] = active(0)\n\n  private def active(n: Int): Behavior[Cmd] =\n    Behaviors.receive { (_, msg) =>\n      msg match\n        case Inc            => active(n + 1)\n        case Get(replyTo)   => replyTo ! n; Behaviors.same\n    }\n\n@main def run(): Unit =\n  val system = ActorSystem(Counter(), \"counter\")\n  system ! Counter.Inc\n  system ! Counter.Inc",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 8,
-      "overall": 8
-    },
-    {
-      "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Error Handling — exceptions vs Result types, error propagation patterns per language",
-      "status": "done",
-      "title": "Scala Error Handling — Try, Either, and Typed Error Propagation",
-      "body": "Scala's idiomatic error handling favors algebraic types over exceptions. `Try[A]` wraps exception-throwing JVM code into `Success[A]` or `Failure(Throwable)` — useful at boundaries with Java libraries. But `Either[E, A]` is the domain workhorse: `Left[E]` carries a typed error, `Right[A]` carries the result. For-comprehensions chain `Either` values and short-circuit on the first `Left` automatically — no nested try/catch.\n\nConvert JVM exceptions to typed errors at the boundary: `Try(riskyCall()).toEither.left.map(AppError.fromThrowable)`. For validation where you need to accumulate multiple errors rather than short-circuit, reach for `cats.data.Validated[NonEmptyList[E], A]` — its `mapN` collects all failures. ZIO encodes errors directly in the type signature as `ZIO[R, E, A]`, enabling typed interruption and fiber-safe error channels.\n\nAvoid `throw` in domain or library code — callers cannot statically see what you throw. Reserve exceptions for unrecoverable states like `OutOfMemoryError`. Define a `sealed trait AppError` hierarchy and return `Either[AppError, A]` from service layers; exhaustive pattern matching at the API boundary ensures no error is silently swallowed.",
-      "code_snippet": "sealed trait AppError\ncase class NotFound(id: String)    extends AppError\ncase class ParseError(msg: String) extends AppError\n\ndef findUser(id: String): Either[AppError, User] =\n  if (id.isEmpty) Left(NotFound(id)) else Right(User(id, \"Alice\"))\n\ndef parseAge(s: String): Either[AppError, Int] =\n  scala.util.Try(s.toInt).toEither.left.map(e => ParseError(e.getMessage))\n\ndef loadProfile(id: String, ageStr: String): Either[AppError, Profile] =\n  for {\n    user <- findUser(id)\n    age  <- parseAge(ageStr)\n  } yield Profile(user, age)",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Testing — unit testing philosophy and test runner per language",
-      "status": "done",
-      "title": "Scala Testing — ScalaTest, MUnit, and the Pure-Function Philosophy",
-      "body": "Scala's two dominant test frameworks are ScalaTest and MUnit. ScalaTest offers multiple styles — AnyFunSuite for assertion-based tests, AnyFlatSpec for BDD-style specs, and AnyWordSpec for nested describe blocks. MUnit, from Scalameta, is leaner: just test(\"name\") {} blocks with precise diff output via clue() and first-class scala-cli support.\n\nThe idiomatic Scala philosophy is to push side effects to the edges and test pure functions exhaustively. A method returning Either[AppError, User] needs no mocks — just construct inputs and assert outputs. Reserve ScalaMock or mockito-scala for IO boundaries: repositories, HTTP clients, and message queues.\n\nRun tests with sbt test (all suites) or sbt testOnly com.example.UserServiceSpec for a single suite. For MUnit via scala-cli: scala-cli test . --dep org.scalameta::munit::1.0.0.\n\nFor property-based testing, ScalaCheck integrates with both frameworks — via Checkers in ScalaTest or munit-scalacheck. Define generators with Gen.alphaStr, Gen.posNum[Int], or custom Arbitrary instances to cover edge cases that hand-written examples miss. Properties like forAll { (s: String) => decode(encode(s)) == s } are far more resilient than example-based tests alone.",
-      "code_snippet": "import org.scalatest.funsuite.AnyFunSuite\n\nclass ParseAmountSuite extends AnyFunSuite:\n  def parseAmount(s: String): Either[String, BigDecimal] =\n    s.toBigDecimalOption.toRight(s\"Invalid amount: $s\")\n\n  test(\"valid decimal returns Right\"):\n    assert(parseAmount(\"9.99\") == Right(BigDecimal(\"9.99\")))\n\n  test(\"non-numeric input returns Left\"):\n    assert(parseAmount(\"abc\").isLeft)\n\n  test(\"negative value is parsed correctly\"):\n    assert(parseAmount(\"-1.50\") == Right(BigDecimal(\"-1.50\")))",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
-      "topic": "Memory Management — GC vs ownership model, stack vs heap, memory safety",
-      "status": "done",
-      "title": "Scala Memory Management — JVM GC, Boxing Traps, and Zero-Cost Wrappers",
-      "body": "Scala runs on the JVM — all memory management is GC-driven, not ownership-based. The heap holds every object instance: case classes, closures, collections. Primitives (Int, Long, Double) live on the stack or in registers when the JIT's escape analysis confirms they don't outlive their scope.\n\nThe biggest Scala-specific trap is boxing: generic containers like List[Int] silently convert primitives to java.lang.Integer heap objects. In hot paths, prefer Array[Int] — the JVM stores these as unboxed int[]. For generic classes, annotate with @specialized to generate primitive-specific bytecode and eliminate boxing entirely.\n\nOpaque types (Scala 3) and value classes (extends AnyVal) let you model domain types like UserId or Millis with zero heap overhead — the wrapper is erased at bytecode level.\n\nMemory safety in Scala comes from immutability: val bindings, immutable List/Map/Set by default, and case class copy semantics prevent aliased mutation bugs. No pointer arithmetic means no dangling references — but GC leaks still occur when long-lived structures retain closures capturing large object graphs. Common culprit: a var cache: Map[K, V] in a singleton that grows unbounded without eviction.",
-      "code_snippet": "// Opaque type — erased to Long at bytecode, zero heap allocation\nopaque type UserId = Long\nobject UserId:\n  def apply(id: Long): UserId = id\n  extension (id: UserId) def raw: Long = id\n\n// Boxing trap: List[Int] wraps each Int as java.lang.Integer\nval boxed: List[Int] = List(1, 2, 3)\n\n// Unboxed: Array[Int] compiles to JVM int[], no heap per element\nval unboxed: Array[Int] = Array(1, 2, 3)\n\n// @specialized eliminates boxing in generic hot-path classes\nclass Ring[@specialized(Int, Long) A](val value: A)",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
-      "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
-      "status": "done",
-      "title": "Scala Production Monitoring — Kamon Metrics, G1GC Pauses, and async-profiler",
-      "body": "Kamon is the standard Scala metrics library — it integrates with Akka, Pekko, Tapir, and http4s via auto-instrumentation modules. The `kamon-system-metrics` module scrapes JVM heap, GC pause duration, and thread counts via JMX, then ships them to Prometheus or Datadog with zero manual instrumentation.\n\nEnable G1GC logging at startup: `-XX:+UseG1GC -Xlog:gc*:file=/var/log/gc.log:time,uptime`. G1 mixed-collection pauses above 200ms typically signal humongous object allocations — in Scala, these arise from large `Vector`, `HashMap`, or case class construction inside hot paths. Raise the threshold with `-XX:G1HeapRegionSize=16m`.\n\nFor CPU and allocation profiling on live production JVMs, async-profiler is the standard tool — it uses `AsyncGetCallTrace` instead of safepoint sampling, giving accurate call stacks even under load. Attach without restarting the process:\n\n```bash\n./asprof -e cpu -d 30 -f /tmp/profile.html $(pgrep -f 'scala.main')\n```\n\nFor Akka-based systems, `kamon-akka` adds mailbox depth, actor message latency, and dead-letter counts — signals invisible to JVM-level metrics but critical for diagnosing backpressure and supervision failures.",
-      "code_snippet": "import kamon.Kamon\nimport scala.concurrent.Future\nimport scala.concurrent.ExecutionContext.Implicits.global\n\nobject PaymentService {\n  Kamon.init()\n\n  private val processed = Kamon.counter(\"payments.processed\").withoutTags()\n  private val latency   = Kamon.histogram(\"payments.latency.ms\").withTag(\"env\", \"prod\")\n\n  def charge(amount: BigDecimal): Future[Either[String, String]] =\n    Future {\n      val t0     = System.currentTimeMillis()\n      val result = Right(s\"tx-${System.nanoTime()}\")\n      latency.record(System.currentTimeMillis() - t0)\n      processed.increment()\n      result\n    }\n}",
-      "language": null,
       "clarity": 8,
       "specificity": 9,
       "relevance": 9,

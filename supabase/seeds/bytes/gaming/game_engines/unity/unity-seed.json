@@ -172,18 +172,6 @@
       "overall": 8
     },
     {
-      "topic": "Unreal Engine — Blueprints vs C++, Actors, Components, UObject garbage collection",
-      "status": "done",
-      "title": "Unity: Unreal Engine Blueprints vs C++ Actor Performance",
-      "body": "In Unity, Blueprints (Visual Scripting) and C++ are two primary ways to create game logic. While Blueprints are ideal for prototyping, C++ is preferred for performance-critical code. However, when using C++, it's essential to understand Actors and Components. An Actor is the base class for objects in your scene, while Components are reusable bits of code that attach to Actors. When using C++, it's crucial to manage memory correctly to avoid garbage collection pauses. Unlike Blueprints, C++ code directly interacts with the Unity engine's garbage collector, using the `GC.AllowFullGC()` function to force a full garbage collection. To optimize performance, you can use `GC.SetGeneration` to control when objects are collected.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Bevy — ECS architecture, systems, components, resources, Rust-powered",
       "status": "done",
       "title": "Unity: Leveraging Bevy's ECS for Efficient Game Development",
@@ -194,30 +182,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "UI in Games — world-space vs screen-space UI, Unity Canvas, UMG in Unreal",
-      "status": "done",
-      "title": "Unity - World-Space vs Screen-Space UI: Choosing the Right One for Your Game",
-      "body": "When building UI in Unity, you have two primary options: world-space and screen-space UI. World-space UI is attached to game objects in 3D space and uses the WorldToScreenPoint function to determine its position on the screen. This approach is useful for UI elements that need to be positioned relative to the game world, such as HUD elements that follow the player's camera. Screen-space UI, on the other hand, is rendered on a Canvas component and uses the ScreenToViewportPoint function. This approach is ideal for UI elements that need to be positioned relative to the screen, such as menus and pop-ups.",
-      "code_snippet": null,
-      "language": "csharp",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 10,
-      "overall": 9
-    },
-    {
-      "topic": "Performance — draw calls, batching, occlusion culling, profiling in engine",
-      "status": "done",
-      "title": "Unity - Optimizing Draw Calls with Batching and Occlusion Culling",
-      "body": "To improve performance in Unity, reduce draw calls by batching GameObjects. Use `MeshFilter` and `MeshRenderer` components for static and dynamic meshes. Enable occlusion culling in the Lighting window to reduce unnecessary rendering. Use the `OcclusionCulling` module to optimize occluded objects. For dynamic batching, ensure that the meshes share the same material and have the same transform hierarchy.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     }
   ]
 }

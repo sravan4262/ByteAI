@@ -4,42 +4,6 @@
   "domain": "mobile",
   "bytes": [
     {
-      "topic": "Cross-Platform Trade-offs — what you gain vs what you give up vs going native",
-      "status": "done",
-      "title": "Flutter's Cross-Platform Trade-offs: What You Gain vs What You Give Up",
-      "body": "When building cross-platform apps with Flutter, you often sacrifice native-like performance and direct access to platform-specific APIs. However, you gain a shared codebase, reduced development time, and a single UI layer. Flutter's widget-based architecture allows for easy hot reloading, making development and testing more efficient. But, be aware that some platform-specific features, like camera access, may require platform channels or native modules. To demonstrate this, consider a simple camera example in Flutter:",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "State Management in RN — Redux Toolkit, Zustand, React Query on mobile",
-      "status": "done",
-      "title": "Flutter — Selecting the Right State Management Library",
-      "body": "Flutter developers often find themselves deciding between Redux Toolkit, Zustand, and React Query for state management. While these libraries work well on web, mobile platforms have unique requirements. Flutter's Riverpod and Provider libraries are designed specifically for mobile development. Riverpod uses a data model-based approach, whereas Provider relies on a dependency injection mechanism. For a simple, scalable solution, consider Riverpod. For a more complex, feature-rich setup, Provider might be a better fit.",
-      "code_snippet": null,
-      "language": "dart",
-      "clarity": 8,
-      "specificity": 8,
-      "relevance": 8,
-      "overall": 8
-    },
-    {
-      "topic": "Navigation — React Navigation, Expo Router, GoRouter in Flutter",
-      "status": "done",
-      "title": "Flutter Navigation - Choosing Between React Navigation, Expo Router, and GoRouter",
-      "body": "When building cross-platform Flutter apps, selecting the right navigation library can be overwhelming. React Navigation, Expo Router, and GoRouter are popular choices. React Navigation offers a declarative API, making it easy to manage complex navigation flows. Expo Router provides a more functional approach, ideal for simpler apps. GoRouter, on the other hand, uses a router-like API, enabling server-side rendering capabilities. For instance, you can use GoRouter's `GoRouter.of()` method to get the current router instance.",
-      "code_snippet": null,
-      "language": "dart",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 10,
-      "overall": 9
-    },
-    {
       "topic": "React Native Architecture — new vs old architecture, JSI, Fabric, Turbo Modules",
       "status": "done",
       "title": "Flutter and React Native Architecture: A Comparative Look",
@@ -50,66 +14,6 @@
       "specificity": 9,
       "relevance": 8,
       "overall": 8
-    },
-    {
-      "topic": "Expo — managed vs bare workflow, EAS Build, EAS Update (OTA updates)",
-      "status": "done",
-      "title": "Flutter — Choosing Between Expo's Managed and Bare Workflow",
-      "body": "When building Flutter projects with Expo, you can choose between the managed and bare workflow. The managed workflow uses Expo's SDK to handle tasks like app loading and device management, while the bare workflow gives you more control over these tasks. However, the bare workflow requires more setup and maintenance. EAS Build and EAS Update are also crucial for managing your Flutter app on multiple platforms. EAS Build automates the process of building and publishing your app, while EAS Update provides over-the-air (OTA) updates for your app. For example, you can use EAS Update to update your app's Dart code without requiring users to reinstall the app.",
-      "code_snippet": null,
-      "language": "dart",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Flutter Architecture — widget tree, rendering engine (Skia/Impeller), Dart language",
-      "status": "done",
-      "title": "Flutter Architecture 101: Widget Tree and Rendering Engine",
-      "body": "Flutter's widget tree is a hierarchical data structure that represents the UI. When a widget's state changes, its subtree is rebuilt from scratch. The rendering engine, either Skia or Impeller, is responsible for rendering the widget tree onto the screen. Skia is the default engine and is more widely supported, while Impeller is a newer, more efficient engine. To render a widget, Flutter uses a technique called 'hot reload', which reloads the widget tree without requiring a full app restart.",
-      "code_snippet": null,
-      "language": "dart",
-      "clarity": 8,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
-      "topic": "Ionic & Capacitor — web-first approach, Capacitor plugins, PWA vs native hybrid",
-      "status": "done",
-      "title": "Flutter Cross-Platform Development: Choosing the Right Web-First Approach",
-      "body": "When building Flutter apps that require web support, developers often face a dilemma between Ionic and Capacitor. While Ionic relies on a hybrid approach using Angular, Capacitor takes a web-first approach, leveraging the browser's capabilities. Capacitor plugins allow developers to access native device features from within the browser. However, this approach may not be suitable for apps requiring complex native integrations. On the other hand, Flutter's PWA support enables seamless web and mobile experiences. To demonstrate this, consider the following example where Capacitor's Camera plugin is used to capture images within a Flutter app.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Styling — StyleSheet in RN, NativeWind, Flutter theming system",
-      "status": "done",
-      "title": "Flutter Theming System — Simplifying Styles with Styles",
-      "body": "The Flutter theming system is based on the concept of InheritedWidgets. It allows you to define a theme at the root of your app and inherit it down to the leaf widgets. A theme is essentially a Styles object that contains color, typography, and other visual properties. You can create themes using the ThemeData class. To apply a theme, you can wrap your app's root widget with a Theme widget.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "State Management in Flutter — Provider, Riverpod, BLoC pattern",
-      "status": "done",
-      "title": "Flutter State Management Showdown: Provider, Riverpod, and BLoC",
-      "body": "When choosing a state management solution for Flutter, you're spoiled for choice. Provider, Riverpod, and BLoC are three popular options. Provider uses a widget-based approach, making it easy to manage state in complex screens. Riverpod leverages the Provider API but adds a more reactive twist, making it ideal for real-time updates. BLoC (Business Logic Component) separates the presentation layer from the business logic, promoting maintainable and scalable code.",
-      "code_snippet": null,
-      "language": "dart",
-      "clarity": 8,
-      "specificity": 10,
-      "relevance": 10,
-      "overall": 9
     },
     {
       "topic": "Code Sharing — sharing logic between web and mobile, monorepo strategies",
@@ -124,58 +28,6 @@
       "overall": 8
     },
     {
-      "topic": "Native Modules — when to bridge to native, writing native modules and plugins",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Performance — JS thread vs UI thread in RN, jank, avoiding bridge overload",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Testing — React Native Testing Library, Flutter widget tests, Detox for E2E",
-      "status": "done",
-      "title": "Flutter Widget Tests — Best Practices",
-      "body": "Flutter widget tests are an essential part of ensuring the reliability of your app. The `tester` library provides a powerful API for testing your widgets. When writing widget tests, it's crucial to isolate the widget under test using the `Finder` class and the `build` method. This isolates the widget from its parent context and allows you to test its behavior independently. For example, you can use the `tap` method to simulate user interactions, and the `expect` function to verify the widget's state. Remember to use the `testWidgets` macro to run your widget tests.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Push Notifications — Expo Notifications, React Native Firebase, Flutter FCM",
-      "status": "done",
-      "title": "Flutter FCM vs. Expo Notifications and React Native Firebase",
-      "body": "When it comes to push notifications in Flutter, you have three popular options: Flutter FCM, Expo Notifications, and React Native Firebase. Flutter FCM is a built-in plugin that leverages Firebase Cloud Messaging (FCM). Expo Notifications, on the other hand, is a plugin developed by Expo that supports multiple push notification services. React Native Firebase is a library that provides Firebase services, including Cloud Messaging. To use Flutter FCM, add the firebase_messaging plugin to your pubspec.yaml file and initialize Firebase in your main function. For Expo Notifications, install the expo-notifications package and initialize the service in your main function.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "When to Go Native — performance ceiling of cross-platform, signals to switch",
-      "status": "done",
-      "title": "Flutter: Performance Ceiling of Cross-Platform — When to Go Native",
-      "body": "Flutter's cross-platform appeal stems from its impressive performance. However, there's a ceiling. When CPU-intensive tasks, such as image processing or machine learning model execution, are involved, Flutter's performance can degrade significantly. This is due to the underlying Dart runtime's garbage collection and Just-In-Time (JIT) compilation. Native modules, like Flutter Engine's plugins or platform channels, can help bypass these limitations. But, not every project requires native integration. For instance, a simple to-do list app won't benefit from native optimization. Identify performance-critical components and use native modules judiciously to maintain the benefits of cross-platform development.",
-      "code_snippet": null,
-      "language": "dart",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
       "topic": "Over-the-Air Updates — EAS Update, CodePush, when OTA is and isn't safe",
       "status": "done",
       "title": "Flutter OTA Updates — When EAS Update and CodePush Are Safe to Use",
@@ -185,18 +37,6 @@
       "clarity": 9,
       "specificity": 10,
       "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "App Store Deployment — EAS Build, Fastlane, automating submissions",
-      "status": "done",
-      "title": "Flutter EAS Build — Automating App Store Submissions with Fastlane",
-      "body": "To automate App Store submissions for your Flutter app, integrate Fastlane with Expo's EAS Build. First, install Fastlane by running `fastlane init` in your project directory. Then, create a `Fastfile` in the root of your project and add the following configuration to automate App Store submissions:\n\n```dart\nlane :ios do\n  app_identifier 'your.app.identifier'\n  username 'your.apple.id'\n  password 'your.apple.password'\nend\n```\n\nReplace `your.app.identifier`, `your.apple.id`, and `your.apple.password` with your actual App Store credentials. After setting up Fastlane, create an EAS Build configuration in your `eas.json` file with the `appStore` section:\n\n```json\n{\n  \"appStore\": {\n    \"username\": \"your.apple.id\",\n    \"password\": \"your.apple.password\",\n    \"appIdentifier\": \"your.app.identifier\"\n  }\n}\n```\n\nThis configuration will enable Fastlane to automate App Store submissions for your Flutter app using EAS Build.",
-      "code_snippet": null,
-      "language": "dart",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 10,
       "overall": 9
     },
     {
@@ -222,26 +62,6 @@
       "specificity": 10,
       "relevance": 10,
       "overall": 9.5
-    },
-    {
-      "topic": "Performance — JS thread vs UI thread in RN, jank, avoiding bridge overload",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Performance — JS thread vs UI thread in RN, jank, avoiding bridge overload",
-      "status": "done",
-      "title": "Flutter — Avoiding Jank with Isolate and compute()",
-      "body": "When working with Flutter, you'll often encounter jank, a stuttering or stuttering-like effect caused by the UI thread being overloaded. One way to mitigate this is by isolating computationally expensive tasks using the isolate API. For example, consider a scenario where you're performing data processing on a list of numbers. You can use compute() to run this task in a separate isolate, freeing up the UI thread for rendering.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     }
   ]
 }

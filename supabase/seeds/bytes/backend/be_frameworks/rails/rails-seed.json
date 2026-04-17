@@ -64,18 +64,6 @@
       "overall": 9
     },
     {
-      "topic": "Dependency Injection — built-in DI containers vs manual wiring, testability impact",
-      "status": "done",
-      "title": "Rails Dependency Injection — Constructor Wiring vs dry-container and What It Means for RSpec",
-      "body": "Rails ships with no DI container. The Rails Way leans on Zeitwerk autoloading and class-level calls — `Stripe::Charge.create`, `UserMailer.confirmation` — which are globally coupled and brittle to stub. The seam disappears. Constructor injection fixes this: accept collaborators as `initialize` keyword arguments, defaulting to real implementations in production.\n\nFor larger apps, `dry-container` + `dry-auto_inject` from the dry-rb ecosystem add explicit wiring — register each dependency in an initializer, inject by string key. The overhead is real but so is the explicitness. For most Rails services, plain constructor injection is enough.\n\nThe RSpec payoff is concrete. `allow(Stripe::Charge).to receive(:create)` stubs a constant and silently passes even after interface drift. An `instance_double(Stripe::Charge)` enforces the real method signature — rename `create` to `charge` and your test fails immediately. That's the difference between a test that catches regressions and one that just adds CI time.\n\nThe common trap: calling `MyService.new` internally without exposing the collaborator. Always thread dependencies through `initialize`, even with sensible defaults.",
-      "code_snippet": "class OrderProcessor\n  def initialize(payment_gateway: Stripe::Charge, mailer: OrderMailer)\n    @payment_gateway = payment_gateway\n    @mailer = mailer\n  end\n\n  def process(order)\n    @payment_gateway.create(amount: order.total_cents, source: order.stripe_token)\n    @mailer.confirmation(order).deliver_later\n  end\nend\n\n# spec/services/order_processor_spec.rb\nlet(:gateway) { instance_double(Stripe::Charge, create: true) }\nlet(:mailer)  { instance_double(OrderMailer, confirmation: double(deliver_later: true)) }\nsubject       { OrderProcessor.new(payment_gateway: gateway, mailer: mailer) }",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
       "topic": "Error Handling — global error handlers, consistent error response format",
       "status": "done",
       "title": "Rails Global Error Handling — Rescue, Render, Repeat",
@@ -122,18 +110,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Middleware — request pipeline, global vs route-specific, ordering matters",
-      "status": "done",
-      "title": "Rails Middleware — Pipeline Ordering, Global Stack, and Route-Specific Isolation",
-      "body": "Rails middleware is a Rack chain — each layer wraps the next. Requests travel top-to-bottom through the stack, responses bubble back up. Run `bin/rails middleware` to see the ~20 default layers in order.\n\nPosition is everything. Placing auth middleware before `ActionDispatch::Session::CookieStore` means session data isn't available yet — you'll read nil. Use `insert_before`, `insert_after`, or `swap` in `config/application.rb` to control placement precisely. Avoid bare `config.middleware.use` for anything security-critical — it appends to the end, past most ActionDispatch layers. Rate limiting (`Rack::Attack`) and IP blocking belong near the top, before `ActionDispatch::Static`.\n\nFor route-specific middleware, the cleanest Rails approach is `Rack::Builder` — compose a mini stack and mount it as a Rack endpoint in `routes.rb`. This gives webhooks, for example, their own HMAC verification layer without that logic polluting the global stack. For lighter cases, `before_action` with `skip_before_action` on specific controllers achieves similar scoping without true middleware isolation.",
-      "code_snippet": "# config/application.rb — global stack, position matters\nconfig.middleware.insert_before ActionDispatch::Static, Rack::Attack\nconfig.middleware.insert_after ActionDispatch::RequestId, MyApp::CorrelationId\n\n# lib/webhook_stack.rb — route-specific middleware via Rack::Builder\nWebhookStack = Rack::Builder.new do\n  use WebhookVerifier  # HMAC check runs before Rails routing\n  run WebhooksController.action(:receive)\nend\n\n# config/routes.rb\npost '/webhooks', to: WebhookStack",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
     },
     {
       "topic": "API Design — REST conventions, versioning strategy, OpenAPI generation",

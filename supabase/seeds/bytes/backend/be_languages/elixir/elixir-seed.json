@@ -5,150 +5,6 @@
   "bytes": [
     {
       "topic": "Package Management — lock files, versioning, dependency auditing",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Concurrency Model — async/await, goroutines, threads, actors — how each language handles it",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Type Safety — static vs dynamic typing, type inference, generics across languages",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Error Handling — exceptions vs Result types, error propagation patterns per language",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Memory Management — GC vs ownership model, stack vs heap, memory safety",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Performance — benchmarking, profiling, runtime characteristics per language",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Security — memory safety, injection prevention, dependency vulnerability scanning",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Standard Library — what's built in vs what needs a third-party library",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Testing — unit testing philosophy and test runner per language",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Code Quality — linting, formatting, language-specific idioms",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Dev Tooling — REPL, debugger, language server protocol support",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Scalability — horizontal scaling characteristics, thread model implications",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Language-specific — Node.js event loop, Python GIL, Go channels, Rust ownership, Elixir OTP",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Deployment — binary size, containerization, runtime dependencies",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Ecosystem Maturity — library quality, community size, long-term viability",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "When to Choose — use cases where each language excels vs where it struggles",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Package Management — lock files, versioning, dependency auditing",
       "status": "done",
       "title": "Elixir Dependency Management — Lock Files, Versioning, and Hex Audits",
       "body": "Elixir's dependency story lives across two files: `mix.exs` declares requirements, `mix.lock` pins exact resolved versions. Never skip committing `mix.lock` — it ensures every team member and CI node runs identical dependency graphs. Version constraints use Hex's `~>` pessimistic operator: `~> 1.2` allows `>= 1.2.0 and < 2.0.0`, while `~> 1.2.3` tightens it to `>= 1.2.3 and < 1.3.0`. Prefer the patch-level form for libraries with unstable minor APIs. Run `mix deps.update --all` to regenerate the lock file against the latest allowed versions, then review the diff carefully. For security auditing, `mix hex.audit` checks your locked dependencies against Hex's advisory database — it exits non-zero on vulnerabilities, making it CI-friendly. `mix hex.outdated` shows which packages have newer releases outside your constraints, useful for scheduled dependency hygiene PRs. Lock file conflicts after a rebase? Delete it, run `mix deps.get`, and re-commit — Mix regenerates it deterministically.",
@@ -166,30 +22,6 @@
       "body": "Elixir's performance story is tied to the BEAM scheduler, not raw CPU throughput. Before optimizing, profile accurately. Benchee is the standard benchmarking library — it handles warmup, statistical analysis, and memory measurement out of the box. Pair it with `benchee_html` for visual flame-chart comparisons across inputs.\n\nFor profiling hot paths, `:fprof` traces actual function calls with per-call timing, while `:eprof` gives lighter-weight aggregate time-per-function data. Use `:eprof` first to find the bottleneck function, then `:fprof` to drill into its call tree. For process-level bottlenecks, `:observer.start()` shows reduction counts — reductions are BEAM's unit of scheduler fairness, not wall-clock time.\n\nKey runtime characteristics to internalize: binary pattern matching is extremely fast (compiled to bitstring operations), but large ETS table reads under high concurrency can create bottlenecks due to read locks on non-`:read_concurrency` tables. String concatenation via `<>` in tight loops creates garbage — use `IO.iodata_to_binary/1` with iolist accumulation instead. Process message queues that grow unbounded are a common BEAM perf trap — monitor with `Process.info(pid, :message_queue_len)`.",
       "code_snippet": "# mix.exs: {:benchee, \"~> 1.3\", only: :dev}\n\nBenchee.run(\n  %{\n    \"iolist concat\" => fn -> IO.iodata_to_binary([\"hello\", \" \", \"world\"]) end,\n    \"string concat\" => fn -> \"hello\" <> \" \" <> \"world\" end\n  },\n  warmup: 2,\n  time: 5,\n  memory_time: 2\n)\n\n# Profile a specific function with :eprof\n:eprof.start()\n:eprof.profile(fn -> MyModule.heavy_computation() end)\n:eprof.analyze(:total)",
       "language": "bash",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Concurrency Model — async/await, goroutines, threads, actors — how each language handles it",
-      "status": "done",
-      "title": "Elixir's Concurrency Model — BEAM Processes, Mailboxes, and Why You Don't Need Locks",
-      "body": "Elixir's concurrency runs on the BEAM VM, where the unit of concurrency is a lightweight process — not an OS thread or green thread. Spawning one costs ~2KB of heap and microseconds; millions can coexist, scheduled across OS threads that map 1:1 to CPU cores.\n\nEvery process owns an isolated mailbox. Communication is exclusively via message passing — no shared memory, no mutexes, no data races by construction. `spawn/1` creates a raw process; `send/2` delivers to its mailbox; `receive` pattern-matches against incoming messages.\n\n`Task.async/await` is the idiomatic path for structured concurrency. `Task.async_stream/3` handles fan-out over collections with built-in backpressure via `max_concurrency`. For long-lived stateful actors, `GenServer` wraps the raw process loop and exposes `call/3` (synchronous, blocks caller) and `cast/2` (fire-and-forget) interfaces.\n\nEvery higher-level abstraction — Task, GenServer, Agent, Phoenix.Channel — is built on the same `spawn/send/receive` primitive. The structural win: process isolation means a crash is local. A linked Supervisor catches the `:EXIT` signal and restarts just that process, not the application.",
-      "code_snippet": "# Raw primitive: spawn + send/receive\npid = spawn(fn ->\n  receive do\n    {:ping, caller} -> send(caller, :pong)\n  end\nend)\nsend(pid, {:ping, self()})\nreceive do :pong -> IO.puts(\"got pong\") end\n\n# Task.async_stream: concurrent fan-out with backpressure\nresults =\n  [1, 2, 3, 4, 5]\n  |> Task.async_stream(fn n -> n * n end, max_concurrency: 4, timeout: 5_000)\n  |> Enum.map(fn {:ok, r} -> r end)\n# => [1, 4, 9, 16, 25]",
-      "language": null,
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 10,
-      "overall": 9
-    },
-    {
-      "topic": "Type Safety — static vs dynamic typing, type inference, generics across languages",
-      "status": "done",
-      "title": "Elixir Type Safety — Specs, Dialyzer, and the Gradual Typing Revolution",
-      "body": "Elixir is dynamically typed, but `@spec` and `@type` annotations combined with Dialyzer give you static analysis without runtime overhead. Dialyzer uses *success typing* — it infers what types a function *can* return, only flagging provably wrong calls. Fewer false positives, but some real bugs won't surface until runtime.\n\nGuards (`when is_integer(x)`) act as runtime contracts and narrow type branches in pattern matches — the compiler leverages these for inference. Since Elixir 1.17, the compiler ships a set-theoretic type inference engine that understands union types (`integer() | binary()`) and emits type warnings directly from `mix compile` — no separate Dialyzer pass required. This is Elixir's first concrete step toward gradual typing.\n\n`@type` definitions compose into rich domain types. Libraries like `typed_struct` enforce struct field types at compile time. At system boundaries, `Ecto.Changeset` validates and coerces external data into typed structs. The idiomatic pattern: validate aggressively at edges, apply specs and Dialyzer in the middle layer, leverage guards in hot paths. Together they form a layered type safety strategy native to the BEAM ecosystem.",
-      "code_snippet": "defmodule UserScore do\n  @type score :: non_neg_integer()\n  @type result :: {:ok, score()} | {:error, String.t()}\n\n  @spec calculate(map()) :: result()\n  def calculate(%{score: score}) when is_integer(score) and score >= 0 do\n    {:ok, score * 2}\n  end\n\n  def calculate(%{score: score}) when is_float(score) do\n    {:error, \"Expected integer, got float: #{score}\"}\n  end\n\n  def calculate(_), do: {:error, \"Missing or invalid score field\"}\nend\n\n# Dialyzer flags this at analysis time — success_typing violation:\nUserScore.calculate(%{score: \"oops\"})",
-      "language": null,
       "clarity": 8,
       "specificity": 9,
       "relevance": 9,
@@ -232,18 +64,6 @@
       "overall": 9
     },
     {
-      "topic": "Standard Library — what's built in vs what needs a third-party library",
-      "status": "done",
-      "title": "Elixir Standard Library — What's Built In and What You'll Need Hex For",
-      "body": "Elixir's standard library is surprisingly complete for a functional language, but its boundaries trip up newcomers. Built-in without any dependency: `Enum`, `Stream`, `Map`, `Keyword`, `String`, `Regex`, `File`, `Path`, `Logger`, `Task`, `Agent`, `GenServer`, and the full OTP supervision tree. Erlang's stdlib is also available — `:crypto`, `:ets`, `:timer`, `:httpc` — though idiomatic Elixir rarely reaches for `:httpc` directly.\n\nWhat you absolutely need Hex for: JSON encoding (`jason`), production HTTP clients (`req` or `finch`), database access (`ecto` + `postgrex`/`myxql`), background jobs (`oban`), and timezone-aware datetimes (`tzdata` — `DateTime` exists but `Calendar.TimeZoneDatabase` is a no-op without it). UUID generation also requires `ecto` or the `uuid` package. `NimbleCSV` handles CSV parsing; stdlib has nothing comparable. Phoenix is optional — you can run a bare `Plug.Cowboy` server without it. The pattern: data structures, concurrency primitives, and text processing are first-class built-ins; I/O adapters and serialization formats are Hex territory.",
-      "code_snippet": "# Built-in: async task + Enum pipeline, no deps\nresult =\n  [\"alice\", \"bob\", \"carol\"]\n  |> Task.async_stream(&String.upcase/1, max_concurrency: 3)\n  |> Enum.map(fn {:ok, v} -> v end)\n\n# NOT built-in: JSON + HTTP — needs :jason and :req\n{:ok, body} = Req.get!(\"https://api.example.com/users\") |> Map.fetch(:body)\nencoded = Jason.encode!(%{users: result})\n\n# NOT built-in: timezone — needs :tzdata in config\nDateTime.now!(\"America/New_York\")",
-      "language": null,
-      "clarity": 9,
-      "specificity": 9,
-      "relevance": 10,
-      "overall": 9
-    },
-    {
       "topic": "Code Quality — linting, formatting, language-specific idioms",
       "status": "done",
       "title": "Elixir Code Quality — Enforcing Style with mix format, Credo, and Idiomatic Patterns",
@@ -265,30 +85,6 @@
       "clarity": 8,
       "specificity": 9,
       "relevance": 10,
-      "overall": 9
-    },
-    {
-      "topic": "Security — memory safety, injection prevention, dependency vulnerability scanning",
-      "status": "done",
-      "title": "Elixir Security — Atom Exhaustion, Injection Prevention, and Dependency Auditing",
-      "body": "Elixir's BEAM runtime gives you process-level memory isolation — each process has its own heap, so a crash never corrupts neighboring state. But runtime safety doesn't cover application-layer vulnerabilities.\n\nAtom exhaustion is a BEAM-specific DoS vector. `String.to_atom/1` on user input can exhaust the atom table (default limit: ~1M atoms, never garbage collected). Always use `String.to_existing_atom/1` or `:erlang.binary_to_existing_atom/2` instead.\n\nSQL injection: never interpolate user input into raw `Repo.query/2` strings. Ecto.Query's `^` pin operator parameterizes automatically — `from(u in User, where: u.email == ^email)` emits `$1` placeholders, not interpolated strings. For raw SQL, pass args as the second argument to `Repo.query/2`.\n\nFor command injection, avoid `System.cmd/3` with unsanitized input. Validate with a strict allowlist or use library wrappers.\n\nFor dependency scanning, `mix hex.audit` checks all Hex packages against the advisory database. Pair it with `mix sobelow --config` for Phoenix-specific static analysis — it flags XSS sinks, directory traversal in `send_file/2`, and hardcoded secrets. Both belong in your CI pipeline as blocking steps.",
-      "code_snippet": "# BAD: atom table exhaustion from user input\ndef find_role(str), do: String.to_atom(str)\n\n# GOOD: only succeeds if atom already exists\ndef find_role(str), do: String.to_existing_atom(str)\n\n# BAD: SQL injection via string interpolation\nRepo.query(\"SELECT * FROM users WHERE email = '#{email}'\")\n\n# GOOD: Ecto parameterizes the ^ pin operator automatically\nfrom(u in User, where: u.email == ^email) |> Repo.one()\n\n# GOOD: explicit parameterization for raw SQL\nRepo.query(\"SELECT * FROM users WHERE email = $1\", [email])\n\n# CI audit commands (add as blocking steps)\n# mix hex.audit        — advisory DB check for all Hex deps\n# mix sobelow --config -- Phoenix static security analysis",
-      "language": null,
-      "clarity": 8,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
-      "status": "done",
-      "title": "Elixir on the BEAM — JIT, Bytecode, and Cold Start Reality",
-      "body": "Elixir compiles source to BEAM bytecode (.beam files), not native machine code. The BEAM VM executes that bytecode — and since OTP 24, it does so through a native JIT compiler, not pure interpretation. Confirm your runtime mode with :erlang.system_info(:emu_type), which returns :jit on OTP 24+ or :emu on older releases.\n\nCold start behavior is deployment-dependent. A bare mix run drags in the Mix toolchain, dependency graphs, and application boot sequences — often 2–5 seconds. A mix release binary skips all of that, booting only the BEAM VM and your OTP application tree. For containerized or autoscaling workloads, the difference is material.\n\nModule loading is lazy by default: a .beam file enters memory only on first reference. This creates latency spikes on freshly-started nodes hitting production traffic. Mitigate it by calling :code.ensure_loaded/1 for hot modules inside Application.start/2, or running a synthetic warm-up request at boot.\n\nThe OTP 24+ JIT compiles frequently-executed code paths to native machine code at runtime. Hot loops — think Enum pipelines over large collections — see measurable throughput gains across successive calls while retaining full BEAM scheduler preemption and fault isolation.",
-      "code_snippet": "# Verify JIT is active (requires OTP 24+)\nIO.inspect(:erlang.system_info(:emu_type), label: \"emu_type\")\n# => emu_type: :jit\n\n# Explicit warm-up at boot prevents cold-start latency spikes\n{:module, _} = :code.ensure_loaded(Enum)\n\n# Observe JIT warming hot paths over successive calls\n{t1, _} = :timer.tc(fn -> Enum.sum(1..1_000_000) end)\n{t2, _} = :timer.tc(fn -> Enum.sum(1..1_000_000) end)\n{t3, _} = :timer.tc(fn -> Enum.sum(1..1_000_000) end)\n\nIO.puts(\"Run 1: #{t1}µs | Run 2: #{t2}µs | Run 3: #{t3}µs\")\n# t2 and t3 are typically 20–40% faster than t1 on OTP 24+",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
       "overall": 9
     },
     {
@@ -328,18 +124,6 @@
       "overall": 9
     },
     {
-      "topic": "Scalability — horizontal scaling characteristics, thread model implications",
-      "status": "done",
-      "title": "Elixir's BEAM Scheduler Model — How It Shapes Horizontal Scaling",
-      "body": "Elixir doesn't use OS threads for concurrency. The BEAM VM runs one scheduler per CPU core (tunable via the `+S` flag), and each scheduler multiplexes thousands of lightweight processes preemptively. Every process gets ~2000 reductions before being context-switched, delivering near-uniform latency under heavy load. You're not fighting a GIL or lock contention — you're adding schedulers as cores grow.\n\nFor horizontal scaling, `Node.connect/1` federates BEAM nodes over TCP with full process transparency. A `GenServer.call/3` is location-agnostic: `{MyWorker, :\"node2@host\"}` routes the call remotely with the same semantics as a local call. `libcluster` automates node discovery via DNS, Kubernetes headless services, or gossip. `Horde.DynamicSupervisor` extends OTP supervision trees across the cluster, with process ownership tracked via a CRDT-backed `Horde.Registry` — no single point of coordination.\n\nThe architectural implication: vertical scaling means more schedulers exploiting more cores; horizontal scaling means federating nodes with zero changes to your GenServer logic. The bottleneck shifts from thread synchronization to network latency and distributed consistency trade-offs.",
-      "code_snippet": "# Connect nodes: iex --sname node1@localhost / node2@localhost\n\n# On node1\nNode.connect(:\"node2@localhost\")\nIO.inspect(Node.list())  # [:\"node2@localhost\"]\n\n# Spawn a process on the remote node\nNode.spawn(:\"node2@localhost\", fn ->\n  IO.puts(\"Scheduler count: #{System.schedulers_online()} on #{Node.self()}\")\nend)\n\n# GenServer calls are location-transparent\nGenServer.call({MyWorker, :\"node2@localhost\"}, :ping)",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
       "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
       "status": "done",
       "title": "Elixir Production Monitoring — Scheduler Utilization, Per-Process GC, and recon",
@@ -349,18 +133,6 @@
       "clarity": 9,
       "specificity": 10,
       "relevance": 10,
-      "overall": 9
-    },
-    {
-      "topic": "When to Choose — use cases where each language excels vs where it struggles",
-      "status": "done",
-      "title": "Elixir — Where BEAM Wins and Where It Hits a Wall",
-      "body": "Elixir's BEAM runtime gives you preemptive multitasking across millions of lightweight processes — each with its own heap, fully isolated. This makes it the right tool when you need sustained concurrency: Phoenix LiveView pushing updates to 100k simultaneous connections, GenServer-managed stateful sessions, or distributed job queues where OTP Supervisors restart failed workers automatically.\n\n`Task.async_stream/3` handles fan-out workloads without a thread pool or callback hell — the scheduler manages backpressure natively. Phoenix Channels consistently outperform Node.js at scale because there's no event loop bottleneck; the process model absorbs spikes cleanly.\n\nWhere Elixir struggles: CPU-bound work. BEAM schedulers are optimized for I/O concurrency, not number crunching. Heavy image processing or ML inference blocks scheduler threads unless you offload to NIFs (C interop that can crash the entire VM if misused) or external services. The Hex ecosystem is smaller than npm or PyPI — niche domains hit missing libraries fast. Hiring is harder, and large umbrella apps suffer slow incremental compile times.",
-      "code_snippet": "# Fan-out 10k concurrent API calls — idiomatic Elixir\nurls = Enum.map(1..10_000, &\"https://api.example.com/user/#{&1}\")\n\n{successes, failures} =\n  urls\n  |> Task.async_stream(&HTTPoison.get/1, max_concurrency: 500, timeout: 5_000)\n  |> Enum.reduce({[], []}, fn\n    {:ok, {:ok, resp}}, {ok, err} -> {[resp | ok], err}\n    {:ok, {:error, reason}}, {ok, err} -> {ok, [reason | err]}\n    {:exit, reason}, {ok, err} -> {ok, [reason | err]}\n  end)\n\nIO.puts(\"#{length(successes)} succeeded, #{length(failures)} failed\")",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
       "overall": 9
     }
   ]

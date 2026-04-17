@@ -76,18 +76,6 @@
       "overall": 8
     },
     {
-      "topic": "Solana Development — programs in Rust, Anchor framework, PDAs, CPIs",
-      "status": "done",
-      "title": "Efficient Solana Development with Anchor Framework, PDAs, and CPIs",
-      "body": "When building Solana programs, it's essential to utilize the Anchor framework for efficient development. Anchor simplifies the creation of Solana programs by providing a declarative syntax for defining program state and behavior. To access external data, use Program Derived Accounts (PDAs) to store and retrieve data. For interactions with other programs, use Cross-Program Invocations (CPIs). For example, consider a Solana program that interacts with a token program to transfer SOL. Anchor's CPI feature can be used to invoke the token program's transfer method, passing the required arguments.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Solana Performance — parallel execution, Gulf Stream, Turbine, Sealevel",
       "status": "done",
       "title": "Solana Performance: Unlocking Parallel Execution with Gulf Stream, Turbine, and Sealevel",
@@ -110,26 +98,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "Lightning Network — payment channels, routing, HTLC, liquidity management",
-      "status": "done",
-      "title": "Solana Payment Channels: Optimizing Liquidity with HTLC Routing",
-      "body": "Solana developers can leverage payment channels to enable fast and low-fee transactions. To optimize liquidity, Solana's HTLC (Hashed Timelock Contract) protocol allows for atomic swaps between parties. A payment channel is established between two Solana accounts, with the sender locking funds in a multisig wallet. The recipient can then redeem the funds by providing the required HTLC hash. Solana's routing mechanism involves using a graph database to find the most optimal path between senders and recipients.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "IBC — Inter-Blockchain Communication, packet relaying, channel/port model",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

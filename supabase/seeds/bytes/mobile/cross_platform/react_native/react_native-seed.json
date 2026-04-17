@@ -4,18 +4,6 @@
   "domain": "mobile",
   "bytes": [
     {
-      "topic": "Flutter Architecture — widget tree, rendering engine (Skia/Impeller), Dart language",
-      "status": "done",
-      "title": "React Native: Unpacking Flutter's Architecture for RN Developers",
-      "body": "Flutter's architecture, built with Skia and Impeller rendering engines, leverages the Dart language. When developing cross-platform apps with React Native, understanding this ecosystem can inform design decisions. A key aspect of Flutter's architecture is the widget tree, which is similar to React Native's component tree. However, Flutter's tree is more declarative, with widgets defining their layout and appearance. React Native, on the other hand, uses a more imperative approach, with components handling their own rendering. By understanding these differences, RN developers can make more informed choices about when to use React Native's built-in components versus custom solutions.",
-      "code_snippet": null,
-      "language": "javascript",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
       "topic": "Cross-Platform Trade-offs — what you gain vs what you give up vs going native",
       "status": "done",
       "title": "React Native - Cross-Platform Trade-Offs: When to Go Native",
@@ -26,30 +14,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Native Modules — when to bridge to native, writing native modules and plugins",
-      "status": "done",
-      "title": "React Native - Bridging to Native Code: When and How",
-      "body": "When building React Native apps, you often need to access device hardware or system services. This is where native modules come in. Native modules allow you to call Java or Swift code from your JavaScript code, but only when necessary. Use them to access camera, GPS, or file system. To create a native module, you'll use the `NativeModule` class. For example, to create a native module for camera access:\n\n```javascript\n// CameraAccessModule.js\nimport { NativeModules } from 'react-native';\nconst { CameraAccessModule } = NativeModules;\nexport default CameraAccessModule;\n\n// CameraAccessModule.m\n#import <Foundation/Foundation.h>\n#import <React/RCTModuleMethod.h>\n\n@interface CameraAccessModule : NSObject <RCTModuleMethod>\n@property (nonatomic, copy) RCTResponseSenderBlock responseSender;\n\n- (void)startCamera:(RCTResponseSenderBlock)responseSender {\n  // Implement camera access logic here\n  responseSender(@YES);\n}\n@end\n\n```\n\nThen, in your React Native code, you can import and use the native module:\n\n```javascript\nimport React from 'react';\nimport { CameraAccessModule } from './CameraAccessModule';\n\nconst App = () => {\n  const startCamera = () => {\n    CameraAccessModule.startCamera((response) => {\n      console.log(response);\n    });\n  };\n  return (\n    <View>\n      <Button title='Start Camera' onPress={startCamera} />\n    </View>\n  );\n};\n```\n\nNote that native modules can also be packaged as plugins, making them easily shareable across projects.",
-      "code_snippet": "javascript",
-      "language": null,
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 10,
-      "overall": 9
-    },
-    {
-      "topic": "React Native Architecture — new vs old architecture, JSI, Fabric, Turbo Modules",
-      "status": "done",
-      "title": "React Native Architecture: JSI, Fabric, and Turbo Modules",
-      "body": "React Native's architecture has evolved over time. The new architecture, introduced in 2020, uses the JavaScript Interface (JSI) to improve performance and reduce the reliance on the React Native Bridge. JSI allows JavaScript code to access native APIs directly, eliminating the need for the Bridge. React Native Fabric, on the other hand, is a component that enables easy integration of native modules. Turbo Modules, a new feature in React Native, allow developers to create high-performance native modules using the Turbo Module API. Here's an example of using Turbo Modules:\n\n```javascript\nimport { NativeModules } from 'react-native';\nconst { TurboModule } = NativeModules;\nconst turboModule = new TurboModule();\nturboModule.init();\n```\n",
-      "code_snippet": null,
-      "language": "javascript",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
     },
     {
       "topic": "Performance — JS thread vs UI thread in RN, jank, avoiding bridge overload",
@@ -76,58 +40,6 @@
       "overall": 8
     },
     {
-      "topic": "Ionic & Capacitor — web-first approach, Capacitor plugins, PWA vs native hybrid",
-      "status": "done",
-      "title": "React Native: Unpacking Capacitor Plugins for Web-First Mobile Apps",
-      "body": "When building web-first mobile apps with React Native, Capacitor plugins offer a seamless experience. These plugins are essentially JavaScript APIs that wrap native functionality, allowing you to use native features without leaving the JavaScript realm. For instance, you can use the Capacitor Camera plugin to access device cameras without writing native code. To integrate a plugin, you need to install it via npm, then add it to your React Native project using the `@capacitor/core` package. Finally, you can use the plugin's methods in your JavaScript code, like `import { Camera } from '@capacitor/camera'; const photo = await Camera.getPhoto({ quality: 'high' });",
-      "code_snippet": null,
-      "language": "javascript",
-      "clarity": 9,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "State Management in RN — Redux Toolkit, Zustand, React Query on mobile",
-      "status": "done",
-      "title": "React Native › Optimizing State Management with Redux Toolkit, Zustand, and React Query",
-      "body": "React Native apps often rely on efficient state management to handle complex data flows. Among the most popular state management libraries for RN are Redux Toolkit, Zustand, and React Query. Redux Toolkit simplifies the Redux architecture by providing pre-built tools and utilities. Zustand offers a predictable and efficient state container for smaller applications. React Query focuses on data fetching and caching. To choose the best library, consider the complexity of your app's data flow and the need for data caching. For instance, if your app involves complex data transformations, Redux Toolkit might be a better fit. If your app requires simple and predictable state management, Zustand could work well. React Query excels at handling data fetching and caching.",
-      "code_snippet": null,
-      "language": "javascript",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
-      "topic": "Styling — StyleSheet in RN, NativeWind, Flutter theming system",
-      "status": "done",
-      "title": "React Native - Mastering StyleSheet for Consistent Cross-Platform UI",
-      "body": "When building a React Native app, maintaining a consistent UI across platforms is crucial. StyleSheet is a crucial component in achieving this consistency. However, native developers may find it challenging to replicate their Flutter theming system in RN. Fortunately, NativeWind provides a similar set of APIs for creating and managing styles in RN. You can define a stylesheet in NativeWind and use it to style your RN components. For instance, you can create a stylesheet for your app's primary color and typography.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "State Management in Flutter — Provider, Riverpod, BLoC pattern",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Navigation — React Navigation, Expo Router, GoRouter in Flutter",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
       "topic": "Testing — React Native Testing Library, Flutter widget tests, Detox for E2E",
       "status": "done",
       "title": "Optimizing React Native Testing with React Native Testing Library",
@@ -138,18 +50,6 @@
       "specificity": 10,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Security — secure storage, certificate pinning, jailbreak/root detection",
-      "status": "done",
-      "title": "React Native: Secure Storage, Certificate Pinning, and Jailbreak/Root Detection",
-      "body": "To enhance security in React Native, use the `SecureStore` API to store sensitive data, such as encryption keys or tokens, encrypted on the device. For certificate pinning, implement a custom `NetworkInterceptor` to verify the server's SSL certificate. For jailbreak/root detection, use the `isDeviceEmulator` function to identify potential security risks. Always handle sensitive data and implement security measures to protect against common threats.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     },
     {
       "topic": "Code Sharing — sharing logic between web and mobile, monorepo strategies",
@@ -164,30 +64,6 @@
       "overall": 8
     },
     {
-      "topic": "When to Go Native — performance ceiling of cross-platform, signals to switch",
-      "status": "done",
-      "title": "React Native: When to Go Native — Breaking the Performance Ceiling",
-      "body": "When building complex, data-intensive, or graphics-heavy mobile apps with React Native, performance issues can arise due to the platform's JavaScript-based architecture. At this point, it's essential to weigh the trade-offs between developing a native app and sticking with React Native. Consider going native if your app involves heavy OpenGL ES rendering, native module integrations, or high-performance audio processing. In such cases, leveraging native code can significantly improve performance and user experience.",
-      "code_snippet": null,
-      "language": "javascript",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8.5
-    },
-    {
-      "topic": "Push Notifications — Expo Notifications, React Native Firebase, Flutter FCM",
-      "status": "done",
-      "title": "React Native: Choosing the Right Push Notification Library",
-      "body": "When it comes to push notifications in React Native, you're spoiled for choice. Expo Notifications and React Native Firebase are two popular options, but Flutter FCM is not a viable choice for React Native apps. To set up push notifications with Expo Notifications, create an account on the Expo dashboard, add the `expo-notifications` package to your project, and initialize it with `Notifications.setNotificationHandler`. For React Native Firebase, you'll need to add the `@react-native-firebase/app` and `@react-native-firebase/messaging` packages, then initialize Firebase in your app and request permission to display notifications.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Over-the-Air Updates — EAS Update, CodePush, when OTA is and isn't safe",
       "status": "done",
       "title": "React Native: Choosing Between EAS Update, CodePush, and When OTA is Safe",
@@ -198,62 +74,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "App Store Deployment — EAS Build, Fastlane, automating submissions",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "State Management in Flutter — Provider, Riverpod, BLoC pattern",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Navigation — React Navigation, Expo Router, GoRouter in Flutter",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "App Store Deployment — EAS Build, Fastlane, automating submissions",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "State Management in Flutter — Provider, Riverpod, BLoC pattern",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Navigation — React Navigation, Expo Router, GoRouter in Flutter",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "App Store Deployment — EAS Build, Fastlane, automating submissions",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

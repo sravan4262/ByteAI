@@ -4,90 +4,6 @@
   "domain": "security",
   "bytes": [
     {
-      "topic": "OWASP Top 10 — injection, broken auth, XSS, IDOR, security misconfig and the rest",
-      "status": "done",
-      "title": "OWASP Top 10: Identifying Injection Vulnerabilities",
-      "body": "When dealing with SQL queries, use parameterized queries with OWASP ESAPI (Enterprise Security API) to prevent SQL injection attacks. This ensures user input is sanitized and doesn't inject malicious SQL code. For example, ESAPI's `getSQL()` method can be used to construct SQL queries securely.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "SQL Injection — parameterized queries, ORMs as defense, testing for injection",
-      "status": "done",
-      "title": "OWASP: Mitigating SQL Injection with Parameterized Queries and ORMs",
-      "body": "OWASP recommends using parameterized queries to prevent SQL injection attacks. However, not all ORMs (Object Relational Mappers) are created equal. Consider using OWASP-approved ORMs like Hibernate or Entity Framework, which provide built-in support for parameterized queries. When testing for SQL injection, use tools like OWASP ZAP or Burp Suite to identify vulnerabilities. For example, in a Java application using Hibernate, you can use the `@Param` annotation to inject parameters into your queries.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "XSS — reflected vs stored vs DOM-based, CSP headers, output encoding",
-      "status": "done",
-      "title": "Owasp: Unleashing the Power of CSP Headers against XSS",
-      "body": "To mitigate XSS attacks, OWASP recommends using Content Security Policy (CSP) headers. CSP headers specify allowed sources for scripts, styles, and other resources. By setting the 'script-src' directive to 'none', you can disable inline JavaScript execution. For example, in Apache, use the 'Header' directive: `Header set Content-Security-Policy \"script-src 'none'; object-src 'none';\". OWASP also suggests output encoding user input data using the 'htmlspecialchars' function in PHP or the 'h' function in Node.js. This prevents attackers from injecting malicious JavaScript code. For instance, in PHP: `echo htmlspecialchars($_GET['username']);`. Always validate user input and sanitize output data to prevent XSS attacks.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Authentication Flaws — weak passwords, credential stuffing, MFA, session management",
-      "status": "done",
-      "title": "OWASP: Uncovering Authentication Flaws - Weak Passwords and Credential Stuffing",
-      "body": "OWASP's Authentication Cheat Sheet emphasizes the importance of strong passwords. Weak passwords are a primary entry point for attackers. OWASP recommends using a minimum password length of 12 characters, requiring a mix of uppercase and lowercase letters, numbers, and special characters. Additionally, OWASP suggests implementing a rate limiting system to prevent brute-force attacks. OWASP's ESAPI library provides a PasswordStrengthValidator for assessing password strength. Meanwhile, OWASP's ESAPI library also includes a PasswordEncryptor for storing encrypted passwords.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "SAST — static analysis with Semgrep, SonarQube, integrating in CI pipeline",
-      "status": "done",
-      "title": "OWASP: Integrating Semgrep and SonarQube for SAST in CI Pipelines",
-      "body": "To integrate Semgrep and SonarQube in OWASP, create a custom SonarQube plugin using the SonarQube API. This plugin will call Semgrep's CLI to analyze source code. The plugin must be configured to execute Semgrep for each supported programming language. For example, in a .NET project, the plugin will call `dotnet semgrep` to analyze code. The SonarQube plugin will also receive the results from Semgrep and display them in the SonarQube UI.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Security Misconfigurations — default credentials, exposed debug endpoints, verbose errors",
-      "status": "done",
-      "title": "OWASP: Mitigating Default Credentials and Exposed Debug Endpoints",
-      "body": "When using OWASP ESAPI's Validator library, ensure to remove default credentials and disable exposed debug endpoints. ESAPI's ValidateInput method can help prevent common web vulnerabilities like SQL injection. To remove default credentials, update your application's configuration file to exclude them. For example, in ESAPI's configuration file, remove the \"username\" and \"password\" properties. To disable exposed debug endpoints, remove or restrict access to debug endpoints like \"debug\" and \"trace\". ESAPI's ValidateInput method can be used to validate user input and prevent SQL injection attacks.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "IDOR & Access Control — always validate server-side, never trust client for authorization",
-      "status": "done",
-      "title": "OWASP: Never Trust Client-Side Authorization — Validate Server-Side Always",
-      "body": "When verifying user permissions in OWASP, always validate server-side. Never rely on client-side checks, as attackers can manipulate these. OWASP's Authentication and Authorization Cheat Sheet (A8:2013) emphasizes this principle. Use a secure token-based approach, where the server generates and verifies tokens. For example, in Java, use the OWASP ESAPI library to create a token and verify it server-side.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "DAST — dynamic testing with Burp Suite, ZAP, testing running applications",
       "status": "done",
       "title": "OWASP - Dynamic Application Security Testing with Burp Suite and ZAP",
@@ -110,22 +26,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Secrets Management — never commit secrets, rotation, detection with truffleHog/gitleaks",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Dependency Vulnerabilities — CVE scanning, Snyk, npm audit, update strategies",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     },
     {
       "topic": "Burp Suite — intercepting proxy, repeater, scanner, active vs passive scanning",
@@ -210,42 +110,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "Secrets Management — never commit secrets, rotation, detection with truffleHog/gitleaks",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Dependency Vulnerabilities — CVE scanning, Snyk, npm audit, update strategies",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Secrets Management — never commit secrets, rotation, detection with truffleHog/gitleaks",
-      "status": "done",
-      "title": "OWASP - Preventing Secret Exposure with TruffleHog and Gitleaks",
-      "body": "To prevent secret exposure in OWASP projects, follow these best practices. Never commit secrets directly to the repository. Instead, use environment variables or a secrets manager like Vault. For existing repositories, use TruffleHog to detect exposed secrets and Gitleaks to identify potential secrets. TruffleHog scans commit history for exposed secrets, while Gitleaks analyzes code for potential secrets. Integrate these tools into your CI/CD pipeline to automatically detect and alert on secret exposure.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Dependency Vulnerabilities — CVE scanning, Snyk, npm audit, update strategies",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

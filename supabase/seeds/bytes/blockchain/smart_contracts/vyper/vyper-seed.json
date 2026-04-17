@@ -40,18 +40,6 @@
       "overall": 9
     },
     {
-      "topic": "Gas Optimization — storage vs memory vs calldata, packing structs, avoiding loops",
-      "status": "done",
-      "title": "Vypr: Storage vs Memory vs Calldata for Gas Efficiency",
-      "body": "When storing data in a Vyper contract, you have three options: storage, memory, and calldata. While storage is suitable for persistent data, it incurs a high gas cost per write operation. Memory is suitable for temporary data and is more gas-efficient than storage, but it's lost when the function returns. Calldata is a gas-efficient way to pass data to functions but has a limited size (approximately 24KB). To optimize gas usage, pack structs and use calldata when possible. Avoid using loops, as they can be expensive in terms of gas. Instead, consider using recursive functions or mapping data to arrays.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Hardhat — tasks, plugins, testing with ethers.js, local node, forking",
       "status": "done",
       "title": "Synchronizing Vyper Smart Contracts with Hardhat Local Node",
@@ -62,46 +50,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "Foundry — Forge tests in Solidity, fuzz testing, cast for interactions, anvil for local node",
-      "status": "done",
-      "title": "Vyper — Foundry: Forge Tests with Solidity, Fuzz Testing and Cast for Interactions",
-      "body": "Foundry's Forge can run Vyper contracts, but you'll need to compile them to Solidity first. Use `forge build` to generate a Solidity artifact. For fuzz testing, create a test contract with `@external` functions and use `forge test` with the `--fuzz` flag. To interact with your contract, use `cast` to send transactions.",
-      "code_snippet": "",
-      "language": "solidity",
-      "clarity": 9,
-      "specificity": 10,
-      "relevance": 9,
-      "overall": 9
-    },
-    {
-      "topic": "Testing Smart Contracts — unit tests, fork tests, invariant testing, fuzzing",
-      "status": "done",
-      "title": "Vyper Smart Contracts: Mastering Unit Tests and Fork Tests",
-      "body": "Vyper's built-in testing framework offers two primary testing modes: unit tests and fork tests. Unit tests verify individual contract functions, while fork tests simulate a blockchain environment to test complex scenarios. To write a unit test in Vyper, use the `test` keyword followed by the function name, e.g., `test my_function()`: \n```vyper\nfrom vyper import testing\n\n@testing.forge\ndef my_function() -> int:\n    return 10\n\n@testing.test\ndef test_my_function() -> None:\n    assert my_function() == 10\n```\nFork tests, on the other hand, require a `forge` context to be established using `@testing.forge`. This context will be automatically cleaned up after the test is executed. For example:\n```vyper\nfrom vyper import testing\n\n@testing.forge\ndef my_function() -> int:\n    return 10\n\n@testing.test\ndef test_my_function() -> None:\n    assert my_function() == 10\n```\nVyper also supports invariant testing using the `@testing.invariant` decorator. This decorator checks if a given condition is always true for a particular function. For instance:\n```vyper\nfrom vyper import testing\n\n@testing.forge\ndef my_function(x: int) -> int:\n    return x + 10\n\n@testing.invariant\ndef test_my_function() -> None:\n    assert my_function(5) >= 15\n```\nFinally, Vyper's `@testing.fuzz` decorator enables fuzz testing, which tests a function with random inputs. For example:\n```vyper\nfrom vyper import testing\n\n@testing.forge\ndef my_function(x: int) -> int:\n    return x + 10\n\n@testing.fuzz\ndef test_my_function() -> None:\n    assert my_function(5) >= 15\n```\n",
-      "code_snippet": null,
-      "language": "vyper",
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 10,
-      "overall": 8.6
-    },
-    {
-      "topic": "Security Patterns — checks-effects-interactions, reentrancy guard, pull over push",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Common Vulnerabilities — reentrancy, integer overflow, access control, oracle manipulation",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

@@ -74,58 +74,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8.5
-    },
-    {
-      "topic": "Solana Development — programs in Rust, Anchor framework, PDAs, CPIs",
-      "status": "done",
-      "title": "Polkadot Development — Calling Solana Programs with CPIs",
-      "body": "To call a Solana program from Polkadot's Substrate runtime, you'll use the CPI (Cross-Program Invocation) mechanism. First, add the Solana runtime's `solana_runtime` pallet to your `Cargo.toml` file. Then, create a new CPI function in your runtime's `lib.rs` file, which will handle the RPC call to the Solana cluster. Use the `solana_client` crate to establish a connection to the Solana cluster and call the desired function. Be sure to handle errors and edge cases properly. Here's an example of calling a Solana program's `create_account` function using CPIs:",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Solana Performance — parallel execution, Gulf Stream, Turbine, Sealevel",
-      "status": "done",
-      "title": "Polkadot Performance — Leverage Parallel Execution for Faster Block Propagation",
-      "body": "Polkadot's block production process involves multiple stages, including block creation, validation, and propagation. To improve performance, leverage parallel execution features like Gulf Stream and Turbine. Gulf Stream optimizes block propagation by enabling simultaneous transmission of blocks between validators. Turbine further accelerates the process by executing batched transactions in parallel. For example, to utilize Gulf Stream, configure your node to enable the `gulf-stream` feature with `--enable-gulf-stream` and `--gulf-stream-remote-validator`. Sealevel, another performance optimization, enables batched transaction submission. To take advantage of Sealevel, use the `sealevel` API to submit transactions in batches.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Bitcoin Script — stack-based, intentionally limited, P2PKH, P2SH, multisig",
-      "status": "done",
-      "title": "Polkadot: Scripting Bitcoin-Style on a Non-EVM Chain",
-      "body": "Polkadot's Parachain architecture relies on non-EVM (Ethereum Virtual Machine) chains, which can leverage Bitcoin-inspired scripting. Bitcoin Script is a stack-based language with intentional limitations, used for transactions like Pay-to-PublicKey-Hash (P2PKH) and Pay-to-Script-Hash (P2SH). Multisignature transactions require multiple signatures from a set of public keys. When creating a Polkadot transaction, you can use the `pallet_script` module to craft a script that complies with these Bitcoin-style transaction types. To achieve this, you'll need to encode the script as a bytes-like object and include it in the transaction payload.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Lightning Network — payment channels, routing, HTLC, liquidity management",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "IBC — Inter-Blockchain Communication, packet relaying, channel/port model",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

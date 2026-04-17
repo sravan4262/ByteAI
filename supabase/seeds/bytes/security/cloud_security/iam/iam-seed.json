@@ -16,30 +16,6 @@
       "overall": 8
     },
     {
-      "topic": "IAM Fundamentals — identity vs principal, authentication vs authorization",
-      "status": "done",
-      "title": "IAM Fundamentals: Identity vs Principal, Authentication vs Authorization",
-      "body": "In IAM, an identity refers to a user or entity that interacts with a system, while a principal is the entity that is granted permissions. Think of it as a user (identity) logging into a AWS IAM console (system) and being authenticated as an admin user (principal). The authentication process verifies the user's credentials, while authorization determines the permissions granted to the authenticated principal. IAM uses the concept of principals to manage access to AWS resources, such as users, roles, and AWS accounts.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Least Privilege — start with no permissions, grant what's needed, regular access review",
-      "status": "done",
-      "title": "iam Least Privilege — Starting with Zero Permissions",
-      "body": "When implementing least privilege in iam, start by creating a user with zero permissions. Then, use `UpdateUser` to grant only the necessary permissions. Regularly review access using `ListPolicyVersions` and `DetachPolicy`. This ensures that users only have the permissions required for their tasks, reducing the attack surface.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Zero Trust Architecture — never trust, always verify, microsegmentation",
       "status": "done",
       "title": "iam Zero Trust Architecture — Always Verify Microsegments",
@@ -50,54 +26,6 @@
       "specificity": 9,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "Secrets Rotation — automated rotation, zero-downtime rotation, audit trails",
-      "status": "done",
-      "title": "IAM Secrets Rotation: Automated, Zero-Downtime, and Audit Trails",
-      "body": "To automate secrets rotation in IAM, use AWS Secrets Manager's `rotate` method and IAM roles for secrets management. For zero-downtime rotation, update your application's secrets in batches using IAM's `update-assume-role-policy` API. Audit trails can be enabled by configuring IAM's `CloudWatch Logs` to log all API calls. Use IAM roles with the `iam:CreateServiceLinkedRole` permission to create service-linked roles for secrets management.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "IAM Policies — allow vs deny, condition keys, policy evaluation logic",
-      "status": "done",
-      "title": "IAM Policies — allow vs deny, condition keys, policy evaluation logic",
-      "body": "IAM policies use a deny-all approach, where all actions are denied by default. The allow action is used to permit specific actions. Condition keys can be used to further restrict permissions. Policy evaluation logic checks the user's identity, the resource's ARN, and the action being performed to determine if the policy allows the action. When multiple policies are attached to a resource, IAM uses a logical OR operation to evaluate permissions.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Encryption — KMS, customer-managed keys, envelope encryption",
-      "status": "done",
-      "title": "IAM: Protecting Sensitive Data with Customer-Managed Keys and Envelope Encryption",
-      "body": "When working with sensitive data in IAM, you can use customer-managed keys (CMKs) to encrypt and decrypt resources. CMKs are AWS-managed keys that you create, manage, and control. You can use them to encrypt resources like Amazon S3 buckets, Amazon DynamoDB tables, and more. However, when it comes to protecting sensitive data, you may need to use envelope encryption. This involves encrypting the data at rest with a CMK, and then encrypting the CMK itself with a separate key. This adds an extra layer of security, making it more difficult for unauthorized access. To implement customer-managed keys and envelope encryption in IAM, you can use the AWS Key Management Service (KMS).",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Audit Logging — CloudTrail/Cloud Audit Logs, what to capture, retention",
-      "status": "done",
-      "title": "iam: Fine-Tuning CloudTrail for IAM Audit Logging",
-      "body": "When configuring CloudTrail for IAM audit logging, consider capturing 'ReadOnlyAccess' and 'IAMUserPassReadonlyAccess' policies for sensitive resource access monitoring. Store log files in Amazon S3 for at least 12 months, as recommended by AWS. Use the 'CloudTrail S3 Bucket Policy' to restrict public access to logs. To filter logs, utilize the 'CloudTrail Event Selector' with IAM-specific query parameters like 'eventSource': ['iam.amazonaws.com'] and 'resources': ['arn:aws:iam::*:*'].",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
     },
     {
       "topic": "Cloud Security Posture — CSPM tools, detecting misconfigurations at scale",
@@ -112,18 +40,6 @@
       "overall": 8
     },
     {
-      "topic": "Network Security — security groups, NACLs, private subnets, bastion hosts",
-      "status": "done",
-      "title": "iam Network Security — Securing Cloud Resources with Security Groups and NACLs",
-      "body": "When securing your cloud resources with iam, use security groups to control incoming and outgoing traffic. Create a group with specific rules, such as allowing incoming HTTP traffic from a specified IP range. Associate the group with your EC2 instance or RDS database. Network ACLs (NACLs) filter network traffic at the subnet level. Create a NACL with rules, such as allowing outbound HTTP traffic, and associate it with your private subnet. Use bastion hosts to access your private subnet securely.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
       "topic": "Container Security — pod security standards, runtime security with Falco",
       "status": "done",
       "title": "iam: Enforcing Pod Security Standards with Falco",
@@ -134,129 +50,6 @@
       "specificity": 9,
       "relevance": 9,
       "overall": 8
-    },
-    {
-      "topic": "HashiCorp Vault — secret engines, dynamic secrets, lease TTL, auth methods",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "WAF — rule sets, rate limiting, bot protection, tuning false positives",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Data Classification — tagging sensitive data, enforcing access based on classification",
-      "status": "done",
-      "title": "iam Data Classification — Enforce Access Control with Resource Tags",
-      "body": "To enforce access control based on data classification in iam, create a resource tag with a key-value pair. Use the `ResourceTag` resource to define the tag. For example, create a tag named `sensitive-data` with a value of `high` to identify sensitive data. Then, use the `Policy` resource to attach this tag to a specific resource. Finally, use the `iam.getAccessAnalyzer` method to analyze access to the tagged resource and enforce access control based on the tag value.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Federated Identity — SSO, SAML, OIDC, cross-account access patterns",
-      "status": "done",
-      "title": "iam Federated Identity — SSO, SAML, OIDC, and Cross-Account Access Patterns",
-      "body": "Federated identity in iam uses Security Assertion Markup Language (SAML) 2.0 and OpenID Connect (OIDC) for single sign-on (SSO) and cross-account access. To enable SSO, create an IAM identity provider (IdP) and configure the IdP to authenticate users. iam supports both SAML 2.0 and OIDC as authentication protocols. For OIDC, use the `openid_connect_provider` resource to configure the provider and roles. To grant cross-account access, create an IAM role and attach a permission set to it. Then, grant users or groups access to the role using the `iam::Role/AttachPolicy` action.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "Incident Response — isolation playbooks, forensics, blast radius containment",
-      "status": "done",
-      "title": "IAM Incident Response — Isolation Playbooks and Blast Radius Containment",
-      "body": "When an IAM role becomes compromised, containment is key. IAM provides the `CreateServiceLinkedRole` API for isolation playbooks. Use `iam.getRolePolicy` to retrieve the current policy, then `iam.createServiceLinkedRole` to create a new, isolated role. To contain the blast radius, `iam.getRoleDependencies` identifies dependent roles, which can be isolated using `iam.createServiceLinkedRole`. For example, in Python:\n\nimport boto3\niam = boto3.client('iam')\ndef isolate_role(role_name):\n    policy = iam.get_role_policy(role_name)['PolicyDocument']\n    service_linked_role = iam.create_service_linked_role(role_name, policy)\n    return service_linked_role\n\n# Isolate a compromised role\ncompromised_role = 'arn:aws:iam::123456789012:role/CompromisedRole'\nnew_role = isolate_role(compromised_role)\n",
-      "code_snippet": "python",
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 8,
-      "overall": 8
-    },
-    {
-      "topic": "Compliance as Code — policy as code with OPA, cloud guardrails",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Security Benchmarks — CIS benchmarks, cloud provider security best practices",
-      "status": "done",
-      "title": "iam Security Benchmarks — CIS Benchmarks and Cloud Provider Best Practices",
-      "body": "To ensure the security of your iam infrastructure, implement CIS benchmarks and cloud provider security best practices. iam recommends configuring IAM roles with the minimum required permissions using the `iam.Role` resource's `permissionsBoundary` attribute. Set the `permissionsBoundary` to an IAM policy document that defines the allowed actions. For example:\n\n```typescript\nimport * as iam from 'iam';\nconst policyDocument = {\n  Version: '2012-10-17',\n  Statement: [\n    {\n      Action: 's3:*',\n      Effect: 'Allow',\n      Resource: 'arn:aws:s3:::*'\n    }\n  ]\n};\nconst role = iam.Role('my-role', {\n  permissionsBoundary: policyDocument\n});\n```\n\nAdditionally, ensure you're using IAM's built-in features like IAM Service-linked roles and IAM roles for Amazon EC2 instances. Monitor your IAM configuration using AWS CloudWatch and AWS IAM Identity Center.",
-      "code_snippet": {
-        "language": "typescript",
-        "code": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":\"s3:*\",\"Effect\":\"Allow\",\"Resource\":\"arn:aws:s3:::*\n\"}]}"
-      },
-      "language": null,
-      "clarity": 8,
-      "specificity": 9,
-      "relevance": 9,
-      "overall": 8
-    },
-    {
-      "topic": "HashiCorp Vault — secret engines, dynamic secrets, lease TTL, auth methods",
-      "status": "done",
-      "title": "iam: Secure Dynamic Secrets with HashiCorp Vault",
-      "body": "When working with iam, you often need to manage sensitive data such as database credentials or API keys. HashiCorp Vault provides a secure way to store and retrieve these secrets dynamically. iam supports Vault's secret engines, which allow you to store and retrieve secrets based on specific paths. To use Vault with iam, you'll need to create a Vault instance and configure it to use the iam authentication method. Once set up, you can use the iam SDK to retrieve secrets from Vault. For example, you can use the `lease_ttl` parameter to specify a time-to-live for the secret, after which it will be automatically rotated.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "WAF — rule sets, rate limiting, bot protection, tuning false positives",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Compliance as Code — policy as code with OPA, cloud guardrails",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Compliance as Code — policy as code with OPA, cloud guardrails",
-      "status": "done",
-      "title": "iam Policy as Code with OPA and Cloud Guardrails",
-      "body": "iam policies are defined using the iam PolicyDocument type, but compliance requirements can make these policies lengthy and error-prone. OPA (Open Policy Agent) and cloud guardrails provide a more maintainable approach by separating policy logic into a separate file. Using OPA, you can write policies in a declarative syntax, making it easier to manage complex compliance rules. For example, you can define a policy to enforce 'iam:PassRole' permission only for specific roles. Cloud guardrails further simplify this process by auto-generating iam policies based on AWS Config rules.",
-      "code_snippet": null,
-      "language": null,
-      "clarity": null,
-      "specificity": null,
-      "relevance": null,
-      "overall": null
-    },
-    {
-      "topic": "WAF — rule sets, rate limiting, bot protection, tuning false positives",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }

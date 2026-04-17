@@ -209,14 +209,6 @@
     },
     {
       "topic": "Filtering & Sorting — query param conventions, GraphQL args, protobuf fields",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Filtering & Sorting — query param conventions, GraphQL args, protobuf fields",
       "status": "done",
       "title": "gRPC Filtering & Sorting — AIP-132 Protobuf Field Conventions",
       "body": "gRPC list RPCs don't use query params — filtering and sorting live as typed fields in your protobuf request message. Google's AIP-132 is the de facto standard: define a `string filter` field accepting CEL expressions (e.g. `status = \"ACTIVE\" AND created_time > \"2024-01-01T00:00:00Z\"`) and a `string order_by` field with comma-separated columns and optional ` desc` suffix (e.g. `\"created_time desc, name\"`). For simple, high-traffic RPCs, skip CEL and use a typed `Filter` message with explicit fields — compile-time safety, zero parser overhead. Always pair with `int32 page_size` and `string page_token` for cursor pagination per AIP-158. Critical server-side rule: validate `order_by` against an allowlist before touching your query layer — never interpolate it into SQL directly. For nested AND/OR logic, model filter trees as a recursive `oneof` in the proto rather than encoding logic into a stringly-typed expression, keeping serialization deterministic and avoiding CEL runtime dependencies in your service.",

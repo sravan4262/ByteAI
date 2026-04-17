@@ -194,30 +194,6 @@
       "specificity": 10,
       "relevance": 10,
       "overall": 9
-    },
-    {
-      "topic": "When to Use What — Redis vs Kafka vs RabbitMQ decision framework",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Testing — testing consumers in isolation, mocking brokers in tests",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
-    },
-    {
-      "topic": "Security — broker authentication, TLS, network isolation",
-      "status": "failed",
-      "title": null,
-      "body": null,
-      "code_snippet": null,
-      "language": null
     }
   ]
 }
