@@ -11,13 +11,16 @@ public static class SupabaseJwtExtensions
         this IServiceCollection services,
         IConfiguration config)
     {
-        var supabaseUrl = config["Supabase:Url"]
-            ?? throw new InvalidOperationException(
-                "Supabase:Url is required. Set it in appsettings.json or the SUPABASE__URL environment variable.");
+        var supabaseUrl = config["Supabase:Url"];
+        if (string.IsNullOrWhiteSpace(supabaseUrl))
+            throw new InvalidOperationException(
+                "Supabase:Url is required. Set the SUPABASE__URL environment variable.");
 
-        var jwtSecret = config["Supabase:JwtSecret"]
-            ?? throw new InvalidOperationException(
-                "Supabase:JwtSecret is required. Find it in Supabase Dashboard → Project Settings → API → JWT Settings.");
+        var jwtSecret = config["Supabase:JwtSecret"];
+        if (string.IsNullOrWhiteSpace(jwtSecret))
+            throw new InvalidOperationException(
+                "Supabase:JwtSecret is required. Set the SUPABASE__JWTSECRET environment variable. " +
+                "Find it in Supabase Dashboard → Project Settings → API → JWT Settings.");
 
         // Allow overriding the issuer separately from the URL used for HTTP calls.
         // Needed for local Docker where the JWT iss is 127.0.0.1 but the API reaches

@@ -104,7 +104,10 @@ jobs:
             --set-env-vars \
               "ConnectionStrings__Postgres=${{ secrets.DATABASE_URL }}" \
               "Groq__ApiKey=${{ secrets.GROQ_API_KEY }}" \
-              "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}"
+              "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}" \
+              "Supabase__Url=${{ secrets.SUPABASE_URL }}" \
+              "Supabase__JwtSecret=${{ secrets.SUPABASE_JWT_SECRET }}" \
+              "Supabase__ServiceRoleKey=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
 
       # ── Wait for API provisioning to complete before touching Gateway ─────────
       - name: Wait for API provisioning to complete

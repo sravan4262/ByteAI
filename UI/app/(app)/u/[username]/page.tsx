@@ -1,6 +1,5 @@
 import { PublicProfileScreen } from '@/components/features/profile/public-profile-screen'
 
-export const dynamic = 'force-dynamic'
 
 interface Props {
   params: Promise<{ username: string }>
