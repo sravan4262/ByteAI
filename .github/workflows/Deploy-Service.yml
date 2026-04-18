@@ -87,7 +87,7 @@ jobs:
             ACTIVE="blue"; INACTIVE="green"
           fi
 
-          SUFFIX="${INACTIVE}-${{ github.run_number }}"
+          SUFFIX="${INACTIVE}-${{ github.run_number }}-${{ github.run_attempt }}"
           echo "active=$ACTIVE"     >> $GITHUB_OUTPUT
           echo "inactive=$INACTIVE" >> $GITHUB_OUTPUT
           echo "suffix=$SUFFIX"     >> $GITHUB_OUTPUT
