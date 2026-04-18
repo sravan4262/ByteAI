@@ -2,5 +2,18 @@
   "tech_stack": "rust_sys",
   "subdomain": "sys_languages",
   "domain": "systems",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Zig — comptime, allocators, error unions, C interop, no hidden allocations",
+      "status": "done",
+      "title": "rust_sys: Taming Comptime with Zig's Allocators",
+      "body": "When working with comptime in rust_sys, you can use Zig's allocators to handle memory management. Zig's allocators provide a way to allocate memory at comptime, eliminating the need for runtime allocations. To use Zig's allocators, you can import the `zig_std_allocator` crate and use the `std.heap` module. For example, you can use the `std.heap.page_allocator` to allocate memory at comptime: `let allocator = std.heap.page_allocator; let ptr = allocator.alloc(u8, 10);`. This approach ensures that memory is allocated at compile-time, reducing runtime overhead.",
+      "code_snippet": "let allocator = std.heap.page_allocator; let ptr = allocator.alloc(u8, 10);",
+      "language": "rust",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    }
+  ]
 }

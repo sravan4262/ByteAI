@@ -2,5 +2,78 @@
   "tech_stack": "foundry",
   "subdomain": "smart_contracts",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Solidity Fundamentals — types, visibility, state variables, functions, modifiers",
+      "status": "done",
+      "title": "Foundry Fundamentals: Mastering Solidity Basics with Forge",
+      "body": "When building smart contracts with Foundry, understanding Solidity fundamentals is crucial. State variables can be declared as public, internal, or private, with the latter being inaccessible from outside the contract. Functions can have various visibility modifiers, including external, public, internal, and private. Modifiers can be used to restrict function execution based on conditions. Forge, Foundry's testing framework, allows you to write comprehensive tests for your contracts. By leveraging these features, you can ensure your contracts are secure, efficient, and well-tested.",
+      "code_snippet": "contract MyContract { uint public myVariable; function myFunction() public { require(msg.sender == owner, 'Only owner can call'); } }",
+      "language": "solidity",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Contract Architecture — upgradeable patterns (proxy), libraries, interfaces, abstract contracts",
+      "status": "done",
+      "title": "Foundry: Implementing Upgradeable Contracts with Proxy Patterns",
+      "body": "Foundry provides a robust environment for developing and testing smart contracts. When it comes to contract architecture, upgradeable patterns are crucial for maintaining and updating contracts on the blockchain. One approach is to use a proxy contract, which acts as an intermediary between the user and the implementation contract. This allows for seamless upgrades without affecting the user's interaction with the contract. Foundry's `forge` tool can be used to deploy and test these proxy contracts. The `forge create` command can be used to deploy the implementation contract, and then the proxy contract can be deployed with the address of the implementation contract.",
+      "code_snippet": "contract MyProxy is UpgradeableProxy { function initialize(address _impl) public { _impl = _impl; } }",
+      "language": "solidity",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Storage Layout — slots, packing, SLOAD/SSTORE cost, avoiding storage collisions",
+      "status": "done",
+      "title": "Foundry Smart Contract Storage Optimization",
+      "body": "When storing data in a foundry smart contract, consider the storage layout to minimize SLOAD and SSTORE costs. Foundry uses a dictionary-based storage system, where each key is stored in a slot. Slots are packed into a 256-bit word, with the last slot padded to 8 bytes. SLOAD and SSTORE operations are expensive, so avoid unnecessary storage access. To minimize collisions, use unique and prefix-free keys. Consider using nested structs to group related data. For example, a user contract might use a nested struct `user` containing `address`, `name`, and `balance` fields.",
+      "code_snippet": "contract User {    struct user {        address addr;        string name;        uint balance;    }    mapping (address => user) users;",
+      "language": "solidity",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Hardhat — tasks, plugins, testing with ethers.js, local node, forking",
+      "status": "done",
+      "title": "Foundry: Efficient Testing with Hardhat Tasks and Plugins",
+      "body": "When writing smart contracts with Foundry, testing is crucial. Hardhat tasks and plugins simplify this process. To start, create a new task using `@foundry/hardhat-task` and define it in `tasks.ts`. For example, `const { task } = require('@foundry/hardhat-task'); task('test', 'Run tests').setAction(async (args, env) => { const ethers = await env.ethers; const contract = await ethers.getContractFactory('MyContract'); const instance = await contract.deploy(); await instance.deployed(); });`. Next, install required plugins, like `@nomicfoundation/hardhat-ethers` for ethers.js integration. Then, create a new Hardhat task to fork a local node using `@foundry/hardhat-task` and `@foundry/hardhat-fork-manager`. This allows for seamless testing with a local Ethereum node.",
+      "code_snippet": "const { task } = require('@foundry/hardhat-task'); task('test', 'Run tests').setAction(async (args, env) => { const ethers = await env.ethers; const contract = await ethers.getContractFactory('MyContract'); const instance = await contract.deploy(); await instance.deployed(); });",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Foundry — Forge tests in Solidity, fuzz testing, cast for interactions, anvil for local node",
+      "status": "done",
+      "title": "Foundry — Writing Effective Forge Tests with Solidity and Fuzz Testing",
+      "body": "Forge tests in Foundry enable you to write unit tests for your Solidity contracts. To write effective forge tests, use the `forge test` command to run your tests. You can also use fuzz testing to test your contracts with random inputs. The `cast` functionality allows you to interact with your contract instances. Finally, use Anvil for local testing by creating a node in the `anvil` command. When using Anvil, don't forget to specify the `--node` flag to connect to the local node.",
+      "code_snippet": "\nforge test --match-path tests/*\n// example fuzz test\npragma solidity ^0.8.17;\ncontract FuzzTest {\n    function fuzz(uint256 x) public pure returns (uint256) {\n        return x * 2;\n    }\n}\n",
+      "language": "solidity",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Common Vulnerabilities — reentrancy, integer overflow, access control, oracle manipulation",
+      "status": "done",
+      "title": "Foundry Smart Contracts: Mitigating Common Vulnerabilities",
+      "body": "When implementing smart contracts in Foundry, it's essential to address common vulnerabilities. Reentrancy attacks can occur when a contract calls another contract's function, which in turn calls back into the original contract. To prevent this, use reentrancy guards like `require(uint256(tx.index) >= uint256(_tries), \"Reentrancy detected\");`. Integer overflows can be mitigated by using SafeMath library's `add`, `sub`, and `mul` functions. Access control can be ensured by using Foundry's built-in `onlyOwner` modifier. Oracle manipulation can be prevented by using trusted oracle sources and validating data.",
+      "code_snippet": "pragma solidity ^0.8.0;\nimport { SafeMath } from '@openzeppelin/contracts/utils/SafeMath.sol';\ncontract VulnerableContract {\n    function vulnerableFunction(uint256 _tries) public {\n        require(uint256(tx.index) >= uint256(_tries), \"Reentrancy detected\");\n    }\n}\n",
+      "language": "solidity",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    }
+  ]
 }

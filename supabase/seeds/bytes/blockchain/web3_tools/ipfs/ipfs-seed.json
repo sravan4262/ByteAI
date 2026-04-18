@@ -2,5 +2,42 @@
   "tech_stack": "ipfs",
   "subdomain": "web3_tools",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "IPFS — content addressing, DHT, pinning, IPFS vs Filecoin, CIDs",
+      "status": "done",
+      "title": "IPFS — Understanding Content Addressing with CIDs",
+      "body": "IPFS uses Content-Addressed Storage, where files are addressed by their content, rather than their location. This is achieved through the use of Content Identifiers (CIDs), which are unique hashes of the file's contents. CIDs are used to identify and retrieve files from the IPFS network. The `ipfs add` command is used to add files to the network and generate a CID. The `ipfs get` command can then be used to retrieve a file by its CID. IPFS also uses a Distributed Hash Table (DHT) to store and retrieve CIDs, allowing for efficient lookup and retrieval of files. Pinning a file ensures it remains available on the network, even if the original node goes offline.",
+      "code_snippet": "const ipfs = require('ipfs-http-client');\nconst file = 'path/to/file';\nconst cid = await ipfs.add(file);\nconsole.log(cid.path);",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "The Graph — subgraphs, indexing blockchain events, GraphQL queries, hosted vs decentralized",
+      "status": "done",
+      "title": "ipfs — Indexing Blockchain Events with The Graph Subgraphs",
+      "body": "The Graph is a powerful tool for indexing blockchain events, and when combined with ipfs, it enables decentralized data storage and querying. By creating a subgraph, you can define the data you want to index from the blockchain, and then use GraphQL queries to retrieve it. ipfs provides a decentralized storage solution for the indexed data, allowing for censorship-resistant and persistent data storage. To get started, you'll need to install the `@graphprotocol/graph-cli` package and initialize a new subgraph project. Then, define your subgraph's schema and data sources using the `schema.graphql` and `subgraph.yaml` files.",
+      "code_snippet": "const { createClient } = require('@ipfs/http-client');\nconst ipfs = createClient('https://ipfs.infura.io:5001/api/v0');\nconst graphClient = new TheGraphClient('https://api.thegraph.com/subgraphs/name/your-subgraph');\nconst query = `{\\n  events {\\n    id\\n    blockNumber\\n  }\\n}`;\ngraphClient.query(query).then((data) => console.log(data));",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "ethers.js — providers, signers, contract interaction, event listening",
+      "status": "done",
+      "title": "IPFS + ethers.js: Event Listening for Smart Contract Interactions",
+      "body": "When interacting with IPFS-hosted smart contracts using ethers.js, you'll often need to listen for events emitted by the contract. ethers.js provides the `EventEmitter` class to handle event listeners. To create an event listener, use the `on()` method, passing the event name and a callback function. For example, to listen for the `Transfer` event on an Ethereum contract hosted on IPFS, use the following code: `const provider = new ethers.providers.IpfsInfuraProvider(); const contract = new ethers.Contract('ipfs://...'); contract.events.Transfer().on('data', (event) => { console.log(event); });`. The `on()` method returns an event listener that can be removed using the `off()` method.",
+      "code_snippet": "const provider = new ethers.providers.IpfsInfuraProvider();\nconst contract = new ethers.Contract('ipfs://...');\ncontract.events.Transfer().on('data', (event) => {\n  console.log(event);\n});",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    }
+  ]
 }

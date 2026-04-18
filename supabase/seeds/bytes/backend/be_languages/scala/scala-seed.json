@@ -2,5 +2,102 @@
   "tech_stack": "scala",
   "subdomain": "be_languages",
   "domain": "backend",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Package Management — lock files, versioning, dependency auditing",
+      "status": "done",
+      "title": "Scala sbt — Lock Files, Version Pinning, and Dependency Auditing",
+      "body": "sbt has no built-in lock file — you need the `sbt-dependency-lock` plugin. Once added to `project/plugins.sbt`, run `sbt dependencyLockWrite` to generate `build.sbt.lock`, a reproducible snapshot of your full resolved dependency graph. Commit this file. In CI, `sbt dependencyLockCheck` fails the build if live resolution diverges from the lock — catching silent upgrades when upstream artifacts are republished to the same version coordinate.\n\nAlways pin exact versions in `build.sbt` (e.g., `\"2.10.0\"`, not `\"2.+\"`). Dynamic ranges like `latest.release` bypass lock semantics entirely — Ivy resolves them at build time, making builds non-reproducible. Use `%%` (double percent) to automatically append the Scala binary version suffix (`_3`, `_2.13`); this is mandatory for cross-compiled libraries.\n\nFor upgrade tracking, `sbt-updates` exposes `sbt dependencyUpdates`, listing newer coordinates against Maven Central. For CVE auditing, the OWASP `sbt-dependency-check` plugin queries the NVD database: `sbt dependencyCheck` generates an HTML report flagging known vulnerabilities across your full transitive graph — not just direct dependencies.\n\nCommit `build.sbt.lock`, ban dynamic version ranges, and gate every PR on `dependencyLockCheck`.",
+      "code_snippet": "// project/plugins.sbt\naddSbtPlugin(\"software.purpledragon\" % \"sbt-dependency-lock\"  % \"1.4.1\")\naddSbtPlugin(\"com.timushev.sbt\"      % \"sbt-updates\"          % \"0.6.4\")\naddSbtPlugin(\"org.owasp\"             % \"sbt-dependency-check\" % \"9.0.7\")\n\n// build.sbt — pin exact versions; never use dynamic ranges\nlibraryDependencies ++= Seq(\n  \"org.typelevel\" %% \"cats-core\" % \"2.10.0\",\n  \"co.fs2\"        %% \"fs2-core\"  % \"3.10.0\",\n  \"org.http4s\"    %% \"http4s-dsl\"% \"0.23.27\"\n)\n\n// sbt dependencyLockWrite   → generate/update build.sbt.lock\n// sbt dependencyLockCheck   → CI gate: fails on drift\n// sbt dependencyUpdates     → list available upstream upgrades\n// sbt dependencyCheck       → OWASP NVD CVE report",
+      "language": "bash",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Performance — benchmarking, profiling, runtime characteristics per language",
+      "status": "done",
+      "title": "Scala JMH Benchmarking — Avoiding JVM Warm-Up Lies",
+      "body": "Naïve Scala microbenchmarks are almost always wrong. The JVM's JIT compiler aggressively optimizes hot code paths after ~10,000 invocations, meaning your first measurements are measuring interpretation overhead, not steady-state performance. Use JMH (Java Microbenchmark Harness) via the `sbt-jmh` plugin — it handles warm-up iterations, fork isolation, and dead-code elimination prevention automatically.\n\nKey pitfalls specific to Scala: boxing of primitives in generic collections inflates allocation rates (prefer `Array[Int]` over `List[Int]` in hot paths), and lazy vals introduce a `volatile` read on every access after initialization. Use `@Benchmark` with `@BenchmarkMode(Mode.AverageTime)` and always set `@OutputTimeUnit(TimeUnit.NANOSECONDS)` for sub-microsecond work. Run with `-prof gc` to surface allocation pressure — often the real bottleneck isn't CPU but GC pauses from short-lived objects. For profiling production workloads, attach async-profiler via `-agentpath` to get flamegraphs without safepoint bias that JVM's built-in sampling introduces.",
+      "code_snippet": "// build.sbt\nenablePlugins(JmhPlugin)\n\nimport org.openjdk.jmh.annotations._\nimport java.util.concurrent.TimeUnit\n\n@State(Scope.Thread)\n@BenchmarkMode(Array(Mode.AverageTime))\n@OutputTimeUnit(TimeUnit.NANOSECONDS)\n@Warmup(iterations = 5, time = 1)\n@Measurement(iterations = 10, time = 1)\n@Fork(2)\nclass ListVsArrayBench {\n  val list: List[Int] = (1 to 1000).toList\n  val arr: Array[Int] = (1 to 1000).toArray\n\n  @Benchmark def sumList(): Int = list.sum       // boxes each Int\n  @Benchmark def sumArray(): Int = arr.sum       // stays unboxed\n}",
+      "language": "kotlin",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
+      "status": "done",
+      "title": "Scala on the JVM — JIT Warmup, Cold Starts, and What GraalVM Native Changes",
+      "body": "Scala compiles to JVM bytecode, not native machine code. At runtime, the JVM interprets bytecode initially, then the JIT compiler (C1 → C2 tiered compilation) profiles hot paths and emits optimized native code. This means Scala services are slow for the first few thousand requests — a real problem in serverless or short-lived container environments.\n\nThe JVM's JIT aggressively inlines, devirtualizes, and unrolls loops based on runtime profiling. Scala's heavy use of higher-order functions and trait dispatch benefits enormously from this — a `List.map` chain can be nearly as fast as a hand-written loop after warmup.\n\nFor cold-start-sensitive workloads, GraalVM Native Image compiles Scala ahead-of-time to a native binary. Startup drops from ~500ms to ~20ms. The tradeoff: no runtime JIT optimization, reflection must be configured explicitly (`native-image.properties`), and Scala's `ClassTag`/`TypeTag` machinery needs careful handling.\n\nFor long-running services (Play, Akka HTTP, http4s), JIT warmup is a non-issue. For AWS Lambda or CLI tools, reach for Native Image or consider Scala CLI with GraalVM.",
+      "code_snippet": "// build.sbt — GraalVM Native Image via sbt-native-image\nenablePlugins(NativeImagePlugin)\n\nnativeImageOptions ++= List(\n  \"--no-fallback\",\n  \"--initialize-at-build-time\",\n  \"-H:ReflectionConfigurationFiles=reflect-config.json\"\n)\n\n// Measure JIT warmup impact in a tight loop\n@main def benchmark(): Unit =\n  val data = (1 to 1_000_000).toVector\n  for i <- 1 to 5 do\n    val t0 = System.nanoTime()\n    val result = data.foldLeft(0L)(_ + _)\n    val elapsed = (System.nanoTime() - t0) / 1_000_000\n    println(s\"Run $i: ${elapsed}ms, sum=$result\")",
+      "language": "kotlin",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Code Quality — linting, formatting, language-specific idioms",
+      "status": "done",
+      "title": "Scala Code Quality — Scalafmt, Scalafix, and Enforcing Idiomatic Style",
+      "body": "Scala's flexibility is a double-edged sword — without tooling enforcement, codebases drift into inconsistent, Java-flavored Scala fast. Scalafmt handles formatting; configure it with `version`, `maxColumn = 100`, and `rewrite.rules = [RedundantBraces, SortImports]` in `.scalafmt.conf`. Run `sbt scalafmtAll` in CI to fail on drift.\n\nScalafix goes deeper. The `DisableSyntax` rule lets you ban `null`, `var`, `throw`, and `isInstanceOf` at the compiler level — the exact constructs that signal un-idiomatic Scala. Pair it with `OrganizeImports` and `RemoveUnused` to eliminate dead code silently accumulating in long-lived services.\n\nFor idiom enforcement, `WartRemover` adds a plugin-level gate: `wartremoverWarnings ++= Warts.allBut(Wart.DefaultArguments)` catches `Any`, `asInstanceOf`, mutable collections, and `Return` statements. Prefer `Option` over nullable returns, `Either` over exceptions for expected failures, and `for`-comprehensions over nested `flatMap` chains. Use `final case class` by default — it prevents unintended subclassing and enables exhaustive pattern match checking. These aren't style preferences; they're correctness guarantees the compiler enforces for free.",
+      "code_snippet": "// project/plugins.sbt\naddSbtPlugin(\"org.scalameta\"  % \"sbt-scalafmt\" % \"2.5.2\")\naddSbtPlugin(\"ch.epfl.scala\"  % \"sbt-scalafix\"  % \"0.12.1\")\naddSbtPlugin(\"org.wartremover\" % \"sbt-wartremover\" % \"3.1.6\")\n\n// .scalafix.conf\nrules = [OrganizeImports, RemoveUnused, DisableSyntax]\nDisableSyntax.noNulls = true\nDisableSyntax.noVars  = true\nDisableSyntax.noThrows = true\n\n// build.sbt\nwartremoverWarnings ++= Warts.allBut(\n  Wart.DefaultArguments,\n  Wart.Nothing\n)",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Dev Tooling — REPL, debugger, language server protocol support",
+      "status": "done",
+      "title": "Scala Dev Tooling — REPL, Debugger, and LSP in Your Daily Workflow",
+      "body": "The Scala REPL (`scala` or `sbt console`) is more than a scratchpad — with `:paste` mode you can drop in multi-line class definitions, and `:type` / `:kind` give you type-level introspection without compiling a full project. Ammonite (`amm`) upgrades this further: magic imports like `import $ivy.'org.typelevel::cats-core:2.10.0'` pull dependencies on the fly, and scripts are first-class.\n\nFor debugging, the JVM gives you full JDWP support. In sbt, `set fork := true` combined with `javaOptions += \"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005\"` exposes a debug port that IntelliJ or VS Code attaches to natively.\n\nLSP support is handled by Metals, the de facto language server. It integrates with sbt, Mill, and Bloop via BSP. Key wins: inline type hints via `textDocument/hover`, worksheet mode (`.worksheet.sc` files evaluated inline like a REPL), and semantic highlighting. Pair Metals with Bloop for sub-second incremental compilation — `bloop compile <project>` bypasses sbt's shell overhead entirely for tighter feedback loops.",
+      "code_snippet": "// sbt build.sbt — wire up remote debugging + Bloop export\nlazy val root = project.in(file(\".\"))\n  .settings(\n    scalaVersion := \"3.4.1\",\n    fork := true,\n    javaOptions ++= Seq(\n      \"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005\"\n    )\n  )\n\n// Then in shell:\n// sbt bloopInstall          <- generates .bloop/ config\n// bloop compile root        <- fast incremental compile\n// bloop console root        <- REPL with full classpath",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Scalability — horizontal scaling characteristics, thread model implications",
+      "status": "done",
+      "title": "Scala Horizontal Scaling — Actor Systems and Thread Model Implications",
+      "body": "Scala's horizontal scaling story is inseparable from its concurrency model. Akka's actor system uses a fixed fork-join thread pool (`akka.actor.default-dispatcher`) shared across all actors — by default sized to available CPU cores. This means a single blocking call inside an actor (e.g., a synchronous JDBC query) starves the dispatcher, causing cascading mailbox backlogs across the entire node.\n\nFor horizontal scaling, this matters because your throughput ceiling is not network or CPU — it's dispatcher saturation. The fix is isolation: route blocking operations to a dedicated dispatcher via `context.system.dispatchers.lookup(\"blocking-io-dispatcher\")`, configured with a thread-pool-executor rather than fork-join.\n\nWith Akka Cluster, actors gain location transparency via `ActorSelection` and `ClusterSharding`. Sharding distributes entity actors across nodes deterministically by key hash, enabling stateful horizontal scaling without a shared-state bottleneck. Combined with `BackpressureStrategy` in Akka Streams, you get end-to-end flow control across a cluster — critical when scaling out consumer nodes faster than producers.",
+      "code_snippet": "// application.conf — isolate blocking I/O from actor dispatcher\nblocking-io-dispatcher {\n  type = Dispatcher\n  executor = \"thread-pool-executor\"\n  thread-pool-executor {\n    fixed-pool-size = 32\n  }\n  throughput = 1\n}\n\n// Inside an actor — offload blocking work\nval blockingDispatcher = context.system.dispatchers.lookup(\"blocking-io-dispatcher\")\nFuture {\n  // JDBC / blocking HTTP call here\n  database.query(\"SELECT ...\")\n}(blockingDispatcher).pipeTo(self)",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Deployment — binary size, containerization, runtime dependencies",
+      "status": "done",
+      "title": "Scala Deployment — Shrinking Containers with sbt-native-packager and GraalVM Native Image",
+      "body": "Scala apps on the JVM carry real deployment overhead. A fat JAR via sbt-assembly bundles the Scala stdlib (~6MB) plus all transitive dependencies, yet still requires a JRE at runtime — pushing container images past 300MB by default.\n\nTwo strategies cut this dramatically. First, sbt-native-packager's DockerPlugin produces multi-stage builds out of the box. Swap the base image to `eclipse-temurin:21-jre-alpine` and images drop to ~180MB. Always add `-XX:+UseContainerSupport` so the JVM reads cgroup memory limits instead of host RAM, and set `-XX:MaxRAMPercentage=75.0` to leave headroom for the OS.\n\nSecond, GraalVM Native Image via `sbt-native-image` compiles your Scala app to a self-contained binary — no JVM at runtime. Final image on `distroless/static` lands at 30–50MB. The tradeoff: reflection-heavy libraries (Akka, Play) need explicit `reflect-config.json` metadata. ZIO and Cats Effect handle native image well with `--initialize-at-build-time=zio,cats`.\n\nUse the JVM path with Temurin Alpine for server workloads; native image for CLI tools, AWS Lambda, or anything where cold-start latency matters.",
+      "code_snippet": "// build.sbt\nenablePlugins(JavaAppPackaging, DockerPlugin)\n\ndockerBaseImage    := \"eclipse-temurin:21-jre-alpine\"\ndockerExposedPorts := Seq(8080)\nDocker / packageName := \"myapp\"\n\nUniversal / javaOptions ++= Seq(\n  \"-XX:+UseContainerSupport\",\n  \"-XX:MaxRAMPercentage=75.0\",\n  \"-Dfile.encoding=UTF-8\"\n)\n\n// Strip docs and sources from the staged package\nCompile / packageDoc / publishArtifact := false\nCompile / packageSrc / publishArtifact := false",
+      "language": "scala",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "When to Choose — use cases where each language excels vs where it struggles",
+      "status": "done",
+      "title": "Scala — When Its Type System and Concurrency Model Work For You (and When They Fight Back)",
+      "body": "Scala shines when your domain maps naturally to algebraic data types and functional transformations. Sealed trait hierarchies with exhaustive pattern matching eliminate entire bug classes at compile time — the compiler rejects unhandled cases. For distributed data pipelines, Scala owns the space: Spark, Flink, and Kafka Streams all have first-class Scala APIs with idiomatic functional combinators.\n\nScala's implicit resolution and typeclass pattern enable zero-cost abstractions impossible in Java — libraries like Cats and ZIO express effect systems, resource safety, and concurrency without runtime overhead. For high-throughput async services, ZIO's fiber-based runtime outperforms thread-per-request models at scale.\n\nWhere Scala struggles: cold JVM startup makes it a poor fit for short-lived serverless functions (GraalVM native helps, but compile times worsen). The implicit/given machinery creates steep onboarding cliffs — new team members hit cryptic diverging implicit expansion errors. Build times with sbt on large projects are genuinely painful. For simple CRUD APIs where Java or Go suffice, Scala's expressiveness buys nothing and costs compile-time budget.",
+      "code_snippet": "import zio.*\nimport zio.http.*\n\n// ZIO fibers handle 100k+ concurrent connections on a small thread pool\nval app: HttpApp[Any] =\n  Routes(\n    Method.GET / \"items\" / int(\"id\") -> handler { (id: Int, _: Request) =>\n      ZIO\n        .attemptBlocking(db.fetchItem(id))   // blocking op isolated to separate pool\n        .map(item => Response.json(item.toJson))\n        .catchAll(e => ZIO.succeed(Response.internalServerError(e.getMessage)))\n    }\n  ).toHttpApp\n\nobject Main extends ZIOAppDefault:\n  def run = Server.serve(app).provide(Server.default)",
+      "language": "kotlin",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    }
+  ]
 }

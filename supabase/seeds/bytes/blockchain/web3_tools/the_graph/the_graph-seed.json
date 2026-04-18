@@ -2,5 +2,66 @@
   "tech_stack": "the_graph",
   "subdomain": "web3_tools",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "The Graph — subgraphs, indexing blockchain events, GraphQL queries, hosted vs decentralized",
+      "status": "done",
+      "title": "The Graph — Indexing Blockchain Events with Subgraphs",
+      "body": "The Graph's subgraphs enable efficient indexing of blockchain events. By defining a subgraph schema, you can specify which events to index and how to store them. The Graph's `graph-cli` tool allows you to deploy and manage subgraphs. When a new block is added to the blockchain, The Graph's indexer updates the subgraph, making the data available for querying via GraphQL. Hosted service providers like The Graph Hosted Service or decentralized options like the_graph's own decentralized network can be used to deploy subgraphs.",
+      "code_snippet": "const { createClient } = require('@graphprotocol/client');\nconst client = createClient('https://api.thegraph.com/subgraphs/name/my-subgraph');\nconst query = `{ events { id, blockNumber, timestamp } }`;\nclient.query(query).then(result => console.log(result.data.events));",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "IPFS — content addressing, DHT, pinning, IPFS vs Filecoin, CIDs",
+      "status": "done",
+      "title": "the_graph: Leveraging IPFS for Decentralized Data Storage",
+      "body": "When building subgraphs with the_graph, decentralized data storage is crucial. IPFS (InterPlanetary File System) provides a solution through content addressing, allowing data to be stored and retrieved based on its content rather than location. The_graph can utilize IPFS to store and manage data, ensuring data integrity and availability. IPFS's DHT (Distributed Hash Table) enables efficient data retrieval, while pinning ensures data persistence. Notably, IPFS differs from Filecoin, which is a decentralized storage network that incentivizes storage providers. In the_graph, developers can use CIDs (Content Identifiers) to reference IPFS-stored data, enabling seamless integration with subgraphs.",
+      "code_snippet": "const ipfs = require('ipfs-http-client'); const cid = await ipfs.add('Hello World'); console.log(cid);",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "ethers.js — providers, signers, contract interaction, event listening",
+      "status": "done",
+      "title": "the_graph Web3 Essentials: Ethers.js with Providers, Signers, and Contract Interaction",
+      "body": "When working with the_graph, you often need to interact with Ethereum contracts. Ethers.js is a popular library for this purpose. To use it with the_graph, you'll need to create a provider instance, passing the GraphQL endpoint and a signatory. A provider is responsible for fetching data from the blockchain. You can create a provider with ` ethers.getDefaultProvider() ` or ` ethers.providers.JsonRpcProvider() `. For example, to use the Infura provider with the_graph's default endpoint, you'd do: `const provider = new ethers.providers.JsonRpcProvider('https://api.thegraph.com/subgraphs/name/your-subgraph-name');`. A signer is required to send transactions. You can create a signer with a private key or a hardware wallet. Once you have a provider and signer, you can interact with contracts using ` ethers.Contract() `. You can also listen to events emitted by contracts using ` ethers.Contract.getEvent().getFilter() `. The event listener will notify you when an event is emitted.",
+      "code_snippet": "import { ethers } from 'ethers';\nconst provider = new ethers.providers.JsonRpcProvider('https://api.thegraph.com/subgraphs/name/your-subgraph-name');\nconst contract = new ethers.Contract('0xYourContractAddress', ['YourContractABI'], provider);\ncontract.on('YourEvent', (event) => {\n  console.log(event);\n});",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "viem — TypeScript-first, lightweight, low-level, replacing ethers in modern stacks",
+      "status": "done",
+      "title": "the_graph: Migrate from Ethers to Viem for Modern Web3 Stacks",
+      "body": "When building on the_graph, you can now replace Ethers with Viem, a TypeScript-first, lightweight, and low-level library. Viem provides better performance and a more concise API. To migrate, you'll need to update your queries to use Viem's `createClient` function, which accepts the same options as `the_graph's` `graphqlClient`.\n\nconst viemClient = createClient({ url: 'https://api.thegraph.com/subgraphs/name/your-subgraph' });\nconst query = gql` query { ... } `;\nviejClient.query({ query });\n\nViem's query builder is designed for complex queries, so you may need to refactor your existing queries to take advantage of its features.",
+      "code_snippet": "const viemClient = createClient({ url: 'https://api.thegraph.com/subgraphs/name/your-subgraph' });\nconst query = gql` query { ... } `;\nviejClient.query({ query });",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "Wallet Connection — WalletConnect, MetaMask, Coinbase Wallet, wallet abstraction",
+      "status": "done",
+      "title": "the_graph — Wallet Connection with WalletConnect, MetaMask, Coinbase Wallet, and Wallet Abstraction",
+      "body": "To connect a user's wallet in the_graph, you can use the WalletConnect library, MetaMask, Coinbase Wallet, or leverage wallet abstraction via the Graph SDK. First, install the required libraries using `graph-cli`. Then, use the `connectWallet` method from the Graph SDK to connect the user's wallet. This method returns a promise that resolves to a `Wallet` object. You can also use wallet abstraction to connect multiple wallets, allowing users to switch between them easily.",
+      "code_snippet": "import { Graph } from 'graph';\n   import { WalletConnect } from 'walletconnect';\n   const graph = new Graph({\n     url: 'https://thegraph.com/implementer/your-subgraph-url'\n   });\n   const wallet = await graph.connectWallet({\n     provider: WalletConnect,\n     options: {\n       rpcUrl: 'https://mainnet.infura.io/v3/YOUR_PROJECT_ID'\n     }\n   });\n   console.log(wallet);",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    }
+  ]
 }

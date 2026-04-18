@@ -2,5 +2,90 @@
   "tech_stack": "base",
   "subdomain": "evm",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "EVM Architecture — opcodes, gas model, stack-based execution, memory vs storage vs calldata",
+      "status": "done",
+      "title": "Base EVM Architecture — Understanding Opcodes, Gas Model, and Data Storage",
+      "body": "Base's EVM (Ethereum Virtual Machine) architecture relies on a stack-based execution model, using opcodes to perform operations. The gas model determines the cost of each operation, with gas prices influencing transaction fees. Data is stored in three primary locations: memory (volatile, used for temporary computations), storage (non-volatile, used for contract state), and calldata (immutable, used for function arguments). Understanding these components is crucial for optimizing Base smart contracts. The `base` library provides APIs to interact with the EVM, such as `base.eth.getTransactionCount()` to retrieve the number of transactions sent from a given address.",
+      "code_snippet": "console.log(base.eth.getTransactionCount('0x...'))",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Ethereum — accounts, transactions, block structure, consensus (PoS post-merge)",
+      "status": "done",
+      "title": "Building Ethereum Accounts and Transactions on Base",
+      "body": "Base provides a robust set of APIs for interacting with the Ethereum blockchain. To create an Ethereum account on Base, you can use the `eth_account` module. This module allows you to generate new accounts, sign transactions, and verify signatures. When building transactions, you'll need to specify the `from` address, `to` address, `value`, `gas`, and `gasPrice`. The `eth_transaction` module on Base handles the low-level details of transaction construction. Post-merge, Ethereum has transitioned to a Proof of Stake (PoS) consensus algorithm, which is supported by Base's `eth_consensus` module.",
+      "code_snippet": "const { eth_account, eth_transaction, eth_consensus } = require('base');\nconst account = eth_account.create();\nconst tx = eth_transaction.create({ from: account.address, to: '0x...', value: '1 ether' });\neth_consensus.stake(account, '100 ether');",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Gas & Fees — gas limit, base fee, priority fee (EIP-1559), gas optimization",
+      "status": "done",
+      "title": "Optimizing Gas Costs with Base EVM",
+      "body": "When interacting with smart contracts on Base EVM, gas costs can be a significant concern. The Base EVM uses EIP-1559, which introduced base fee and priority fee mechanisms. The base fee is the minimum amount of gas required to include a transaction in the next block, while the priority fee is the additional amount of gas paid to the miner for prioritizing a transaction. To optimize gas costs, you can use the `gasLimit` field in your transactions to specify the maximum amount of gas allowed. For example:\n```solidity\nconst tx = {\n  from: '0x...',\n  to: '0x...',\n  value: '0.1 ether',\n  gasLimit: 20000,\n  maxPriorityFeePerGas: 1e9,\n  maxFeePerGas: 1e9\n};\n```\nIn this example, the `gasLimit` field is set to 20000, which means the transaction will fail if it consumes more than 20000 gas units. The `maxPriorityFeePerGas` and `maxFeePerGas` fields are used to specify the maximum priority and base fees, respectively.",
+      "code_snippet": "null",
+      "language": "solidity",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Layer 2 Scaling — why L1 is expensive, rollup approach, optimistic vs ZK",
+      "status": "done",
+      "title": "BASE L2 Scaling — Rollup and Optimistic vs ZK",
+      "body": "BASE's EVM implementation struggles with high gas prices due to its Layer 1 (L1) nature. Rollup solutions like Optimism and zk-Rollup alleviate this issue by batching and compressing transactions off-chain. Optimism uses a optimistic fraud-proofs (oFp) approach, which relies on a validator network to check on-chain for any discrepancies. zk-Rollup, on the other hand, utilizes zero-knowledge proofs (ZKP) to verify transactions without exposing any sensitive information. Both methods enable BASE to process more transactions per block, reducing the congestion and gas costs.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Polygon — PoS chain, AggLayer, zkEVM, bridging assets",
+      "status": "done",
+      "title": "Base on Polygon: Bridging Assets with AggLayer and zkEVM",
+      "body": "To bridge assets from Polygon to Base, utilize the AggLayer contract. First, deploy the AggLayer contract on Base. Then, on Polygon, call the deposit function with the asset's address and the amount to bridge. The AggLayer on Base will then create a new asset bridge contract. Finally, use the transfer function on the bridge contract to transfer the assets from Polygon to Base. For more complex asset bridging, consider using Polygon's zkEVM, which provides a more efficient and private bridging mechanism.",
+      "code_snippet": "const baseProvider = new ethers.providers.JsonRpcProvider('https://base-rpc.com');\nconst aggLayer = new ethers.Contract('0x...AggLayer...', AggLayerAbi, baseProvider);\naggLayer.deposit('0x...asset...', ethers.utils.parseUnits('10', 18)).then((tx) => tx.wait());",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Base — Coinbase's L2, OP Stack, Superchain vision",
+      "status": "done",
+      "title": "base: Leveraging OP Stack for Optimized Execution",
+      "body": "base's OP Stack enables developers to define custom opcodes for optimized execution on the EVM. This allows for reduced gas costs and improved performance. When crafting a custom opcode, it's essential to balance complexity and gas efficiency. The OP Stack's `push` and `pop` operations provide a foundation for creating efficient custom opcodes. Consider the following example of a simple increment opcode:\n```solidity\npragma solidity ^0.8.0;\n\ncontract IncrementOp {    function increment(uint256 _x) public returns (uint256) {        unchecked {            _x += 1;        }        return _x;    }\n}\n```",
+      "code_snippet": "pragma solidity ^0.8.0;\ncontract IncrementOp {    function increment(uint256 _x) public returns (uint256) {        unchecked {            _x += 1;        }        return _x;    }\n}",
+      "language": "solidity",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Transaction Lifecycle — mempool, ordering, finality, reorg risk",
+      "status": "done",
+      "title": "BASE Transaction Lifecycle — Mempool, Ordering, Finality, Reorg Risk",
+      "body": "BASE transactions are processed through a mempool, which is a collection of unconfirmed transactions awaiting inclusion in a block. When a validator proposes a new block, it selects transactions from the mempool based on their priority (gas price and gas limit). The block is then broadcast to the network, and validators verify its transactions. Once a block is finalized, its transactions are considered irreversible. However, if a reorg occurs (a new block is added to the chain that invalidates previous blocks), unconfirmed transactions in the mempool may need to be re-propagated.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    }
+  ]
 }

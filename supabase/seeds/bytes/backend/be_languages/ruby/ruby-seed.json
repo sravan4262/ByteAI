@@ -2,5 +2,162 @@
   "tech_stack": "ruby",
   "subdomain": "be_languages",
   "domain": "backend",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Package Management — lock files, versioning, dependency auditing",
+      "status": "done",
+      "title": "Ruby Bundler — Lock Files, Version Constraints, and Dependency Auditing",
+      "body": "Bundler's Gemfile.lock is your reproducibility guarantee — it pins every gem and its transitive dependencies to exact versions. Never gitignore it in applications (libraries are the exception). The difference between `bundle install` and `bundle update` matters: the former respects the lock file, the latter resolves fresh. Use pessimistic version constraints (`~> 2.1`) in your Gemfile to allow patch updates but block breaking minor changes. For auditing, `bundler-audit` checks your lock file against the Ruby Advisory Database — run `bundle audit check --update` in CI to catch known CVEs before they ship. `bundle outdated` gives a diff of what's stale. If you're on Ruby 3.x, `bundle exec` ensures every command runs against your locked dependency graph, not whatever gems are installed globally. For monorepos or multi-app setups, scope lock files per app and use `BUNDLE_GEMFILE` env var to point Bundler at the right manifest.",
+      "code_snippet": "# Gemfile\nsource 'https://rubygems.org'\n\ngem 'rails', '~> 7.1'\ngem 'pg',    '~> 1.5'\ngem 'redis', '>= 4.0', '< 6.0'\n\ngroup :development, :test do\n  gem 'bundler-audit', require: false\nend\n\n# Terminal — audit in CI\n# bundle audit check --update\n# bundle outdated --strict",
+      "language": "ruby",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Type Safety — static vs dynamic typing, type inference, generics across languages",
+      "status": "done",
+      "title": "Ruby Type Safety — Sorbet Signatures Without the Boilerplate",
+      "body": "Ruby is dynamically typed, but that doesn't mean you're flying blind. Sorbet brings gradual static typing via `sig` blocks that are checked at both runtime and statically with `srb tc`. Unlike generics in Java or Rust, Ruby leans on parameterized types through `T::Array[Integer]` and `T::Hash[Symbol, String]` — composable, readable, and enforced only where you opt in.\n\nThe `T.nilable` wrapper makes null safety explicit: `T.nilable(String)` forces callers to handle `nil` rather than discovering it in production. Combined with `T.must()`, you assert non-nil at a boundary and get a runtime raise if violated — better than a cryptic NoMethodError three frames deep.\n\nFor duck typing purists, `T::Struct` and interfaces via `T::Props` give you shape-based contracts without abandoning idiomatic Ruby. Sorbet's `# typed: strict` mode pushes you toward fully annotated files, while `# typed: false` lets legacy code coexist. The incremental adoption model is why Stripe shipped it across millions of Ruby lines without a rewrite.",
+      "code_snippet": "# typed: strict\n\nclass UserService\n  extend T::Sig\n\n  sig { params(ids: T::Array[Integer]).returns(T::Hash[Integer, String]) }\n  def fetch_names(ids)\n    User.where(id: ids).pluck(:id, :name).to_h\n  end\n\n  sig { params(user: T.nilable(User)).returns(String) }\n  def display_name(user)\n    T.must(user).name\n  end\nend",
+      "language": "ruby",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Memory Management — GC vs ownership model, stack vs heap, memory safety",
+      "status": "done",
+      "title": "Ruby's GC Internals — How MRI Manages Your Heap and What You Can Do About It",
+      "body": "Ruby's MRI runtime uses a tri-color, incremental, generational mark-and-sweep GC — no ownership model, no manual free(). Every object lives on the Ruby heap, except immediate values (Fixnum, Symbol, true, false, nil) which are encoded directly in the VALUE pointer, never heap-allocated.\n\nThe GC runs in two generations: eden (new objects) and old (surviving objects). Old-gen objects are promoted after surviving a GC cycle and collected less frequently. Compaction (GC.compact, Ruby 3.0+) defragments the heap and improves CoW friendliness in forked processes — critical for Puma or Unicorn servers.\n\nCommon memory leaks in Ruby aren't dangling pointers — they're live references: global hashes, memoized caches, and Proc closures holding large objects. Use ObjectSpace.each_object to audit live instances. Enable frozen_string_literal: true to intern strings and cut allocations significantly. Monitor GC.stat[:heap_live_slots] and major_gc_count in production to detect GC pressure before it hits latency.",
+      "code_snippet": "# frozen_string_literal: true\n\nrequire 'objspace'\n\n# Inspect live object counts by class\nObjectSpace.each_object(String).count.tap { |n| puts \"Live strings: #{n}\" }\n\n# Compact the heap (Ruby 3.0+) — run after boot in forked servers\nGC.compact\n\n# Snapshot GC state\nstats = GC.stat\nputs \"Heap live slots : #{stats[:heap_live_slots]}\"\nputs \"Major GC count  : #{stats[:major_gc_count]}\"\nputs \"Minor GC count  : #{stats[:minor_gc_count]}\"\n\n# Force a full GC cycle for benchmarking\nGC.start(full_mark: true, immediate_sweep: true)",
+      "language": "ruby",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Performance — benchmarking, profiling, runtime characteristics per language",
+      "status": "done",
+      "title": "Ruby Performance — benchmark-ips, stackprof, and YJIT Profiling",
+      "body": "Ruby's stdlib `Benchmark` module measures wall time, which is noisy. The `benchmark-ips` gem measures iterations-per-second with a configurable warmup phase, giving statistically stable results. Use `x.compare!` to get a relative ratio between reports — essential when choosing between idioms like `select + map` vs `filter_map` (introduced in Ruby 2.7). For CPU profiling, `stackprof` is the go-to: it samples the call stack at a configurable interval and outputs a flamegraph-compatible dump with minimal overhead (~1–2%). Run it with `StackProf.run(mode: :cpu, interval: 1000)` and inspect with `stackprof --text`. For object allocation hotspots, `memory_profiler` tracks retained vs allocated objects per line. Finally, YJIT (enabled via `--yjit` since Ruby 3.1, on by default in 3.3) can yield 10–30% throughput gains on real Rails workloads. Validate gains with `RubyVM::YJIT.runtime_stats` to confirm exit reasons and code-region coverage before shipping to production.",
+      "code_snippet": "require 'benchmark/ips'\n\ndata = (1..10_000).to_a\n\nBenchmark.ips do |x|\n  x.config(warmup: 2, time: 5)\n\n  x.report('select + map') { data.select(&:odd?).map { |n| n * 2 } }\n  x.report('filter_map')   { data.filter_map { |n| n * 2 if n.odd? } }\n\n  x.compare!\nend",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Runtime & Execution — compiled vs interpreted vs JIT, startup time, cold start",
+      "status": "done",
+      "title": "Ruby's Execution Model — MRI, JIT, and Why Cold Starts Still Sting",
+      "body": "Ruby (MRI) is interpreted: your `.rb` files are parsed into an AST, compiled to YARV bytecode, then executed by the YARV virtual machine — all at runtime, every run. There's no ahead-of-time binary. This means every `ruby script.rb` invocation pays the full parse-and-compile tax upfront, which is why Rails cold starts on Lambda or container-per-request setups can hit 800ms–2s before a single line of your business logic runs.\n\nRuby 3.1 introduced YJIT (a Rust-rewritten, in-process JIT), enabled via `--yjit` or `RUBY_YJIT_ENABLE=1`. YJIT compiles hot bytecode blocks to native machine code lazily — it doesn't eliminate cold start, but it cuts steady-state throughput latency by 15–30% on real Rails workloads per Shopify benchmarks.\n\nFor serverless or CLI tools, cold start is the enemy. Strategies: use `bootsnap` to cache bytecode to disk, freeze string literals with `# frozen_string_literal: true` to reduce object allocation during boot, and measure with `time ruby -e 'require_relative \"config/application\"'` to isolate framework load time from request time.",
+      "code_snippet": "# Measure raw Ruby boot cost vs. your app load\n# Run from Rails root\n\n# 1. Bare Ruby startup\ntime ruby -e 'puts \"boot done\"'\n\n# 2. With bootsnap cache (add to Gemfile: gem 'bootsnap')\nBOOTSNAP_CACHE_DIR=tmp/cache ruby -r bootsnap/setup -e 'puts \"boot done\"'\n\n# 3. Enable YJIT and confirm it's active\nRUBY_YJIT_ENABLE=1 ruby --yjit -e 'puts RubyVM::YJIT.enabled?'\n\n# 4. Check YJIT stats in a running process\nif defined?(RubyVM::YJIT)\n  pp RubyVM::YJIT.runtime_stats\nend",
+      "language": "ruby",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Standard Library — what's built in vs what needs a third-party library",
+      "status": "done",
+      "title": "Ruby's Standard Library — What You Already Have vs When You Need a Gem",
+      "body": "Ruby ships with a surprisingly capable stdlib that developers routinely overlook. `JSON`, `CSV`, `URI`, `Digest`, `Benchmark`, `Logger`, `Pathname`, `FileUtils`, `Set`, `OpenStruct`, and `Net::HTTP` are all zero-dependency. `require 'json'` gets you `JSON.parse` and `JSON.generate`. `require 'digest'` gives you SHA256 without openssl gems. `require 'benchmark'` lets you time blocks inline.\n\nWhere stdlib falls short: `Net::HTTP` is functional but verbose — reach for `faraday` or `httpx` for real HTTP clients. `CSV` handles parsing fine but not large streaming datasets efficiently. `Logger` works for simple logging; use `semantic_logger` or `lograge` in production Rails. There's no built-in async primitive beyond `Thread` — `concurrent-ruby` or `async` gem fills that gap. No JSON schema validation, no JWT, no background jobs.\n\nThe practical rule: before `bundle add`, run `ri ClassName` or check `ruby-doc.org`. Gems like `activesupport` re-implement things already in stdlib (`Set`, `Pathname`) and add load overhead. Know what 2.x vs 3.x stdlib added — `Data.define` (3.2) and `Fiber::Scheduler` (3.0) are underused built-ins.",
+      "code_snippet": "require 'json'\nrequire 'digest'\nrequire 'benchmark'\nrequire 'set'\n\n# All stdlib — no Gemfile entries needed\npayload = JSON.parse('{\"user\": \"alice\"}')\nhash    = Digest::SHA256.hexdigest(payload['user'])\nuniques = Set.new(['a', 'b', 'a'])  # => #<Set: {\"a\", \"b\"}>\n\nBenchmark.bm do |x|\n  x.report('sha256 x1000:') { 1000.times { Digest::SHA256.hexdigest('hello') } }\nend\n\n# This DOES need a gem (Net::HTTP is too verbose for real use)\n# gem 'httpx'\n# HTTPX.get('https://api.example.com/data')",
+      "language": "ruby",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Testing — unit testing philosophy and test runner per language",
+      "status": "done",
+      "title": "Ruby Unit Testing — RSpec vs Minitest and When to Use Each",
+      "body": "Ruby ships with Minitest in its standard library — no gem required. It's fast, minimal, and uses plain Ruby classes and methods. RSpec, the dominant alternative, brings a DSL built around `describe`, `context`, and `it` blocks with `expect(...).to` matchers. The philosophical split matters: Minitest encourages tests as code; RSpec encourages tests as documentation. For libraries and gems, Minitest is preferred — zero dependencies, readable diffs, and `assert_equal expected, actual` is explicit. For Rails apps, RSpec + FactoryBot + Shoulda Matchers is the de facto stack. Ruby's unit testing philosophy centers on isolation: use `Minitest::Mock` or RSpec's `double` to stub collaborators, never hit the DB in a unit test. Both runners support `before`/`after` hooks, parallelism via `parallel_tests`, and coverage via `simplecov`. The key Ruby-specific insight: modules mixed into objects make targeted unit testing easier — test the behavior the module adds without instantiating a full domain object. Prefer `subject { described_class.new }` in RSpec and `let` for lazy-evaluated fixtures.",
+      "code_snippet": "# rspec example — testing a Ruby module in isolation\nRSpec.describe Discountable do\n  let(:product) do\n    obj = Object.new\n    obj.extend(Discountable)\n    allow(obj).to receive(:base_price).and_return(100)\n    obj\n  end\n\n  describe '#discounted_price' do\n    it 'applies percentage discount correctly' do\n      expect(product.discounted_price(20)).to eq(80)\n    end\n  end\nend",
+      "language": "ruby",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Security — memory safety, injection prevention, dependency vulnerability scanning",
+      "status": "done",
+      "title": "Ruby Security — Memory Safety, Injection Prevention, and Dependency Scanning",
+      "body": "Ruby's managed runtime handles memory allocation and garbage collection, eliminating buffer overflows and use-after-free bugs common in C/C++. However, Ruby apps face injection risks at the application layer. ActiveRecord parameterized queries prevent SQL injection, but raw string interpolation in `where` clauses is still a trap developers fall into. For shell commands, avoid `system(\"#{user_input}\")` — use the array form `system('ls', user_input)` which bypasses shell interpolation entirely. For YAML, disable unsafe deserialization: `YAML.safe_load(data)` instead of `YAML.load(data)`, which prior to Ruby 3.1 could execute arbitrary objects. On the dependency front, `bundle audit` (via the `bundler-audit` gem) scans your `Gemfile.lock` against the Ruby Advisory Database for known CVEs. Integrate it into CI to catch vulnerable gems before deployment. Also run `brakeman` — a static analysis tool that detects injection flaws, XSS, and mass assignment vulnerabilities specific to Rails codebases. Together, these tools cover the three primary Ruby security vectors: runtime injection, unsafe deserialization, and supply chain vulnerabilities.",
+      "code_snippet": "# BAD: shell injection risk\nsystem(\"convert #{params[:filename]} output.png\")\n\n# GOOD: array form bypasses shell\nsystem('convert', params[:filename], 'output.png')\n\n# BAD: YAML arbitrary object instantiation\nobj = YAML.load(user_yaml)  # dangerous pre-Ruby 3.1\n\n# GOOD: safe subset only\nobj = YAML.safe_load(user_yaml)\n\n# Dependency audit in CI\n# gem install bundler-audit brakeman\n# bundle audit check --update\n# brakeman -q --no-pager",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Code Quality — linting, formatting, language-specific idioms",
+      "status": "done",
+      "title": "Ruby Code Quality — RuboCop, Style Cops, and Idiomatic Patterns",
+      "body": "RuboCop is Ruby's de facto linter and formatter, enforcing the community style guide out of the box. Run `rubocop --autocorrect` to fix safe offenses automatically. Configure it via `.rubocop.yml` — inherit from `rubocop-rails`, `rubocop-rspec`, or `rubocop-performance` gems for domain-specific cops.\n\nBeyond formatting, Ruby idioms matter. Prefer `map` over `each` with a push, use `tap` for fluent object setup, and lean on `then`/`yield_self` for pipeline-style transformations. Avoid `for` loops — `each` is the Ruby way. Use `frozen_string_literal: true` at the top of every file to freeze string literals and reduce allocations.\n\nFor method length, RuboCop's `Metrics/MethodLength` cop defaults to 10 lines — keep methods focused. Use `guard clauses` (early returns) instead of nested conditionals. `StandardRB` is a zero-config alternative that wraps RuboCop with opinionated, non-negotiable defaults — useful when teams waste time debating style over substance.",
+      "code_snippet": "# frozen_string_literal: true\n\n# .rubocop.yml excerpt\n# inherit_gem:\n#   rubocop-rails: config/rails.yml\n#   rubocop-performance: config/performance.yml\n\n# Bad: mutation in loop\nresults = []\nitems.each { |i| results << i.process }\n\n# Good: idiomatic map\nresults = items.map(&:process)\n\n# Good: tap for setup, then for pipeline\nuser = User.new.tap { |u| u.role = :admin }\nvalue = raw_input.then { |v| sanitize(v) }.then { |v| persist(v) }",
+      "language": "ruby",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Deployment — binary size, containerization, runtime dependencies",
+      "status": "done",
+      "title": "Ruby Deployment — Shrinking Container Images and Taming Runtime Dependencies",
+      "body": "Ruby's default Docker images are notoriously bloated. The official `ruby:3.3` image ships at ~1GB due to build tools, dev headers, and documentation. Switch to `ruby:3.3-slim` and you drop to ~200MB immediately. For production, multi-stage builds let you compile native gems (e.g. `pg`, `nokogiri`) in a builder stage, then copy only `/usr/local/bundle` into a slim runtime image — no gcc, no make, no headers at runtime.\n\nBundler is your dependency boundary. Use `bundle config set --local without 'development test'` before `bundle install` in your Dockerfile to exclude non-production gems. Pair this with `BUNDLE_FROZEN=1` to prevent accidental gem resolution at startup.\n\nFor binary size, `bootsnap` caches YARV bytecode and reduces boot time by 50–70% without touching your image footprint. Store its cache in a tmpfs volume or warm it during the build step. If you're on JRuby, AOT compilation via `jrubyc` produces `.class` files you can ship without the source.\n\nFinally, pin your Ruby version with `.ruby-version` and match it exactly in your `FROM` directive — version drift between development and container is the most common cause of native extension failures.",
+      "code_snippet": "# Multi-stage Dockerfile for a Rails/Rack app\nFROM ruby:3.3-slim AS builder\nWORKDIR /app\nRUN apt-get update && apt-get install -y build-essential libpq-dev\nCOPY Gemfile Gemfile.lock ./\nRUN bundle config set --local without 'development test' \\\n && bundle install --jobs 4 --retry 3\n\nFROM ruby:3.3-slim AS runtime\nWORKDIR /app\nRUN apt-get update && apt-get install -y libpq5 && rm -rf /var/lib/apt/lists/*\nCOPY --from=builder /usr/local/bundle /usr/local/bundle\nCOPY . .\nENV BUNDLE_FROZEN=1 RAILS_ENV=production\nCMD [\"bundle\", \"exec\", \"puma\", \"-C\", \"config/puma.rb\"]",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Dev Tooling — REPL, debugger, language server protocol support",
+      "status": "done",
+      "title": "Ruby Dev Tooling: debug gem, binding.irb, and Ruby LSP in Your Workflow",
+      "body": "Ruby 3.1+ ships with the `debug` gem as the official debugger, replacing the aging `byebug`. Drop `binding.break` anywhere in your code — it launches a full REPL session mid-execution with step, next, continue, and frame commands. Unlike byebug, it supports multithreading, remote debugging over Unix sockets, and a VS Code DAP integration via the `rdbg` binary.\n\nFor the REPL, IRB has been overhauled since Ruby 3.0 — it now supports multiline editing, syntax highlighting, autocomplete backed by RDoc, and `IRB::Irb#context` introspection. Use `binding.irb` to break into IRB inline during test runs or scripts.\n\nOn the LSP front, Shopify's `ruby-lsp` gem has become the de facto standard over Solargraph. It provides semantic highlighting, accurate go-to-definition via RBS type signatures, and a built-in test runner integration. Pair it with the `ruby-lsp-rails` addon for Rails-specific completions. Add `ruby-lsp` to your Gemfile's development group and configure VS Code's Ruby LSP extension — no extra config needed.",
+      "code_snippet": "# Gemfile (development group)\ngem 'ruby-lsp'\ngem 'ruby-lsp-rails'\n\n# Drop into debugger mid-execution\ndef process_order(order)\n  binding.break  # launches `rdbg` session here\n  order.line_items.map { |item| item.price * item.quantity }.sum\nend\n\n# Or use IRB inline\ndef inspect_user(user)\n  binding.irb   # full IRB REPL with local scope\nend\n\n# Run with debugger from CLI\n# rdbg -e ruby my_script.rb",
+      "language": "ruby",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Ecosystem Maturity — library quality, community size, long-term viability",
+      "status": "done",
+      "title": "Ruby's Ecosystem Maturity — Signal-to-Noise Ratio That npm Envies",
+      "body": "RubyGems hosts over 170,000 gems, but Ruby's real strength is curation depth, not breadth. Core libraries like Sidekiq, Devise, Faraday, and RSpec have decade-long track records, semantic versioning discipline, and changelogs that actually document breaking changes. Bundler's lockfile model (`Gemfile.lock`) was the gold standard for reproducible builds before npm or Cargo existed.\n\nRuby 3.x has directly addressed the ecosystem's longest-standing liability — performance. YJIT (written in Rust, shipping by default in 3.2+) delivers 2–3× throughput improvements on Rails apps with zero code changes. Shopify, GitHub, and Stripe running Rails at scale are the strongest signal of long-term viability you can get.\n\nEvaluate gem health before adopting: check `rubygems.org` for download velocity, open issue age, and last push date. The Ruby Toolbox (ruby-toolbox.com) ranks gems by category with GitHub metrics. A gem with 100M downloads, active commits, and a <30-day last release is safer than a 1-star npm package with 10M weekly downloads.",
+      "code_snippet": "# Gemfile — version pinning with ecosystem-mature gems\nsource 'https://rubygems.org'\n\ngem 'rails',   '~> 7.1'\ngem 'sidekiq', '~> 7.0'   # battle-tested background jobs since 2012\ngem 'devise',  '~> 4.9'   # auth; 1B+ downloads\ngem 'faraday', '~> 2.9'   # HTTP client with middleware stack\n\ngroup :development, :test do\n  gem 'rspec-rails', '~> 6.1'\n  gem 'factory_bot_rails'\nend\n\n# Check installed gem metadata at runtime\nputs Gem::Specification.find_by_name('sidekiq').version\nputs Gem::Specification.find_by_name('sidekiq').homepage",
+      "language": "ruby",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Monitoring — runtime metrics, profiling in production, GC pauses",
+      "status": "done",
+      "title": "Ruby in Production — Taming GC Pauses and Runtime Metrics",
+      "body": "Ruby's GC is generational (minor/major) and can introduce latency spikes silently. `GC.stat` is your first stop — it exposes counters like `heap_live_slots`, `major_gc_count`, and `total_allocated_objects` with zero overhead. Ship these to StatsD or Prometheus on every request or via a background thread.\n\nFor wall-clock profiling in production, `stackprof` is the de facto standard. It uses `SIGPROF`-based sampling (default 1000 Hz), so overhead is negligible. Wrap hot code paths with `StackProf.run(mode: :wall, raw: true)` and dump results to a file for flamegraph analysis with `stackprof --flamegraph`.\n\nGC pauses specifically? Enable `GC::Profiler` temporarily — not permanently — to capture per-GC elapsed time. Tune aggressiveness via env vars: `RUBY_GC_HEAP_GROWTH_FACTOR=1.1` shrinks heap growth to reduce major GC frequency. For Rails apps, `derailed_benchmarks` identifies which gems allocate most at boot. Combine `GC.compact` (Ruby 2.7+) in Puma's `before_fork` to reduce per-worker heap fragmentation.",
+      "code_snippet": "require 'stackprof'\nrequire 'statsd-instrument'\n\n# Sample GC stats and ship to StatsD\ndef report_gc_metrics\n  stat = GC.stat\n  StatsD.gauge('ruby.gc.heap_live_slots', stat[:heap_live_slots])\n  StatsD.gauge('ruby.gc.major_gc_count', stat[:major_gc_count])\n  StatsD.gauge('ruby.gc.total_allocated_objects', stat[:total_allocated_objects])\nend\n\n# Profile a specific block in production (sample 1-in-100 requests)\nif rand(100) == 0\n  StackProf.run(mode: :wall, raw: true, out: '/tmp/stackprof-#{Process.pid}.dump') do\n    yield\n  end\nend",
+      "language": "ruby",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    }
+  ]
 }

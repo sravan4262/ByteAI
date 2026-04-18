@@ -2,5 +2,42 @@
   "tech_stack": "c",
   "subdomain": "sys_languages",
   "domain": "systems",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Pointers & References — raw pointers, smart pointers (C++), Rust references, borrow checker",
+      "status": "done",
+      "title": "c pointers - Raw vs. Dangling",
+      "body": "Raw pointers in c are declared with the asterisk symbol (*) and can point to any memory location. However, they don't perform any memory management and must be manually managed. Dangling pointers occur when the memory pointed to is deallocated. To avoid memory leaks, use dynamic memory allocation functions like `malloc()` and `free()` carefully. The `NULL` macro can be used to initialize raw pointers.",
+      "code_snippet": "int* p = malloc(sizeof(int));\n* p = 10;\nfree(p); // Don't forget to free the memory!\np = NULL;",
+      "language": "c",
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Undefined Behavior — what it is, why it matters, how each language handles it",
+      "status": "done",
+      "title": "C Undefined Behavior — Don't Trigger It",
+      "body": "Undefined behavior is a fundamental concept in C programming. It occurs when a program performs an operation that the C Standard does not specify the result for. This can happen due to incorrect usage of pointers, array indices, or other language features. In C, examples of undefined behavior include dereferencing a null pointer, accessing an array out of bounds, and performing arithmetic on a pointer that is not properly aligned. The C Standard does not guarantee the results of such operations, making it difficult to debug and predict program behavior.\n\nTo avoid undefined behavior, it's essential to understand the C Standard's guidelines and use language features correctly. For instance, always check for null pointer dereferences using the `==` operator, and use `size_t` to ensure array indices are within bounds.\n\n```c\nif (ptr != NULL) {\n    // safe dereference\n}\n```",
+      "code_snippet": "if (ptr != NULL) {\n    // safe dereference\n}",
+      "language": "c",
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "FFI & Interop — calling C from Rust/Zig, C ABI, binding generation",
+      "status": "done",
+      "title": "C FFI & Interop — Calling C from Rust/Zig via C ABI",
+      "body": "To call C functions from Rust or Zig, you need to use the C Foreign Function Interface (FFI). The Rust `libc` crate and Zig's `foreign` module provide the necessary bindings. However, you must ensure the C functions are compiled with the correct C ABI (Application Binary Interface). The C ABI dictates the calling convention, function signature, and data layout. When generating bindings, you need to specify the C ABI in the compiler flags, such as `-mabi=sysv` for the System V ABI. This ensures the generated code matches the C ABI and can be called from Rust or Zig.",
+      "code_snippet": "/* rust */\ncargo build -p libc\n\n// main.rs\ncargo run --example example\n\n/* zig */\nzig build-exe -f src/main.zig\n\n// main.zig\ncargo run --example example",
+      "language": "c",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    }
+  ]
 }

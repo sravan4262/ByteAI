@@ -2,5 +2,102 @@
   "tech_stack": "jwt",
   "subdomain": "cryptography",
   "domain": "security",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Cryptography Fundamentals — symmetric vs asymmetric, hashing vs encryption",
+      "status": "done",
+      "title": "jwt — Symmetric vs Asymmetric Signing: When to Use Each",
+      "body": "When signing a JWT, you can choose between symmetric and asymmetric algorithms. Symmetric algorithms, like HS256, use the same secret key for signing and verification. Asymmetric algorithms, like RS256, use a public key for signing and a private key for verification. Symmetric signing is faster and more secure for short-term use cases, like session management. Asymmetric signing provides better long-term security and can be used for authenticating users. If you're using a third-party service for JWT verification, stick with symmetric signing.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "OAuth 2.0 — authorization code flow, PKCE, implicit flow deprecation, scopes",
+      "status": "done",
+      "title": "jwt - Authorization Code Flow with PKCE: A Secure Approach",
+      "body": "When implementing OAuth 2.0 with jwt, the authorization code flow with Proof Key for Code Exchange (PKCE) is a secure alternative to implicit flow. PKCE mitigates authorization code interception attacks by generating a cryptographically secure code verifier and challenge. To use PKCE with jwt, generate a code verifier, encode it to a challenge, and include it in the authorization request. The authorization server will then verify the code verifier and challenge to ensure the authorization code is not intercepted.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "OpenID Connect — ID token vs access token, userinfo endpoint, discovery",
+      "status": "done",
+      "title": "jwt - ID Tokens vs Access Tokens: Choosing the Right Strategy",
+      "body": "When implementing OpenID Connect (OIDC) with JSON Web Tokens (JWT), you'll encounter two types of tokens: ID tokens and access tokens. ID tokens contain the user's profile information, while access tokens grant access to protected resources. OIDC's UserInfo endpoint retrieves the user's profile from the ID token, which can be validated using the JWT library. To discover the OIDC configuration, use the .well-known/openid-configuration endpoint, which returns a JSON object containing the necessary parameters. When using JWT to validate the ID token, ensure to verify the token's signature and payload.",
+      "code_snippet": "const jwksClient = require('jwks-rsa');\nconst client = new jwksClient({ jwksUri: 'https://example.com/.well-known/jwks.json' });\nconst token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';\nclient.getSigningKey(token, (err, key) => {\n  if (err) return console.error(err);\n  const signingKey = key.getPublicKey();\n  const decoded = jwt.verify(token, signingKey);\n  console.log(decoded); // User's profile information\n});",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Password Hashing — bcrypt vs Argon2 vs scrypt, never SHA-256 for passwords",
+      "status": "done",
+      "title": "jwt Security — When to Use bcrypt, Argon2, or scrypt",
+      "body": "When securing JWT tokens, it's essential to use a password-based key derivation function (PBKDF) to protect against brute-force attacks. However, not all PBKDFs are created equal. In this context, bcrypt, Argon2, and scrypt are popular choices. Bcrypt is widely used but has been shown to be vulnerable to side-channel attacks. Argon2 is the winner of the Password Hashing Competition and is considered more secure. Scrypt is another option but can be slower than bcrypt. When using JWT, consider the trade-off between security and performance.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Common Mistakes — MD5/SHA1 for passwords, ECB mode, rolling your own crypto",
+      "status": "done",
+      "title": "jwt — 3 Common Cryptographic Mistakes to Avoid",
+      "body": "When using JSON Web Tokens (JWT) for authentication, developers often make mistakes with password hashing and encryption. Firstly, never use MD5 or SHA1 for password hashing in JWT. Instead, use a library like `jsonwebtoken` that supports algorithms like `HS256` or `RS256`. Avoid using ECB mode in JWT, as it's vulnerable to padding oracle attacks. Lastly, never roll your own crypto, always rely on established libraries like `jsonwebtoken`.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Compliance — FIPS 140-2, PCI-DSS cryptography requirements",
+      "status": "done",
+      "title": "jwt - Compliance with FIPS 140-2 and PCI-DSS Cryptography Requirements",
+      "body": "When using jwt for authentication in a PCI-DSS compliant environment, it's essential to meet the cryptography requirements. This includes using FIPS 140-2 validated cryptographic modules. jwt uses the HS256 and RS256 algorithms, which are both FIPS 140-2 compliant. However, when using these algorithms, ensure that the key used for signing is also FIPS 140-2 validated. For HS256, the key is usually a shared secret, which must be securely stored and managed. For RS256, the key is a private RSA key, which must be generated and managed according to FIPS 140-2 guidelines.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9.5
+    },
+    {
+      "topic": "API Authentication — API keys vs OAuth tokens vs JWTs, use cases per pattern",
+      "status": "done",
+      "title": "jwt: When to Choose Signed vs Encrypted Tokens",
+      "body": "When authenticating APIs, developers choose between API keys, OAuth tokens, or JSON Web Tokens (JWTs). JWTs are particularly useful when you need to convey user identity, permissions, and additional claims. However, JWTs can be vulnerable to token theft, especially when transmitted in plain text. In such cases, consider using JWT with digital signatures (e.g., HMAC SHA-256) for authenticity verification. For confidentiality, use JWT with encryption (e.g., JWE) and a shared secret key. When transmitting sensitive data, always prefer JWE over JWS.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "JWT Pitfalls — alg:none attack, expiry enforcement, storing tokens safely",
+      "status": "done",
+      "title": "JWT Pitfalls — alg:none attack, expiry enforcement, storing tokens safely",
+      "body": "Using an algorithm of `alg:none` in JSON Web Tokens (JWT) is a significant security risk due to the lack of encryption. An attacker can easily intercept and modify the token, compromising user authentication. To mitigate this, use a secure algorithm like `alg:HS256`. Additionally, ensure you enforce token expiry by setting a reasonable `exp` claim. Finally, never store JWTs in client-side storage like LocalStorage or cookies, as they can be accessed by malicious scripts. Instead, store them securely on the server-side using a secure token store.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    }
+  ]
 }

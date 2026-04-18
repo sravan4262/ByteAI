@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: os_kernel
 domain: systems
-tech_stacks: [linux_kernel, ebpf, freebsd, wasm]
+tech_stacks: [linux_kernel, ebpf]
 byte_type_default: article
 
 ## Topics to Seed

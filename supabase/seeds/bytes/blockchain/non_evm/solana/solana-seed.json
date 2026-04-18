@@ -2,5 +2,102 @@
   "tech_stack": "solana",
   "subdomain": "non_evm",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Bitcoin — UTXO model, Script, PoW, block structure, Lightning Network",
+      "status": "done",
+      "title": "Solana: Understanding UTXO Model and its Implications",
+      "body": "Solana's blockchain architecture is based on the Proof of Stake (PoS) consensus algorithm, which differs from Bitcoin's Proof of Work (PoW) and UTXO model. However, understanding the UTXO model is crucial for Solana developers, as it helps in designing efficient transaction processing systems. In Solana, accounts are used to store data, and transactions are used to update these accounts. The UTXO model, on the other hand, uses unspent transaction outputs to represent the state of the blockchain. Solana's `getAccountInfo` function can be used to retrieve information about an account, similar to how the UTXO model retrieves unspent transaction outputs.",
+      "code_snippet": "const accountInfo = await connection.getAccountInfo(publicKey);",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 8,
+      "overall": 8
+    },
+    {
+      "topic": "Solana — account model, PoH + PoS, Sealevel parallel execution, programs vs accounts",
+      "status": "done",
+      "title": "Solana — Understanding Account Model and Sealevel Parallel Execution",
+      "body": "Solana's account model is based on a flat, key-value store where each account has a unique address. Programs and accounts are distinct entities, with programs being stateless and accounts holding the program's state. The Proof of History (PoH) consensus algorithm is used in conjunction with Proof of Stake (PoS) to secure the network. Sealevel parallel execution allows for the parallel processing of transactions, significantly improving the network's throughput. This is achieved through the use of a parallel scheduler that can process multiple transactions simultaneously, while still maintaining the integrity of the blockchain.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Polkadot — relay chain, parachains, XCM cross-chain messaging, parachain slots",
+      "status": "done",
+      "title": "Solana — Understanding Polkadot's Relay Chain and Parachains",
+      "body": "Solana developers can leverage cross-chain messaging via the XCM framework with Polkadot. To facilitate this, Polkadot uses a relay chain and parachains. The relay chain, also known as the Polkadot chain, is the main chain responsible for validating transactions and maintaining the network's state. Parachains, on the other hand, are parallel chains that can run their own custom code, enabling the development of scalable and specialized applications. Solana developers can use XCM to interact with parachains, enabling cross-chain communication. To do this, you can use the `cross_chain_message` function from the Solana SDK, which allows you to send XCM messages to parachains. You can also use the `query_parachain` function to retrieve data from parachains.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "UTXO vs Account Model — how Bitcoin and Ethereum differ fundamentally",
+      "status": "done",
+      "title": "Solana UTXO vs Account Model: A Key Difference",
+      "body": "Solana's account model is designed to optimize for speed and scalability, whereas Bitcoin's UTXO model prioritizes unspent transaction output management. Solana's account model is based on a mutable, account-centric design, where each account has a balance and can receive and send funds. In contrast, Bitcoin's UTXO model uses an immutable, transaction-centric design, where each transaction is a combination of unspent outputs. This difference affects how transactions are processed and validated on each network. On Solana, accounts can be updated atomically, ensuring that all operations on an account are performed as a single, atomic action. In Bitcoin, transactions are processed in a sequence, with each transaction building on the previous one.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Cosmos — Tendermint consensus, IBC protocol, app-specific chains, ABCI",
+      "status": "done",
+      "title": "Solana — Tendermint Consensus: A Primer for Solana Developers",
+      "body": "Tendermint is a Byzantine Fault Tolerant (BFT) consensus algorithm used by Cosmos. Solana's Tendermint Core implementation is based on the Tendermint Core 0.34.13 version. To understand how Tendermint integrates with Solana's architecture, consider the following: Solana's Tendermint Core is responsible for maintaining the state machine, which is stored in a database. The Tendermint Core uses a set of validators to achieve consensus. Solana's Tendermint Core communicates with the Solana Core through the ABCI (Application Blockchain Interface) protocol. The ABCI protocol enables the Solana Core to interact with the Tendermint Core and perform tasks such as creating new blocks.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Consensus Mechanisms — PoW, PoS, PoH, BFT variants, trade-offs",
+      "status": "done",
+      "title": "Solana Consensus: PoH and BFT Variants",
+      "body": "Solana's consensus mechanism, Proof of History (PoH), replaces Proof of Work (PoW) to achieve faster transaction validation. PoH uses a leader-based protocol, where a leader node is elected to create a new block. Solana's BFT (Byzantine Fault Tolerance) variant, known as Turbine, ensures finality by using a leader-based approach combined with a gossip protocol. This allows Solana to achieve high throughput and low latency. Solana also uses a variant of the BFT algorithm known as PBFT (Practical Byzantine Fault Tolerance).",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Solana Performance — parallel execution, Gulf Stream, Turbine, Sealevel",
+      "status": "done",
+      "title": "Solana Performance: Unlocking Parallel Execution with Gulf Stream, Turbine, and Sealevel",
+      "body": "Solana's parallel execution architecture enables multiple transactions to execute concurrently, improving overall network performance. Gulf Stream, Turbine, and Sealevel are key components that facilitate this parallelism.\nGulf Stream is a data transport layer that efficiently moves data between transactions, reducing overhead and latency. Turbine, a task queue, schedules and manages the execution of transactions, ensuring that tasks are executed in the optimal order. Sealevel, a load balancer, distributes incoming transactions across multiple nodes, maximizing parallel execution.\nTo leverage these components, developers can use the `clusterManager` API to create and manage clusters, and the `taskQueue` API to schedule tasks.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Bitcoin Script — stack-based, intentionally limited, P2PKH, P2SH, multisig",
+      "status": "done",
+      "title": "Solana Wallets — Mastering Bitcoin Script for Non-CVM Transactions",
+      "body": "When interacting with Solana wallets, you'll often encounter Bitcoin Script, the stack-based scripting language used for non-CVM (Cross-Chain Validator Model) transactions. Bitcoin Script is intentionally limited, yet powerful, enabling features like P2PKH (Pay-to-Public-Key-Hash) and P2SH (Pay-to-Script-Hash). Solana's wallet library provides a `tx` object, which includes a `getSignatureProgramId` method for generating program IDs specific to the wallet. To create a multisig wallet, you'll need to define a script that requires multiple signatures. For example, you can use the `AND` operator to combine two signatures, like `OP_2 OP_CHECKMULTISIGVERIFY`.",
+      "code_snippet": "import { PublicKey, sysvar } from '@solana/web3.js';\nconst wallet = new Wallet();\nconst address = wallet.publicKey;\nconst signatureProgramId = wallet.getSignatureProgramId();\nconst script = new PublicKey('9a8b7c6d5e4f3g2h1i0').toBuffer();\nconsole.log(script);",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    }
+  ]
 }

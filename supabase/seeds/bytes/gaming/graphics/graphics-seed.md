@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: graphics
 domain: gaming
-tech_stacks: [opengl, vulkan, webgl, metal, directx, webgpu]
+tech_stacks: [webgl, webgpu]
 byte_type_default: article
 
 ## Topics to Seed

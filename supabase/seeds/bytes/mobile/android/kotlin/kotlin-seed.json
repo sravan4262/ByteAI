@@ -2,5 +2,66 @@
   "tech_stack": "kotlin",
   "subdomain": "android",
   "domain": "mobile",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Dependency Injection — Hilt, Koin, why DI matters on Android",
+      "status": "done",
+      "title": "Kotlin Dependency Injection — Hilt vs Koin",
+      "body": "Dependency injection (DI) is crucial for maintaining a clean, modular, and scalable Android codebase in Kotlin. It helps reduce boilerplate code, improves testability, and simplifies maintenance. Both Hilt and Koin are popular DI libraries for Kotlin Android development. Hilt, developed by Google, provides a more seamless integration with Android components, while Koin offers a more lightweight and flexible solution. When choosing between Hilt and Koin, consider the size and complexity of your project, as well as your team's familiarity with each library.",
+      "code_snippet": "null",
+      "language": "kotlin",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Data Persistence — Room, DataStore, SharedPreferences, file storage",
+      "status": "done",
+      "title": "Kotlin — Choosing the Right Data Storage for Android Apps",
+      "body": "When it comes to data persistence in Kotlin for Android, you have multiple options: Room, DataStore, SharedPreferences, and file storage. Room is an ORM that provides a simple, SQL-based interface for database operations. DataStore, on the other hand, is a more recent addition, providing an abstraction layer for shared preferences and other data storage solutions. SharedPreferences and file storage are simple, but less scalable options. To choose the right one, consider the complexity of your data model and the frequency of updates.",
+      "code_snippet": "val db = Room.databaseBuilder(\n    context, MyDatabase::class.java, \"my-db\")\n        .build()",
+      "language": "kotlin",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "App Architecture — MVVM, MVI, clean architecture with use cases",
+      "status": "done",
+      "title": "Kotlin Android App Architecture: MVVM vs MVI vs Clean Architecture",
+      "body": "In Kotlin Android development, choosing the right architecture is crucial for scalability and maintainability. MVVM (Model-View-ViewModel) is a popular choice, leveraging data binding and live data. MVI (Model-View-Intent) is another option, focusing on unidirectional data flow. Clean Architecture, inspired by Robert C. Martin, separates the business logic from the presentation layer. Use cases, such as `GetUserUseCase`, encapsulate the business logic. Kotlin Coroutines facilitate asynchronous programming.",
+      "code_snippet": "class GetUserUseCase(private val repository: UserRepository) {\n   suspend fun execute(): User {\n       return repository.getUser()\n   }\n}",
+      "language": "kotlin",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Testing — JUnit, Mockk, Compose testing, Espresso for UI tests",
+      "status": "done",
+      "title": "Kotlin: Mastering Compose Testing with JUnit and Mockk",
+      "body": "In Compose testing, you can't mock a `MutableState` directly. Instead, use a `@RunWith(MockitoJUnitRunner::class)` annotation with `@Mock` to create a mock object. Then, use `every` from Mockk to verify interactions. For UI tests, Espresso provides a robust set of assertions for testing views. To access a Compose view's state, use the `getOrNull` method. Here's an example of mocking a Compose view's state with Mockk and testing its UI with Espresso:\n```kotlin\n@get:Rule\nval composeRule = createComposeRule()\n\n@Mock\nprivate lateinit var mockState: MutableState<String>\n\n@Before\nfun setup() {\n    MockitoAnnotations.initMocks(this)\n    mockState = mockk()\n}\n\n@Test\nfun testComposeView() {\n    every { mockState.getOrNull() } returns \"Hello, World!\"\n    // Perform actions and assertions here\n}\n\n@Test\nfun testUi() {\n    composeRule.runOnMainSync {\n        // Perform actions and assertions here\n    }\n    onView(withId(R.id.compose_view)).check(matches(withText(\"Hello, World!\")))\n}",
+      "code_snippet": "kotlin",
+      "language": "kotlin",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Build System — Gradle, build variants, product flavors, build types",
+      "status": "done",
+      "title": "Kotlin: Mastering Build Variants with Gradle",
+      "body": "In Kotlin Android projects, build variants are crucial for managing different configurations. You can create multiple product flavors and build types using the `productFlavors` and `buildTypes` blocks in the `build.gradle` file. For example, you can create a `free` and `pro` flavor with different values in the `android.defaultConfig.applicationId` property:\n\nandroid {\n    productFlavors {\n        free {\n            defaultConfig {\n                applicationId 'com.example.free'\n            }\n        }\n        pro {\n            defaultConfig {\n                applicationId 'com.example.pro'\n            }\n        }\n    }\n}\n\nYou can then use the `buildTypes` block to define different build types, such as `debug` and `release`:\n\nandroid {\n    buildTypes {\n        debug {\n            debuggable true\n        }\n        release {\n            minifyEnabled true\n            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'\n        }\n    }\n}\n\nTo use a specific build variant, you can use the `variant` property in the `build.gradle` file.",
+      "code_snippet": "android {\n    productFlavors {\n        free {\n            defaultConfig {\n                applicationId 'com.example.free'\n            }\n        }\n        pro {\n            defaultConfig {\n                applicationId 'com.example.pro'\n            }\n        }\n    }\n\n    buildTypes {\n        debug {\n            debuggable true\n        }\n        release {\n            minifyEnabled true\n            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'\n        }\n    }\n}",
+      "language": "kotlin",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    }
+  ]
 }

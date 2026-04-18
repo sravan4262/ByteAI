@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: cloud_security
 domain: security
-tech_stacks: [iam, zero_trust, vault, waf]
+tech_stacks: [iam, vault]
 byte_type_default: article
 
 ## Topics to Seed

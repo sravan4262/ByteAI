@@ -2,5 +2,102 @@
   "tech_stack": "optimism",
   "subdomain": "evm",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "EVM Architecture — opcodes, gas model, stack-based execution, memory vs storage vs calldata",
+      "status": "done",
+      "title": "Optimism EVM Architecture — Understanding Opcodes, Gas Model, and Data Storage",
+      "body": "Optimism's EVM (Ethereum Virtual Machine) architecture relies on a stack-based execution model, utilizing opcodes to perform operations. The gas model determines the cost of each operation, with the goal of preventing denial-of-service attacks. Data is stored in three main areas: memory, storage, and calldata. Memory is used for temporary data, storage for persistent data, and calldata for function arguments. Optimism's EVM implementation, based on the Bedrock protocol, optimizes gas costs and execution efficiency. Understanding these components is crucial for building efficient and secure smart contracts on Optimism.",
+      "code_snippet": "null",
+      "language": "null",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Ethereum — accounts, transactions, block structure, consensus (PoS post-merge)",
+      "status": "done",
+      "title": "Optimism — Understanding Post-Merge Ethereum Accounts and Transactions",
+      "body": "On Optimism, Ethereum accounts are abstracted using the Ethereum Provider API. Transactions are executed using the `eth_sendTransaction` method, which takes a transaction object as an argument. The transaction object includes properties such as `from`, `to`, `value`, `gas`, and `gasPrice`. Post-merge, Optimism utilizes a Proof of Stake (PoS) consensus algorithm, ensuring energy efficiency and security. The `eth_getBlockByNumber` method can be used to retrieve block structure information, including the block number, hash, and transactions.",
+      "code_snippet": "const { ethers } = require('ethers');\nconst provider = new ethers.providers.JsonRpcProvider('https://mainnet.optimism.io');\nconst tx = {\n  from: '0x...',\n  to: '0x...',\n  value: ethers.utils.parseEther('1.0'),\n  gas: '20000',\n  gasPrice: ethers.utils.parseUnits('20.0', 'gwei')\n};\nprovider.sendTransaction(tx).then((txHash) => console.log(txHash));",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Gas & Fees — gas limit, base fee, priority fee (EIP-1559), gas optimization",
+      "status": "done",
+      "title": "Optimism EVM: Mastering Gas & Fees with EIP-1559",
+      "body": "When sending transactions on Optimism EVM, you need to consider gas and fees. EIP-1559 introduced base fee and priority fee, replacing the traditional gas price. The base fee is the minimum amount required to include your transaction in the next block, while the priority fee is an additional fee that determines the order of transactions. To optimize gas usage, use the `gasLimit` property in your transaction object. You can also use the `maxFeePerGas` and `maxPriorityFeePerGas` properties to control the base and priority fees, respectively.",
+      "code_snippet": "const tx = {\n  to: '0x...,\n  gasLimit: 80000,\n  maxFeePerGas: 20000000000,\n  maxPriorityFeePerGas: 10000000000,\n};\n optimismProvider.sendTransaction(tx).then((txHash) => console.log(txHash));",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Optimistic Rollups — fraud proofs, challenge period, withdrawal delay (Arbitrum, Optimism)",
+      "status": "done",
+      "title": "Optimism Rollups: Fraud Proofs, Challenge Period, and Withdrawal Delay",
+      "body": "When a user submits a transaction on Optimism, it's initially considered valid. However, this creates a problem known as the 'nothing-at-stake' problem. To mitigate this, Optimism uses a two-phase verification process called Optimistic Rollups. The first phase assumes the transaction is valid, and the second phase, called the challenge period, allows anyone to challenge the transaction. If a challenge occurs, the transaction is reverted. To prevent this, Optimism introduces a withdrawal delay, which temporarily locks funds. This ensures the integrity of the rollup and prevents cheating.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Polygon — PoS chain, AggLayer, zkEVM, bridging assets",
+      "status": "done",
+      "title": "Optimism — Bridging Assets with AggLayer and zkEVM",
+      "body": "Optimism's AggLayer enables seamless bridging of assets between its Proof-of-Stake (PoS) chain and Ethereum Virtual Machine (EVM) compatible blockchains. To bridge assets, you need to create a bridged token on AggLayer, which is then wrapped on the destination chain. For example, wrapping ETH on Polygon's PoS chain involves creating a bridged token `WrappedETH` on AggLayer, then using the `wrap` method on Polygon's EVM to mint `WrappedETH` tokens.",
+      "code_snippet": "pragma solidity ^0.8.0;\ncontract AggLayer {\n    // Create a bridged token\n    function createBridgedToken(address _tokenAddress) public returns (address)\n    {\n        // ... implementation details ...\n    }\n\n    // Wrap ETH on Polygon's EVM\n    function wrap(address _wrappedTokenAddress, uint256 _amount) public returns (uint256)\n    {\n        // ... implementation details ...\n    }\n}",
+      "language": "solidity",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "Base — Coinbase's L2, OP Stack, Superchain vision",
+      "status": "done",
+      "title": "Optimism - Unlocking Coinbase's L2 Potential with OP Stack and Superchain",
+      "body": "Optimism's OP Stack enables seamless L2 scaling on the Ethereum Virtual Machine (EVM) via its optimistic rollup. Coinbase's Superchain vision leverages Optimism's OP Stack to create an interoperable network of L2s. By using Optimism's OP Stack, developers can deploy custom L2 chains that seamlessly interact with the EVM. This enables faster, cheaper, and more scalable transactions. Optimism's OP Stack API provides a set of tools for building and managing L2 chains, including the `createRollup` method.",
+      "code_snippet": "const Optimism = require('optimism-contracts');\nconst rollup = Optimism.createRollup('0x...');\nrollup.deploy().then((deployedRollup) => {\n  console.log(deployedRollup.address);\n});",
+      "language": "javascript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Bridges — locking/minting, canonical vs third-party bridges, bridge risks",
+      "status": "done",
+      "title": "Optimism Bridges — Locking, Minting, and Risk Mitigation",
+      "body": "When building a bridge on Optimism, you must choose between a canonical bridge and a third-party bridge. A canonical bridge is a pre-approved bridge that has been vetted by Optimism, whereas a third-party bridge requires manual approval. Canonical bridges use the `Locking` function to lock funds in an Optimism account, whereas third-party bridges use the `Mint` function to create a new token on Optimism. However, third-party bridges come with increased risk, as they are not officially supported by Optimism.",
+      "code_snippet": "const Locking = require('@optimism/locking');\nconst Mint = require('@optimism/mint');\n// Canonical bridge using Locking\nLocking.lockFunds(\n    { chainId: 1, account: '0x...' },\n    { value: '1.0 ether' }\n);\n// Third-party bridge using Mint\nMint.createToken(\n    { chainId: 1, account: '0x...' },\n    { name: 'BridgeToken', symbol: 'BRIDGE' }\n)",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Transaction Lifecycle — mempool, ordering, finality, reorg risk",
+      "status": "done",
+      "title": "Optimism EVM Transaction Lifecycle: Mempool, Ordering, and Finality",
+      "body": "Optimism's optimistic rollups process transactions in batches. When a user submits a transaction, it's first added to the mempool. The Optimism transaction ordering service (OTOS) orders these transactions based on user-defined priorities. Once ordered, the transactions are grouped into batches and processed on the L2 chain. Finality is achieved when a batch is successfully executed on the L2 chain. However, Optimism's L2-L1 bridge allows for reorg risk, where a conflicting batch is replayed on the L1 chain. To mitigate this, Optimism uses a reorg detection mechanism that identifies and resolves conflicts.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    }
+  ]
 }

@@ -2,5 +2,78 @@
   "tech_stack": "linux_kernel",
   "subdomain": "os_kernel",
   "domain": "systems",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "File Systems — VFS abstraction, ext4, btrfs, ZFS, journaling, copy-on-write",
+      "status": "done",
+      "title": "linux_kernel - Mastering VFS Abstraction for Optimized File System Performance",
+      "body": "The Virtual File System (VFS) layer in linux_kernel abstracts file system operations, allowing developers to create and manage file systems without worrying about the underlying complexities. The VFS layer uses a modular design, where each file system is represented by a separate module. ext4 and btrfs are two popular file systems in linux_kernel, each with its own strengths and weaknesses. ZFS, a highly scalable file system, can be used with the ZFS on Linux (ZoL) kernel module. Journaling, a technique used by ext4 and btrfs, ensures data integrity by writing metadata and data in a single transaction. Copy-on-write (CoW) is another technique used by btrfs and ZFS, which creates a copy of the original data before modifying it.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    },
+    {
+      "topic": "FreeBSD — differences from Linux, jails, ZFS integration, Ports collection",
+      "status": "done",
+      "title": "linux_kernel: Taming FreeBSD with Jails and ZFS",
+      "body": "For developers familiar with linux_kernel's containerization using cgroups and namespaces, FreeBSD's jail() function offers a similar abstraction. Jails provide a secure, isolated environment for applications by assigning a unique IP address and port range. ZFS, a high-performance file system, integrates seamlessly with jails, allowing for efficient storage and snapshotting. The Ports collection, a comprehensive repository of pre-built packages, makes it easy to deploy and manage applications within jails. To create a jail on FreeBSD, use the following code:\n\njail -c -Z /path/to/jail -m \"default\"\n\nThis command creates a new jail with a default configuration, assigning it a unique IP address and port range.",
+      "code_snippet": "jail -c -Z /path/to/jail -m \"default\"",
+      "language": "bash",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Kernel Architecture — monolithic vs microkernel vs hybrid, Linux vs BSD design",
+      "status": "done",
+      "title": "linux_kernel - Monolithic vs Microkernel vs Hybrid: A Linux Perspective",
+      "body": "Linux kernel follows a monolithic architecture, where the kernel space and user space are tightly coupled. This design allows for efficient memory management and fast context switching. However, it can lead to security vulnerabilities and scalability issues. In contrast, microkernels like L4 and Fiasco, separate kernel and user space, improving security but introducing significant overhead. Linux's hybrid approach, used in the Android kernel, combines the benefits of both. The Android kernel uses a combination of monolithic and microkernel designs, with the kernel space handling core functionality and user space handling device drivers. This allows for improved security and scalability.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Linux Kernel — modules, kernel config, building, Kconfig/Makefile system",
+      "status": "done",
+      "title": "linux_kernel — Mastering Kconfig/Makefile for Module Development",
+      "body": "The linux_kernel configuration system relies on Kconfig and Makefile to determine which modules to build. Kconfig files contain conditional statements that specify module dependencies. When a Kconfig file is updated, the Makefile is automatically regenerated. To build a specific module, navigate to its directory and run `make`. The Makefile will automatically include the necessary configuration files. To add a new module, create a Kconfig file and update the Makefile accordingly. Always run `make clean` before rebuilding to ensure a clean build process.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Device Drivers — character vs block vs network drivers, kernel module development",
+      "status": "done",
+      "title": "linux_kernel Device Drivers 101: Character vs Block vs Network",
+      "body": "Linux kernel device drivers are categorized into character, block, and network drivers. Character drivers interact with serial ports, terminals, and other character devices. They provide a file interface to access these devices. Block drivers, on the other hand, handle disk I/O operations. They provide a buffer cache and perform disk scheduling. Network drivers manage network interfaces and provide a socket interface to access network resources. To create a kernel module, you need to write a C file that includes the linux/module.h header and exports a module_init function.",
+      "code_snippet": "\n#include <linux/module.h>\n#include <linux/init.h>\n\nMODULE_LICENSE(\"GPL\");\nMODULE_AUTHOR(\"Your Name\");\nMODULE_DESCRIPTION(\"A simple kernel module\");\n\nstatic int __init init_module(void)\n{\n   printk(KERN_INFO \"Hello, World!\\n\");\n   return 0;\n}\n\nstatic void __exit exit_module(void)\n{\n   printk(KERN_INFO \"Goodbye, World!\\n\");\n}\n\nmodule_init(init_module);\nmodule_exit(exit_module);\n",
+      "language": "c",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Containerization Internals — how namespaces and cgroups power containers",
+      "status": "done",
+      "title": "linux_kernel Containers: Namespaces and cgroups",
+      "body": "linux_kernel uses namespaces to isolate process views and cgroups to control resource allocation. Namespaces (ns) are file system objects that group resources, such as PID, network, and mount points. They are used to create a logical separation between processes. cgroups (control groups) are used to limit resource usage by processes. A process is associated with a cgroup, which defines the resources it can access. linux_kernel provides two types of cgroups: hierarchy and flat. Hierarchy cgroups are used for creating nested resource hierarchies, while flat cgroups are used for simple resource allocation. linux_kernel also provides several cgroup controllers for managing resources such as CPU, memory, and network I/O.",
+      "code_snippet": null,
+      "language": null,
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8.5
+    }
+  ]
 }

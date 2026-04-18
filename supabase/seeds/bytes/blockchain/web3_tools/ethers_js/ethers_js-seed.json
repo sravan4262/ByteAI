@@ -2,5 +2,126 @@
   "tech_stack": "ethers_js",
   "subdomain": "web3_tools",
   "domain": "blockchain",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "ethers.js — providers, signers, contract interaction, event listening",
+      "status": "done",
+      "title": "ethers.js — Providers, Signers, and Contract Interaction Without the Guesswork",
+      "body": "ethers.js separates read and write concerns cleanly: a Provider handles chain reads (balances, calls, logs), while a Signer wraps a private key or wallet and can send transactions. A BrowserProvider bridges MetaMask into ethers v6, replacing the v5 Web3Provider. To interact with a contract, you attach either a Provider (read-only) or Signer (read-write) — the same ContractFactory handles both. For event listening, contract.on() uses a typed filter; always call contract.off() or contract.removeAllListeners() to avoid memory leaks in SPAs. One sharp edge: provider.getLogs() and contract.queryFilter() are distinct — queryFilter decodes log data using the ABI, getLogs returns raw RPC results. In v6, BigInt replaces ethers.BigNumber everywhere, so arithmetic is native JS. When switching networks, recreate the provider — stale providers silently query the wrong chain. Use provider.getNetwork() to assert chain ID before any sensitive write.",
+      "code_snippet": "import { BrowserProvider, Contract, parseEther } from 'ethers';\n\nconst provider = new BrowserProvider(window.ethereum);\nconst signer = await provider.getSigner();\n\nconst contract = new Contract(ADDRESS, ABI, signer);\n\n// Write\nconst tx = await contract.transfer(recipient, parseEther('1.0'));\nawait tx.wait();\n\n// Read-only (no signer needed)\nconst readContract = new Contract(ADDRESS, ABI, provider);\nconst balance = await readContract.balanceOf(signer.address);\n\n// Event listening\ncontract.on('Transfer', (from, to, value, event) => {\n  console.log(`${from} → ${to}: ${value}`);\n});\n\n// Cleanup\ncontract.removeAllListeners('Transfer');",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Wallet Connection — WalletConnect, MetaMask, Coinbase Wallet, wallet abstraction",
+      "status": "done",
+      "title": "ethers_js Wallet Connection — BrowserProvider, WalletConnect, and Signer Abstraction",
+      "body": "ethers.js v6 unifies wallet connections through `BrowserProvider`, which wraps any EIP-1193-compatible provider — MetaMask, Coinbase Wallet, or WalletConnect's `UniversalProvider`. The key insight: every wallet ultimately yields an `AbstractSigner`, so your app logic stays wallet-agnostic once you have one.\n\nFor MetaMask and Coinbase Wallet (injected), wrap `window.ethereum` directly: `new ethers.BrowserProvider(window.ethereum)`. For WalletConnect v2, initialize `UniversalProvider` from `@walletconnect/universal-provider`, then pass it to `BrowserProvider` identically — the interface is the same.\n\nCall `provider.getSigner()` to get an `ethers.JsonRpcSigner`, which exposes `.sendTransaction()`, `.signMessage()`, and `.signTypedData()` uniformly. Avoid storing the provider long-term — re-request the signer per session to handle account changes. Listen to `provider.on('accountsChanged', ...)` and `provider.on('chainChanged', ...)` via the raw `window.ethereum` handle, since `BrowserProvider` doesn't re-emit these. This pattern lets you swap wallets — MetaMask today, WalletConnect tomorrow — without touching transaction logic.",
+      "code_snippet": "import { ethers } from 'ethers';\nimport { UniversalProvider } from '@walletconnect/universal-provider';\n\n// MetaMask / Coinbase Wallet (injected EIP-1193)\nconst injectedProvider = new ethers.BrowserProvider(window.ethereum);\nconst injectedSigner = await injectedProvider.getSigner();\n\n// WalletConnect v2\nconst wcProvider = await UniversalProvider.init({\n  projectId: 'YOUR_PROJECT_ID',\n  metadata: { name: 'ByteAI', description: '', url: '', icons: [] },\n});\nawait wcProvider.connect({ namespaces: { eip155: { methods: ['eth_sendTransaction', 'personal_sign'], chains: ['eip155:1'], events: ['accountsChanged'] } } });\n\nconst wcEthersProvider = new ethers.BrowserProvider(wcProvider);\nconst wcSigner = await wcEthersProvider.getSigner();\n\n// Both signers share the same interface\nconsole.log(await injectedSigner.getAddress());\nconsole.log(await wcSigner.getAddress());",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "IPFS — content addressing, DHT, pinning, IPFS vs Filecoin, CIDs",
+      "status": "done",
+      "title": "ethers_js + IPFS — Reading CIDs from NFT Contracts and Resolving Off-Chain Metadata",
+      "body": "IPFS stores content by what it is, not where it is. A CID (Content Identifier) is a multihash of the data — change one byte, get a new CID. This makes on-chain NFT metadata tamper-evident: the `tokenURI()` return value in an ERC-721 contract is typically `ipfs://QmXoypiz...` (CIDv0) or `ipfs://bafy...` (CIDv1 base32).\n\nWhen you call `contract.tokenURI(tokenId)` via ethers.js, you receive a raw `ipfs://` URI — not an HTTP URL. ethers.js has no built-in IPFS resolver; strip the prefix and query a gateway yourself. The DHT routes your request to peers holding that CID, but peers are not obligated to persist it. Pinning explicitly instructs a node — yours, Pinata, or web3.storage — to keep it alive.\n\nIPFS vs Filecoin: IPFS is the content-addressing protocol and DHT routing layer; Filecoin adds cryptographic storage proofs (PoRep/PoSt) and token incentives so storage providers are paid to retain CIDs long-term. For production NFT projects, pin via Filecoin-backed services (NFT.Storage, w3up) rather than relying on public DHT availability.\n\nThe CID your contract stores on-chain is the immutable anchor — gateway URLs are ephemeral convenience wrappers around it.",
+      "code_snippet": "import { ethers } from \"ethers\";\n\nconst provider = new ethers.JsonRpcProvider(process.env.RPC_URL);\nconst abi = [\"function tokenURI(uint256 tokenId) view returns (string)\"];\nconst bayc = new ethers.Contract(\n  \"0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D\",\n  abi,\n  provider\n);\n\nconst uri = await bayc.tokenURI(1n);\n// \"ipfs://QmeSjSinHpPnmXmspMjwiXyN6zS4E9zccariGR3jxcaWtq/1\"\n\nconst cid = uri.replace(\"ipfs://\", \"\");\nconst metadata = await fetch(`https://ipfs.io/ipfs/${cid}`).then(r => r.json());\nconsole.log(metadata.image); // another ipfs:// URI for the actual asset",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 7,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Reading On-chain Data — eth_call, getLogs, event filtering, batch requests",
+      "status": "done",
+      "title": "ethers_js — Reading On-chain Data Without Wasting RPC Calls",
+      "body": "ethers_js gives you multiple read primitives, but picking the wrong one wastes RPC quota fast. `provider.call()` maps directly to `eth_call` — use it for arbitrary calldata without ABI overhead, or to simulate state at a specific block by passing `{ blockTag: 12345678 }`. For event history, `contract.queryFilter(filter, fromBlock, toBlock)` wraps `eth_getLogs` with automatic ABI decoding — you get typed `EventLog` objects back, not raw hex. Build precise filters with `contract.filters.Transfer(null, recipientAddress)` to index only the second topic. Avoid open-ended `getLogs` calls without a block range; most RPC providers cap at 10k results or 2k blocks. For batching, ethers v6 doesn't expose `eth_call` multicall natively, but you can pair `provider.send('eth_call', [...])` with a Multicall3 contract or use `Promise.all()` on `contract.foo.staticCall()` calls — these coalesce into a single HTTP request when using `JsonRpcProvider` with its internal batch queue. Always set `blockTag: 'finalized'` for data you'll act on to avoid reorg surprises.",
+      "code_snippet": "import { ethers } from 'ethers';\n\nconst provider = new ethers.JsonRpcProvider(process.env.RPC_URL);\nconst erc20 = new ethers.Contract(tokenAddress, ERC20_ABI, provider);\n\n// Typed event logs via eth_getLogs\nconst filter = erc20.filters.Transfer(null, myAddress);\nconst logs = await erc20.queryFilter(filter, -10_000); // last 10k blocks\n\nfor (const log of logs) {\n  const event = log as ethers.EventLog;\n  console.log(event.args.from, event.args.value);\n}\n\n// eth_call at a specific block\nconst balance = await erc20.balanceOf(myAddress, { blockTag: 'finalized' });\n\n// Batch reads with Promise.all (coalesced by JsonRpcProvider)\nconst [supply, decimals] = await Promise.all([\n  erc20.totalSupply(),\n  erc20.decimals(),\n]);",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Writing Transactions — signing, gas estimation, nonce management, transaction monitoring",
+      "status": "done",
+      "title": "ethers.js Transaction Mastery — Signing, Gas, Nonces, and Monitoring",
+      "body": "ethers.js gives you fine-grained control over every transaction lifecycle stage. When sending a transaction, `provider.getFeeData()` returns `maxFeePerGas` and `maxPriorityFeePerGas` for EIP-1559 chains — use these instead of hardcoding `gasPrice`. Call `provider.estimateGas(txRequest)` with your populated transaction object to get an accurate gas limit; add a 20% buffer for volatile contracts. Nonce management is critical under load: fetch once with `signer.getNonce('pending')` (not `'latest'`) to account for in-flight transactions, then manually increment across batched sends. Never rely on auto-nonce when firing multiple transactions in a tight loop — ethers will re-fetch and collide. After broadcasting via `signer.sendTransaction()`, you get a `TransactionResponse`. Call `.wait(confirmations)` to block until mined — it returns a `TransactionReceipt` with `status` (1 = success, 0 = reverted). For real-time monitoring without blocking, attach to `provider.once('transaction', hash, callback)` or poll `provider.getTransactionReceipt(hash)` until non-null. Always check `receipt.status` — a mined transaction can still be a revert.",
+      "code_snippet": "import { ethers } from 'ethers';\n\nconst provider = new ethers.JsonRpcProvider(RPC_URL);\nconst signer = new ethers.Wallet(PRIVATE_KEY, provider);\n\nconst feeData = await provider.getFeeData();\nconst nonce = await signer.getNonce('pending');\n\nconst txRequest = {\n  to: '0xRecipient...',\n  value: ethers.parseEther('0.01'),\n  nonce,\n  maxFeePerGas: feeData.maxFeePerGas,\n  maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,\n};\n\ntxRequest.gasLimit = (await provider.estimateGas(txRequest)) * 120n / 100n;\n\nconst tx = await signer.sendTransaction(txRequest);\nconst receipt = await tx.wait(1);\n\nif (receipt.status === 0) throw new Error(`Reverted: ${tx.hash}`);",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "ENS — name resolution, avatar, records, reverse resolution",
+      "status": "done",
+      "title": "ethers_js ENS — Forward Resolution, Reverse Lookup, Avatars, and Text Records",
+      "body": "ENS resolution in ethers.js v6 splits into two paths. `provider.resolveName(\"vitalik.eth\")` returns the checksummed address, while `provider.lookupAddress(address)` reverses it — but ethers internally validates that the forward record matches the reverse claim, returning `null` if they diverge. This is a security check you'd have to implement manually with raw contract calls.\n\nFor richer profile data, call `provider.getResolver(name)` to get an `EnsResolver` instance. Its `getText(key)` method fetches arbitrary ENSIP-5 text records — standard keys include `\"url\"`, `\"email\"`, `\"com.twitter\"`, `\"org.telegram\"`, and `\"description\"`. The `getAvatar()` method goes further: it resolves the avatar record through multiple layers — plain URL, IPFS CID via a public gateway, and ERC-721/ERC-1155 NFT ownership verification — returning a resolved URL or `null`. Unlike v5's manual resolver calls, v6 coalesces multiple `getText` calls on the same resolver into a single multicall RPC round trip where supported.\n\nAlways null-check the resolver — unregistered names return `null` from `getResolver`, and calling methods on it will throw.",
+      "code_snippet": "import { ethers } from \"ethers\";\n\nconst provider = new ethers.JsonRpcProvider(process.env.RPC_URL);\n\nconst address = await provider.resolveName(\"vitalik.eth\");\n// \"0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045\"\n\nconst reverseName = await provider.lookupAddress(address!);\n// \"vitalik.eth\" — null if forward/reverse mismatch\n\nconst resolver = await provider.getResolver(\"vitalik.eth\");\nif (resolver) {\n  const avatar  = await resolver.getAvatar();           // resolved URL or null\n  const twitter = await resolver.getText(\"com.twitter\");\n  const email   = await resolver.getText(\"email\");\n  console.log({ address, reverseName, avatar, twitter, email });\n}",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "viem — TypeScript-first, lightweight, low-level, replacing ethers in modern stacks",
+      "status": "done",
+      "title": "ethers.js to viem — Why Modern Stacks Are Dropping ethers.js",
+      "body": "If you've built with ethers.js v5 or v6, you know the pain: a 116 kB bundle, a class-heavy OOP API, and TypeScript types that require constant casting. viem solves all three. It's tree-shakeable by default — import only `getBalance` and that's all you ship. Its API is function-based, not class-based, so there's no `new ethers.providers.JsonRpcProvider()` ceremony. Instead: `createPublicClient({ transport: http(rpcUrl) })`.\n\nThe real win is type safety. viem infers ABI types end-to-end — if your ABI says a function returns `uint256`, TypeScript knows the return type is `bigint` without any casting. ethers.js v6 improved this with `TypedContract`, but viem bakes it in natively with zero boilerplate.\n\nPerformance-wise, viem uses native `bigint` throughout (no `BigNumber` wrapper), and its bundle is ~35 kB vs ethers.js v6's ~80 kB. Migration is straightforward: `Provider` → `PublicClient`, `Signer` → `WalletClient`, `Contract` → `getContract`. Most ethers.js mental models transfer directly — the API surface just gets leaner and more explicit.",
+      "code_snippet": "import { createPublicClient, createWalletClient, http, getContract } from 'viem'\nimport { mainnet } from 'viem/chains'\nimport { privateKeyToAccount } from 'viem/accounts'\n\n// ethers.js: new ethers.providers.JsonRpcProvider(rpcUrl)\nconst publicClient = createPublicClient({ chain: mainnet, transport: http(process.env.RPC_URL) })\n\n// ethers.js: new ethers.Wallet(privateKey, provider)\nconst account = privateKeyToAccount(`0x${process.env.PRIVATE_KEY}`)\nconst walletClient = createWalletClient({ account, chain: mainnet, transport: http(process.env.RPC_URL) })\n\n// ethers.js: new ethers.Contract(address, abi, signer)\nconst contract = getContract({ address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', abi, client: { public: publicClient, wallet: walletClient } })\n\n// Return type is bigint — no BigNumber, no casting\nconst balance: bigint = await contract.read.balanceOf([account.address])",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "IPFS Pinning — Pinata, web3.storage, NFT.Storage, self-hosted nodes",
+      "status": "done",
+      "title": "ethers.js + IPFS Pinning — Wiring Pinata, NFT.Storage, and Self-Hosted Nodes Into Your Mint Flow",
+      "body": "IPFS pinning services ensure your NFT metadata and assets stay permanently accessible — unpinned content gets garbage-collected by the network. In an ethers.js workflow, pinning sits upstream of your contract call: you pin first, receive a CID, then pass `ipfs://<CID>` as the `tokenURI` argument to your ERC-721 mint transaction.\n\n**Pinata** is the most battle-tested option — POST JSON to `/pinning/pinJSONToIPFS` with a JWT and you get an `IpfsHash` back synchronously. **NFT.Storage** (now folded into Storacha/w3up) used CAR-file uploads via their SDK, offering free cold storage but slower retrieval. **web3.storage** follows the same w3up model.\n\n**Self-hosted Kubo nodes** give you full control: pin via the HTTP API at `localhost:5001/api/v0/add`, but you're responsible for uptime and replication.\n\nFor production dApps, always store `ipfs://` URIs on-chain — never a gateway URL — so the metadata stays gateway-agnostic. Use Pinata's dedicated gateways (`gateway.pinata.cloud`) at read-time to avoid public gateway throttling when your ethers.js frontend batch-resolves `tokenURI()` calls across hundreds of NFTs.",
+      "code_snippet": "import { ethers } from \"ethers\";\nimport axios from \"axios\";\n\nasync function pinAndMint(metadata: object, contractAddress: string) {\n  const { data } = await axios.post(\n    \"https://api.pinata.cloud/pinning/pinJSONToIPFS\",\n    metadata,\n    { headers: { Authorization: `Bearer ${process.env.PINATA_JWT}` } }\n  );\n  const tokenURI = `ipfs://${data.IpfsHash}`;\n\n  const provider = new ethers.BrowserProvider(window.ethereum);\n  const signer = await provider.getSigner();\n  const nft = new ethers.Contract(\n    contractAddress,\n    [\"function mint(address to, string uri) returns (uint256)\"],\n    signer\n  );\n\n  const tx = await nft.mint(await signer.getAddress(), tokenURI);\n  return tx.wait();\n}",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 9
+    },
+    {
+      "topic": "Contract ABIs — what ABIs are, encoding/decoding, generating typed ABIs",
+      "status": "done",
+      "title": "ethers.js Contract ABIs — Encoding, Decoding, and Typed Interfaces",
+      "body": "An ABI (Application Binary Interface) is the contract between your JavaScript code and a deployed Solidity contract — it defines function signatures, parameter types, and return types in a JSON schema that ethers.js uses to encode calldata and decode responses.\n\nWhen you call a contract function, ethers.js uses the ABI to ABI-encode arguments into the 4-byte function selector + padded hex payload. On return, it decodes the raw bytes back into typed JS values. This happens automatically via `Contract` instances.\n\nThe `Interface` class is the core primitive. You can use it standalone to encode/decode without a provider — useful for transaction introspection or building raw calldata. `interface.encodeFunctionData('transfer', [to, amount])` produces the hex payload; `interface.decodeFunctionResult('balanceOf', resultBytes)` unpacks the response.\n\nFor type safety, use `typechain` or `@typechain/ethers-v6` to generate TypeScript wrappers from your ABI JSON. This gives you fully-typed `Contract` instances where `contract.transfer(to, amount)` is statically checked at compile time — no more silent argument mismatches.",
+      "code_snippet": "import { Interface, Contract, JsonRpcProvider } from 'ethers';\n\nconst abi = [\n  'function balanceOf(address owner) view returns (uint256)',\n  'function transfer(address to, uint256 amount) returns (bool)',\n];\n\n// Standalone Interface — no provider needed\nconst iface = new Interface(abi);\nconst calldata = iface.encodeFunctionData('transfer', [\n  '0xRecipient...',\n  1000n,\n]);\nconsole.log(calldata); // 0xa9059cbb...\n\n// Decode raw result bytes\nconst rawResult = '0x0000...0001';\nconst [success] = iface.decodeFunctionResult('transfer', rawResult);\n\n// Full contract instance — encoding/decoding is automatic\nconst provider = new JsonRpcProvider(process.env.RPC_URL);\nconst token = new Contract('0xToken...', abi, provider);\nconst balance = await token.balanceOf('0xOwner...');",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 10,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "wagmi — React hooks for Ethereum, connector system, TanStack Query integration",
+      "status": "done",
+      "title": "Ethers_js: Simplifying Ethereum Development with wagmi and TanStack Query",
+      "body": "Using ethers_js with wagmi's React hooks and TanStack Query integration simplifies Ethereum development by providing a straightforward way to interact with the blockchain. The wagmi library offers a set of hooks for connecting to Ethereum, such as useAccount and useConnect, which can be used in conjunction with ethers_js to handle tasks like transaction creation and contract interaction. By leveraging TanStack Query's caching and data fetching capabilities, developers can optimize their application's performance and reduce the complexity of managing blockchain data.",
+      "code_snippet": "import { useAccount } from 'wagmi';\nimport { ethers } from 'ethers';\n\nfunction MyComponent() {\n  const { address, isConnected } = useAccount();\n  const provider = new ethers.providers.JsonRpcProvider();\n  const contract = new ethers.Contract(address, abi, provider);\n}",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    }
+  ]
 }

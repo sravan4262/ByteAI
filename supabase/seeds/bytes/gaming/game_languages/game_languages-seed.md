@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: game_languages
 domain: gaming
-tech_stacks: [csharp_game, cpp_game, gdscript, lua, blueprint]
+tech_stacks: [csharp_game, gdscript]
 byte_type_default: article
 
 ## Topics to Seed

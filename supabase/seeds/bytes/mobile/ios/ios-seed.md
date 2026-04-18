@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: ios
 domain: mobile
-tech_stacks: [swift, swiftui, uikit, xcode]
+tech_stacks: [swift, swiftui]
 byte_type_default: article
 
 ## Topics to Seed

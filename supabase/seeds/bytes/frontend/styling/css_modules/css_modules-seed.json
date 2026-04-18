@@ -2,5 +2,102 @@
   "tech_stack": "css_modules",
   "subdomain": "styling",
   "domain": "frontend",
-  "bytes": []
+  "bytes": [
+    {
+      "topic": "Styling Strategy — utility-first vs CSS Modules vs CSS-in-JS vs plain CSS, picking one and why it matters",
+      "status": "done",
+      "title": "CSS Modules — Why They Win the Styling Strategy Debate for Component-Heavy UIs",
+      "body": "CSS Modules occupy a precise sweet spot: scoped styles without a runtime cost. Every class you write gets transformed into a unique identifier at build time — `.button` becomes `_button_1a2b3_1` — so collisions are structurally impossible without any naming convention overhead like BEM.\n\nUnlike utility-first (Tailwind), CSS Modules keep styling concerns in `.module.css` files, leaving JSX readable. Unlike CSS-in-JS (styled-components, Emotion), there's zero runtime style injection, no hydration mismatch risk, and no bundle overhead from a styling library.\n\nThe `composes` keyword is underused but powerful: it lets you inherit styles from another class within the same file or across modules using `composes: base from './base.module.css'`. This enables a lean design-token layer without a full utility framework.\n\nLocal scope is opt-out via `:global(.className)` when you genuinely need global reach — think third-party widget overrides. The default is safe; global is explicit. For teams shipping component libraries or co-located feature slices, CSS Modules provide the right level of isolation with no tradeoffs on performance.",
+      "code_snippet": "/* button.module.css */\n.base {\n  padding: 0.5rem 1rem;\n  border-radius: 4px;\n  font-weight: 600;\n}\n\n.primary {\n  composes: base;\n  background: var(--color-brand);\n  color: #fff;\n}\n\n/* Override a third-party tooltip globally */\n:global(.tippy-box) {\n  font-size: 0.75rem;\n}\n\n// Button.tsx\nimport styles from './button.module.css';\nexport const Button = () => <button className={styles.primary}>Submit</button>;",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Component Variants — managing sizes, states, themes with cva or tailwind-variants",
+      "status": "done",
+      "title": "CSS Modules + cva — Type-Safe Component Variants Without Tailwind",
+      "body": "CSS Modules give you scoped class names, but managing variant combinations manually — `${styles.btn} ${size === 'sm' ? styles.sm : styles.lg} ${disabled ? styles.disabled : ''}` — becomes unmaintainable fast. `cva` (class-variance-authority) solves this cleanly, and it's not a Tailwind-only tool.\n\nPass your CSS Module class references directly as variant values. `cva` accepts any string, including the hashed identifiers your module exports. Define a `base` class for shared styles, declare `variants` keyed to your module's size/intent/state classes, and use `compoundVariants` for combinations — like `size: 'lg'` + `intent: 'danger'` — that require their own dedicated class.\n\nThe returned function is fully typed. TypeScript errors on invalid variant values, and `VariantProps<typeof button>` derives your component's prop types directly from the variant map — your `.module.css` file stays the single source of truth.\n\nFor theming, map variant keys to CSS custom-property classes (`.themeLight`, `.themeDark`) rather than inlining `var()` calls in JS. Cascade logic belongs in the stylesheet, not scattered across variant definitions.",
+      "code_snippet": "import { cva, type VariantProps } from 'class-variance-authority';\nimport styles from './Button.module.css';\n\nconst button = cva(styles.base, {\n  variants: {\n    size: { sm: styles.sm, md: styles.md, lg: styles.lg },\n    intent: { primary: styles.primary, danger: styles.danger },\n  },\n  compoundVariants: [\n    { size: 'lg', intent: 'danger', class: styles.lgDanger },\n  ],\n  defaultVariants: { size: 'md', intent: 'primary' },\n});\n\ntype ButtonProps = VariantProps<typeof button> & React.ButtonHTMLAttributes<HTMLButtonElement>;\n\nexport function Button({ size, intent, className, ...props }: ButtonProps) {\n  return <button className={button({ size, intent, className })} {...props} />;\n}",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Dark Mode — CSS custom properties for theming, prefers-color-scheme, avoiding flash on load",
+      "status": "done",
+      "title": "CSS Modules Dark Mode — :global, prefers-color-scheme, and Killing the Flash",
+      "body": "CSS Modules scope class names, not custom properties — variables live in the cascade and are inherently global. To define theme tokens inside a module file, use :global to hoist them onto :root or a [data-theme] attribute. Any component module can then consume var(--color-bg) directly with no import chain, because custom properties pierce the scoping boundary.\n\nFor system preference, add a @media (prefers-color-scheme: dark) block targeting :global(:root:not([data-theme])). This fires only when no explicit override is set, so user-toggled themes always win.\n\nThe flash-on-load problem is a JS concern, not a CSS one. A blocking inline <script> in <head> — executing before the first paint — reads localStorage and sets document.documentElement.dataset.theme synchronously. Never use useEffect for this: it fires after hydration, after the browser has already painted the default theme. In Next.js App Router, inject the script via dangerouslySetInnerHTML in layout.tsx or use next/script with strategy=\"beforeInteractive\". Alternatively, read a cookie server-side and pass data-theme to <html> as a prop — zero client JS needed.",
+      "code_snippet": "// app/layout.tsx — blocks paint until theme is resolved\nconst setTheme = `(function(){\n  const t = localStorage.getItem('theme');\n  const dark = matchMedia('(prefers-color-scheme: dark)').matches;\n  document.documentElement.dataset.theme = t ?? (dark ? 'dark' : 'light');\n})()`;",
+      "language": "typescript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "CSS Custom Properties — runtime theming, JavaScript interop, scoping to components",
+      "status": "done",
+      "title": "CSS Modules — Runtime Theming with CSS Custom Properties and JavaScript Interop",
+      "body": "CSS Modules scopes class names at build time, but CSS custom properties (variables) pierce that encapsulation intentionally — they cascade and are readable/writable at runtime. This gives you a clean seam for JavaScript interop without breaking the module boundary.\n\nDefine your theme tokens inside a `:local` scoped selector or directly on `:root` via a global import. Within a CSS Module, reference custom properties normally — they resolve at runtime, not compile time, so the module hash doesn't affect them.\n\nTo scope a theme to a single component, set the custom properties on the component's root element via `style` prop in React. The composes keyword won't help here — that's static. Instead, pass a CSSProperties object with your `--var` overrides. Child elements in the same module that reference those variables will pick them up through normal cascade, fully contained within that DOM subtree.\n\nAvoid setting custom properties in the CSS Module file itself for dynamic values — that's a build-time artifact. Keep dynamic values in inline styles on the host element; keep structural rules in the module.",
+      "code_snippet": "// Button.module.css\n.button {\n  background: var(--btn-bg, #0070f3);\n  color: var(--btn-text, #fff);\n  padding: 0.5rem 1rem;\n  border-radius: 4px;\n}\n\n// Button.tsx\nimport styles from './Button.module.css';\n\ntype Props = { bg?: string; text?: string; label: string };\n\nexport function Button({ bg, text, label }: Props) {\n  return (\n    <button\n      className={styles.button}\n      style={{ '--btn-bg': bg, '--btn-text': text } as React.CSSProperties}\n    >\n      {label}\n    </button>\n  );\n}",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Performance — critical CSS, avoiding layout thrash, will-change and when it hurts",
+      "status": "done",
+      "title": "CSS Modules Performance — Critical CSS, Layout Thrash, and When will-change Backfires",
+      "body": "CSS Modules adds per-component stylesheets lazily — every `import styles from './Foo.module.css'` ships a separate chunk. For above-the-fold components, extract critical selectors into a single `critical.module.css` imported at the app entry point and keep component modules for the rest. This eliminates FOUC without inflating your initial payload.\n\nLayout thrash occurs when JS alternates DOM reads and writes. CSS Modules won't prevent it, but `composes` lets you batch visual state into a single class swap — one reflow instead of multiple `element.style.*` mutations. Toggle `styles.active` rather than setting `opacity`, `transform`, and `top` individually in JS.\n\n`will-change: transform` in a module promotes that element to its own compositor layer — correct for a transient `.animating` class, dangerous on `.container`. Layer cost is per-instance; in a list of 200 cards, a persistent `will-change` on each card root saturates GPU memory. Instead, compose `will-change` into a short-lived `.cardLifted` class, apply it on `pointerdown`, and remove it on `animationend`. CSS Modules' local scoping guarantees this class stays component-contained and never leaks into sibling trees.",
+      "code_snippet": "// Card.module.css\n// .card { border-radius: 8px; transition: transform 200ms ease; }\n// .cardLifted { composes: card; will-change: transform; }\n\nimport styles from './Card.module.css';\nimport { useState } from 'react';\n\nexport function Card({ children }: { children: React.ReactNode }) {\n  const [lifted, setLifted] = useState(false);\n  return (\n    <div\n      className={lifted ? styles.cardLifted : styles.card}\n      onPointerDown={() => setLifted(true)}\n      onAnimationEnd={() => setLifted(false)}\n    >\n      {children}\n    </div>\n  );\n}",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 9,
+      "overall": 8
+    },
+    {
+      "topic": "Bundle Optimization — purging unused CSS, font subsetting, icon strategy",
+      "status": "done",
+      "title": "CSS Modules Bundle Optimization — Taming PurgeCSS, Font Subsetting, and Icon Strategy",
+      "body": "CSS Modules' hashed class names break PurgeCSS's default string-matching extractor. When scanning JS for `.button`, it finds `styles.button` — dot-property access isn't matched, so valid classes get purged in production. Fix it with a custom extractor that also captures property names from object access patterns. For font subsetting, declare `@font-face` with `unicode-range` directly inside your `.module.css` files — each module loads only the glyph subset it references, preventing full-font payloads on unvisited routes. For icons, avoid barrel-importing an entire icon library into a shared module. Instead, use `composes: iconBase from './icons.module.css'` to keep icon CSS colocated with its usage and tree-shakeable at build time. In Vite, pair this with `build.cssCodeSplit: true` so each route's compiled CSS Modules output lands in a separate chunk. Lazy-loaded routes then ship zero font or icon CSS until actually visited.",
+      "code_snippet": "// postcss.config.js — custom extractor that handles CSS Modules object-property access\nmodule.exports = {\n  plugins: [\n    require('@fullhuman/postcss-purgecss')({\n      content: ['./src/**/*.{tsx,ts,jsx,js}'],\n      defaultExtractor(content) {\n        // Default extractor misses `styles.button` — capture property names too\n        const broad = content.match(/[A-Za-z0-9_-]+/g) ?? [];\n        const props = content.match(/(?<=\\.)[A-Za-z0-9_]+/g) ?? [];\n        return [...new Set([...broad, ...props])];\n      },\n    }),\n  ],\n};",
+      "language": "javascript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Dev Tooling — Stylelint, Prettier for CSS, PostCSS pipeline",
+      "status": "done",
+      "title": "CSS Modules — Linting, Formatting, and a Tight PostCSS Pipeline",
+      "body": "Without guardrails, CSS Modules projects drift fast — inconsistent class naming, unscoped globals sneaking in, and composes chains that break silently. Lock it down with three tools wired together.\n\nStylelint catches the module-specific problems. Use stylelint-config-css-modules alongside the standard config to suppress false positives on :local and :global pseudo-selectors, and add the selector-class-pattern rule set to kebab-case to enforce consistent .my-component naming across every .module.css file.\n\nPrettier handles formatting — wire it through stylelint-prettier so a single stylelint --fix pass both formats and lints. No separate prettier --write step needed.\n\nPostCSS sits upstream in the build. Order matters: run postcss-import first so composes: … from './tokens.module.css' resolves before CSS Modules scoping runs, then autoprefixer, then your CSS Modules transform. Misconfigured order is the most common reason composes silently outputs the base class name but drops the composed styles at runtime.\n\nAdd a lint-staged hook scoped to **/*.module.css so none of this runs on global stylesheets — you want different rules there.",
+      "code_snippet": "// .stylelintrc.json\n{\n  \"extends\": [\n    \"stylelint-config-standard\",\n    \"stylelint-config-css-modules\",\n    \"stylelint-prettier/recommended\"\n  ],\n  \"rules\": {\n    \"selector-class-pattern\": \"^[a-z][a-zA-Z0-9]+$\",\n    \"selector-pseudo-class-no-unknown\": [true, {\n      \"ignorePseudoClasses\": [\"local\", \"global\"]\n    }]\n  }\n}\n\n// postcss.config.js — order is load-bearing\nmodule.exports = {\n  plugins: [\n    require('postcss-import'),\n    require('autoprefixer'),\n    // css-modules transform applied by bundler after this chain\n  ]\n}",
+      "language": "javascript",
+      "clarity": 9,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    },
+    {
+      "topic": "Testing — visual regression with Chromatic or Percy, snapshot testing limitations",
+      "status": "done",
+      "title": "CSS Modules — Why Visual Regression Beats Snapshot Testing for Class-Name Hashing",
+      "body": "CSS Modules compiles `.button` into a scoped hash like `_button_1a2b3c_1`, derived from the file path and class name. Jest snapshot tests capture that generated string — meaning a file rename, webpack config tweak, or `composes` refactor silently invalidates hundreds of snapshots without any visual change. Worse, `composes: base from './base.module.css'` merges class names at runtime; snapshots see only the raw className string, never the resolved cascade.\n\nChromatic and Percy sidestep this entirely by capturing rendered pixels against a committed baseline. Storybook stories render the full CSS Modules output — hashes resolved, `composes` applied, specificity computed — and flag only actual visual deltas. Configure Chromatic with `--auto-accept-changes` on your main branch to establish baselines, then block PRs on visual diffs. Percy's `percy snapshot` CLI works identically against a static Storybook build.\n\nThe practical rule: reserve Jest snapshots for DOM structure assertions (aria roles, data attributes, element counts). Never assert on className values CSS Modules will hash away — those tests are noise that erodes trust in your suite.",
+      "code_snippet": "// Button.stories.tsx — Chromatic visual regression for CSS Modules\nimport Button from './Button';\nimport styles from './Button.module.css';\n\nexport default {\n  title: 'Components/Button',\n  component: Button,\n  parameters: {\n    chromatic: { delay: 300 }, // wait for CSS transitions to settle\n  },\n};\n\nexport const Primary = () => <Button className={styles.primary}>Save</Button>;\nexport const Disabled = () => <Button className={styles.primary} disabled>Save</Button>;\n\n// Chromatic diffs pixels — not the hashed _primary_3f9a12 string\n// A composes refactor that keeps visuals identical = zero Chromatic diff",
+      "language": "typescript",
+      "clarity": 8,
+      "specificity": 9,
+      "relevance": 10,
+      "overall": 9
+    }
+  ]
 }

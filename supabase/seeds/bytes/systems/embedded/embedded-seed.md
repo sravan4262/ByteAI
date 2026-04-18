@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: embedded
 domain: systems
-tech_stacks: [arduino, freertos, zephyr, raspberry_pi, esp32]
+tech_stacks: [arduino, esp32]
 byte_type_default: article
 
 ## Topics to Seed

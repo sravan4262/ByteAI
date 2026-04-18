@@ -3,7 +3,7 @@
 ## Seed Config
 subdomain: cryptography
 domain: security
-tech_stacks: [tls_ssl, jwt, oauth2, oidc]
+tech_stacks: [jwt, oauth2]
 byte_type_default: article
 
 ## Topics to Seed
