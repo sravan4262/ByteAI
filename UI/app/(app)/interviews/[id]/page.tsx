@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 
 import { getInterview } from '@/lib/api'
 import { InterviewDetailScreen } from '@/components/features/interviews/interview-detail-screen'

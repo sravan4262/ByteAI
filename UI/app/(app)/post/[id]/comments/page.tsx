@@ -2,6 +2,8 @@ import { CommentsScreen } from '@/components/features/comments/comments-screen'
 import { getPost } from '@/lib/api'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 
+export const dynamic = 'force-dynamic'
+
 interface PostCommentsPageProps {
   params: Promise<{ id: string }>
 }

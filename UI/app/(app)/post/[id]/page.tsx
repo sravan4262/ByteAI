@@ -2,6 +2,8 @@ import { DetailScreen } from '@/components/features/detail/detail-screen'
 import { getPost } from '@/lib/api'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 
+export const dynamic = 'force-dynamic'
+
 interface PostPageProps {
   params: Promise<{ id: string }>
 }
