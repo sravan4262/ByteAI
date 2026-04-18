@@ -83,7 +83,9 @@ jobs:
             --name byteai-ui \
             --resource-group byteai-rg \
             --setting-names \
-              NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}"
+              NEXT_PUBLIC_API_URL="${{ secrets.NEXT_PUBLIC_API_URL }}" \
+              NEXT_PUBLIC_SUPABASE_URL="${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" \
+              NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"
 
       # ── Deploy to production ──────────────────────────────────────────────────
       - name: Deploy to SWA production
@@ -96,7 +98,9 @@ jobs:
           app_location:                     /UI
           output_location:                  ""
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_API_URL:             ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SUPABASE_URL:        ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY:   ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       # ── Health check on production ────────────────────────────────────────────
       - name: Health check — production
@@ -146,7 +150,9 @@ jobs:
           app_location:                     /UI
           output_location:                  ""
         env:
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_API_URL:             ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_SUPABASE_URL:        ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY:   ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Rollback — annotate failure
         if: failure()

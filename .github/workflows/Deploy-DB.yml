@@ -12,16 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ── Apply full schema (idempotent — safe to re-run) ───────────────────────
-      # This script is the source of truth for a blank database.
-      - name: Apply full schema
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          echo "Applying schema..."
-          psql "$SUPABASE_DB_URL" -f supabase/scripts/apply_schema.sql
-          echo "Schema applied"
-
       # ── Apply pending migrations in sort order ─────────────────────────────────
       # Migration files follow the naming convention: YYYYMMDDHHMMSS_description.sql
       # Each migration must be idempotent (use IF NOT EXISTS, ON CONFLICT DO NOTHING).
@@ -43,14 +33,19 @@ jobs:
 
           echo "All migrations applied"
 
-      # ── Apply lookup seeds (idempotent) ────────────────────────────────────────
-      # Lookup seeds use ON CONFLICT DO NOTHING so they are safe to re-run.
-      - name: Apply lookup seeds
+      # ── Apply seeds in the order defined in supabase/config.toml ─────────────
+      # Parses sql_paths array directly — config.toml is the single source of truth.
+      - name: Apply seeds
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          for f in supabase/seeds/lookups/*.sql; do
-            echo "Seeding: $f"
-            psql "$SUPABASE_DB_URL" -f "$f"
-          done
-          echo "Lookup seeds applied"
+          awk '/^sql_paths/,/^\]/' supabase/config.toml \
+            | grep -E '^\s+"' \
+            | sed 's/^[[:space:]]*"//; s/"[,]*$//' \
+            | while read -r pattern; do
+                for f in supabase/${pattern#./}; do
+                  echo "Seeding: $f"
+                  psql "$SUPABASE_DB_URL" -f "$f"
+                done
+              done
+          echo "All seeds applied"
