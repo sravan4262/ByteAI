@@ -137,15 +137,15 @@ public sealed class ByteServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateByte_GroqReturnsNull_ThrowsInvalidContentException()
+    public async Task CreateByte_GroqReturnsNull_ThrowsServiceUnavailableException()
     {
-        // Groq unavailable → null → fails closed
+        // Groq unavailable → null → service unavailable (not invalid content)
         _groq.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync((ContentValidationResult?)null);
         _embedding.Setup(e => e.EmbedQueryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(TechAnchorsTestHelper.UnitVector);
 
-        await Assert.ThrowsAsync<InvalidContentException>(
+        await Assert.ThrowsAsync<ServiceUnavailableException>(
             () => _sut.CreateByteAsync(_authorId, "Docker containers explained", "A guide to Docker networking", null, null, "article", default, true));
     }
 

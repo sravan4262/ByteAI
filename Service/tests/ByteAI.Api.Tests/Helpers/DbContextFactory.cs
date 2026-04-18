@@ -84,6 +84,14 @@ internal sealed class InMemoryTestModelCustomizer(ModelCustomizerDependencies de
                         v => JsonDocToString(v),
                         s => StringToJsonDoc(s)));
                 }
+                else if (prop.ClrType == typeof(string) &&
+                         prop.FindAnnotation(ColumnTypeKey)?.Value?.ToString() == "uuid")
+                {
+                    // string properties mapped to uuid in Postgres (e.g. SupabaseUserId)
+                    // InMemory cannot apply the string→Guid converter — store as plain string.
+                    mutable.SetOrRemoveAnnotation(ColumnTypeKey, null);
+                    mutable.SetValueConverter((ValueConverter?)null);
+                }
             }
         }
     }

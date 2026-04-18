@@ -171,12 +171,13 @@ public sealed class UserServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Provision_ExistingUser_UpdatesDisplayNameAndReturnsWasCreatedFalse()
+    public async Task Provision_ExistingUser_IsIdempotentAndReturnsWasCreatedFalse()
     {
+        // ProvisionAsync is idempotent — existing users are not mutated on re-provision
         var (user, wasCreated) = await _sut.ProvisionAsync("u1", "Updated Name", null, null, default);
 
         Assert.False(wasCreated);
-        Assert.Equal("Updated Name", user.DisplayName);
+        Assert.Equal("Test User", user.DisplayName);
     }
 
     [Fact]

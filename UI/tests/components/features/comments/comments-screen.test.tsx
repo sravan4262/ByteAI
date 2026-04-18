@@ -84,7 +84,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockGetCurrentUser.mockResolvedValue({ id: 'u1' })
   mockGetPostComments.mockResolvedValue({ comments: [], hasMore: false })
-  mockAddComment.mockResolvedValue(undefined)
+  mockAddComment.mockResolvedValue({ id: 'new-comment-id' })
   mockDeleteComment.mockResolvedValue(undefined)
 })
 
