@@ -81,7 +81,7 @@ jobs:
 
           echo "Current active revision: $ACTIVE_REV"
 
-          if [[ "$ACTIVE_REV" == *"green"* ]]; then
+          if [[ "$ACTIVE_REV" == *"--g-"* ]]; then
             ACTIVE="green"; INACTIVE="blue"
           else
             ACTIVE="blue"; INACTIVE="green"
