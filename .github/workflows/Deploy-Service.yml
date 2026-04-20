@@ -87,7 +87,8 @@ jobs:
             ACTIVE="blue"; INACTIVE="green"
           fi
 
-          SUFFIX="${INACTIVE}-${{ github.run_number }}-${{ github.run_attempt }}"
+          SHA_SHORT=$(echo "${{ steps.sha.outputs.sha }}" | cut -c1-6)
+          SUFFIX="${INACTIVE:0:1}-${SHA_SHORT}"
           echo "active=$ACTIVE"     >> $GITHUB_OUTPUT
           echo "inactive=$INACTIVE" >> $GITHUB_OUTPUT
           echo "suffix=$SUFFIX"     >> $GITHUB_OUTPUT
