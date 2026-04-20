@@ -5,7 +5,8 @@ public sealed record CreateByteRequest(
     string Body,
     string? CodeSnippet,    // plain string — frontend must send as string, not object
     string? Language,
-    string Type = "article" // article | tutorial | snippet | discussion
+    string Type = "article", // article | tutorial | snippet | discussion
+    List<string>? TechStackNames = null
 );
 
 public sealed record UpdateByteRequest(

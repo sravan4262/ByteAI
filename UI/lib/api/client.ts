@@ -1119,6 +1119,7 @@ export async function createPost(data: Record<string, unknown>): Promise<{ id: s
       codeSnippet: codeObj?.content ?? null,
       language: codeObj?.language ?? (data.language as string | null) ?? null,
       type: data.type ?? 'byte',
+      techStackNames: (data.techStackNames as string[] | undefined) ?? [],
     }),
   })
   return { id: res.data.id }

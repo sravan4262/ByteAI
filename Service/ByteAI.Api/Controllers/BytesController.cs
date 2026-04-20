@@ -61,7 +61,7 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
 
         try
         {
-            var result = await bytesBusiness.CreateByteAsync(supabaseUserId, request.Title, request.Body, request.CodeSnippet, request.Language, request.Type, ct, force);
+            var result = await bytesBusiness.CreateByteAsync(supabaseUserId, request.Title, request.Body, request.CodeSnippet, request.Language, request.Type, ct, force, request.TechStackNames);
             return CreatedAtAction(nameof(GetByteById), new { byteId = result.Id },
                 ApiResponse<object>.Success(new { result.Id, result.AuthorId, result.Title, result.Body, result.Type, result.CreatedAt }));
         }

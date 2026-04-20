@@ -145,11 +145,3 @@ jobs:
             GitVersion.yml
           retention-days: 7
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # DB — apply Supabase migrations after images are published, before CD triggers
-  # ─────────────────────────────────────────────────────────────────────────────
-  db:
-    name: DB — apply migrations
-    needs: [publish]
-    uses: ./.github/workflows/Deploy-DB.yml
-    secrets: inherit

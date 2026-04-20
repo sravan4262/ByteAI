@@ -71,7 +71,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
                 b.Author.Username, b.Author.DisplayName ?? b.Author.Username, b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
             .FirstOrDefaultAsync(CancellationToken.None);
 
-    public async Task<ByteResult> CreateByteAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false)
+    public async Task<ByteResult> CreateByteAsync(Guid authorId, string title, string body, string? codeSnippet, string? language, string type, CancellationToken ct, bool force = false, List<string>? techStackNames = null)
     {
         var validTypes = new[] { "article", "tutorial", "snippet", "discussion" };
         var normalised = type == "byte" ? "article" : type;
@@ -144,6 +144,19 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
 
         db.Bytes.Add(entity);
         await db.SaveChangesAsync(ct);
+
+        if (techStackNames is { Count: > 0 })
+        {
+            var names = techStackNames.Select(n => n.ToLowerInvariant()).ToList();
+            var stacks = await db.TechStacks
+                .Where(t => names.Contains(t.Name.ToLower()))
+                .ToListAsync(ct);
+
+            foreach (var stack in stacks)
+                db.ByteTechStacks.Add(new ByteTechStack { ByteId = entity.Id, TechStackId = stack.Id });
+
+            await db.SaveChangesAsync(ct);
+        }
 
         await publisher.Publish(
             new ByteCreatedEvent(entity.Id, entity.AuthorId, entity.Title, entity.Body, entity.CodeSnippet),

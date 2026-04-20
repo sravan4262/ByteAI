@@ -2,7 +2,19 @@ name: Deploy — Supabase DB
 
 on:
   workflow_dispatch:
+    inputs:
+      clean_slate:
+        description: 'Drop all app schemas and reseed from scratch (destructive — data loss!)'
+        type: boolean
+        default: false
+        required: false
   workflow_call:
+    inputs:
+      clean_slate:
+        description: 'Drop all app schemas and reseed from scratch (destructive — data loss!)'
+        type: boolean
+        default: false
+        required: false
 
 jobs:
   deploy-schema:
@@ -11,6 +23,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # ── Clean slate: drop all app schemas before migrating ────────────────────
+      # Cascades drop all tables, indexes, RLS policies, and functions inside
+      # each schema. Migration 001 recreates them; subsequent migrations rebuild
+      # all tables; seeds repopulate data.
+      - name: Clean slate — drop app schemas
+        if: ${{ inputs.clean_slate == true }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$SUPABASE_DB_URL" <<'SQL'
+            DROP SCHEMA IF EXISTS lookups CASCADE;
+            DROP SCHEMA IF EXISTS users CASCADE;
+            DROP SCHEMA IF EXISTS bytes CASCADE;
+            DROP SCHEMA IF EXISTS interviews CASCADE;
+          SQL
+          echo "All app schemas dropped"
 
       # ── Apply pending migrations in sort order ─────────────────────────────────
       # Migration files follow the naming convention: YYYYMMDDHHMMSS_description.sql

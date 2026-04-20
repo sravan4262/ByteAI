@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users.users (
     supabase_user_id    uuid        UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
     username            text        NOT NULL UNIQUE CHECK (char_length(username) BETWEEN 3 AND 50),
     display_name        text        NOT NULL CHECK (char_length(display_name) BETWEEN 1 AND 100),
+    email               text        UNIQUE CHECK (char_length(email) <= 320),
     bio                 text        CHECK (char_length(bio) <= 500),
     role_title          text,
     company             text,

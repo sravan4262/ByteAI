@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { X, ChevronDown, AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { CreatableDropdown } from '@/components/ui/creatable-dropdown'
+import { MultiSelectDropdown, type DropdownOption } from '@/components/ui/multi-select-dropdown'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
@@ -34,6 +35,8 @@ export function ComposeScreen() {
   const [content, setContent] = useState('')
   const [codeContent, setCodeContent] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('')
+  const [selectedTechStacks, setSelectedTechStacks] = useState<string[]>([])
+  const [techStackOptions, setTechStackOptions] = useState<DropdownOption[]>([])
   const [reachEstimate, setReachEstimate] = useState(1200)
   const [isLoading, setIsLoading] = useState(false)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
@@ -70,6 +73,13 @@ export function ComposeScreen() {
     })
   // Only run on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Load tech stack options ─────────────────────────────────────────────────
+  useEffect(() => {
+    api.getTechStacks().then((stacks) =>
+      setTechStackOptions(stacks.map((s) => ({ value: s.name, label: s.label })))
+    )
   }, [])
 
   // ── Load interview filter options ───────────────────────────────────────────
@@ -138,14 +148,14 @@ export function ComposeScreen() {
   }
 
   const handlePostByte = async () => {
-    if (!content.trim()) return
+    if (!title.trim() || !content.trim() || selectedTechStacks.length === 0) return
     setIsLoading(true)
     try {
       await api.createPost({
-        title: title.trim() || undefined,
+        title: title.trim(),
         content,
         code: codeContent ? { language: selectedLanguage, content: codeContent } : undefined,
-        tags: [],
+        techStackNames: selectedTechStacks,
       })
       if (draftId) {
         await api.deleteDraft(draftId).catch(() => {})
@@ -300,6 +310,26 @@ export function ComposeScreen() {
               onChange={setCodeContent}
               onLanguageChange={setSelectedLanguage}
             />
+
+            {/* Tech stack */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--t3)]">
+                  // TECH_STACK <span className="text-[var(--red)]">*</span>
+                </span>
+                {selectedTechStacks.length > 0 && (
+                  <span className="font-mono text-[10px] text-[var(--accent)]">{selectedTechStacks.length} selected</span>
+                )}
+              </div>
+              <MultiSelectDropdown
+                options={techStackOptions}
+                values={selectedTechStacks}
+                onChange={setSelectedTechStacks}
+                placeholder="SELECT TECH STACKS"
+                accentColor="accent"
+                className="w-full [&>button]:w-full [&>button]:justify-between"
+              />
+            </div>
 
             {/* Reach estimate */}
             {hasReachEstimate && (
@@ -508,7 +538,7 @@ export function ComposeScreen() {
           </button>
           <button
             onClick={handlePostByte}
-            disabled={!title.trim() || !content.trim() || isLoading}
+            disabled={!title.trim() || !content.trim() || selectedTechStacks.length === 0 || isLoading}
             className="flex-1 py-[13px] bg-gradient-to-br from-[var(--accent)] to-[#1d4ed8] rounded-lg font-mono text-xs font-bold tracking-[0.1em] text-white shadow-[0_4px_24px_var(--accent-glow)] transition-all hover:shadow-[0_8px_36px_var(--accent-glow)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'POSTING...' : 'POST BYTE →'}
