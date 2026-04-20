@@ -127,6 +127,7 @@ describe('OnboardingScreen', () => {
     await waitFor(() => screen.getByText('Frontend'))
     await user.click(screen.getByText('Frontend'))
     await waitFor(() => screen.getByText('React'))
+    await user.click(screen.getByText('React'))
     await user.click(screen.getByText('Continue →'))
     await waitFor(() => screen.getByText('ENTER BYTEAI →'))
     await user.click(screen.getByText('ENTER BYTEAI →'))

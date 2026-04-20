@@ -160,7 +160,7 @@ public sealed class FeedQueryHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task Trending_WithRecentEvents_OrdersByClickCount()
+    public async Task Trending_WithRecentViews_OrdersByViewCount()
     {
         var byte2Id = Guid.NewGuid();
         _db.Bytes.Add(new ByteEntity
@@ -169,12 +169,12 @@ public sealed class FeedQueryHandlerTests : IDisposable
             Body = "b", Type = "article", IsActive = true
         });
 
-        // _byteId gets 3 clicks, byte2Id gets 1 click
-        _db.TrendingEvents.AddRange(
-            new TrendingEvent { ContentId = _byteId,  ContentType = "byte", ClickedAt = DateTime.UtcNow },
-            new TrendingEvent { ContentId = _byteId,  ContentType = "byte", ClickedAt = DateTime.UtcNow },
-            new TrendingEvent { ContentId = _byteId,  ContentType = "byte", ClickedAt = DateTime.UtcNow },
-            new TrendingEvent { ContentId = byte2Id,  ContentType = "byte", ClickedAt = DateTime.UtcNow });
+        // _byteId gets 3 views, byte2Id gets 1 view — all within 24h
+        _db.UserViews.AddRange(
+            new UserView { ByteId = _byteId,  UserId = _userId,   ViewedAt = DateTime.UtcNow },
+            new UserView { ByteId = _byteId,  UserId = _otherId,  ViewedAt = DateTime.UtcNow },
+            new UserView { ByteId = _byteId,  UserId = Guid.NewGuid(), ViewedAt = DateTime.UtcNow },
+            new UserView { ByteId = byte2Id,  UserId = _userId,   ViewedAt = DateTime.UtcNow });
         await _db.SaveChangesAsync();
 
         var result = await BuildHandler().Handle(
@@ -186,13 +186,13 @@ public sealed class FeedQueryHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task Trending_OldEventsIgnored_FallsBackToLatest()
+    public async Task Trending_OldViewsIgnored_FallsBackToLatest()
     {
-        // Event is 25h old — outside the 24h window
-        _db.TrendingEvents.Add(new TrendingEvent
+        // View is 49h old — outside the 48h window
+        _db.UserViews.Add(new UserView
         {
-            ContentId = _byteId, ContentType = "byte",
-            ClickedAt = DateTime.UtcNow.AddHours(-25)
+            ByteId = _byteId, UserId = _userId,
+            ViewedAt = DateTime.UtcNow.AddHours(-49)
         });
         await _db.SaveChangesAsync();
 

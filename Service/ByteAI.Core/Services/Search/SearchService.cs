@@ -1,12 +1,11 @@
 using ByteAI.Core.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Search;
 
-public sealed class SearchService(AppDbContext db, ILogger<SearchService> logger) : ISearchService
+public sealed class SearchService(AppDbContext db) : ISearchService
 {
     private const int RrfK = 60; // RRF constant — standard value
 

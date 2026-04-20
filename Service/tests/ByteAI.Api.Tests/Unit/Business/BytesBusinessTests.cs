@@ -127,7 +127,7 @@ public sealed class BytesBusinessTests
             DateTime.UtcNow, DateTime.UtcNow, 0, 0);
 
         _byteService
-            .Setup(s => s.CreateByteAsync(_userId, "title", "body", null, null, "article", default, false))
+            .Setup(s => s.CreateByteAsync(_userId, "title", "body", null, null, "article", default, false, null))
             .ReturnsAsync(serviceResult);
 
         var result = await _sut.CreateByteAsync(SupabaseUserId, "title", "body", null, null, "article", default);
