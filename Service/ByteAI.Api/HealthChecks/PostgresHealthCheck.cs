@@ -12,10 +12,13 @@ public sealed class PostgresHealthCheck(IConfiguration configuration) : IHealthC
         var connStr = configuration.GetConnectionString("Postgres") ?? "";
         try
         {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+
             await using var conn = new NpgsqlConnection(connStr);
-            await conn.OpenAsync(cancellationToken);
+            await conn.OpenAsync(cts.Token);
             await using var cmd = new NpgsqlCommand("SELECT 1", conn);
-            await cmd.ExecuteScalarAsync(cancellationToken);
+            await cmd.ExecuteScalarAsync(cts.Token);
             return HealthCheckResult.Healthy("PostgreSQL reachable");
         }
         catch (Exception ex)

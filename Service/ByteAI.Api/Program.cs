@@ -114,7 +114,7 @@ try
 
     // ── Health checks ─────────────────────────────────────────────────────────
     builder.Services.AddHealthChecks()
-        .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"])
+        .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"], timeout: TimeSpan.FromSeconds(15))
         .AddCheck<OnnxModelHealthCheck>("onnx-model", tags: ["ready"]);
 
     // ── OpenAPI + Scalar ─────────────────────────────────────────────────────
