@@ -156,6 +156,10 @@ jobs:
               echo "API revision is $STATE — proceeding"
               exit 0
             fi
+            if [[ "$STATE" == "Stopped" || "$STATE" == "Failed" || "$STATE" == "Degraded" ]]; then
+              echo "ERROR: API revision entered terminal state: $STATE"
+              exit 1
+            fi
             sleep 10
           done
           echo "ERROR: API revision did not reach Running state within 3 minutes"
