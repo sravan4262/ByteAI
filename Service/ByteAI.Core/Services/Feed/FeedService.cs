@@ -122,7 +122,6 @@ public sealed class FeedService(AppDbContext db) : IFeedService
     private async Task<(List<ByteResult>, int)> GetForYouFeed(
         Guid? userId, PaginationParams pagination, List<string>? tags, CancellationToken ct)
     {
-        // ── Personalised path: interest_embedding + tech_stack soft boost ──────
         if (userId.HasValue)
         {
             var interestEmbedding = await db.Users
@@ -133,63 +132,65 @@ public sealed class FeedService(AppDbContext db) : IFeedService
 
             if (interestEmbedding is not null)
             {
-                // Stacks the user selected during onboarding — used as soft boost
-                var preferredStackIds = await db.UserTechStacks
-                    .Where(uts => uts.UserId == userId.Value)
-                    .Select(uts => uts.TechStackId)
-                    .ToListAsync(CancellationToken.None);
-
-                var baseQuery = db.Bytes
-                    .AsNoTracking()
-                    .Where(b => b.IsActive && b.Embedding != null);
-
-                baseQuery = ApplyTagFilter(baseQuery, tags);
+                // ── Personalised path: pure cosine distance, HNSW index handles sorting ──
+                var baseQuery = ApplyTagFilter(
+                    db.Bytes.AsNoTracking().Where(b => b.IsActive && b.Embedding != null),
+                    tags);
 
                 var total = await baseQuery.CountAsync(CancellationToken.None);
 
-                // Pull a larger candidate window so re-ranking is meaningful across pages
-                var candidateCount = Math.Max(pagination.Skip + pagination.PageSize * 3, 60);
-
-                var candidates = await baseQuery
+                var items = await baseQuery
                     .OrderBy(b => b.Embedding!.CosineDistance(interestEmbedding))
-                    .Take(candidateCount)
-                    .Select(b => new
-                    {
-                        b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                        b.CreatedAt, b.UpdatedAt,
-                        CommentCount = b.Comments.Count(),
-                        LikeCount    = b.UserLikes.Count(),
-                        HasPreferredStack = preferredStackIds.Count > 0 &&
-                            b.ByteTechStacks.Any(bts => preferredStackIds.Contains(bts.TechStackId)),
-                        Distance = b.Embedding!.CosineDistance(interestEmbedding),
-                        IsLiked      = b.UserLikes.Any(l => l.UserId == userId.Value),
-                        IsBookmarked = b.UserBookmarks.Any(bk => bk.UserId == userId.Value),
-                        AuthorUsername    = b.Author.Username,
-                        AuthorDisplayName = b.Author.DisplayName ?? b.Author.Username,
-                        AuthorAvatarUrl   = b.Author.AvatarUrl,
-                        AuthorRole        = b.Author.RoleTitle,
-                        AuthorCompany     = b.Author.Company,
-                    })
-                    .ToListAsync(CancellationToken.None);
-
-                // Soft boost: preferred-stack bytes surface first within similar distance bands
-                var items = candidates
-                    .OrderBy(c => c.HasPreferredStack ? 0 : 1)
-                    .ThenBy(c => c.Distance)
                     .Skip(pagination.Skip)
                     .Take(pagination.PageSize)
-                    .Select(c => new ByteResult(
-                        c.Id, c.AuthorId, c.Title, c.Body, c.CodeSnippet, c.Language, c.Type,
-                        c.CreatedAt, c.UpdatedAt, c.CommentCount, c.LikeCount,
-                        c.IsLiked, c.IsBookmarked,
-                        c.AuthorUsername, c.AuthorDisplayName, c.AuthorAvatarUrl, c.AuthorRole, c.AuthorCompany))
-                    .ToList();
+                    .Select(b => new ByteResult(
+                        b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
+                        b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(),
+                        b.UserLikes.Any(l => l.UserId == userId.Value),
+                        b.UserBookmarks.Any(bk => bk.UserId == userId.Value),
+                        b.Author.Username, b.Author.DisplayName ?? b.Author.Username,
+                        b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
+                    .ToListAsync(CancellationToken.None);
 
                 return (items, total);
             }
+
+            // ── Cold start: no embedding yet — filter by onboarding tech stack preferences ──
+            var preferredStackIds = await db.UserTechStacks
+                .Where(uts => uts.UserId == userId.Value)
+                .Select(uts => uts.TechStackId)
+                .ToListAsync(CancellationToken.None);
+
+            if (preferredStackIds.Count > 0)
+            {
+                var preferredByteIds = db.ByteTechStacks
+                    .Where(bts => preferredStackIds.Contains(bts.TechStackId))
+                    .Select(bts => bts.ByteId);
+
+                var coldQuery = ApplyTagFilter(
+                    db.Bytes.AsNoTracking()
+                        .Where(b => b.IsActive && preferredByteIds.Contains(b.Id))
+                        .OrderByDescending(b => b.CreatedAt),
+                    tags);
+
+                var coldTotal = await coldQuery.CountAsync(CancellationToken.None);
+                var coldItems = await coldQuery
+                    .Skip(pagination.Skip)
+                    .Take(pagination.PageSize)
+                    .Select(b => new ByteResult(
+                        b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
+                        b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(),
+                        b.UserLikes.Any(l => l.UserId == userId.Value),
+                        b.UserBookmarks.Any(bk => bk.UserId == userId.Value),
+                        b.Author.Username, b.Author.DisplayName ?? b.Author.Username,
+                        b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
+                    .ToListAsync(CancellationToken.None);
+
+                return (coldItems, coldTotal);
+            }
         }
 
-        // ── Fallback: pure recency (anonymous or no interest_embedding yet) ────
+        // ── Fallback: pure recency (anonymous or no preferences set) ────────────
         var fallbackQuery = ApplyTagFilter(
             db.Bytes.AsNoTracking().Where(b => b.IsActive).OrderByDescending(b => b.CreatedAt),
             tags);
@@ -245,14 +246,22 @@ public sealed class FeedService(AppDbContext db) : IFeedService
 
     private async Task<(List<ByteResult>, int)> GetTrendingFeed(PaginationParams pagination, List<string>? tags, CancellationToken ct, Guid? userId = null)
     {
-        var since = DateTime.UtcNow.AddHours(-24);
+        var since48h = DateTime.UtcNow.AddHours(-48);
+        var since24h = DateTime.UtcNow.AddHours(-24);
 
-        var trendingIds = await db.TrendingEvents
-            .Where(t => t.ContentType == "byte" && t.ClickedAt >= since)
-            .GroupBy(t => t.ContentId)
-            .OrderByDescending(g => g.Count())
-            .Select(g => g.Key)
+        // Time-decayed score: views in last 24h count double those in 24–48h window
+        var trendingIds = await db.UserViews
+            .AsNoTracking()
+            .Where(v => v.ViewedAt >= since48h && v.UserId != null)
+            .GroupBy(v => v.ByteId)
+            .Select(g => new
+            {
+                ByteId = g.Key,
+                Score  = g.Count(v => v.ViewedAt >= since24h) * 2 + g.Count(v => v.ViewedAt < since24h),
+            })
+            .OrderByDescending(x => x.Score)
             .Take(200)
+            .Select(x => x.ByteId)
             .ToListAsync(CancellationToken.None);
 
         IQueryable<Byte> query;

@@ -20,4 +20,5 @@ public interface IBytesBusiness
     Task<Byte> UpdateByteAsync(string supabaseUserId, Guid byteId, string? title, string? body, string? codeSnippet, string? language, CancellationToken ct);
     Task<bool> DeleteByteAsync(string supabaseUserId, Guid byteId, CancellationToken ct);
     Task<PagedResult<ByteResult>> GetMyBytesAsync(string supabaseUserId, int page, int pageSize, CancellationToken ct);
+    Task RecordViewAsync(string? supabaseUserId, Guid byteId, int? dwellMs, CancellationToken ct);
 }

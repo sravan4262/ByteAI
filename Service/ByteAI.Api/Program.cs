@@ -16,7 +16,6 @@ using ByteAI.Core.Services.Lookup;
 using ByteAI.Core.Services.Notifications;
 using ByteAI.Core.Services.Reactions;
 using ByteAI.Core.Services.Search;
-using ByteAI.Core.Services.Trending;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Preferences;
 using ByteAI.Core.Services.Drafts;
@@ -90,7 +89,6 @@ try
     builder.Services.AddScoped<ICommentService, CommentService>();
     builder.Services.AddScoped<IFollowService, FollowService>();
     builder.Services.AddScoped<IReactionService, ReactionService>();
-    builder.Services.AddScoped<ITrendingService, TrendingService>();
     builder.Services.AddScoped<ILookupService, LookupService>();
     builder.Services.AddScoped<IUserService, UserService>();
     builder.Services.AddScoped<IBadgeService, BadgeService>();
@@ -111,7 +109,6 @@ try
     builder.Services.AddScoped<ILookupBusiness, LookupBusiness>();
     builder.Services.AddScoped<INotificationsBusiness, NotificationsBusiness>();
     builder.Services.AddScoped<IReactionsBusiness, ReactionsBusiness>();
-    builder.Services.AddScoped<ITrendingBusiness, TrendingBusiness>();
     builder.Services.AddScoped<IAdminBusiness, AdminBusiness>();
     builder.Services.AddScoped<IDraftsBusiness, DraftsBusiness>();
 

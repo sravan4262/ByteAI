@@ -13,4 +13,5 @@ public interface IByteService
     Task<Byte> UpdateByteAsync(Guid byteId, Guid authorId, string? title, string? body, string? codeSnippet, string? language, CancellationToken ct);
     Task<bool> DeleteByteAsync(Guid byteId, Guid authorId, CancellationToken ct);
     Task<PagedResult<ByteResult>> GetMyBytesAsync(Guid authorId, PaginationParams pagination, CancellationToken ct);
+    Task RecordViewAsync(Guid byteId, Guid? userId, int? dwellMs, CancellationToken ct);
 }

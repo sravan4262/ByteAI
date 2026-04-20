@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS bytes.user_views (
     id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     byte_id     uuid        NOT NULL REFERENCES bytes.bytes(id) ON DELETE CASCADE,
     user_id     uuid        REFERENCES users.users(id) ON DELETE SET NULL,
-    viewed_at   timestamptz NOT NULL DEFAULT now()
+    viewed_at   timestamptz NOT NULL DEFAULT now(),
+    dwell_ms    int
 );
 CREATE INDEX IF NOT EXISTS ix_user_views_byte_id   ON bytes.user_views (byte_id);
 CREATE INDEX IF NOT EXISTS ix_user_views_user_id   ON bytes.user_views (user_id) WHERE user_id IS NOT NULL;
@@ -115,16 +116,3 @@ CREATE TABLE IF NOT EXISTS bytes.drafts (
 CREATE INDEX IF NOT EXISTS ix_drafts_author_id ON bytes.drafts (author_id);
 COMMENT ON TABLE bytes.drafts IS 'Unpublished byte drafts — auto-saved, user-owned.';
 
--- bytes.trending
-CREATE TABLE IF NOT EXISTS bytes.trending (
-    id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-    content_id   uuid        NOT NULL,
-    content_type text        NOT NULL CHECK (content_type IN ('byte', 'interview')),
-    user_id      uuid        REFERENCES users.users(id) ON DELETE SET NULL,
-    clicked_at   timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS ix_trending_content    ON bytes.trending (content_id, content_type);
-CREATE INDEX IF NOT EXISTS ix_trending_clicked_at ON bytes.trending (clicked_at DESC);
-CREATE INDEX IF NOT EXISTS ix_trending_user_id    ON bytes.trending (user_id) WHERE user_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS ix_trending_24h        ON bytes.trending (content_type, clicked_at DESC, content_id);
-COMMENT ON TABLE bytes.trending IS 'Click events for trending feed. Aggregate by content_id in past 24h to rank trending.';

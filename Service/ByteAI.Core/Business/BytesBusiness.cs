@@ -46,6 +46,14 @@ public sealed class BytesBusiness(IByteService byteService, ICurrentUserService 
         return await byteService.GetMyBytesAsync(authorId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
     }
 
+    public async Task RecordViewAsync(string? supabaseUserId, Guid byteId, int? dwellMs, CancellationToken ct)
+    {
+        Guid? userId = null;
+        if (supabaseUserId is not null)
+            userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
+        await byteService.RecordViewAsync(byteId, userId, dwellMs, ct);
+    }
+
     private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
         var userId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);

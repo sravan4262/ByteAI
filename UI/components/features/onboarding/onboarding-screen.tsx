@@ -5,6 +5,7 @@ import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { useAuth } from '@/hooks/use-auth'
 
+import { toast } from 'sonner'
 import { setTokenProvider } from '@/lib/api/http'
 import { handleMutationError } from '@/lib/api/handle-error'
 import * as api from '@/lib/api'
@@ -62,6 +63,11 @@ export function OnboardingScreen() {
 
   const handleComplete = async () => {
     if (!selectedSeniority || !selectedDomain) return
+    if (selectedTechStack.length === 0) {
+      toast.error('Please select at least one technology.')
+      setActiveStep('tech')
+      return
+    }
     setIsLoading(true)
     try {
       await api.saveOnboardingData({
@@ -300,9 +306,10 @@ export function OnboardingScreen() {
               </div>
               <button
                 onClick={() => setActiveStep('review')}
-                className="w-full py-2 mt-4 px-4 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg font-mono text-[11px] text-[var(--t2)] hover:bg-[var(--bg)] transition-all"
+                disabled={selectedTechStack.length === 0}
+                className="w-full py-2 mt-4 px-4 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg font-mono text-[11px] text-[var(--t2)] hover:bg-[var(--bg)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Continue →
+                {selectedTechStack.length === 0 ? 'Select at least 1 technology' : 'Continue →'}
               </button>
             </div>
           )}

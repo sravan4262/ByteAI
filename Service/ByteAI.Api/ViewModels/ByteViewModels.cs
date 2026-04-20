@@ -9,6 +9,8 @@ public sealed record CreateByteRequest(
     List<string>? TechStackNames = null
 );
 
+public sealed record RecordViewRequest(int? DwellMs);
+
 public sealed record UpdateByteRequest(
     string? Title,
     string? Body,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bookmark, Share2, Heart, MessageSquare, ChevronLeft, ChevronRight, Send, Trash2, Layers, X, Pencil } from 'lucide-react'
 import { CodeEditor } from '@/components/ui/code-editor'
@@ -32,6 +32,16 @@ export function DetailScreen({ post }: DetailScreenProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(post.isBookmarked ?? false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const enterTimeRef = useRef<number>(Date.now())
+
+  // Record view with dwell time on unmount
+  useEffect(() => {
+    enterTimeRef.current = Date.now()
+    return () => {
+      const dwellMs = Date.now() - enterTimeRef.current
+      api.recordView(post.id, dwellMs)
+    }
+  }, [post.id])
 
   type FeedItem = { id: string; title: string; username: string; role: string; company: string }
   const [prevPost, setPrevPost] = useState<FeedItem | null>(null)

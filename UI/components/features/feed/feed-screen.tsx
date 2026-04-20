@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -13,6 +13,8 @@ import { PostCard } from './post-card'
 import * as api from '@/lib/api'
 import type { Post } from '@/lib/api'
 import { getMeCache } from '@/lib/user-cache'
+
+const PAGE_SIZE = 20
 
 interface FeedScreenProps {
   contentType?: 'bytes' | 'interviews'
@@ -37,17 +39,18 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
   const [rawPosts, setRawPosts] = useState<Post[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
   const isMobile = useIsMobile()
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
-  // Seed currentUserId from cache immediately (no async wait), then verify with API
   useEffect(() => {
     const cached = getMeCache()
     if (cached) setCurrentUserId(cached.userId)
-    // Still fetch from API in case cache is stale or not yet written
     api.getCurrentUser().then(u => { if (u) setCurrentUserId(u.id) })
   }, [])
 
-  // Hydrate a post list: replace own posts with real profile data from MeCache
   const hydrateWithUserCache = useCallback((fetched: Post[]): Post[] => {
     if (!currentUserId) return fetched
     const cache = getMeCache()
@@ -71,22 +74,63 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
     })
   }, [currentUserId])
 
-  // Fetch raw feed whenever tab/filter changes
+  // Tab or filter change — reset state and fetch page 1
   useEffect(() => {
     setIsLoading(true)
-    api.getFeed({ filter: activeTab as 'for_you' | 'following' | 'trending', stackFilter: activeStackFilter ?? undefined })
-      .then(({ posts: fetched }) => setRawPosts(fetched))
+    setRawPosts([])
+    setCurrentPage(1)
+    setHasMore(false)
+    api.getFeed({
+      filter: activeTab as 'for_you' | 'following' | 'trending',
+      stackFilter: activeStackFilter ?? undefined,
+      page: 1,
+      limit: PAGE_SIZE,
+    })
+      .then(({ posts: fetched, hasMore: more }) => {
+        setRawPosts(fetched)
+        setHasMore(more)
+      })
       .catch(() => toast.error('Failed to load feed'))
       .finally(() => setIsLoading(false))
   }, [activeTab, activeStackFilter])
 
-  // Re-hydrate whenever currentUserId becomes available
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return
+    setIsLoadingMore(true)
+    const nextPage = currentPage + 1
+    try {
+      const { posts: fetched, hasMore: more } = await api.getFeed({
+        filter: activeTab as 'for_you' | 'following' | 'trending',
+        stackFilter: activeStackFilter ?? undefined,
+        page: nextPage,
+        limit: PAGE_SIZE,
+      })
+      setRawPosts(prev => [...prev, ...fetched])
+      setCurrentPage(nextPage)
+      setHasMore(more)
+    } catch {
+      toast.error('Failed to load more')
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [isLoadingMore, hasMore, currentPage, activeTab, activeStackFilter])
+
+  // Trigger loadMore when sentinel enters the viewport
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore() },
+      { rootMargin: '200px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore])
+
   const posts = useMemo(() => hydrateWithUserCache(rawPosts), [rawPosts, hydrateWithUserCache])
 
-  // Client-side sort on top of server-fetched posts
   const filteredPosts = useMemo(() => {
     let result = [...posts]
-
     if (activeTab === 'for_you') {
       if (sortBy === 'newest') {
         result = [...result].sort((a, b) => parseTime(a.createdAt) - parseTime(b.createdAt))
@@ -94,12 +138,9 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
         result = [...result].sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt))
       }
     }
-
     return result
   }, [activeTab, sortBy, posts])
 
-  // Persist feed order so the detail page can show real prev/next navigation.
-  // Done in an effect (not the memo) so it doesn't race with logout clearing session storage.
   useEffect(() => {
     if (filteredPosts.length === 0) return
     sessionStorage.setItem(
@@ -179,23 +220,22 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
         onStackFilter={(stack) => { setActiveStackFilter(stack); updateUrl(activeTab, sortBy, stack) }}
       />
 
-      {/* Posts feed */}
-      {(
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
-          <div className="max-w-4xl mx-auto">
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center min-h-[400px]">
-                <div className="font-mono text-xs text-[var(--t2)] animate-pulse">LOADING BYTES...</div>
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
+        <div className="max-w-4xl mx-auto">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center min-h-[400px]">
+              <div className="font-mono text-xs text-[var(--t2)] animate-pulse">LOADING BYTES...</div>
+            </div>
+          ) : filteredPosts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
+              <div className="font-mono text-base text-[var(--t1)] mb-2">NO BYTES FOUND</div>
+              <div className="font-mono text-xs text-[var(--t2)]">
+                {activeTab === 'following' ? "This user hasn't posted any Bytes yet." : 'Try adjusting your filters.'}
               </div>
-            ) : filteredPosts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
-                <div className="font-mono text-base text-[var(--t1)] mb-2">NO BYTES FOUND</div>
-                <div className="font-mono text-xs text-[var(--t2)]">
-                  {activeTab === 'following' ? "This user hasn't posted any Bytes yet." : 'Try adjusting your filters.'}
-                </div>
-              </div>
-            ) : (
-              filteredPosts.map((post) => (
+            </div>
+          ) : (
+            <>
+              {filteredPosts.map((post) => (
                 <PostCard
                   key={post.id}
                   post={post}
@@ -205,13 +245,27 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
                   onShare={handleShare}
                   shouldTruncate={shouldTruncate(post)}
                 />
-              ))
-            )}
-          </div>
-        </div>
-      )}
+              ))}
 
-      {/* FAB */}
+              {/* Sentinel div — IntersectionObserver fires loadMore when this enters viewport */}
+              <div ref={sentinelRef} className="h-1" />
+
+              {isLoadingMore && (
+                <div className="flex justify-center py-6">
+                  <div className="font-mono text-xs text-[var(--t2)] animate-pulse">LOADING MORE...</div>
+                </div>
+              )}
+
+              {!hasMore && filteredPosts.length >= PAGE_SIZE && (
+                <div className="flex justify-center py-6">
+                  <div className="font-mono text-xs text-[var(--t2)]">— END —</div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
       <Link
         href="/compose"
         className="fixed bottom-6 right-6 md:right-8 lg:right-12 z-10 w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-[var(--accent)] to-[#1d4ed8] flex items-center justify-center text-white shadow-[0_4px_20px_var(--accent-glow)] transition-all hover:scale-110 hover:shadow-[0_8px_36px_var(--accent-glow)]"

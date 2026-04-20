@@ -248,6 +248,21 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
         return new PagedResult<ByteResult>(items, total, pagination.Page, pagination.PageSize);
     }
 
+    public async Task RecordViewAsync(Guid byteId, Guid? userId, int? dwellMs, CancellationToken ct)
+    {
+        db.UserViews.Add(new Entities.UserView
+        {
+            ByteId    = byteId,
+            UserId    = userId,
+            ViewedAt  = DateTime.UtcNow,
+            DwellMs   = dwellMs,
+        });
+        await db.SaveChangesAsync(ct);
+
+        if (userId.HasValue && dwellMs >= 5000)
+            await publisher.Publish(new UserViewedByteEvent(userId.Value, byteId), ct);
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     /// <summary>

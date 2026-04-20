@@ -15,6 +15,7 @@ public sealed class UserViewConfiguration : IEntityTypeConfiguration<UserView>
         builder.Property(v => v.ByteId).HasColumnName("byte_id").IsRequired();
         builder.Property(v => v.UserId).HasColumnName("user_id");
         builder.Property(v => v.ViewedAt).HasColumnName("viewed_at").HasDefaultValueSql("now()");
+        builder.Property(v => v.DwellMs).HasColumnName("dwell_ms");
 
         builder.HasOne(v => v.Byte).WithMany(b => b.UserViews)
             .HasForeignKey(v => v.ByteId).OnDelete(DeleteBehavior.Cascade);

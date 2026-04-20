@@ -113,6 +113,16 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
         return Ok(ApiResponse<PagedResponse<ByteResponse>>.Success(response));
     }
 
+    /// <summary>Record a view event. Dwell >= 5 s triggers interest-embedding update.</summary>
+    [HttpPost("{byteId:guid}/view")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RecordView(Guid byteId, [FromBody] RecordViewRequest request, CancellationToken ct)
+    {
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        await bytesBusiness.RecordViewAsync(supabaseUserId, byteId, request.DwellMs, ct);
+        return NoContent();
+    }
+
     /// <summary>Delete a byte. Only the author may delete their own bytes.</summary>
     [HttpDelete("{byteId:guid}")]
     [Authorize]

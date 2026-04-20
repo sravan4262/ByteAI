@@ -400,7 +400,7 @@ export async function getFeed(params: {
     if (params.filter) qs.set('filter', params.filter)
     if (params.stackFilter) qs.set('stack', params.stackFilter)
     if (params.page) qs.set('page', String(params.page))
-    if (params.limit) qs.set('limit', String(params.limit))
+    if (params.limit) qs.set('pageSize', String(params.limit))
     const res = await apiFetch<ApiResponse<PagedResponse<ByteResponse>>>(`/api/feed?${qs}`)
     const posts = res.data.items.map(byteToPost)
     const hasMore = res.data.page * res.data.pageSize < res.data.total
@@ -408,6 +408,15 @@ export async function getFeed(params: {
   } catch {
     return { posts: [], hasMore: false }
   }
+}
+
+export async function recordView(byteId: string, dwellMs: number): Promise<void> {
+  try {
+    await apiFetch(`/api/bytes/${byteId}/view`, {
+      method: 'POST',
+      body: JSON.stringify({ dwellMs }),
+    })
+  } catch { /* fire-and-forget — don't surface errors to the user */ }
 }
 
 export async function getPost(id: string, token?: string | null): Promise<Post | null> {

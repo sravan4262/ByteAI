@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS bytes.user_views (
     id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     byte_id     uuid        NOT NULL REFERENCES bytes.bytes(id) ON DELETE CASCADE,
     user_id     uuid        REFERENCES users.users(id) ON DELETE SET NULL,
-    viewed_at   timestamptz NOT NULL DEFAULT now()
+    viewed_at   timestamptz NOT NULL DEFAULT now(),
+    dwell_ms    int
 );
 
 CREATE INDEX IF NOT EXISTS ix_user_views_byte_id  ON bytes.user_views (byte_id);

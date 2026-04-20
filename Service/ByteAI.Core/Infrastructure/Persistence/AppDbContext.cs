@@ -62,7 +62,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UserXpLog> UserXpLogs => Set<UserXpLog>();
 
     // Observability / engagement
-    public DbSet<TrendingEvent> TrendingEvents => Set<TrendingEvent>();
     public DbSet<AppLog> AppLogs => Set<AppLog>();
 
     public DbSet<FeatureFlagType> FeatureFlagTypes => Set<FeatureFlagType>();

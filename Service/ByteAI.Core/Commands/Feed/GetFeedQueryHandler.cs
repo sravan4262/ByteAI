@@ -11,8 +11,8 @@ namespace ByteAI.Core.Commands.Feed;
 /// Feed ranking by mode:
 ///   for_you   — bytes ranked by recency
 ///   following — bytes authored by users this user follows, ranked by recency
-///   trending  — bytes ranked by click count in the trending table (past 24h)
-/// </summary>
+///   trending  — bytes ranked by time-decayed view count from user_views (past 48h)
+///</summary>
 public sealed class GetFeedQueryHandler(AppDbContext db)
     : IRequestHandler<GetFeedQuery, PagedResult<ByteResult>>
 {
@@ -104,14 +104,21 @@ public sealed class GetFeedQueryHandler(AppDbContext db)
 
     private async Task<(List<ByteResult>, int)> GetTrendingFeed(GetFeedQuery request, CancellationToken ct)
     {
-        var since = DateTime.UtcNow.AddHours(-24);
+        var since48h = DateTime.UtcNow.AddHours(-48);
+        var since24h = DateTime.UtcNow.AddHours(-24);
 
-        var trendingIds = await db.TrendingEvents
-            .Where(t => t.ContentType == "byte" && t.ClickedAt >= since)
-            .GroupBy(t => t.ContentId)
-            .OrderByDescending(g => g.Count())
-            .Select(g => g.Key)
+        var trendingIds = await db.UserViews
+            .AsNoTracking()
+            .Where(v => v.ViewedAt >= since48h && v.UserId != null)
+            .GroupBy(v => v.ByteId)
+            .Select(g => new
+            {
+                ByteId = g.Key,
+                Score  = g.Count(v => v.ViewedAt >= since24h) * 2 + g.Count(v => v.ViewedAt < since24h),
+            })
+            .OrderByDescending(x => x.Score)
             .Take(200)
+            .Select(x => x.ByteId)
             .ToListAsync(CancellationToken.None);
 
         IQueryable<Byte> query;
