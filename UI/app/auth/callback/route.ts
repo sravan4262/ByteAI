@@ -4,7 +4,11 @@ import { createServerClient } from '@supabase/ssr'
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5239'
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+  const url = new URL(request.url)
+  const { searchParams } = url
+  const proto = request.headers.get('x-forwarded-proto') ?? url.protocol.replace(':', '')
+  const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? url.host
+  const origin = `${proto}://${host}`
   const code = searchParams.get('code')
 
   if (!code) return NextResponse.redirect(`${origin}/`)
@@ -19,7 +23,7 @@ export async function GET(request: NextRequest) {
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll: (toSet) => pendingCookies.push(...toSet),
+        setAll: (toSet) => { pendingCookies.push(...toSet) },
       },
     }
   )

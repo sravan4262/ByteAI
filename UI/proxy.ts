@@ -34,7 +34,7 @@ export async function proxy(request: NextRequest) {
 
   // Signed-in user hitting the root → send to feed (or onboarding if not done)
   if (pathname === '/' && user) {
-    const isOnboarded = request.cookies.get('byteai_onboarded')?.value === 'true'
+    const isOnboarded = request.cookies.get('byteai_onboarded')?.value === '1'
     return NextResponse.redirect(
       new URL(isOnboarded ? '/feed' : '/onboarding-check', request.url)
     )
