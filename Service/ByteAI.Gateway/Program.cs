@@ -60,8 +60,12 @@ try
     builder.Services.AddHttpClient<UpstreamHealthCheck>(client =>
         client.Timeout = TimeSpan.FromSeconds(5));
 
+    // upstream-api has no "ready" tag intentionally: the gateway process being
+    // alive is sufficient for ACA readiness. Coupling gateway readiness to API
+    // health causes cascading failures (API Postgres issue → gateway never starts).
+    // The upstream check is still exposed at /health/deep for external monitoring.
     builder.Services.AddHealthChecks()
-        .AddCheck<UpstreamHealthCheck>("upstream-api", tags: ["ready"]);
+        .AddCheck<UpstreamHealthCheck>("upstream-api");
 
     var app = builder.Build();
 
@@ -77,16 +81,24 @@ try
     // API-key / JWT gate — evaluated before YARP forwards the request
     app.UseMiddleware<ApiKeyMiddleware>();
 
-    // Liveness: process is alive — no upstream check
+    // Liveness: process is alive — no dependency checks
     app.MapHealthChecks("/health/live", new HealthCheckOptions
     {
         Predicate = _ => false,
     });
 
-    // Readiness: upstream API must also be healthy
+    // Readiness: gateway process can accept requests — NOT dependent on API health.
+    // Decoupled intentionally: API Postgres failures must not prevent gateway from starting.
     app.MapHealthChecks("/health/ready", new HealthCheckOptions
     {
-        Predicate = c => c.Tags.Contains("ready"),
+        Predicate = _ => false,
+    });
+
+    // Deep: upstream API reachability check — for external monitoring/alerting only.
+    // Not used by ACA probes. Hit this from Grafana/alerts to detect API outages.
+    app.MapHealthChecks("/health/deep", new HealthCheckOptions
+    {
+        Predicate = c => c.Name == "upstream-api",
     });
 
     app.MapReverseProxy();

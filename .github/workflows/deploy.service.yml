@@ -230,11 +230,15 @@ jobs:
 
       - name: Deploy new Gateway revision at 0% traffic
         run: |
+          # No --min-replicas override: gateway stays at scale-to-zero until the
+          # label URL curl below forces it to start. This avoids a known ACA quirk
+          # where --min-replicas in Multiple revision mode updates the app template
+          # but may not apply to the in-flight revision, causing an indefinite
+          # ScaledToZero poll. The HTTP health check is the real gate.
           az containerapp update \
             -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
             --image "$IMAGE_GATEWAY:$SHA" \
             --revision-suffix "$SUFFIX" \
-            --min-replicas 1 \
             --set-env-vars \
               "ApiUpstreamUrl=http://$API_APP" \
               "ApiKeys=${{ secrets.API_KEYS }}" \
@@ -242,32 +246,33 @@ jobs:
             --no-wait
           echo "Submitted revision: ${GATEWAY_APP}--${SUFFIX}"
 
-      - name: Poll Gateway revision → Running (reject ScaledToZero)
+      - name: Poll Gateway revision → provisioned (accept ScaledToZero, reject failures)
         run: |
+          # We only need the revision to exist without errors. ScaledToZero is fine
+          # here — the label URL curl in the next steps is what forces scale-up and
+          # acts as the real health gate.
           REV="${GATEWAY_APP}--${SUFFIX}"
-          echo "Polling $REV for Running state (30 × 15s = 7.5 min max)..."
-          REACHED_RUNNING=false
-          for i in $(seq 1 30); do
+          echo "Polling $REV for provisioned state (20 × 10s = 3.5 min max)..."
+          for i in $(seq 1 20); do
             STATE=$(az containerapp revision show \
               -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
               --revision "$REV" \
               --query "properties.runningState" -o tsv 2>/dev/null || echo "Provisioning")
-            echo "  Attempt $i/30: $STATE"
-            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" ]]; then
-              echo "Gateway revision $REV is $STATE ✓"
-              REACHED_RUNNING=true
+            echo "  Attempt $i/20: $STATE"
+            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" || "$STATE" == "ScaledToZero" ]]; then
+              echo "Gateway revision $REV is provisioned ($STATE) ✓"
               break
             fi
             if [[ "$STATE" == "Stopped" || "$STATE" == "Failed" || "$STATE" == "Degraded" ]]; then
               echo "ERROR: Gateway revision entered terminal failure state: $STATE"
               exit 1
             fi
-            sleep 15
+            if [[ "$i" -eq 20 ]]; then
+              echo "ERROR: Gateway revision not provisioned after 3.5 minutes (last: $STATE)"
+              exit 1
+            fi
+            sleep 10
           done
-          if [[ "$REACHED_RUNNING" != "true" ]]; then
-            echo "ERROR: Gateway revision did not reach Running state within 7.5 minutes"
-            exit 1
-          fi
 
       - name: Label inactive Gateway revision
         run: |
@@ -277,21 +282,24 @@ jobs:
             --label "$INACTIVE" \
             --yes
 
-      - name: HTTP health check — Gateway via label URL (10 × 10s)
+      - name: HTTP health check — Gateway via label URL (triggers scale-up + verifies response)
         run: |
+          # Hitting the label URL is what wakes the container if ScaledToZero.
+          # ACA scales the revision up on first request to its label endpoint.
+          # We give it generous retries to cover cold-start time.
           # Label URL format: https://<label>---<app>.<env-domain>
           LABEL_URL="https://${INACTIVE}---${GATEWAY_APP}.${ENV_DOMAIN}/health/ready"
           echo "Probing: $LABEL_URL"
-          for i in $(seq 1 10); do
-            HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$LABEL_URL" || echo "000")
-            echo "  Attempt $i/10: HTTP $HTTP"
+          for i in $(seq 1 18); do
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$LABEL_URL" || echo "000")
+            echo "  Attempt $i/18: HTTP $HTTP"
             if [[ "$HTTP" == "200" ]]; then
               echo "Gateway health check passed ✓"
               exit 0
             fi
             sleep 10
           done
-          echo "ERROR: Gateway label health check failed after 10 attempts (last: HTTP $HTTP)"
+          echo "ERROR: Gateway label health check failed after 18 attempts (last: HTTP $HTTP)"
           exit 1
 
   # ─────────────────────────────────────────────────────────────────────────────
