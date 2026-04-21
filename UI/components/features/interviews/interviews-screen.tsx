@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Briefcase, Bell, Bookmark, Share2, Plus, ChevronsUpDown, ChevronsDownUp, MessageSquare } from 'lucide-react'
+import { Briefcase, Bell, Bookmark, Share2, ChevronsUpDown, ChevronsDownUp, MessageSquare } from 'lucide-react'
 import { useNotifications } from '@/components/layout/notification-context'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
@@ -30,13 +30,13 @@ function QuestionCard({
   onToggle: () => void
 }) {
   return (
-    <div className="border border-[var(--border-m)] rounded-lg overflow-hidden bg-[var(--bg-el)]">
+    <div className="border border-[var(--border-h)] rounded-xl overflow-hidden bg-[var(--bg-el)]">
       {/* Question header */}
       <button
         onClick={onToggle}
         className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-[rgba(255,255,255,0.02)] transition-all"
       >
-        <span className="font-mono text-[10px] text-[var(--purple)] bg-[rgba(167,139,250,0.12)] border border-[rgba(167,139,250,0.2)] rounded px-2 py-1 flex-shrink-0 mt-0.5">
+        <span className="font-mono text-[10px] text-[var(--accent)] bg-[rgba(59,130,246,0.12)] border border-[rgba(59,130,246,0.2)] rounded px-2 py-1 flex-shrink-0 mt-0.5">
           Q{index + 1}
         </span>
         <p className="flex-1 text-sm md:text-base font-semibold text-[var(--t1)] leading-relaxed">{q.question}</p>
@@ -49,7 +49,7 @@ function QuestionCard({
 
       {/* Answer */}
       {expanded && (
-        <div className="px-4 py-3 border-t border-[var(--border)]">
+        <div className="px-4 py-3 border-t border-[var(--border-h)]">
           <p className="text-sm md:text-[15px] text-[var(--t2)] leading-relaxed whitespace-pre-wrap">{q.answer}</p>
         </div>
       )}
@@ -63,7 +63,6 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
   const router = useRouter()
   const [isBookmarked, setIsBookmarked] = useState(interview.isBookmarked ?? false)
   const [showMiniProfile, setShowMiniProfile] = useState(false)
-  // Controlled expansion: set of expanded question IDs
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const allExpanded = interview.questions.length > 0 && expandedIds.size === interview.questions.length
 
@@ -95,170 +94,175 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
   }
 
   return (
-    <article className="px-4 md:px-8 py-5 md:py-6 flex flex-col gap-4 border-b border-[var(--border)] relative">
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(167,139,250,0.08)] to-transparent" />
+    <article className="border border-[var(--border-h)] rounded-xl bg-[var(--bg-card)] overflow-hidden flex flex-col gap-4">
+      <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
 
-      {/* Header — matches PostCard exactly */}
-      <div className="flex items-start gap-3 md:gap-4">
-        {interview.isAnonymous ? (
-          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center text-lg flex-shrink-0 cursor-default select-none">
-            👻
+      <div className="px-4 md:px-8 pb-5 md:pb-6 flex flex-col gap-4">
+        {/* Header — matches PostCard exactly */}
+        <div className="flex items-start gap-3 md:gap-4">
+          {interview.isAnonymous ? (
+            <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[var(--bg-el)] border border-[var(--border-h)] flex items-center justify-center text-lg flex-shrink-0 cursor-default select-none">
+              👻
+            </div>
+          ) : (
+            <Avatar
+              initials={(interview.authorDisplayName || interview.authorUsername || interview.authorId).slice(0, 1).toUpperCase()}
+              imageUrl={interview.authorAvatarUrl}
+              size="md"
+              variant={avatarVariant}
+              onClick={(e) => { e.stopPropagation(); setShowMiniProfile(true) }}
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="font-mono text-sm font-bold text-[var(--t1)] flex items-center gap-2">
+              {interview.isAnonymous ? (
+                <span className="text-[var(--t2)]">Anonymous</span>
+              ) : (
+                <>@{interview.authorUsername || interview.authorId.slice(0, 8)}</>
+              )}
+            </div>
+            <div className="font-mono text-[11px] text-[var(--t2)] mt-0.5 tracking-[0.04em]">
+              {interview.isAnonymous ? (
+                <span className="font-mono text-[10px] text-[var(--accent)] bg-[rgba(59,130,246,0.08)] border border-[rgba(59,130,246,0.2)] px-2 py-0.5 rounded">
+                  👻 anonymous post
+                </span>
+              ) : (
+                <>
+                  {interview.authorRole ?? ''}
+                  {interview.authorRole && interview.authorCompany ? ' @ ' : ''}
+                  {interview.authorCompany ?? ''}
+                </>
+              )}
+            </div>
           </div>
-        ) : (
-          <Avatar
-            initials={(interview.authorDisplayName || interview.authorUsername || interview.authorId).slice(0, 1).toUpperCase()}
-            imageUrl={interview.authorAvatarUrl}
-            size="md"
-            variant={avatarVariant}
-            onClick={(e) => { e.stopPropagation(); setShowMiniProfile(true) }}
+          <div className="flex flex-col items-end gap-1">
+            <span className="font-mono text-[10px] text-[var(--t2)]">
+              {new Date(interview.createdAt).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+
+        {/* Type badge + metadata chips */}
+        <div className="flex flex-wrap items-center gap-2 -mt-1">
+          <span className="font-mono text-[10px] text-[var(--accent)] bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] px-2.5 py-1 rounded flex items-center gap-1.5">
+            <Briefcase size={11} /> INTERVIEW
+          </span>
+          {interview.company && (
+            <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-h)] px-2.5 py-1 rounded">
+              {interview.company}
+            </span>
+          )}
+          {interview.role && (
+            <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-h)] px-2.5 py-1 rounded">
+              {interview.role}
+            </span>
+          )}
+          {interview.location && (
+            <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-h)] px-2.5 py-1 rounded">
+              📍 {interview.location}
+            </span>
+          )}
+        </div>
+
+        {showMiniProfile && !interview.isAnonymous && (
+          <UserMiniProfile
+            userId={interview.authorId}
+            username={interview.authorUsername ?? ''}
+            displayName={interview.authorDisplayName ?? interview.authorUsername ?? ''}
+            initials={(interview.authorDisplayName || interview.authorUsername || 'U')[0].toUpperCase()}
+            avatarUrl={interview.authorAvatarUrl}
+            role={interview.authorRole}
+            company={interview.authorCompany}
+            onClose={() => setShowMiniProfile(false)}
           />
         )}
-        <div className="flex-1 min-w-0">
-          <div className="font-mono text-sm md:text-sm font-bold text-[var(--t1)] flex items-center gap-2">
-            {interview.isAnonymous ? (
-              <span className="text-[var(--t2)]">Anonymous</span>
-            ) : (
-              <>@{interview.authorUsername || interview.authorId.slice(0, 8)}</>
-            )}
-          </div>
-          <div className="font-mono text-xs md:text-xs text-[var(--t2)] mt-0.5 tracking-[0.04em]">
-            {interview.isAnonymous ? (
-              <span className="font-mono text-[9px] text-[var(--purple)] bg-[rgba(167,139,250,0.08)] border border-[rgba(167,139,250,0.2)] px-2 py-0.5 rounded">
-                👻 anonymous post
-              </span>
-            ) : (
-              <>
-                {interview.authorRole ?? ''}
-                {interview.authorRole && interview.authorCompany ? ' @ ' : ''}
-                {interview.authorCompany ?? ''}
-              </>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-1">
-          <span className="font-mono text-[10px] md:text-xs text-[var(--t3)]">
-            {new Date(interview.createdAt).toLocaleDateString()}
-          </span>
-        </div>
-      </div>
 
-      {/* Type badge + metadata chips */}
-      <div className="flex flex-wrap items-center gap-2 -mt-1">
-        <span className="font-mono text-[10px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-2.5 py-1 rounded flex items-center gap-1.5">
-          <Briefcase size={11} /> INTERVIEW
-        </span>
-        {interview.company && (
-          <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2.5 py-1 rounded">
-            {interview.company}
-          </span>
-        )}
-        {interview.role && (
-          <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2.5 py-1 rounded">
-            {interview.role}
-          </span>
-        )}
-        {interview.location && (
-          <span className="font-mono text-[10px] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] px-2.5 py-1 rounded">
-            📍 {interview.location}
-          </span>
-        )}
-      </div>
+        {/* Title */}
+        <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold leading-tight tracking-tight -mt-2">{interview.title}</h2>
 
-      {showMiniProfile && !interview.isAnonymous && (
-        <UserMiniProfile
-          userId={interview.authorId}
-          username={interview.authorUsername ?? ''}
-          displayName={interview.authorDisplayName ?? interview.authorUsername ?? ''}
-          initials={(interview.authorDisplayName || interview.authorUsername || 'U')[0].toUpperCase()}
-          avatarUrl={interview.authorAvatarUrl}
-          role={interview.authorRole}
-          company={interview.authorCompany}
-          onClose={() => setShowMiniProfile(false)}
-        />
-      )}
-
-      {/* Title — matches PostCard h2 */}
-      <h2 className="text-lg md:text-xl lg:text-2xl font-extrabold leading-tight tracking-tight -mt-2">{interview.title}</h2>
-
-      {/* Q&A list */}
-      {interview.questions.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)]">
-              // {interview.questions.length} QUESTION{interview.questions.length !== 1 ? 'S' : ''}
+        {/* Q&A list */}
+        {interview.questions.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">
+                  {interview.questions.length} QUESTION{interview.questions.length !== 1 ? 'S' : ''}
+                </span>
+              </div>
+              <button
+                onClick={toggleAll}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[10px] tracking-[0.07em] border transition-all ${
+                  allExpanded
+                    ? 'text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-d)] shadow-[0_0_12px_rgba(59,130,246,0.2)]'
+                    : 'text-[var(--t1)] border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
+                }`}
+              >
+                {allExpanded
+                  ? <><ChevronsDownUp size={11} /> COLLAPSE ALL</>
+                  : <><ChevronsUpDown size={11} /> EXPAND ALL</>}
+              </button>
             </div>
-            <button
-              onClick={toggleAll}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[10px] tracking-[0.07em] border transition-all ${
-                allExpanded
-                  ? 'text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-d)]'
-                  : 'text-[var(--purple)] border-[rgba(167,139,250,0.4)] bg-[rgba(167,139,250,0.06)] hover:bg-[rgba(167,139,250,0.12)] hover:border-[rgba(167,139,250,0.7)]'
-              }`}
-            >
-              {allExpanded
-                ? <><ChevronsDownUp size={11} /> COLLAPSE ALL</>
-                : <><ChevronsUpDown size={11} /> EXPAND ALL</>}
-            </button>
+            {interview.questions.map((q, i) => (
+              <QuestionCard
+                key={q.id}
+                q={q}
+                index={i}
+                expanded={expandedIds.has(q.id)}
+                onToggle={() => toggleQuestion(q.id)}
+              />
+            ))}
           </div>
-          {interview.questions.map((q, i) => (
-            <QuestionCard
-              key={q.id}
-              q={q}
-              index={i}
-              expanded={expandedIds.has(q.id)}
-              onToggle={() => toggleQuestion(q.id)}
-            />
-          ))}
+        )}
+
+        {/* Actions — mirrors PostCard button strip */}
+        <div className="flex items-center gap-2 pt-4 border-t border-[var(--border-h)]">
+          {/* Questions count */}
+          <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-h)]">
+            <Briefcase size={14} />
+            <span>{interview.questions.length}Q</span>
+          </span>
+
+          {/* Comment count */}
+          <button
+            onClick={() => router.push(`/interviews/${interview.id}`)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-h)] transition-all hover:text-[var(--accent)] hover:border-[var(--accent)]"
+          >
+            <MessageSquare size={14} />
+            <span>{interview.commentCount ?? 0}</span>
+          </button>
+
+          {/* Bookmark */}
+          <button
+            onClick={handleBookmark}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] transition-all ${
+              isBookmarked
+                ? 'text-[var(--accent)] bg-[var(--accent-d)] border border-[var(--accent)]'
+                : 'text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-h)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
+            }`}
+          >
+            <Bookmark size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
+            <span>SAVE</span>
+          </button>
+
+          {/* Share */}
+          <button
+            onClick={handleShare}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-h)] transition-all hover:text-[var(--green)] hover:border-[var(--green)]"
+          >
+            <Share2 size={14} />
+            <span>SHARE</span>
+          </button>
+
+          {/* View full */}
+          <button
+            onClick={() => router.push(`/interviews/${interview.id}`)}
+            className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-lg font-mono text-[10px] font-bold tracking-[0.1em] text-[var(--accent)] bg-[rgba(59,130,246,0.22)] border border-[rgba(59,130,246,0.6)] shadow-[0_0_10px_rgba(59,130,246,0.18)] transition-all hover:border-[var(--accent)] hover:shadow-[0_0_14px_rgba(59,130,246,0.25)] hover:-translate-y-0.5"
+          >
+            VIEW_FULL_INTERVIEW
+            <span>→</span>
+          </button>
         </div>
-      )}
-
-      {/* Actions — mirrors PostCard button strip */}
-      <div className="flex items-center gap-2 pt-4 border-t border-[var(--border)]">
-        {/* Questions count */}
-        <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)]">
-          <Briefcase size={14} />
-          <span>{interview.questions.length}Q</span>
-        </span>
-
-        {/* Comment count — navigates to detail screen discussion section */}
-        <button
-          onClick={() => router.push(`/interviews/${interview.id}`)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--purple)] hover:border-[rgba(167,139,250,0.5)]"
-        >
-          <MessageSquare size={14} />
-          <span>{interview.commentCount ?? 0}</span>
-        </button>
-
-        {/* Bookmark */}
-        <button
-          onClick={handleBookmark}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] transition-all ${
-            isBookmarked
-              ? 'text-[var(--accent)] bg-[var(--accent-d)] border border-[var(--accent)]'
-              : 'text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
-          }`}
-        >
-          <Bookmark size={14} fill={isBookmarked ? 'currentColor' : 'none'} />
-          <span>SAVE</span>
-        </button>
-
-        {/* Share */}
-        <button
-          onClick={handleShare}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs tracking-[0.07em] text-[var(--t1)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--green)] hover:border-[var(--green)]"
-        >
-          <Share2 size={14} />
-          <span>SHARE</span>
-        </button>
-
-        {/* View full */}
-        <button
-          onClick={() => router.push(`/interviews/${interview.id}`)}
-          className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-lg font-mono text-[9px] md:text-[10px] tracking-[0.1em] text-white bg-gradient-to-br from-[var(--purple)] to-[#5b21b6] border border-[rgba(167,139,250,0.5)] transition-all hover:shadow-[0_4px_12px_rgba(167,139,250,0.3)] hover:-translate-y-0.5"
-        >
-          VIEW_FULL_INTERVIEW
-          <span>→</span>
-        </button>
       </div>
     </article>
   )
@@ -308,43 +312,46 @@ export function InterviewsScreen() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o95)] backdrop-blur-md">
+      {/* Header — floating card */}
+      <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border border-[rgba(167,139,250,0.35)] rounded-xl mx-3 mt-3 flex-shrink-0 bg-[rgba(167,139,250,0.07)] backdrop-blur-md">
         <div>
-          <h1 className="font-mono text-xs lg:text-sm font-bold tracking-[0.07em] flex items-center gap-2">
-            <Briefcase size={14} className="text-[var(--purple)]" /> INTERVIEWS
+          <h1 className="font-mono text-sm md:text-base lg:text-lg font-bold tracking-[0.07em] flex items-center gap-2">
+            <Briefcase size={16} className="text-[var(--purple)]" /> INTERVIEWS
           </h1>
-          <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t2)] mt-0.5">
+          <div className="font-mono text-[10px] md:text-xs tracking-[0.08em] text-[var(--t1)] mt-0.5">
             FIND INTERVIEWS ACROSS TOP COMPANIES · ACE YOUR NEXT ROLE
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={openNotifications}
-            className="w-[30px] h-[30px] lg:w-9 lg:h-9 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center relative transition-all hover:border-[var(--accent)]"
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[var(--bg-el)] flex items-center justify-center relative transition-all ring-2 ring-[var(--purple)] ring-offset-2 ring-offset-[var(--bg-card)] shadow-[0_0_10px_rgba(167,139,250,0.35)] hover:shadow-[0_0_16px_rgba(167,139,250,0.55)]"
           >
-            <Bell size={14} className="text-[var(--t2)]" />
+            <Bell size={16} className="text-[var(--purple)]" />
             {unreadCount > 0 && (
-              <span className="absolute top-[3px] right-[3px] w-[7px] h-[7px] bg-[var(--accent)] rounded-full border-[1.5px] border-[var(--bg)]" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--purple)] rounded-full border-[1.5px] border-[var(--bg)] shadow-[0_0_5px_var(--purple)]" />
             )}
           </button>
           <Link href="/profile">
             {isEmoji
-              ? <div className="w-8 h-8 rounded-full bg-[var(--bg-el)] border border-[var(--border-h)] flex items-center justify-center text-lg">{avatarSrc}</div>
+              ? <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-[var(--bg-el)] flex items-center justify-center text-xl ring-2 ring-[var(--purple)] ring-offset-2 ring-offset-[var(--bg-card)] transition-all">{avatarSrc}</div>
               : avatarSrc
-                ? <img src={avatarSrc} referrerPolicy="no-referrer" alt="profile" className="w-8 h-8 rounded-full object-cover ring-1 ring-[var(--border-h)] hover:ring-[var(--accent)] transition-all" />
-                : <Avatar initials={initials} size="xs" />
+                ? <img src={avatarSrc} referrerPolicy="no-referrer" alt="profile" className="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover ring-2 ring-[var(--purple)] ring-offset-2 ring-offset-[var(--bg-card)] hover:ring-[rgba(167,139,250,0.8)] transition-all" />
+                : <Avatar initials={initials} size="sm" />
             }
           </Link>
         </div>
       </header>
 
       {/* Filter controls */}
-      <div className="flex-shrink-0 bg-[var(--bg-o80)] backdrop-blur-sm border-b border-[var(--border)] relative z-20">
+      <div className="flex-shrink-0 bg-[var(--bg-o80)] backdrop-blur-sm border-b border-[var(--border-h)] relative z-20 mt-2">
         <div className="flex flex-wrap items-center gap-3 px-4 lg:px-6 py-3">
           {/* Company filter */}
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[9px] tracking-[0.12em] text-[var(--t2)]">COMPANY</span>
+            <div className="flex items-center gap-2">
+              <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)]" />
+              <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">COMPANY</span>
+            </div>
             <SearchableDropdown
               options={companies}
               value={companyFilter}
@@ -357,30 +364,35 @@ export function InterviewsScreen() {
 
           {/* Role filter */}
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[9px] tracking-[0.12em] text-[var(--t2)]">ROLE</span>
+            <div className="flex items-center gap-2">
+              <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)]" />
+              <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">ROLE</span>
+            </div>
             <SearchableDropdown
               options={roles}
               value={roleFilter}
               onChange={setRoleFilter}
               placeholder="ROLE"
               allLabel="ALL ROLES"
-              accentColor="green"
+              accentColor="purple"
             />
           </div>
 
           {/* Location filter */}
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[9px] tracking-[0.12em] text-[var(--t2)]">LOCATION</span>
+            <div className="flex items-center gap-2">
+              <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)]" />
+              <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">LOCATION</span>
+            </div>
             <SearchableDropdown
               options={locations}
               value={locationFilter}
               onChange={setLocationFilter}
               placeholder="LOCATION"
               allLabel="ALL LOCATIONS"
-              accentColor="cyan"
+              accentColor="purple"
             />
           </div>
-
 
           <div className="flex-1" />
 
@@ -388,7 +400,7 @@ export function InterviewsScreen() {
           {(companyFilter || roleFilter || locationFilter) && (
             <button
               onClick={() => { setCompanyFilter(null); setRoleFilter(null); setLocationFilter(null) }}
-              className="font-mono text-[8px] lg:text-[9px] tracking-[0.08em] px-3 py-2 rounded-full border border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              className="font-mono text-[10px] tracking-[0.08em] px-3 py-2 rounded-full border border-[var(--border-h)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               RESET
             </button>
@@ -398,15 +410,16 @@ export function InterviewsScreen() {
 
       {/* Feed */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto flex flex-col gap-2 p-2">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center min-h-[400px]">
               <div className="font-mono text-xs text-[var(--t2)] animate-pulse">LOADING INTERVIEWS...</div>
             </div>
           ) : interviews.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
-              <div className="font-mono text-base text-[var(--t1)] mb-2">NO INTERVIEWS FOUND</div>
-              <div className="font-mono text-xs text-[var(--t2)]">Try adjusting your filters or post the first one.</div>
+            <div className="border border-[rgba(167,139,250,0.2)] bg-[rgba(167,139,250,0.03)] rounded-xl px-5 py-10 text-center flex flex-col items-center gap-2 mt-4">
+              <Briefcase size={20} className="text-[var(--purple)] opacity-50" />
+              <p className="font-mono text-xs font-bold text-[var(--t1)]">NO INTERVIEWS FOUND</p>
+              <p className="text-xs text-[var(--t2)]">Try adjusting your filters or post the first one.</p>
             </div>
           ) : (
             interviews.map((interview, i) => (
@@ -420,13 +433,6 @@ export function InterviewsScreen() {
         </div>
       </div>
 
-      {/* FAB */}
-      <Link
-        href="/compose?type=interview"
-        className="fixed bottom-6 right-6 lg:right-12 z-10 w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-[var(--purple)] to-[#5b21b6] flex items-center justify-center text-white shadow-[0_4px_20px_rgba(167,139,250,0.4)] transition-all hover:scale-110 hover:shadow-[0_8px_36px_rgba(167,139,250,0.5)]"
-      >
-        <Plus size={22} />
-      </Link>
     </div>
   )
 }

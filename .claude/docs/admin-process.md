@@ -66,7 +66,7 @@ Feature flags control access to AI features and experimental UI. Two dimensions:
 public sealed class FeatureFlagType
 {
   Guid Id
-  string Key         // "ai-ask", "ai-search-ask", "ai-suggest-tags"
+  string Key         // "ai-search-ask", "ai-format-code", "reach-estimate"
   string Name        // human-readable label
   string? Description
   bool GlobalOpen    // true = all users; false = per-user only
@@ -79,7 +79,6 @@ public sealed class FeatureFlagType
 
 | Key | Feature | Status |
 |---|---|---|
-| `ai-ask` | Ask AI — generic Q&A via Groq | Active |
 | `ai-search-ask` | Search Ask RAG — semantic retrieval + Groq answer | Active |
 | `ai-format-code` | Code formatting in composer via Groq | Active |
 | ~~`ai-suggest-tags`~~ | ~~Auto-tag suggestion in post composer~~ | **Removed** — endpoint deleted; auto-tagging is now backend-only via `ByteCreatedEventHandler` |
@@ -96,9 +95,9 @@ public sealed class FeatureFlagType
 
 ```json
 {
-  "key": "ai-ask",
-  "name": "Ask AI",
-  "description": "Question answering on bytes and interviews",
+  "key": "ai-search-ask",
+  "name": "AI Search & Answer",
+  "description": "Semantic search + RAG powered answers using Groq",
   "globalOpen": false
 }
 ```
@@ -163,12 +162,12 @@ WHERE fft.global_open = true
    )
 ```
 
-Returns: `["ai-ask", "ai-search-ask"]` — list of enabled keys for the current user.
+Returns: `["ai-search-ask", "ai-format-code"]` — list of enabled keys for the current user.
 
 ### Enforcement on API endpoints
 
 ```csharp
-[RequireFeatureFlag("ai-ask")]
+[RequireFeatureFlag("ai-search-ask")]
 ```
 
 Applied to AI endpoints. Checks the same union query before allowing the request through. Returns 403 if not enabled.
@@ -224,7 +223,7 @@ Triggered by `GroqLoadBalancer` internally — no manual admin action needed:
 
 | Event | Action |
 |---|---|
-| Both models RPD-exhausted | `UPDATE feature_flag_types SET global_open = false WHERE key IN (ai-ask, ai-search-ask, ai-format-code)` |
+| Both models RPD-exhausted | `UPDATE feature_flag_types SET global_open = false WHERE key IN (ai-search-ask, ai-format-code)` |
 | New UTC day detected | `UPDATE feature_flag_types SET global_open = true WHERE key IN (...)` |
 
 ---

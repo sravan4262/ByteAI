@@ -24,7 +24,7 @@ public sealed class GroqLoadBalancer(IServiceScopeFactory scopeFactory, ILogger<
     public const string Primary   = "llama-3.3-70b-versatile";
     public const string Secondary = "llama-3.1-8b-instant";
 
-    private static readonly string[] AiFlagKeys = ["ai-ask", "ai-search-ask", "ai-format-code"];
+    private static readonly string[] AiFlagKeys = ["ai-search-ask", "ai-format-code"];
 
     private readonly object _lock = new();
     private bool _primaryRpdExhausted;

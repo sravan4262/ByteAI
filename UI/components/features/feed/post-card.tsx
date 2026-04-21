@@ -24,9 +24,10 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
   const [showMiniProfile, setShowMiniProfile] = useState(false)
 
   return (
-    <article className="px-4 md:px-8 py-5 md:py-6 flex flex-col gap-4 border-b border-[var(--border)] relative">
+    <article className="flex flex-col border border-[var(--border-h)] rounded-xl bg-[var(--bg-card)] overflow-hidden">
       {/* Top gradient line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(59,130,246,0.08)] to-transparent" />
+      <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent flex-shrink-0" />
+      <div className="px-4 md:px-8 py-5 md:py-6 flex flex-col gap-4">
 
       {/* Post header */}
       <div className="flex items-start gap-3 md:gap-4">
@@ -49,9 +50,9 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <span className="font-mono text-[10px] md:text-xs text-[var(--t3)] flex-shrink-0">{post.createdAt}</span>
+          <span className="font-mono text-[10px] md:text-xs text-[var(--t2)] flex-shrink-0">{post.createdAt}</span>
           {activeTab === 'trending' && post.views && (
-            <span className="font-mono text-[9px] text-[var(--orange)]">
+            <span className="font-mono text-[10px] text-[var(--orange)]">
               {post.views.toLocaleString()} views
             </span>
           )}
@@ -82,7 +83,7 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
         {(post.tags ?? []).map((tag) => (
           <span
             key={tag}
-            className="font-mono text-[10px] md:text-xs py-1 px-2.5 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] transition-all cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(59,130,246,0.12)]"
+            className="font-mono text-[10px] md:text-xs py-1 px-2.5 rounded-xl border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] transition-all cursor-pointer hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)] hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(59,130,246,0.12)]"
           >
             {tag}
           </span>
@@ -90,14 +91,14 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
       </div>
 
       {/* Interaction Buttons */}
-      <div className="flex items-center gap-2 pt-4 border-t border-[var(--border)]">
+      <div className="flex items-center gap-2 pt-4 border-t border-[var(--border-h)]">
         <div className="flex items-center">
           <button
             onClick={() => onLike(post.id)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-l-lg font-mono text-[11px] md:text-xs tracking-[0.07em] transition-all ${
               post.isLiked
                 ? 'text-[var(--accent)] bg-[var(--accent-d)] border border-[var(--accent)]'
-                : 'text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
+                : 'text-[var(--t1)] bg-[rgba(59,130,246,0.03)] border border-[rgba(59,130,246,0.2)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
             }`}
           >
             <Heart size={14} fill={post.isLiked ? 'currentColor' : 'none'} />
@@ -107,7 +108,7 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
             className={`flex items-center px-2.5 py-2 rounded-r-lg font-mono text-[11px] md:text-xs tracking-[0.07em] transition-all border-t border-b border-r ${
               post.isLiked
                 ? 'text-[var(--accent)] bg-[var(--accent-d)] border-[var(--accent)]'
-                : 'text-[var(--t2)] bg-[var(--bg-el)] border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
+                : 'text-[var(--t1)] bg-[rgba(59,130,246,0.03)] border-[rgba(59,130,246,0.2)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
             }`}
           >
             {post.likes || 0}
@@ -124,7 +125,7 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
 
         <button
           onClick={() => router.push(`/post/${post.id}/comments`)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--cyan)] hover:border-[var(--cyan)]"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t1)] bg-[rgba(59,130,246,0.03)] border border-[rgba(59,130,246,0.2)] transition-all hover:text-[var(--accent)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]"
         >
           <MessageSquare size={14} />
           <span className="hidden sm:inline">{post.comments || 0}</span>
@@ -135,7 +136,7 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] transition-all ${
             post.isBookmarked
               ? 'text-[var(--accent)] bg-[var(--accent-d)] border border-[var(--accent)]'
-              : 'text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
+              : 'text-[var(--t1)] bg-[rgba(59,130,246,0.03)] border border-[rgba(59,130,246,0.2)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
           }`}
         >
           <Bookmark size={14} fill={post.isBookmarked ? 'currentColor' : 'none'} />
@@ -144,7 +145,7 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
 
         <button
           onClick={() => onShare(post.id)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-m)] transition-all hover:text-[var(--green)] hover:border-[var(--green)]"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-[11px] md:text-xs tracking-[0.07em] text-[var(--t1)] bg-[rgba(59,130,246,0.03)] border border-[rgba(59,130,246,0.2)] transition-all hover:text-[var(--accent)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]"
         >
           <Share2 size={14} />
           <span className="hidden sm:inline">SHARE</span>
@@ -152,7 +153,7 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
 
         <button
           onClick={() => router.push(`/post/${post.id}`)}
-          className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-lg font-mono text-[9px] md:text-[10px] tracking-[0.1em] text-white bg-gradient-to-br from-[var(--accent)] to-[#2563eb] border border-[var(--accent)] transition-all hover:shadow-[0_4px_12px_var(--accent-glow)] hover:-translate-y-0.5"
+          className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-lg font-mono text-[10px] font-bold tracking-[0.1em] text-[var(--accent)] bg-[rgba(59,130,246,0.22)] border border-[rgba(59,130,246,0.6)] shadow-[0_0_10px_rgba(59,130,246,0.18)] transition-all hover:border-[var(--accent)] hover:shadow-[0_0_14px_rgba(59,130,246,0.25)] hover:-translate-y-0.5"
         >
           VIEW_FULL_BYTE
           <span>→</span>
@@ -172,6 +173,7 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
           onClose={() => setShowMiniProfile(false)}
         />
       )}
+      </div>
     </article>
   )
 }

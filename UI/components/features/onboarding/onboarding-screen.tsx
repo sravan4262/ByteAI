@@ -23,17 +23,15 @@ export function OnboardingScreen() {
 
   const [seniorityOptions, setSeniorityOptions] = useState<SeniorityTypeResponse[]>([])
   const [domainOptions, setDomainOptions] = useState<DomainResponse[]>([])
-  const [techStackOptions, setTechStackOptions] = useState<TechStackResponse[]>([])
+  const [techStackByDomain, setTechStackByDomain] = useState<Record<string, TechStackResponse[]>>({})
   const [selectedSeniority, setSelectedSeniority] = useState<SeniorityTypeResponse | null>(null)
-  const [selectedDomain, setSelectedDomain] = useState<DomainResponse | null>(null)
+  const [selectedDomains, setSelectedDomains] = useState<DomainResponse[]>([])
   const [selectedTechStack, setSelectedTechStack] = useState<string[]>([])
   const [bio, setBio] = useState('')
   const [company, setCompany] = useState('')
   const [roleTitle, setRoleTitle] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [bioFocused, setBioFocused] = useState(false)
-
-  // Search states
   const [techSearch, setTechSearch] = useState('')
   const [activeStep, setActiveStep] = useState<'seniority' | 'domain' | 'tech' | 'review'>('seniority')
 
@@ -42,27 +40,42 @@ export function OnboardingScreen() {
     api.getDomains().then(setDomainOptions)
   }, [])
 
-  // Load tech stacks when domain is selected
-  useEffect(() => {
-    if (!selectedDomain) { setTechStackOptions([]); return }
-    api.getTechStacks(undefined, selectedDomain.id).then(setTechStackOptions)
-    setSelectedTechStack([])
-  }, [selectedDomain])
+  const toggleDomain = (domain: DomainResponse) => {
+    setSelectedDomains(prev => {
+      const isSelected = prev.some(d => d.id === domain.id)
+      if (isSelected) {
+        // Remove domain and deselect its tech stacks
+        const remaining = prev.filter(d => d.id !== domain.id)
+        const removedStacks = (techStackByDomain[domain.id] ?? []).map(t => t.name)
+        setSelectedTechStack(s => s.filter(t => !removedStacks.includes(t)))
+        return remaining
+      }
+      return [...prev, domain]
+    })
+  }
 
-  const filteredTechStack = techStackOptions.filter(t =>
-    t.label.toLowerCase().includes(techSearch.toLowerCase())
-  )
+  // Load tech stacks for any newly selected domains not yet fetched
+  const goToTech = async () => {
+    const unfetched = selectedDomains.filter(d => !techStackByDomain[d.id])
+    if (unfetched.length > 0) {
+      const results = await Promise.all(unfetched.map(d => api.getTechStacks(undefined, d.id)))
+      setTechStackByDomain(prev => {
+        const next = { ...prev }
+        unfetched.forEach((d, i) => { next[d.id] = results[i] })
+        return next
+      })
+    }
+    setActiveStep('tech')
+  }
 
   const toggleTechStack = (name: string) => {
-    if (selectedTechStack.includes(name)) {
-      setSelectedTechStack(selectedTechStack.filter((t) => t !== name))
-    } else if (selectedTechStack.length < 6) {
-      setSelectedTechStack([...selectedTechStack, name])
-    }
+    setSelectedTechStack(prev =>
+      prev.includes(name) ? prev.filter(t => t !== name) : [...prev, name]
+    )
   }
 
   const handleComplete = async () => {
-    if (!selectedSeniority || !selectedDomain) return
+    if (!selectedSeniority || selectedDomains.length === 0) return
     if (selectedTechStack.length === 0) {
       toast.error('Please select at least one technology.')
       setActiveStep('tech')
@@ -72,7 +85,7 @@ export function OnboardingScreen() {
     try {
       await api.saveOnboardingData({
         seniority: selectedSeniority.name,
-        domain: selectedDomain.name,
+        domains: selectedDomains.map(d => d.name),
         techStack: selectedTechStack,
         bio: bio.trim() || null,
         company: company.trim() || null,
@@ -87,10 +100,10 @@ export function OnboardingScreen() {
   }
 
   const steps = [
-    { id: 'seniority', label: 'Seniority', completed: !!selectedSeniority },
-    { id: 'domain', label: 'Domain', completed: !!selectedDomain },
-    { id: 'tech', label: 'Tech Stack', completed: selectedTechStack.length > 0 },
-    { id: 'review', label: 'Review', completed: true },
+    { id: 'seniority', completed: !!selectedSeniority },
+    { id: 'domain', completed: selectedDomains.length > 0 },
+    { id: 'tech', completed: selectedTechStack.length > 0 },
+    { id: 'review', completed: true },
   ]
 
   const currentStepIndex = steps.findIndex(s => s.id === activeStep)
@@ -98,6 +111,14 @@ export function OnboardingScreen() {
 
   const wordCount = bio.trim() ? bio.trim().split(/\s+/).length : 0
   const initials = ((getMeCache()?.displayName?.[0] ?? '') + ('')).toUpperCase() || '?'
+
+  // Flatten all tech stacks for selected domains, filtered by search
+  const allTechStacks = selectedDomains.flatMap(d =>
+    (techStackByDomain[d.id] ?? []).map(t => ({ ...t, domainId: d.id, domainLabel: d.label }))
+  )
+  const filteredTechStacks = techSearch.trim()
+    ? allTechStacks.filter(t => t.label.toLowerCase().includes(techSearch.toLowerCase()))
+    : null // null = show grouped
 
   return (
     <PhoneFrame>
@@ -112,9 +133,12 @@ export function OnboardingScreen() {
 
       {/* Progress bar */}
       <div className="px-5 pt-[13px] pb-[9px] flex-shrink-0">
-        <div className="flex justify-between mb-2">
-          <span className="font-mono text-[10px] tracking-[0.08em] text-[var(--t2)]">SETUP_PROFILE</span>
-          <span className="font-mono text-[10px] tracking-[0.08em] text-[var(--t2)]">STEP_{currentStepIndex + 1} / 4</span>
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center gap-2.5">
+            <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
+            <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">SETUP PROFILE</span>
+          </div>
+          <span className="font-mono text-[10px] text-[var(--t2)]">{currentStepIndex + 1} / 4</span>
         </div>
         <div className="h-0.5 bg-[var(--border-m)] rounded-sm overflow-hidden">
           <div
@@ -136,7 +160,7 @@ export function OnboardingScreen() {
                 <span className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
                 <span className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
               </div>
-              <span className="font-mono text-[10px] text-[var(--t3)] tracking-[0.08em] ml-1">~/user.profile.init</span>
+              <span className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] ml-1">~/user.profile.init</span>
             </div>
 
             {/* Author line */}
@@ -153,24 +177,23 @@ export function OnboardingScreen() {
                 <div className="font-mono text-[12px] font-bold text-[var(--t1)] truncate">
                   {getMeCache()?.displayName ?? 'Developer'}
                 </div>
-
-                <div className="flex items-center gap-1 mt-1 min-w-0 overflow-hidden">
+                <div className="flex items-center gap-1.5 mt-1.5 min-w-0 overflow-hidden">
                   <input
                     value={roleTitle}
                     onChange={(e) => setRoleTitle(e.target.value)}
                     placeholder="Sr. Engineer"
                     maxLength={40}
                     style={{ width: `${Math.max(roleTitle.length, 'Sr. Engineer'.length) + 1}ch` }}
-                    className="font-mono text-[11px] text-[var(--purple)] bg-transparent outline-none placeholder:text-[var(--border-h)] border-b border-dashed border-[var(--border-m)] focus:border-[var(--purple)] transition-[width,border-color] min-w-0 flex-shrink-0"
+                    className="font-mono text-xs font-medium text-[var(--accent)] bg-transparent outline-none placeholder:text-[var(--t3)] border-b border-dashed border-[var(--border-h)] focus:border-solid focus:border-[var(--accent)] transition-all min-w-0 flex-shrink-0"
                   />
-                  <span className="font-mono text-[11px] text-[var(--t3)] flex-shrink-0">@</span>
+                  <span className="font-mono text-[10px] font-bold text-[var(--t2)] flex-shrink-0 px-0.5 opacity-60">@</span>
                   <input
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
                     placeholder="your-company.io"
                     maxLength={50}
                     style={{ width: `${Math.max(company.length, 'your-company.io'.length) + 1}ch` }}
-                    className="font-mono text-[11px] text-[var(--cyan)] bg-transparent outline-none placeholder:text-[var(--border-h)] border-b border-dashed border-[var(--border-m)] focus:border-[var(--cyan)] transition-[width,border-color] min-w-0 flex-shrink-0"
+                    className="font-mono text-xs font-medium text-[var(--green)] bg-transparent outline-none placeholder:text-[var(--t3)] border-b border-dashed border-[var(--border-h)] focus:border-solid focus:border-[var(--green)] transition-all min-w-0 flex-shrink-0"
                   />
                 </div>
               </div>
@@ -180,12 +203,11 @@ export function OnboardingScreen() {
             <div className="flex">
               <div className="flex flex-col pt-3 pb-3 pl-3 pr-2 border-r border-[var(--border)] bg-[rgba(255,255,255,0.01)] select-none gap-0">
                 {Array.from({ length: 5 }, (_, i) => (
-                  <span key={i} className="font-mono text-[9px] text-[var(--border-h)] leading-[18px]">
+                  <span key={i} className="font-mono text-[9px] text-[var(--t3)] leading-[18px]">
                     {String(i + 1).padStart(2, '0')}
                   </span>
                 ))}
               </div>
-
               <div className="flex-1 relative">
                 <textarea
                   ref={textareaRef}
@@ -196,7 +218,7 @@ export function OnboardingScreen() {
                   maxLength={280}
                   rows={5}
                   placeholder={`Building things that matter.\nOpen source contributor.\nCoffee → code → repeat.`}
-                  className={`w-full bg-transparent px-3 pt-3 pb-3 font-mono text-[11px] text-[var(--t1)] placeholder:text-[var(--border-h)] resize-none outline-none leading-[18px] transition-colors`}
+                  className="w-full bg-transparent px-3 pt-3 pb-3 font-mono text-[11px] text-[var(--t1)] placeholder:text-[var(--t2)] resize-none outline-none leading-[18px] transition-colors"
                 />
                 {bioFocused && (
                   <div className="absolute inset-x-0 top-3 h-[18px] bg-[rgba(59,130,246,0.04)] pointer-events-none" />
@@ -205,15 +227,13 @@ export function OnboardingScreen() {
             </div>
 
             <div className={`flex items-center justify-between px-4 py-2 border-t border-[var(--border)] bg-[rgba(255,255,255,0.01)] transition-colors ${bioFocused ? 'border-[rgba(59,130,246,0.3)]' : ''}`}>
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[9px] text-[var(--t3)]">
-                  {bio.length === 0
-                    ? <span className="text-[var(--t3)]">// commit message</span>
-                    : <span className="text-[var(--green)]">✓ {wordCount} word{wordCount !== 1 ? 's' : ''}</span>
-                  }
-                </span>
-              </div>
-              <span className={`font-mono text-[9px] ${bio.length > 250 ? 'text-[var(--red)]' : 'text-[var(--t3)]'}`}>
+              <span className="font-mono text-xs text-[var(--t2)]">
+                {bio.length === 0
+                  ? <span className="text-[var(--t2)]">// commit message</span>
+                  : <span className="text-[var(--accent)]">✓ {wordCount} word{wordCount !== 1 ? 's' : ''}</span>
+                }
+              </span>
+              <span className={`font-mono text-[10px] ${bio.length > 250 ? 'text-[var(--red)]' : 'text-[var(--t2)]'}`}>
                 {bio.length}/280
               </span>
             </div>
@@ -222,7 +242,10 @@ export function OnboardingScreen() {
           {/* ── STEP: SENIORITY ── */}
           {activeStep === 'seniority' && (
             <div className="space-y-4">
-              <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)]">// SELECT_SENIORITY</div>
+              <div className="flex items-center gap-2.5">
+                <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">SENIORITY</span>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 {seniorityOptions.map((level) => (
                   <button
@@ -230,8 +253,8 @@ export function OnboardingScreen() {
                     onClick={() => { setSelectedSeniority(level); setActiveStep('domain') }}
                     className={`py-3 px-4 rounded-lg border font-mono text-[11px] tracking-[0.05em] transition-all flex items-center gap-2 ${
                       selectedSeniority?.id === level.id
-                        ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.15)]'
-                        : 'border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] hover:border-[var(--border-h)]'
+                        ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.2)]'
+                        : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
                     }`}
                   >
                     <span>{level.icon}</span>{level.label}
@@ -244,70 +267,115 @@ export function OnboardingScreen() {
           {/* ── STEP: DOMAIN ── */}
           {activeStep === 'domain' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <button onClick={() => setActiveStep('seniority')} className="text-[var(--accent)] hover:text-[var(--cyan)]">
-                  ←
-                </button>
-                <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)]">// SELECT_DOMAIN</div>
+              <div className="flex items-center gap-2.5">
+                <button onClick={() => setActiveStep('seniority')} className="text-[var(--accent)] hover:text-[var(--t1)] leading-none">←</button>
+                <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">DOMAIN</span>
+                {selectedDomains.length > 0 && (
+                  <span className="ml-auto font-mono text-[10px] text-[var(--accent)]">{selectedDomains.length} selected</span>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {domainOptions.map((domain) => (
-                  <button
-                    key={domain.id}
-                    onClick={() => { setSelectedDomain(domain); setActiveStep('tech') }}
-                    className={`py-3 px-4 rounded-lg border font-mono text-[11px] tracking-[0.05em] transition-all flex items-center gap-2 ${
-                      selectedDomain?.id === domain.id
-                        ? 'border-[var(--cyan)] bg-[rgba(34,211,238,0.08)] text-[var(--cyan)] shadow-[0_0_16px_rgba(34,211,238,0.12)]'
-                        : 'border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] hover:border-[var(--border-h)]'
-                    }`}
-                  >
-                    <span>{domain.icon}</span>{domain.label}
-                  </button>
-                ))}
+                {domainOptions.map((domain) => {
+                  const isSelected = selectedDomains.some(d => d.id === domain.id)
+                  return (
+                    <button
+                      key={domain.id}
+                      onClick={() => toggleDomain(domain)}
+                      className={`py-3 px-4 rounded-lg border font-mono text-[11px] tracking-[0.05em] transition-all flex items-center gap-2 ${
+                        isSelected
+                          ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.2)]'
+                          : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
+                      }`}
+                    >
+                      <span>{domain.icon}</span>
+                      <span className="flex-1 text-left">{domain.label}</span>
+                      {isSelected && <span className="text-[var(--accent)] text-[10px]">✓</span>}
+                    </button>
+                  )
+                })}
               </div>
+              <button
+                onClick={goToTech}
+                disabled={selectedDomains.length === 0}
+                className="w-full py-2.5 px-4 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg font-mono text-[11px] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {selectedDomains.length === 0 ? 'Select at least 1 domain' : `Continue with ${selectedDomains.length} domain${selectedDomains.length > 1 ? 's' : ''} →`}
+              </button>
             </div>
           )}
 
           {/* ── STEP: TECH STACK ── */}
-          {activeStep === 'tech' && selectedDomain && (
+          {activeStep === 'tech' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <button onClick={() => setActiveStep('domain')} className="text-[var(--accent)] hover:text-[var(--cyan)]">
-                  ←
-                </button>
-                <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)]">// SELECT_TECH_STACK</div>
+              <div className="flex items-center gap-2.5">
+                <button onClick={() => setActiveStep('domain')} className="text-[var(--accent)] hover:text-[var(--cyan)] leading-none">←</button>
+                <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">TECH STACK</span>
+                {selectedTechStack.length > 0 && (
+                  <span className="ml-auto font-mono text-[10px] text-[var(--accent)]">{selectedTechStack.length} selected</span>
+                )}
               </div>
-              <div className="font-mono text-[10px] text-[var(--t3)]">{selectedTechStack.length}/6 selected</div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={techSearch}
-                  onChange={(e) => setTechSearch(e.target.value)}
-                  placeholder="Search technologies..."
-                  className="w-full px-4 py-3 rounded-lg border border-[var(--border-m)] bg-[var(--bg-el)] font-mono text-[12px] text-[var(--t1)] outline-none focus:border-[var(--green)] transition-colors"
-                />
+
+              <input
+                type="text"
+                value={techSearch}
+                onChange={(e) => setTechSearch(e.target.value)}
+                placeholder="Search across all domains..."
+                className="w-full px-4 py-2.5 rounded-lg border border-[var(--border-m)] bg-[var(--bg-el)] font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none focus:border-[var(--accent)] transition-colors"
+              />
+
+              <div className="flex flex-col gap-5 max-h-72 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[var(--border-m)]">
+                {filteredTechStacks
+                  ? /* search mode — flat list */
+                    <div className="flex flex-wrap gap-2">
+                      {filteredTechStacks.map((tech) => (
+                        <button
+                          key={tech.id}
+                          onClick={() => toggleTechStack(tech.name)}
+                          className={`py-1.5 px-3 rounded-lg border font-mono text-[11px] transition-all inline-flex items-center gap-1.5 whitespace-nowrap ${
+                            selectedTechStack.includes(tech.name)
+                              ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.2)]'
+                              : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
+                          }`}
+                        >
+                          {tech.label}
+                          {selectedTechStack.includes(tech.name) && <span className="text-[10px]">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  : /* grouped by domain */
+                    selectedDomains.map((domain) => (
+                      <div key={domain.id}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm">{domain.icon}</span>
+                          <span className="font-mono text-[10px] font-bold text-[var(--t2)] tracking-[0.06em] uppercase">{domain.label}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(techStackByDomain[domain.id] ?? []).map((tech) => (
+                            <button
+                              key={tech.id}
+                              onClick={() => toggleTechStack(tech.name)}
+                              className={`py-1.5 px-3 rounded-lg border font-mono text-[11px] transition-all inline-flex items-center gap-1.5 whitespace-nowrap ${
+                                selectedTechStack.includes(tech.name)
+                                  ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.2)]'
+                                  : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
+                              }`}
+                            >
+                              {tech.label}
+                              {selectedTechStack.includes(tech.name) && <span className="text-[10px]">✓</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                }
               </div>
-              <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto">
-                {filteredTechStack.map((tech) => (
-                  <button
-                    key={tech.id}
-                    onClick={() => toggleTechStack(tech.name)}
-                    disabled={!selectedTechStack.includes(tech.name) && selectedTechStack.length >= 6}
-                    className={`py-2 px-3 rounded-lg border font-mono text-[11px] transition-all inline-flex items-center gap-2 whitespace-nowrap ${
-                      selectedTechStack.includes(tech.name)
-                        ? 'border-[var(--green)] bg-[var(--green-d)] text-[var(--green)]'
-                        : 'border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] hover:border-[var(--border-h)] disabled:opacity-40 disabled:cursor-not-allowed'
-                    }`}
-                  >
-                    {tech.label}
-                    {selectedTechStack.includes(tech.name) && <span>✓</span>}
-                  </button>
-                ))}
-              </div>
+
               <button
                 onClick={() => setActiveStep('review')}
                 disabled={selectedTechStack.length === 0}
-                className="w-full py-2 mt-4 px-4 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg font-mono text-[11px] text-[var(--t2)] hover:bg-[var(--bg)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full py-2.5 px-4 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg font-mono text-[11px] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {selectedTechStack.length === 0 ? 'Select at least 1 technology' : 'Continue →'}
               </button>
@@ -317,31 +385,43 @@ export function OnboardingScreen() {
           {/* ── STEP: REVIEW ── */}
           {activeStep === 'review' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <button onClick={() => setActiveStep('tech')} className="text-[var(--accent)] hover:text-[var(--cyan)]">
-                  ←
-                </button>
-                <div className="font-mono text-[11px] tracking-[0.1em] text-[var(--t3)]">// REVIEW</div>
+              <div className="flex items-center gap-2.5">
+                <button onClick={() => setActiveStep('tech')} className="text-[var(--accent)] hover:text-[var(--cyan)] leading-none">←</button>
+                <span className="w-[3px] h-4 rounded-full bg-[var(--purple)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">REVIEW</span>
               </div>
 
-              <div className="space-y-3 p-4 rounded-lg border border-[var(--border-m)] bg-[var(--bg-el)]">
+              <div className="space-y-4 p-4 rounded-xl border border-[var(--border-m)] bg-[var(--bg-el)]">
                 <div>
-                  <div className="font-mono text-[10px] text-[var(--t3)] mb-1">Seniority</div>
-                  <div className="font-mono text-[12px] text-[var(--accent)] flex items-center gap-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                    <span className="font-mono text-[11px] font-bold text-[var(--t1)] tracking-[0.05em]">SENIORITY</span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 py-2 px-3 rounded-lg border border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] font-mono text-[11px]">
                     <span>{selectedSeniority?.icon}</span>{selectedSeniority?.label}
                   </div>
                 </div>
                 <div>
-                  <div className="font-mono text-[10px] text-[var(--t3)] mb-1">Domain</div>
-                  <div className="font-mono text-[12px] text-[var(--cyan)] flex items-center gap-2">
-                    <span>{selectedDomain?.icon}</span>{selectedDomain?.label}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                    <span className="font-mono text-[11px] font-bold text-[var(--t1)] tracking-[0.05em]">DOMAINS</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedDomains.map(d => (
+                      <span key={d.id} className="inline-flex items-center gap-1.5 py-2 px-3 rounded-lg border border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] font-mono text-[11px]">
+                        <span>{d.icon}</span>{d.label}
+                      </span>
+                    ))}
                   </div>
                 </div>
                 <div>
-                  <div className="font-mono text-[10px] text-[var(--t3)] mb-1">Tech Stack</div>
-                  <div className="flex flex-wrap gap-2 mt-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                    <span className="font-mono text-[11px] font-bold text-[var(--t1)] tracking-[0.05em]">TECH STACK</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                     {selectedTechStack.map(tech => (
-                      <span key={tech} className="px-2 py-1 rounded bg-[var(--green-d)] text-[var(--green)] font-mono text-[10px]">
+                      <span key={tech} className="py-1.5 px-3 rounded-lg border border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] font-mono text-[11px]">
                         {tech}
                       </span>
                     ))}

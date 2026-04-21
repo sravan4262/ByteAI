@@ -33,6 +33,18 @@ public static class SupabaseJwtExtensions
         var hs256Key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));
         var metadataAddress = $"{supabaseUrl.TrimEnd('/')}/auth/v1/.well-known/openid-configuration";
 
+        // Inside Docker, OIDC discovery returns 127.0.0.1 URIs (the public URL),
+        // but 127.0.0.1 inside a container is the container loopback, not the host.
+        // If PublicUrl differs from Url, rewrite backchannel requests so JWKS fetches
+        // are redirected to the internal host address (host.docker.internal).
+        var publicUrl = config["Supabase:PublicUrl"];
+        HttpClientHandler? backchannelHandler = null;
+        if (!string.IsNullOrWhiteSpace(publicUrl) &&
+            !publicUrl.TrimEnd('/').Equals(supabaseUrl?.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            backchannelHandler = new UrlRewritingHandler(publicUrl.TrimEnd('/'), supabaseUrl!.TrimEnd('/'));
+        }
+
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -41,6 +53,8 @@ public static class SupabaseJwtExtensions
                 options.MetadataAddress = metadataAddress;
                 options.RequireHttpsMetadata = false;
                 options.MapInboundClaims = false;
+                if (backchannelHandler is not null)
+                    options.BackchannelHttpHandler = backchannelHandler;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -62,4 +76,20 @@ public static class SupabaseJwtExtensions
     /// <summary>Extracts the Supabase user ID (auth.users.id) from the JWT sub claim.</summary>
     public static string? GetSupabaseUserId(this HttpContext ctx) =>
         ctx.User.FindFirst("sub")?.Value;
+}
+
+/// <summary>
+/// Rewrites backchannel HTTP requests from one base URL to another.
+/// Used so JWKS fetches work inside Docker where the OIDC discovery doc
+/// returns 127.0.0.1 URIs that are unreachable from within a container.
+/// </summary>
+file sealed class UrlRewritingHandler(string from, string to) : HttpClientHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        var uri = request.RequestUri?.ToString();
+        if (uri is not null && uri.StartsWith(from, StringComparison.OrdinalIgnoreCase))
+            request.RequestUri = new Uri(to + uri[from.Length..]);
+        return base.SendAsync(request, ct);
+    }
 }

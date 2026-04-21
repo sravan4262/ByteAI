@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { X, ChevronDown, AlertTriangle, Plus, Trash2 } from 'lucide-react'
+import { X, AlertTriangle, Plus, Zap, Briefcase } from 'lucide-react'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { CreatableDropdown } from '@/components/ui/creatable-dropdown'
 import { MultiSelectDropdown, type DropdownOption } from '@/components/ui/multi-select-dropdown'
@@ -14,7 +14,7 @@ import { ApiError } from '@/lib/api/http'
 import * as api from '@/lib/api'
 import { useFeatureFlag } from '@/hooks/use-feature-flags'
 
-type ComposeType = 'byte' | 'interview'
+type ComposeType = 'byte' | 'interview' | null
 
 interface QuestionPair {
   id: string
@@ -25,10 +25,20 @@ interface QuestionPair {
 export function ComposeScreen() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [composeType, setComposeType] = useState<ComposeType>(
-    searchParams.get('type') === 'interview' ? 'interview' : 'byte'
-  )
-  const [showTypeDropdown, setShowTypeDropdown] = useState(false)
+  const [composeType, setComposeType] = useState<ComposeType>(() => {
+    const t = searchParams.get('type')
+    if (t === 'byte') return 'byte'
+    if (t === 'interview') return 'interview'
+    return null
+  })
+
+  // Sync state with URL so browser back/forward works
+  useEffect(() => {
+    const t = searchParams.get('type')
+    if (t === 'byte') setComposeType('byte')
+    else if (t === 'interview') setComposeType('interview')
+    else setComposeType(null)
+  }, [searchParams])
 
   // ── Byte state ──────────────────────────────────────────────────────────────
   const [title, setTitle] = useState('')
@@ -57,6 +67,7 @@ export function ComposeScreen() {
   ])
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [isInterviewLoading, setIsInterviewLoading] = useState(false)
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null)
 
   // ── Load draft from URL ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -193,25 +204,22 @@ export function ComposeScreen() {
   }
 
   const handlePostInterview = async () => {
-    if (!role.trim() && !company.trim()) {
-      toast.error('At least a role or company is required')
-      return
-    }
+    if (!company.trim()) { toast.error('Company is required'); return }
+    if (!role.trim()) { toast.error('Role is required'); return }
+    if (!location.trim()) { toast.error('Location is required'); return }
     const validQuestions = questions.filter((q) => q.question.trim() && q.answer.trim())
     if (validQuestions.length === 0) {
       toast.error('At least one complete Q&A pair is required')
       return
     }
-    // Auto-generate title from role + company
-    const autoTitle = [role.trim(), company.trim() ? `@ ${company.trim()}` : '']
-      .filter(Boolean).join(' ')
+    const autoTitle = [role.trim(), `@ ${company.trim()}`].join(' ')
     setIsInterviewLoading(true)
     try {
       await api.createInterviewWithQuestions({
         title: autoTitle,
-        company: company.trim() || undefined,
-        role: role.trim() || undefined,
-        location: location.trim() || undefined,
+        company: company.trim(),
+        role: role.trim(),
+        location: location.trim(),
         questions: validQuestions.map((q) => ({ question: q.question.trim(), answer: q.answer.trim() })),
         isAnonymous,
       })
@@ -224,46 +232,109 @@ export function ComposeScreen() {
     }
   }
 
-  return (
-    <PhoneFrame>
-      {/* Header — always visible with type switcher */}
-      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
-        <ByteAILogo size="sm" showText={false} />
-        <div className="flex items-center gap-3">
-          {/* Type selector */}
-          <div className="relative">
-            <button
-              onClick={() => setShowTypeDropdown((o) => !o)}
-              className="flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-lg border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] hover:border-[var(--border-h)] hover:text-[var(--t1)] transition-all"
-            >
-              {composeType === 'byte' ? 'NEW BYTE' : 'NEW INTERVIEW'}
-              <ChevronDown size={10} className={`transition-transform ${showTypeDropdown ? 'rotate-180' : ''}`} />
-            </button>
-            {showTypeDropdown && (
-              <div className="absolute top-full right-0 mt-1 z-50 w-44 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
-                {(['byte', 'interview'] as const).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => { setComposeType(type); setShowTypeDropdown(false) }}
-                    className={`w-full text-left font-mono text-[10px] px-4 py-2.5 transition-all ${
-                      composeType === type
-                        ? 'text-[var(--accent)] bg-[var(--accent-d)]'
-                        : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-white/5'
-                    }`}
-                  >
-                    {type === 'byte' ? '✦ NEW BYTE' : '🎯 NEW INTERVIEW'}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+  // ── Selection landing ──────────────────────────────────────────────────────
+  if (composeType === null) {
+    return (
+      <PhoneFrame>
+        <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border-h)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
+          <ByteAILogo size="sm" showText={false} />
           <button
-            onClick={() => router.push('/feed')}
+            onClick={() => router.back()}
             className="w-8 h-8 flex items-center justify-center text-[var(--t2)] transition-all hover:text-[var(--t1)]"
           >
             <X size={16} />
           </button>
+        </header>
+
+        <div className="flex-1 flex flex-col px-5 pt-6 pb-5 gap-6">
+          <div>
+            <h1 className="text-2xl font-extrabold text-[var(--t1)]">New Post</h1>
+            <p className="text-sm text-[var(--t1)] mt-1">What are you sharing today?</p>
+          </div>
+
+          {/* Byte card */}
+          <button
+            onClick={() => router.push('/compose?type=byte')}
+            className="w-full text-left rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden transition-all hover:border-[rgba(59,130,246,0.6)] hover:shadow-[0_0_20px_rgba(59,130,246,0.1)] group"
+          >
+            <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+            <div className="p-5 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] flex items-center justify-center flex-shrink-0">
+                  <Zap size={18} className="text-[var(--accent)]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)]" />
+                    <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">NEW BYTE</span>
+                  </div>
+                  <p className="text-xs text-[var(--t1)] mt-0.5">Share a technique, pattern, or lesson learned</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {['up to 300 chars', 'code snippets', 'tech tags'].map((hint) => (
+                  <span key={hint} className="font-mono text-[10px] px-2.5 py-1 rounded-lg border border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.08)] text-[var(--accent)]">
+                    {hint}
+                  </span>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <span className="font-mono text-xs font-bold tracking-[0.08em] text-[var(--accent)] bg-[rgba(59,130,246,0.22)] border border-[rgba(59,130,246,0.6)] shadow-[0_0_10px_rgba(59,130,246,0.18)] px-5 py-2.5 rounded-lg group-hover:shadow-[0_0_18px_rgba(59,130,246,0.3)] group-hover:-translate-y-0.5 transition-all">
+                  START BYTE →
+                </span>
+              </div>
+            </div>
+          </button>
+
+          {/* Interview card */}
+          <button
+            onClick={() => router.push('/compose?type=interview')}
+            className="w-full text-left rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden transition-all hover:border-[rgba(167,139,250,0.5)] hover:shadow-[0_0_20px_rgba(167,139,250,0.08)] group"
+          >
+            <div className="h-px bg-gradient-to-r from-[var(--purple)] via-[rgba(167,139,250,0.3)] to-transparent" />
+            <div className="p-5 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-[rgba(167,139,250,0.08)] border border-[rgba(167,139,250,0.2)] flex items-center justify-center flex-shrink-0">
+                  <Briefcase size={18} className="text-[var(--purple)]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)]" />
+                    <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">NEW INTERVIEW</span>
+                  </div>
+                  <p className="text-xs text-[var(--t1)] mt-0.5">Share real interview Q&amp;A with the community</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {['company & role', 'Q&A pairs', 'anonymous option'].map((hint) => (
+                  <span key={hint} className="font-mono text-[10px] px-2.5 py-1 rounded-lg border border-[rgba(167,139,250,0.35)] bg-[rgba(167,139,250,0.08)] text-[var(--purple)]">
+                    {hint}
+                  </span>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <span className="font-mono text-xs font-bold tracking-[0.08em] text-[var(--purple)] bg-[rgba(167,139,250,0.15)] border border-[rgba(167,139,250,0.5)] shadow-[0_0_10px_rgba(167,139,250,0.15)] px-5 py-2.5 rounded-lg group-hover:shadow-[0_0_18px_rgba(167,139,250,0.3)] group-hover:-translate-y-0.5 transition-all">
+                  START INTERVIEW →
+                </span>
+              </div>
+            </div>
+          </button>
         </div>
+      </PhoneFrame>
+    )
+  }
+
+  return (
+    <PhoneFrame>
+      {/* Header */}
+      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border-h)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
+        <ByteAILogo size="sm" showText={false} />
+        <button
+          onClick={() => router.push('/compose')}
+          className="w-8 h-8 flex items-center justify-center text-[var(--t2)] transition-all hover:text-[var(--t1)]"
+        >
+          <X size={16} />
+        </button>
       </header>
 
       {/* Scrollable content */}
@@ -272,25 +343,31 @@ export function ComposeScreen() {
           <div className="px-5 py-5 flex flex-col gap-5">
             <div>
               <h1 className="text-2xl font-extrabold">New Byte</h1>
-              <p className="font-mono text-xs text-[var(--t2)] mt-1">// Share your insight to 8,400+ AI devs</p>
+              <p className="font-mono text-[10px] md:text-xs tracking-[0.08em] text-[var(--t1)] mt-0.5">Share your insight with others</p>
             </div>
 
             {/* Title input */}
             <div>
-              <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--t3)]">// TITLE</span>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)]" />
+                <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">TITLE <span className="text-[var(--red)]">*</span></span>
+              </div>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value.slice(0, 120))}
                 placeholder="Give your byte a clear title..."
-                className="w-full mt-2 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-4 py-3 font-mono text-sm text-[var(--t1)] outline-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)]"
+                className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-xl px-4 py-3 text-sm text-[var(--t1)] outline-none transition-all placeholder:text-[var(--t2)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)]"
               />
             </div>
 
             {/* Content textarea */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--t3)]">// CONTENT_BUFFER</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)]" />
+                  <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">CONTENT <span className="text-[var(--red)]">*</span></span>
+                </div>
                 <span className={`font-mono text-[10px] tracking-[0.1em] ${content.length >= 280 ? 'text-[var(--red)]' : 'text-[var(--accent)]'}`}>
                   {content.length} / 300
                 </span>
@@ -299,24 +376,17 @@ export function ComposeScreen() {
                 value={content}
                 onChange={(e) => setContent(e.target.value.slice(0, 300))}
                 placeholder="Share a technique, pattern, or lesson learned..."
-                className="w-full h-36 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-4 py-3 font-mono text-sm text-[var(--t1)] outline-none resize-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)]"
+                className="w-full h-36 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-xl px-4 py-3 text-sm text-[var(--t1)] outline-none resize-none transition-all placeholder:text-[var(--t2)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)]"
               />
             </div>
-
-            {/* Code snippet */}
-            <CodeEditor
-              value={codeContent}
-              language={selectedLanguage}
-              onChange={setCodeContent}
-              onLanguageChange={setSelectedLanguage}
-            />
 
             {/* Tech stack */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--t3)]">
-                  // TECH_STACK <span className="text-[var(--red)]">*</span>
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)]" />
+                  <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">TECH STACK <span className="text-[var(--red)]">*</span></span>
+                </div>
                 {selectedTechStacks.length > 0 && (
                   <span className="font-mono text-[10px] text-[var(--accent)]">{selectedTechStacks.length} selected</span>
                 )}
@@ -331,16 +401,27 @@ export function ComposeScreen() {
               />
             </div>
 
+            {/* Code snippet */}
+            <CodeEditor
+              value={codeContent}
+              language={selectedLanguage}
+              onChange={setCodeContent}
+              onLanguageChange={setSelectedLanguage}
+            />
+
             {/* Reach estimate */}
             {hasReachEstimate && (
-              <div className="bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-4 py-3 flex items-center justify-between">
+              <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-4 py-3 flex items-center justify-between">
                 <div>
-                  <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t3)]">// REACH_EST</div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)]" />
+                    <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">REACH EST</span>
+                  </div>
                   <div className="font-mono text-xl font-bold text-[var(--t1)] mt-1">
                     {reachEstimate.toLocaleString()} <span className="text-[var(--green)] text-base">↗</span>
                   </div>
                 </div>
-                <div className="font-mono text-[10px] text-[var(--t3)] text-right leading-relaxed">
+                <div className="font-mono text-[10px] text-[var(--t2)] text-right leading-relaxed">
                   devs who may<br />see this byte
                 </div>
               </div>
@@ -350,9 +431,7 @@ export function ComposeScreen() {
           <div className="px-5 py-5 flex flex-col gap-5">
             <div>
               <h1 className="text-xl font-extrabold">New Interview Byte</h1>
-              <p className="font-mono text-[9px] text-[var(--purple)] mt-1">
-                // Share interview Q&A with the community
-              </p>
+              <p className="font-mono text-[10px] md:text-xs tracking-[0.08em] text-[var(--t1)] mt-0.5">Share interview Q&A with the community</p>
             </div>
 
             {/* Anonymous toggle */}
@@ -372,7 +451,7 @@ export function ComposeScreen() {
                 <div className={`font-mono text-[10px] font-bold tracking-[0.1em] transition-colors ${isAnonymous ? 'text-[var(--purple)]' : 'text-[var(--t2)]'}`}>
                   {isAnonymous ? 'POSTING ANONYMOUSLY' : 'POST ANONYMOUSLY'}
                 </div>
-                <div className="font-mono text-[8px] text-[var(--t3)] mt-[3px] leading-relaxed">
+                <div className="font-mono text-[10px] text-[var(--t2)] mt-[3px] leading-relaxed">
                   {isAnonymous
                     ? 'Your identity is hidden — only the content is visible'
                     : 'Hide your identity — your name won\'t appear on this post'}
@@ -387,7 +466,10 @@ export function ComposeScreen() {
             {/* Company + Role */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// COMPANY</div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)] flex-shrink-0" />
+                  <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">COMPANY <span className="text-[var(--red)]">*</span></span>
+                </div>
                 <CreatableDropdown
                   options={companyOptions}
                   value={company}
@@ -397,7 +479,10 @@ export function ComposeScreen() {
                 />
               </div>
               <div>
-                <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// ROLE</div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)] flex-shrink-0" />
+                  <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">ROLE <span className="text-[var(--red)]">*</span></span>
+                </div>
                 <CreatableDropdown
                   options={roleOptions}
                   value={role}
@@ -410,7 +495,10 @@ export function ComposeScreen() {
 
             {/* Location */}
             <div>
-              <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">// LOCATION</div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)] flex-shrink-0" />
+                <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">LOCATION <span className="text-[var(--red)]">*</span></span>
+              </div>
               <CreatableDropdown
                 options={locationOptions}
                 value={location}
@@ -422,53 +510,81 @@ export function ComposeScreen() {
 
             {/* Questions */}
             <div>
-              <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-3">
-                // QUESTIONS ({questions.length})
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)] flex-shrink-0" />
+                <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">QUESTIONS ({questions.length})</span>
               </div>
 
               <div className="flex flex-col gap-4">
                 {questions.map((q, index) => (
                   <div
                     key={q.id}
-                    className="bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg overflow-hidden"
+                    className="bg-[var(--bg-card)] border border-[var(--border-h)] rounded-xl overflow-hidden"
                   >
+                    <div className="h-px bg-gradient-to-r from-[var(--purple)] via-[rgba(167,139,250,0.3)] to-transparent" />
                     {/* Question header */}
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] bg-[rgba(167,139,250,0.04)]">
-                      <span className="font-mono text-[9px] text-[var(--purple)] tracking-[0.08em]">
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border-h)] bg-[rgba(167,139,250,0.04)]">
+                      <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">
                         Q{index + 1}
                       </span>
                       {questions.length > 1 && (
-                        <button
-                          onClick={() => removeQuestion(q.id)}
-                          className="text-[var(--t3)] hover:text-[var(--red)] transition-all"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {confirmingRemoveId === q.id ? (
+                            <>
+                              <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.05em]">DELETE?</span>
+                              <button
+                                onClick={() => { removeQuestion(q.id); setConfirmingRemoveId(null) }}
+                                className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[rgba(244,63,94,0.4)] bg-[rgba(244,63,94,0.08)] text-[var(--red)] hover:border-[rgba(244,63,94,0.7)] hover:bg-[rgba(244,63,94,0.15)] transition-all"
+                              >
+                                YES
+                              </button>
+                              <button
+                                onClick={() => setConfirmingRemoveId(null)}
+                                className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)] transition-all"
+                              >
+                                NO
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmingRemoveId(q.id)}
+                              className="font-mono text-xs font-bold px-3 py-1.5 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(244,63,94,0.4)] hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--red)] transition-all tracking-[0.05em]"
+                            >
+                              rm
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
 
                     <div className="px-4 py-3 flex flex-col gap-3">
                       {/* Question */}
                       <div>
-                        <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-1.5">QUESTION</div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className="w-[3px] h-3 rounded-full bg-[var(--accent)]" />
+                          <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">QUESTION</span>
+                        </div>
                         <textarea
                           value={q.question}
                           onChange={(e) => updateQuestion(q.id, 'question', e.target.value)}
                           placeholder="What was the interview question?"
                           rows={2}
-                          className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[11px] text-[var(--t1)] outline-none resize-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--purple)] focus:shadow-[0_0_0_2px_rgba(167,139,250,0.1)]"
+                          className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-xl px-3 py-2 font-mono text-xs text-[var(--t1)] outline-none resize-none transition-all placeholder:text-[var(--t2)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_rgba(59,130,246,0.15)]"
                         />
                       </div>
 
                       {/* Answer */}
                       <div>
-                        <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-1.5">ANSWER</div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className="w-[3px] h-3 rounded-full bg-[var(--green)]" />
+                          <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">ANSWER</span>
+                        </div>
                         <textarea
                           value={q.answer}
                           onChange={(e) => updateQuestion(q.id, 'answer', e.target.value)}
                           placeholder="What was the ideal answer or your approach?"
                           rows={3}
-                          className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[11px] text-[var(--t1)] outline-none resize-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--green)] focus:shadow-[0_0_0_2px_rgba(16,217,160,0.1)]"
+                          className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-xl px-3 py-2 font-mono text-xs text-[var(--t1)] outline-none resize-none transition-all placeholder:text-[var(--t2)] focus:border-[var(--green)] focus:shadow-[0_0_0_2px_rgba(16,217,160,0.12)]"
                         />
                       </div>
                     </div>
@@ -479,7 +595,7 @@ export function ComposeScreen() {
               {/* Add question button */}
               <button
                 onClick={addQuestion}
-                className="mt-3 w-full flex items-center justify-center gap-2 py-3 border border-dashed border-[var(--border-m)] rounded-lg font-mono text-[10px] text-[var(--t2)] transition-all hover:border-[var(--purple)] hover:text-[var(--purple)]"
+                className="mt-3 w-full flex items-center justify-center gap-2 py-3 border border-[rgba(167,139,250,0.25)] bg-[rgba(167,139,250,0.03)] rounded-xl font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em] transition-all hover:border-[var(--purple)] hover:bg-[rgba(167,139,250,0.07)] hover:text-[var(--purple)]"
               >
                 <Plus size={12} /> ADD QUESTION
               </button>
@@ -500,7 +616,7 @@ export function ComposeScreen() {
       {/* ESC discard confirmation modal */}
       {showEscModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--bg-o80)] backdrop-blur-sm rounded-[inherit]">
-          <div className="w-[300px] bg-[var(--bg-card)] border border-[var(--border-m)] rounded-xl p-6 flex flex-col gap-4 shadow-[0_8px_40px_rgba(0,0,0,0.6)]">
+          <div className="w-[300px] bg-[var(--bg-card)] border border-[var(--border-h)] rounded-xl p-6 flex flex-col gap-4 shadow-[0_8px_40px_rgba(0,0,0,0.6)]">
             <div className="flex items-center gap-2.5">
               <AlertTriangle size={17} className="text-[var(--orange)] flex-shrink-0" />
               <span className="font-mono text-sm font-bold tracking-[0.07em] text-[var(--t1)]">DISCARD BYTE?</span>
@@ -511,13 +627,13 @@ export function ComposeScreen() {
             <div className="flex gap-2.5">
               <button
                 onClick={() => { setShowEscModal(false); setPostError(null) }}
-                className="flex-1 py-2.5 border border-[var(--border-m)] rounded-lg font-mono text-xs font-bold tracking-[0.07em] text-[var(--t2)] transition-all hover:border-[var(--border-h)] hover:text-[var(--t1)]"
+                className="flex-1 py-2.5 border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl font-mono text-xs font-bold tracking-[0.07em] text-[var(--t1)] transition-all hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]"
               >
                 KEEP EDITING
               </button>
               <button
                 onClick={handleDiscardAndLeave}
-                className="flex-1 py-2.5 bg-[var(--red)] rounded-lg font-mono text-xs font-bold tracking-[0.07em] text-white transition-all hover:opacity-90"
+                className="flex-1 py-2.5 bg-[var(--red)] rounded-xl font-mono text-xs font-bold tracking-[0.07em] text-white transition-all hover:opacity-90"
               >
                 DISCARD →
               </button>
@@ -528,34 +644,34 @@ export function ComposeScreen() {
 
       {/* Actions */}
       {composeType === 'byte' ? (
-        <div className="flex gap-3 px-5 py-4 border-t border-[var(--border)] flex-shrink-0">
+        <div className="flex gap-3 px-5 py-4 border-t border-[var(--border-h)] flex-shrink-0">
           <button
             onClick={handleSaveDraft}
             disabled={isSavingDraft || isLoading}
-            className="flex-1 py-[13px] border border-[var(--border-m)] rounded-lg font-mono text-xs font-bold tracking-[0.08em] text-[var(--t2)] transition-all hover:border-[var(--border-h)] hover:text-[var(--t1)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-[13px] border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl font-mono text-xs font-bold tracking-[0.08em] text-[var(--t1)] transition-all hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSavingDraft ? 'SAVING...' : draftId ? 'DRAFT ✓' : 'DRAFT'}
           </button>
           <button
             onClick={handlePostByte}
             disabled={!title.trim() || !content.trim() || selectedTechStacks.length === 0 || isLoading}
-            className="flex-1 py-[13px] bg-gradient-to-br from-[var(--accent)] to-[#1d4ed8] rounded-lg font-mono text-xs font-bold tracking-[0.1em] text-white shadow-[0_4px_24px_var(--accent-glow)] transition-all hover:shadow-[0_8px_36px_var(--accent-glow)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-[13px] rounded-xl font-mono text-[10px] font-bold tracking-[0.1em] text-[var(--accent)] bg-[rgba(59,130,246,0.22)] border border-[rgba(59,130,246,0.6)] shadow-[0_0_10px_rgba(59,130,246,0.18)] transition-all hover:border-[var(--accent)] hover:shadow-[0_0_14px_rgba(59,130,246,0.25)] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
             {isLoading ? 'POSTING...' : 'POST BYTE →'}
           </button>
         </div>
       ) : (
-        <div className="flex gap-3 px-5 py-4 border-t border-[var(--border)] flex-shrink-0">
+        <div className="flex gap-3 px-5 py-4 border-t border-[var(--border-h)] flex-shrink-0">
           <button
-            onClick={() => setComposeType('byte')}
-            className="flex-1 py-[13px] border border-[var(--border-m)] rounded-lg font-mono text-[10px] font-bold tracking-[0.08em] text-[var(--t2)] transition-all hover:border-[var(--border-h)] hover:text-[var(--t1)]"
+            onClick={() => router.push('/compose')}
+            className="flex-1 py-[13px] border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl font-mono text-[10px] font-bold tracking-[0.08em] text-[var(--t1)] transition-all hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]"
           >
-            CANCEL
+            ← BACK
           </button>
           <button
             onClick={handlePostInterview}
-            disabled={(!role.trim() && !company.trim()) || isInterviewLoading}
-            className="flex-1 py-[13px] bg-gradient-to-br from-[var(--purple)] to-[#5b21b6] rounded-lg font-mono text-[10px] font-bold tracking-[0.1em] text-white shadow-[0_4px_24px_rgba(167,139,250,0.4)] transition-all hover:shadow-[0_8px_36px_rgba(167,139,250,0.5)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!company.trim() || !role.trim() || !location.trim() || isInterviewLoading}
+            className="flex-1 py-[13px] bg-gradient-to-br from-[var(--purple)] to-[#5b21b6] rounded-xl font-mono text-[10px] font-bold tracking-[0.1em] text-white shadow-[0_4px_24px_rgba(167,139,250,0.4)] transition-all hover:shadow-[0_8px_36px_rgba(167,139,250,0.5)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isInterviewLoading ? 'POSTING...' : 'POST INTERVIEW →'}
           </button>

@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
-import Link from 'next/link'
-import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -20,21 +18,12 @@ interface FeedScreenProps {
   contentType?: 'bytes' | 'interviews'
 }
 
-function parseTime(timeStr: string): number {
-  const num = parseInt(timeStr)
-  if (timeStr.includes('m')) return num
-  if (timeStr.includes('h')) return num * 60
-  if (timeStr.includes('d')) return num * 60 * 24
-  return 0
-}
 
 export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') ?? 'for_you')
-  const [sortBy, setSortBy] = useState(() => searchParams.get('sort') ?? 'relevant')
-  const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [activeStackFilter, setActiveStackFilter] = useState<string | null>(() => searchParams.get('stack'))
   const [rawPosts, setRawPosts] = useState<Post[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
@@ -129,17 +118,7 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
 
   const posts = useMemo(() => hydrateWithUserCache(rawPosts), [rawPosts, hydrateWithUserCache])
 
-  const filteredPosts = useMemo(() => {
-    let result = [...posts]
-    if (activeTab === 'for_you') {
-      if (sortBy === 'newest') {
-        result = [...result].sort((a, b) => parseTime(a.createdAt) - parseTime(b.createdAt))
-      } else if (sortBy === 'oldest') {
-        result = [...result].sort((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt))
-      }
-    }
-    return result
-  }, [activeTab, sortBy, posts])
+  const filteredPosts = useMemo(() => [...posts], [posts])
 
   useEffect(() => {
     if (filteredPosts.length === 0) return
@@ -185,10 +164,9 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
     }
   }
 
-  const updateUrl = useCallback((tab: string, sort: string, stack: string | null) => {
+  const updateUrl = useCallback((tab: string, stack: string | null) => {
     const params = new URLSearchParams()
     if (tab !== 'for_you') params.set('tab', tab)
-    if (sort !== 'relevant') params.set('sort', sort)
     if (stack) params.set('stack', stack)
     const qs = params.toString()
     router.replace(qs ? `?${qs}` : '?', { scroll: false })
@@ -197,7 +175,7 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
     setActiveStackFilter(null)
-    updateUrl(tabId, sortBy, null)
+    updateUrl(tabId, null)
   }
 
   const shouldTruncate = (post: Post) => {
@@ -211,17 +189,13 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
 
       <FeedFilters
         activeTab={activeTab}
-        sortBy={sortBy}
-        showSortDropdown={showSortDropdown}
         activeStackFilter={activeStackFilter}
         onTabChange={handleTabChange}
-        onSortChange={(sort) => { setSortBy(sort); setShowSortDropdown(false); updateUrl(activeTab, sort, activeStackFilter) }}
-        onToggleSortDropdown={() => setShowSortDropdown(!showSortDropdown)}
-        onStackFilter={(stack) => { setActiveStackFilter(stack); updateUrl(activeTab, sortBy, stack) }}
+        onStackFilter={(stack) => { setActiveStackFilter(stack); updateUrl(activeTab, stack) }}
       />
 
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
-        <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col gap-2 p-2">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center min-h-[400px]">
               <div className="font-mono text-xs text-[var(--t2)] animate-pulse">LOADING BYTES...</div>
@@ -266,12 +240,6 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
         </div>
       </div>
 
-      <Link
-        href="/compose"
-        className="fixed bottom-6 right-6 md:right-8 lg:right-12 z-10 w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-[var(--accent)] to-[#1d4ed8] flex items-center justify-center text-white shadow-[0_4px_20px_var(--accent-glow)] transition-all hover:scale-110 hover:shadow-[0_8px_36px_var(--accent-glow)]"
-      >
-        <Plus size={22} />
-      </Link>
     </>
   )
 }

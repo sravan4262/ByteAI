@@ -4,20 +4,10 @@ import { useEffect, useState } from 'react'
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
 import { getTechStacks, type TechStackResponse } from '@/lib/api/client'
 
-const sortOptions = [
-  { id: 'relevant', label: 'MOST RELEVANT' },
-  { id: 'newest',   label: 'NEWEST FIRST' },
-  { id: 'oldest',   label: 'OLDEST FIRST' },
-]
-
 interface FeedFiltersProps {
   activeTab: string
-  sortBy: string
-  showSortDropdown: boolean
   activeStackFilter: string | null
   onTabChange: (tab: string) => void
-  onSortChange: (sort: string) => void
-  onToggleSortDropdown: () => void
   onStackFilter: (stack: string | null) => void
 }
 
@@ -28,12 +18,8 @@ const TABS = [
 
 export function FeedFilters({
   activeTab,
-  sortBy,
-  showSortDropdown,
   activeStackFilter,
   onTabChange,
-  onSortChange,
-  onToggleSortDropdown,
   onStackFilter,
 }: FeedFiltersProps) {
   const [techOptions, setTechOptions] = useState<{ value: string; label: string }[]>([])
@@ -49,73 +35,44 @@ export function FeedFilters({
 
   return (
     <div className="flex-shrink-0 bg-[var(--bg-o80)] backdrop-blur-sm border-b border-[var(--border)] relative z-20">
-      <div className="max-w-7xl mx-auto">
+      <div>
         {/* Tabs row */}
-        <div className="flex items-center px-4 md:px-8 lg:px-12 xl:px-16">
+        <div className="flex items-center gap-2 px-4 py-3">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`font-mono text-[11px] md:text-xs lg:text-[13px] tracking-[0.07em] py-3 px-4 border-b-2 transition-all whitespace-nowrap ${
+              className={`font-mono text-[11px] md:text-xs tracking-[0.07em] py-1.5 px-4 rounded-lg border transition-all whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'text-[var(--accent)] border-[var(--accent)]'
-                  : 'text-[var(--t2)] border-transparent hover:text-[var(--t1)]'
+                  ? 'text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-d)] shadow-[0_0_12px_rgba(59,130,246,0.2)]'
+                  : 'text-[var(--t1)] border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
               }`}
             >
               {tab.label}
             </button>
           ))}
-
-          {/* Spacer */}
-          <div className="flex-1" />
-
-          {/* Sort dropdown (FOR_YOU only) */}
-          {activeTab === 'for_you' && (
-            <div className="relative flex items-center">
-              <button
-                onClick={onToggleSortDropdown}
-                className="font-mono text-[11px] md:text-xs tracking-[0.06em] text-[var(--t2)] hover:text-[var(--accent)] flex items-center gap-1 px-3 py-3"
-              >
-                SORT: {sortOptions.find((s) => s.id === sortBy)?.label} ↓
-              </button>
-              {showSortDropdown && (
-                <div className="absolute top-full right-0 mt-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg shadow-lg z-20 min-w-[160px]">
-                  {sortOptions.map((option) => (
-                    <button
-                      key={option.id}
-                      onClick={() => onSortChange(option.id)}
-                      className={`w-full text-left font-mono text-[11px] md:text-xs px-4 py-2.5 transition-all ${
-                        sortBy === option.id
-                          ? 'text-[var(--accent)] bg-[var(--accent-d)]'
-                          : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-white/5'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Tech stack filter — FOR_YOU only */}
         {activeTab === 'for_you' && (
-          <div className="flex items-center gap-3 px-4 md:px-8 lg:px-12 xl:px-16 py-2.5">
-            <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--t3)] flex-shrink-0">
-              TECH_STACK
-            </span>
+          <div className="flex items-center gap-3 px-4 py-2.5">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)]" />
+              <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">
+                TECH_STACK
+              </span>
+            </div>
             <SearchableDropdown
               options={techOptions}
               value={activeStackFilter}
               onChange={onStackFilter}
               placeholder="TECH STACK"
               allLabel="ALL STACKS"
-              accentColor="green"
+              accentColor="accent"
             />
             {activeStackFilter && (
-              <span className="font-mono text-[8px] text-[var(--green)]">
-                Filtering by <strong>{activeStackFilter}</strong>
+              <span className="font-mono text-xs font-bold text-[var(--t1)]">
+                Filtering by <span className="text-[var(--accent)]">{activeStackFilter}</span>
               </span>
             )}
           </div>
@@ -123,8 +80,8 @@ export function FeedFilters({
 
         {/* Trending indicator */}
         {activeTab === 'trending' && (
-          <div className="px-4 md:px-8 lg:px-12 xl:px-16 py-3">
-            <div className="font-mono text-[11px] md:text-xs text-[var(--t2)] flex items-center gap-2">
+          <div className="px-4 py-3">
+            <div className="font-mono text-[11px] md:text-xs text-[var(--t1)] flex items-center gap-2">
               <span className="text-[var(--orange)]">🔥</span>
               MOST VIEWED IN LAST 24 HOURS
             </div>

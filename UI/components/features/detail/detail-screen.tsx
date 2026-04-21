@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bookmark, Share2, Heart, MessageSquare, ChevronLeft, ChevronRight, Send, Trash2, Layers, X, Pencil } from 'lucide-react'
+import { Bookmark, Share2, Heart, MessageSquare, ChevronLeft, ChevronRight, Send, Layers, X, Pencil } from 'lucide-react'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
@@ -16,6 +16,66 @@ import { getMeCache } from '@/lib/user-cache'
 
 interface DetailScreenProps {
   post: Post
+}
+
+function CommentCard({ comment: c, currentUserId, onDelete }: {
+  comment: Comment
+  currentUserId: string | null
+  onDelete: (id: string) => void
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const isOwn = c.author.id === 'me' || (currentUserId && c.author.id === currentUserId)
+
+  return (
+    <div className="flex gap-3">
+      <Avatar initials={c.author.initials} imageUrl={c.author.avatarUrl} size="xs" />
+      <div className="flex-1 min-w-0 border border-[var(--border-h)] rounded-xl bg-[var(--bg-card)] overflow-hidden">
+        <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+        <div className="px-3 py-3 lg:px-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-mono text-[11px] font-bold text-[var(--t1)]">@{c.author.username}</span>
+            {c.badge && (
+              <span className="font-mono text-[10px] px-1.5 py-0.5 rounded border border-[rgba(59,130,246,0.2)] bg-[var(--accent-d)] text-[var(--accent)]">
+                {c.badge}
+              </span>
+            )}
+            {c.votes > 0 && (
+              <span className="font-mono text-[10px] font-bold text-[var(--accent)]">+{c.votes}</span>
+            )}
+            {isOwn && (
+              <div className="ml-auto flex items-center gap-1.5">
+                {confirming ? (
+                  <>
+                    <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.05em]">DELETE?</span>
+                    <button
+                      onClick={() => { onDelete(c.id); setConfirming(false) }}
+                      className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[rgba(244,63,94,0.4)] bg-[rgba(244,63,94,0.08)] text-[var(--red)] hover:border-[rgba(244,63,94,0.7)] hover:bg-[rgba(244,63,94,0.15)] transition-all"
+                    >
+                      YES
+                    </button>
+                    <button
+                      onClick={() => setConfirming(false)}
+                      className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)] transition-all"
+                    >
+                      NO
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setConfirming(true)}
+                    className="font-mono text-xs font-bold px-3 py-1.5 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(244,63,94,0.4)] hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--red)] transition-all tracking-[0.05em]"
+                  >
+                    rm
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <p className="text-sm leading-relaxed text-[var(--t2)]">{c.content}</p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function DetailScreen({ post }: DetailScreenProps) {
@@ -174,74 +234,74 @@ export function DetailScreen({ post }: DetailScreenProps) {
   return (
     <PhoneFrame>
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
+      <header className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4 border-b border-[var(--border-h)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1.5 font-mono text-[9px] lg:text-[10px] text-[var(--t2)] px-[10px] py-[5px] rounded-md border border-[var(--border-m)] bg-[var(--bg-el)] transition-all hover:border-[var(--accent)] hover:text-[var(--accent)] hover:-translate-x-px"
+          className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--t1)] px-3 py-1.5 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] transition-all hover:border-[rgba(59,130,246,0.45)] hover:text-[var(--accent)] hover:-translate-x-px"
         >
           <ChevronLeft size={12} /> BACK
         </button>
-        <span className="font-mono text-[8px] text-[var(--green)] bg-[var(--green-d)] border border-[rgba(16,217,160,0.2)] px-2 py-[3px] rounded">
+        <span className="font-mono text-[10px] text-[var(--green)] bg-[var(--green-d)] border border-[rgba(16,217,160,0.2)] px-2 py-1 rounded-lg">
           v1.0.4
         </span>
       </header>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
-        <div className="px-4 py-4 lg:px-8 lg:py-6 flex flex-col gap-4 lg:gap-5 max-w-4xl mx-auto">
-          {/* Author */}
-          <div className="flex items-center gap-3">
-            <Avatar
-              initials={post.author.initials}
-              imageUrl={post.author.avatarUrl}
-              size="md"
-            />
-            <div>
-              <div className="font-mono text-xs lg:text-sm font-bold text-[var(--t1)] flex items-center gap-1.5">
-                @{post.author.username}
-                {post.author.isVerified && (
-                  <span className="text-[9px] text-[var(--accent)]">✦</span>
-                )}
+        <div className="px-4 py-4 flex flex-col gap-4">
+
+          {/* Post card */}
+          <div className="rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden">
+            <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+            <div className="p-4 lg:p-5 flex flex-col gap-4">
+              {/* Author */}
+              <div className="flex items-center gap-3">
+                <Avatar initials={post.author.initials} imageUrl={post.author.avatarUrl} size="md" />
+                <div>
+                  <div className="font-mono text-xs lg:text-sm font-bold text-[var(--t1)] flex items-center gap-1.5">
+                    @{post.author.username}
+                    {post.author.isVerified && (
+                      <span className="text-[10px] text-[var(--accent)]">✦</span>
+                    )}
+                  </div>
+                  {(post.author.role || post.author.company) && (
+                    <div className="font-mono text-[10px] lg:text-xs text-[var(--t2)] mt-0.5 tracking-[0.04em]">
+                      {post.author.role}{post.author.role && post.author.company ? ' @ ' : ''}{post.author.company}
+                    </div>
+                  )}
+                </div>
               </div>
-              {(post.author.role || post.author.company) && (
-                <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-[3px] tracking-[0.04em]">
-                  {post.author.role}{post.author.role && post.author.company ? ' @ ' : ''}{post.author.company}
+
+              <h1 className="text-xl lg:text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight">{post.title}</h1>
+              <p className="text-sm lg:text-base leading-relaxed text-[var(--t2)]">{post.body}</p>
+
+              {post.code && (
+                <CodeBlock
+                  code={post.code.content}
+                  language={post.code.language}
+                  filename={post.code.filename}
+                  showLineNumbers={true}
+                  maxHeight="auto"
+                />
+              )}
+
+              {post.tags.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {post.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="font-mono text-[10px] py-1 px-2.5 rounded-xl border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] transition-all cursor-pointer hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Title */}
-          <h1 className="text-xl lg:text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight">{post.title}</h1>
-
-          {/* Body */}
-          <p className="text-sm lg:text-base leading-relaxed text-[var(--t2)]">{post.body}</p>
-
-          {/* Code block */}
-          {post.code && (
-            <CodeBlock
-              code={post.code.content}
-              language={post.code.language}
-              filename={post.code.filename}
-              showLineNumbers={true}
-              maxHeight="auto"
-            />
-          )}
-
-          {/* Tags */}
-          <div className="flex gap-[5px] lg:gap-2 flex-wrap">
-            {post.tags.map((tag) => (
-              <span
-                key={tag}
-                className="font-mono text-[8px] lg:text-[10px] py-[3px] px-2 lg:px-3 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)] transition-all cursor-pointer hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-
           {/* Reactions */}
-          <div className="flex gap-2 lg:gap-3 flex-wrap py-3 lg:py-4 border-t border-b border-[var(--border)]">
+          <div className="flex gap-2 lg:gap-3 flex-wrap">
             {/* Like button + count */}
             <div className="flex items-center">
               <button
@@ -250,10 +310,10 @@ export function DetailScreen({ post }: DetailScreenProps) {
                   setIsLiked(nowLiked)
                   setLikeCount((c) => Math.max(0, c + (nowLiked ? 1 : -1)))
                 }}
-                className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-l-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+                className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-l-full font-mono text-[10px] transition-all ${
                   isLiked
                     ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
-                    : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]'
+                    : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
                 }`}
               >
                 <Heart size={12} fill={isLiked ? 'currentColor' : 'none'} />
@@ -261,10 +321,10 @@ export function DetailScreen({ post }: DetailScreenProps) {
               </button>
               <button
                 onClick={() => likeCount > 0 && setShowLikers(true)}
-                className={`flex items-center px-2.5 py-1.5 lg:py-2 border-t border-b border-r rounded-r-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+                className={`flex items-center px-2.5 py-1.5 lg:py-2 border-t border-b border-r rounded-r-full font-mono text-[10px] transition-all ${
                   isLiked
                     ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
-                    : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]'
+                    : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
                 } ${likeCount === 0 ? 'cursor-default' : 'cursor-pointer'}`}
               >
                 <span className="font-bold text-[10px] lg:text-xs text-[var(--t1)]">{likeCount}</span>
@@ -273,17 +333,17 @@ export function DetailScreen({ post }: DetailScreenProps) {
 
             <button
               onClick={handleShare}
-              className="flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]"
+              className="flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full font-mono text-[10px] transition-all border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]"
             >
               <Share2 size={12} /> SHARE
             </button>
 
             <button
               onClick={handleBookmark}
-              className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+              className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full font-mono text-[10px] transition-all ${
                 isBookmarked
-                  ? 'border-[var(--green)] text-[var(--green)] bg-[rgba(16,217,160,0.1)]'
-                  : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--green)] hover:text-[var(--green)] hover:bg-[rgba(16,217,160,0.1)]'
+                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
+                  : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
               }`}
             >
               <Bookmark size={12} fill={isBookmarked ? 'currentColor' : 'none'} />
@@ -292,7 +352,7 @@ export function DetailScreen({ post }: DetailScreenProps) {
 
             <button
               onClick={() => router.push(`/search?byteId=${post.id}&type=bytes`)}
-              className="flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)]"
+              className="flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full font-mono text-[10px] transition-all border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]"
             >
               <Layers size={12} /> SIMILAR
             </button>
@@ -300,7 +360,7 @@ export function DetailScreen({ post }: DetailScreenProps) {
             {currentUserId && post.author.id === currentUserId && (
               <button
                 onClick={() => { setShowEdit((v) => !v); setEditTitle(post.title); setEditBody(post.body); setEditCode(post.code?.content ?? ''); setEditLanguage(post.code?.language ?? 'JS') }}
-                className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[8px] lg:text-[10px] transition-all ${
+                className={`flex items-center gap-[5px] py-1.5 lg:py-2 px-3 lg:px-4 border rounded-full bg-[var(--bg-el)] font-mono text-[10px] lg:text-xs transition-all ${
                   showEdit
                     ? 'border-[var(--green)] text-[var(--green)] bg-[rgba(16,217,160,0.1)]'
                     : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--green)] hover:text-[var(--green)] hover:bg-[rgba(16,217,160,0.1)]'
@@ -328,14 +388,14 @@ export function DetailScreen({ post }: DetailScreenProps) {
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value.slice(0, 120))}
                   placeholder="Title"
-                  className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-2 px-3 font-mono text-[11px] text-[var(--t1)] outline-none placeholder:text-[var(--t3)] focus:border-[var(--green)]"
+                  className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-2 px-3 font-mono text-xs text-[var(--t1)] outline-none placeholder:text-[var(--t2)] focus:border-[var(--green)]"
                 />
                 <textarea
                   value={editBody}
                   onChange={(e) => setEditBody(e.target.value.slice(0, 1000))}
                   placeholder="Body"
                   rows={5}
-                  className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-2 px-3 font-mono text-[11px] text-[var(--t1)] outline-none resize-none placeholder:text-[var(--t3)] focus:border-[var(--green)]"
+                  className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-2 px-3 font-mono text-xs text-[var(--t1)] outline-none resize-none placeholder:text-[var(--t2)] focus:border-[var(--green)]"
                 />
                 {/* Code snippet */}
                 <CodeEditor
@@ -365,51 +425,32 @@ export function DetailScreen({ post }: DetailScreenProps) {
 
           {/* Discussion */}
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <div className="font-mono text-[8px] lg:text-[10px] font-bold tracking-[0.12em] text-[var(--t2)] flex items-center gap-1.5">
-                <MessageSquare size={12} /> DISCUSSION
-                <span className="bg-[var(--bg-el)] border border-[var(--border-m)] rounded-full px-[7px] py-px text-[7px] lg:text-[8px] text-[var(--t1)]">
+            {/* Section header — accent-bar pattern */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-[3px] h-4 rounded-full bg-[var(--accent)]" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">DISCUSSION</span>
+                <span className="font-mono text-[10px] px-2 py-0.5 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.05)] text-[var(--accent)]">
                   {commentCount}
                 </span>
               </div>
-              <button className="font-mono text-[8px] lg:text-[9px] text-[var(--accent)]">
-                SORT: TOP ↓
-              </button>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               {comments.length > 0 ? (
                 comments.map((c) => (
-                  <div key={c.id} className="flex gap-[10px] lg:gap-4">
-                    <Avatar initials={c.author.initials} imageUrl={c.author.avatarUrl} size="xs" />
-                    <div className="flex-1 min-w-0 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg px-3 py-[10px] lg:px-4 lg:py-3">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="font-mono text-[10px] lg:text-xs font-bold text-[var(--t1)]">@{c.author.username}</span>
-                        {c.badge && (
-                          <span className="font-mono text-[6px] lg:text-[8px] px-1.5 py-0.5 rounded-sm bg-[var(--accent-d)] text-[var(--accent)] border border-[rgba(59,130,246,0.18)]">
-                            {c.badge}
-                          </span>
-                        )}
-                        {c.votes > 0 && (
-                          <span className="font-mono text-[9px] font-bold text-[var(--green)]">+{c.votes}</span>
-                        )}
-                        {(c.author.id === 'me' || (currentUserId && c.author.id === currentUserId)) && (
-                          <button
-                            onClick={() => handleDeleteComment(c.id)}
-                            className="ml-auto p-1 rounded text-[var(--t3)] hover:text-[var(--red)] hover:bg-[rgba(244,63,94,0.08)] transition-all"
-                            title="Delete comment"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-[11px] lg:text-sm leading-relaxed text-[var(--t2)]">{c.content}</p>
-                    </div>
-                  </div>
+                  <CommentCard
+                    key={c.id}
+                    comment={c}
+                    currentUserId={currentUserId}
+                    onDelete={handleDeleteComment}
+                  />
                 ))
               ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-el)] px-4 py-6 text-center text-[var(--t2)]">
-                  <p className="font-mono text-[11px] lg:text-sm">No comments yet. Be the first to add insight on this byte.</p>
+                <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-8 text-center flex flex-col items-center gap-2">
+                  <MessageSquare size={20} className="text-[var(--accent)] opacity-50" />
+                  <p className="font-mono text-xs font-bold text-[var(--t1)]">NO COMMENTS YET</p>
+                  <p className="text-xs text-[var(--t2)]">Be the first to add a comment.</p>
                 </div>
               )}
             </div>
@@ -420,37 +461,35 @@ export function DetailScreen({ post }: DetailScreenProps) {
                 {prevPost && (
                   <button
                     onClick={() => router.push(`/post/${prevPost.id}`)}
-                    className="flex items-center gap-[14px] px-[17px] py-[15px] lg:px-6 lg:py-5 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg transition-all hover:border-[var(--border)] hover:shadow-[0_0_20px_rgba(59,130,246,0.08)] hover:-translate-y-0.5 group w-full text-left"
+                    className="flex items-center gap-3 px-4 py-4 border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl transition-all hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:-translate-y-0.5 group w-full text-left"
                   >
-                    <span className="font-mono text-[18px] lg:text-2xl text-[var(--t3)] transition-all group-hover:-translate-x-1">←</span>
+                    <ChevronLeft size={16} className="text-[var(--t2)] flex-shrink-0 transition-all group-hover:-translate-x-1 group-hover:text-[var(--accent)]" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t3)] mb-1">PREV</div>
-                      <div className="font-mono text-[10px] lg:text-sm font-bold text-[var(--t1)] truncate">{prevPost.title}</div>
+                      <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)] mb-0.5">PREV</div>
+                      <div className="font-mono text-xs font-bold text-[var(--t1)] truncate">{prevPost.title}</div>
                       {(prevPost.username || prevPost.role || prevPost.company) && (
-                        <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">
+                        <div className="font-mono text-[10px] text-[var(--t2)] mt-0.5">
                           {prevPost.username && `@${prevPost.username}`}{prevPost.role ? ` · ${prevPost.role}` : ''}{prevPost.company ? ` @ ${prevPost.company}` : ''}
                         </div>
                       )}
                     </div>
-                    <ChevronLeft size={16} className="text-[var(--t3)] flex-shrink-0" />
                   </button>
                 )}
                 {nextPost && (
                   <button
                     onClick={() => router.push(`/post/${nextPost.id}`)}
-                    className="flex items-center gap-[14px] px-[17px] py-[15px] lg:px-6 lg:py-5 bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg transition-all hover:border-[var(--accent)] hover:shadow-[0_0_20px_rgba(59,130,246,0.1)] hover:-translate-y-0.5 group w-full text-left"
+                    className="flex items-center gap-3 px-4 py-4 border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl transition-all hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:-translate-y-0.5 group w-full text-left"
                   >
-                    <span className="text-2xl lg:text-3xl">🚀</span>
                     <div className="flex-1 min-w-0">
-                      <div className="font-mono text-[7px] lg:text-[9px] tracking-[0.1em] text-[var(--t3)] mb-1">UP_NEXT</div>
-                      <div className="font-mono text-[10px] lg:text-sm font-bold text-[var(--t1)] truncate">{nextPost.title}</div>
+                      <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--t2)] mb-0.5">UP_NEXT</div>
+                      <div className="font-mono text-xs font-bold text-[var(--t1)] truncate">{nextPost.title}</div>
                       {(nextPost.username || nextPost.role || nextPost.company) && (
-                        <div className="font-mono text-[8px] lg:text-[10px] text-[var(--t2)] mt-0.5">
+                        <div className="font-mono text-[10px] text-[var(--t2)] mt-0.5">
                           {nextPost.username && `@${nextPost.username}`}{nextPost.role ? ` · ${nextPost.role}` : ''}{nextPost.company ? ` @ ${nextPost.company}` : ''}
                         </div>
                       )}
                     </div>
-                    <ChevronRight size={16} className="text-[var(--accent)] flex-shrink-0 transition-all group-hover:translate-x-1" />
+                    <ChevronRight size={16} className="text-[var(--t2)] flex-shrink-0 transition-all group-hover:translate-x-1 group-hover:text-[var(--accent)]" />
                   </button>
                 )}
               </div>
@@ -460,20 +499,22 @@ export function DetailScreen({ post }: DetailScreenProps) {
       </div>
 
       {/* Comment input */}
-      <div className="flex items-center gap-2 px-3 py-2 lg:px-6 lg:py-3 border-t border-[var(--border)] bg-[var(--bg-card)] flex-shrink-0">
+      <div className="flex items-center gap-2 px-3 py-2.5 lg:px-6 lg:py-3 border-t border-[var(--border-h)] bg-[var(--bg-o95)] flex-shrink-0">
         <Avatar initials={myInitials} imageUrl={myAvatarUrl} size="xs" />
-        <input
-          type="text"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
-          placeholder="Write a comment..."
-          className="flex-1 bg-transparent font-mono text-[10px] lg:text-sm text-[var(--t1)] outline-none placeholder:text-[var(--t3)]"
-        />
+        <div className="flex-1 flex items-center gap-2 bg-[rgba(59,130,246,0.04)] border border-[rgba(59,130,246,0.2)] rounded-full px-4 py-2.5 transition-all focus-within:border-[var(--accent)] focus-within:bg-[rgba(59,130,246,0.07)]">
+          <input
+            type="text"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+            placeholder="Add a comment..."
+            className="flex-1 bg-transparent text-xs lg:text-sm text-[var(--t1)] outline-none placeholder:text-[var(--t2)]"
+          />
+        </div>
         <button
           onClick={handleAddComment}
           disabled={!comment.trim() || isSubmitting}
-          className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-[var(--accent)] flex items-center justify-center text-white font-mono text-sm lg:text-base transition-all hover:bg-[var(--accent)]/80 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-9 h-9 rounded-full bg-gradient-to-br from-[var(--accent)] to-[#1d4ed8] flex items-center justify-center text-white transition-all hover:shadow-[0_4px_16px_var(--accent-glow)] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         >
           <Send size={14} />
         </button>

@@ -128,7 +128,7 @@ export function UserMiniProfile({
           className="fixed bottom-0 left-0 right-0 z-[101] max-h-[85vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
         >
-          <div className="bg-[var(--bg-card)] rounded-t-3xl border-t border-x border-[var(--border)] shadow-[0_-16px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+          <div className="bg-[var(--bg-card)] rounded-t-3xl border-t border-x border-[var(--border-h)] shadow-[0_-16px_60px_rgba(0,0,0,0.45)] overflow-hidden">
 
             {/* Gradient banner */}
             <div className="relative h-24 overflow-hidden">
@@ -140,13 +140,15 @@ export function UserMiniProfile({
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-3 right-3 w-7 h-7 rounded-full bg-[var(--bg-card)]/60 backdrop-blur-sm border border-[var(--border)] flex items-center justify-center text-[var(--t2)] hover:text-[var(--t1)] transition-colors"
+                className="absolute top-3 right-3 w-7 h-7 rounded-full bg-[var(--bg-card)]/60 backdrop-blur-sm border border-[var(--border-h)] flex items-center justify-center text-[var(--t2)] hover:text-[var(--t1)] transition-colors"
               >
                 <X size={13} />
               </button>
               {/* Drag handle */}
               <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-white/20" />
             </div>
+
+            <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
 
             {/* Avatar — overlaps the banner */}
             <div className="px-5 pb-5">
@@ -155,7 +157,7 @@ export function UserMiniProfile({
                   className="relative cursor-pointer flex-shrink-0"
                   onClick={handleViewProfile}
                 >
-                  <div className="rounded-2xl ring-4 ring-[var(--bg-card)] overflow-hidden">
+                  <div className="rounded-2xl ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-card)] overflow-hidden">
                     <Avatar
                       initials={resolvedInitials}
                       imageUrl={resolvedAvatar}
@@ -169,7 +171,7 @@ export function UserMiniProfile({
                   {stats.map(stat => (
                     <div key={stat.label} className="flex-1 text-center">
                       <div className="font-mono text-sm font-bold text-[var(--t1)] leading-none">{stat.value}</div>
-                      <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mt-1">{stat.label}</div>
+                      <div className="font-mono text-[10px] tracking-[0.08em] text-[var(--t2)] mt-1">{stat.label}</div>
                     </div>
                   ))}
                 </div>
@@ -192,7 +194,7 @@ export function UserMiniProfile({
 
                 {(resolvedRole || resolvedCompany) && (
                   <div className="flex items-center gap-1.5 mt-2">
-                    <Briefcase size={11} className="text-[var(--t3)] flex-shrink-0" />
+                    <Briefcase size={11} className="text-[var(--t2)] flex-shrink-0" />
                     <span className="font-mono text-[10px] text-[var(--t2)]">
                       {resolvedRole}{resolvedRole && resolvedCompany ? ' @ ' : ''}{resolvedCompany}
                     </span>
@@ -200,7 +202,7 @@ export function UserMiniProfile({
                 )}
 
                 {profile?.bio && (
-                  <p className="text-[11px] text-[var(--t2)] mt-2 leading-relaxed line-clamp-2 border-l-2 border-[var(--border-h)] pl-2.5">
+                  <p className="text-xs text-[var(--t2)] mt-2 leading-relaxed line-clamp-2 border-l-2 border-[var(--accent)] pl-2.5">
                     {profile.bio}
                   </p>
                 )}
@@ -212,7 +214,7 @@ export function UserMiniProfile({
                   {tags.slice(0, 6).map(tag => (
                     <span
                       key={tag}
-                      className="font-mono text-[9px] px-2 py-0.5 rounded-full border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)]"
+                      className="font-mono text-[10px] px-2 py-0.5 rounded-full border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t2)]"
                     >
                       #{tag}
                     </span>
@@ -223,12 +225,12 @@ export function UserMiniProfile({
               {/* Action buttons */}
               {isSystemAccount ? (
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-center gap-2 py-2 rounded-xl border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.06)]">
-                    <span className="font-mono text-[10px] text-[var(--purple)] tracking-[0.08em]">✦ OFFICIAL BYTEAI ACCOUNT</span>
+                  <div className="flex items-center justify-center gap-2 py-2 rounded-xl border border-[rgba(167,139,250,0.4)] bg-[rgba(167,139,250,0.08)]">
+                    <span className="font-mono text-[10px] font-bold text-[var(--purple)] tracking-[0.08em]">✦ OFFICIAL BYTEAI ACCOUNT</span>
                   </div>
                   <button
                     onClick={handleViewProfile}
-                    className="py-3 rounded-2xl font-mono text-[11px] font-bold tracking-[0.07em] border border-[var(--border-h)] text-[var(--t1)] bg-[var(--bg-el)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)] transition-all duration-200 flex items-center justify-center gap-2"
+                    className="py-3 rounded-2xl font-mono text-[10px] font-bold tracking-[0.08em] border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)] transition-all duration-200 flex items-center justify-center gap-2"
                   >
                     VIEW PROFILE <ArrowUpRight size={13} />
                   </button>
@@ -241,11 +243,11 @@ export function UserMiniProfile({
                     disabled={followLoading || isOwnProfile}
                     onMouseEnter={() => isFollowing && setHoverUnfollow(true)}
                     onMouseLeave={() => setHoverUnfollow(false)}
-                    className={`relative py-3 rounded-2xl font-mono text-[11px] font-bold tracking-[0.07em] flex items-center justify-center gap-2 transition-all duration-200 overflow-hidden disabled:opacity-50 ${
+                    className={`relative py-3 rounded-2xl font-mono text-[10px] font-bold tracking-[0.08em] flex items-center justify-center gap-2 transition-all duration-200 overflow-hidden disabled:opacity-50 ${
                       isFollowing
                         ? hoverUnfollow
-                          ? 'bg-[var(--red)]/10 border border-[var(--red)] text-[var(--red)]'
-                          : 'bg-[var(--bg-el)] border border-[var(--border-m)] text-[var(--t1)]'
+                          ? 'bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.4)] text-[var(--red)]'
+                          : 'bg-[var(--bg-el)] border border-[var(--border-h)] text-[var(--t1)]'
                         : 'bg-gradient-to-r from-[var(--accent)] to-[#2563eb] text-white shadow-[0_4px_18px_var(--accent-glow)]'
                     }`}
                   >
@@ -265,7 +267,7 @@ export function UserMiniProfile({
                   {/* View profile */}
                   <button
                     onClick={handleViewProfile}
-                    className="py-3 rounded-2xl font-mono text-[11px] font-bold tracking-[0.07em] border border-[var(--border-h)] text-[var(--t1)] bg-[var(--bg-el)] hover:border-[var(--accent)] hover:text-[var(--accent)] hover:bg-[var(--accent-d)] transition-all duration-200 flex items-center justify-center gap-2"
+                    className="py-3 rounded-2xl font-mono text-[10px] font-bold tracking-[0.08em] border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)] transition-all duration-200 flex items-center justify-center gap-2"
                   >
                     PROFILE <ArrowUpRight size={13} />
                   </button>

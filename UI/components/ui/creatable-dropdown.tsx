@@ -39,7 +39,6 @@ export function CreatableDropdown({
   const exactMatch = options.some((o) => o.toLowerCase() === search.toLowerCase())
   const showCreate = search.trim().length > 0 && !exactMatch
 
-  // Close on outside click / ESC
   useEffect(() => {
     const clickHandler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -76,39 +75,39 @@ export function CreatableDropdown({
 
   return (
     <div ref={containerRef} className="relative w-full">
-      {/* Trigger — looks like a text input */}
+      {/* Trigger */}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`w-full flex items-center gap-2 bg-[var(--bg-el)] border rounded-lg px-3 py-2.5 text-left transition-all ${
-          open ? accent : 'border-[var(--border-m)] hover:border-[var(--border-h)]'
+          open ? accent : 'border-[var(--border-h)] hover:border-[var(--border-h)]'
         }`}
       >
         {value ? (
           <>
-            <span className="flex-1 font-mono text-[11px] text-[var(--t1)] truncate">{value}</span>
+            <span className="flex-1 font-mono text-[11px] font-medium text-[var(--t1)] truncate">{value}</span>
             <X
               size={12}
-              className="flex-shrink-0 text-[var(--t3)] hover:text-[var(--t1)] transition-colors"
+              className="flex-shrink-0 text-[var(--t2)] hover:text-[var(--t1)] transition-colors"
               onClick={clear}
             />
           </>
         ) : (
           <>
-            <span className="flex-1 font-mono text-[11px] text-[var(--t3)]">{placeholder}</span>
+            <span className="flex-1 font-mono text-[11px] text-[var(--t2)]">{placeholder}</span>
             <ChevronDown
               size={12}
-              className={`flex-shrink-0 text-[var(--t3)] transition-transform ${open ? 'rotate-180' : ''}`}
+              className={`flex-shrink-0 text-[var(--t2)] transition-transform ${open ? 'rotate-180' : ''}`}
             />
           </>
         )}
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.7)] overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-[var(--bg-card)] border border-[var(--border-h)] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.7)] overflow-hidden">
           {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]">
-            <Search size={11} className="text-[var(--t3)] flex-shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border-h)]">
+            <Search size={11} className="text-[var(--t2)] flex-shrink-0" />
             <input
               ref={inputRef}
               type="text"
@@ -120,11 +119,11 @@ export function CreatableDropdown({
                 }
               }}
               placeholder="Search or type to create..."
-              className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t3)] outline-none"
+              className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none"
             />
             {search && (
               <button type="button" onClick={() => setSearch('')}>
-                <X size={10} className="text-[var(--t3)] hover:text-[var(--t1)]" />
+                <X size={10} className="text-[var(--t2)] hover:text-[var(--t1)]" />
               </button>
             )}
           </div>
@@ -135,13 +134,13 @@ export function CreatableDropdown({
               <button
                 type="button"
                 onClick={() => select(search.trim())}
-                className="w-full flex items-center gap-2 px-3 py-2.5 border-b border-[var(--border)] text-left transition-all group bg-[rgba(167,139,250,0.04)] hover:bg-[rgba(167,139,250,0.1)]"
+                className="w-full flex items-center gap-2 px-3 py-2.5 border-b border-[var(--border-h)] text-left transition-all group bg-[rgba(167,139,250,0.04)] hover:bg-[rgba(167,139,250,0.1)]"
               >
                 <div className="flex items-center justify-center w-5 h-5 rounded-md bg-[rgba(167,139,250,0.15)] border border-[rgba(167,139,250,0.3)] flex-shrink-0">
                   <Sparkles size={10} className="text-[var(--purple)]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <span className="font-mono text-[10px] text-[var(--t3)] block leading-none mb-0.5">use custom</span>
+                  <span className="font-mono text-[10px] text-[var(--t2)] block leading-none mb-0.5">use custom</span>
                   <span className="font-mono text-xs font-bold text-[var(--t1)] truncate block">&quot;{search.trim()}&quot;</span>
                 </div>
                 <span className="font-mono text-[8px] px-1.5 py-0.5 rounded border border-[rgba(167,139,250,0.4)] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] flex-shrink-0">NEW</span>
@@ -150,7 +149,7 @@ export function CreatableDropdown({
 
             {/* Existing options */}
             {filtered.length === 0 && !showCreate ? (
-              <div className="font-mono text-xs text-[var(--t3)] px-3 py-4 text-center">
+              <div className="font-mono text-xs text-[var(--t2)] px-3 py-4 text-center">
                 No results — type to create a new one
               </div>
             ) : (
@@ -161,8 +160,8 @@ export function CreatableDropdown({
                   onClick={() => select(opt)}
                   className={`w-full text-left font-mono text-xs px-3 py-2 transition-all ${
                     value === opt
-                      ? `${ACCENT[accentColor].split(' ')[2]} bg-white/5`
-                      : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-white/5'
+                      ? `${ACCENT[accentColor].split(' ')[2]} bg-[rgba(167,139,250,0.15)] font-bold`
+                      : 'text-[var(--t1)] hover:text-[var(--t1)] hover:bg-[rgba(167,139,250,0.1)]'
                   }`}
                 >
                   {opt}

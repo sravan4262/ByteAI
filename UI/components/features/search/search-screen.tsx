@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Search, Bot, X, Layers } from 'lucide-react'
+import { Search, Bot, X, Layers, Users } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
 import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
@@ -10,51 +10,231 @@ import { useFeatureFlag } from '@/hooks/use-feature-flags'
 import * as api from '@/lib/api'
 import type { Post, PersonResult, SearchAskSource, SimilarByteResponse } from '@/lib/api'
 
-const SEARCH_TYPES = [
-  { id: 'bytes', label: 'BYTES' },
-  { id: 'interviews', label: 'INTERVIEWS' },
-  { id: 'people', label: 'PEOPLE' },
-] as const
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-type SearchType = (typeof SEARCH_TYPES)[number]['id']
+type SearchMode = 'bytes' | 'people' | 'ask'
+type ModeSource = 'intent' | 'manual'
+
+// ─── Intent detection ────────────────────────────────────────────────────────
+
+const QUESTION_STARTERS = [
+  'how ', 'what ', 'why ', 'when ', 'explain ', 'is ', 'are ',
+  'does ', 'can ', 'should ', 'will ', 'where ', 'which ',
+]
+
+function detectIntent(query: string, hasAiFlag: boolean): SearchMode {
+  const q = query.trim().toLowerCase()
+  if (q.startsWith('@')) return 'people'
+  if (hasAiFlag && (q.startsWith('?') || QUESTION_STARTERS.some((w) => q.startsWith(w)))) return 'ask'
+  return 'bytes'
+}
+
+// ─── Inline markdown renderer ────────────────────────────────────────────────
+
+function parseInline(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/)
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4)
+      return <strong key={i} className="font-semibold text-[var(--accent)]">{part.slice(2, -2)}</strong>
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2)
+      return (
+        <code key={i} className="font-mono text-[10px] bg-[rgba(59,130,246,0.12)] text-[var(--accent)] px-1.5 py-0.5 rounded">
+          {part.slice(1, -1)}
+        </code>
+      )
+    return part
+  })
+}
+
+function renderAnswer(text: string): React.ReactNode {
+  if (!text) return null
+  const lines = text.split('\n')
+  const nodes: React.ReactNode[] = []
+  let inList = false
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const trimmed = line.trim()
+    if (!trimmed) { inList = false; continue }
+
+    const bulletMatch = trimmed.match(/^[-•*]\s(.+)/)
+    const numMatch = trimmed.match(/^(\d+)[.)]\s(.+)/)
+
+    if (bulletMatch) {
+      inList = true
+      nodes.push(
+        <div key={i} className="flex gap-2.5 items-start">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-[5px] flex-shrink-0" />
+          <span className="text-xs leading-[1.75] text-[var(--t1)]">{parseInline(bulletMatch[1])}</span>
+        </div>
+      )
+    } else if (numMatch) {
+      inList = true
+      nodes.push(
+        <div key={i} className="flex gap-2.5 items-start">
+          <span className="font-mono text-[10px] font-bold text-[var(--accent)] mt-0.5 flex-shrink-0 w-4 text-right">{numMatch[1]}.</span>
+          <span className="text-xs leading-[1.75] text-[var(--t1)]">{parseInline(numMatch[2])}</span>
+        </div>
+      )
+    } else {
+      if (inList) inList = false
+      nodes.push(
+        <p key={i} className="text-xs leading-[1.75] text-[var(--t1)]">{parseInline(trimmed)}</p>
+      )
+    }
+  }
+  return nodes
+}
+
+// ─── Mode visual config ───────────────────────────────────────────────────────
+
+const MODE_META: Record<SearchMode, {
+  Icon: React.FC<{ size: number; className?: string }>
+  label: string
+  placeholder: string
+  focusBorder: string
+  focusShadow: string
+  iconClass: string
+  badgeClass: string
+  chipActiveClass: string
+  chipIdleClass: string
+  pulse: boolean
+}> = {
+  bytes: {
+    Icon: Search,
+    label: 'BYTES',
+    placeholder: 'Find bytes by keyword or concept…',
+    focusBorder: 'border-[var(--accent)]',
+    focusShadow: 'shadow-[0_0_0_3px_rgba(59,130,246,0.14)]',
+    iconClass: 'text-[var(--accent)]',
+    badgeClass: 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)]',
+    chipActiveClass: 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_10px_rgba(59,130,246,0.2)]',
+    chipIdleClass: 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]',
+    pulse: false,
+  },
+  people: {
+    Icon: Users,
+    label: 'PEOPLE',
+    placeholder: 'Search for people by name or username…',
+    focusBorder: 'border-[var(--accent)]',
+    focusShadow: 'shadow-[0_0_0_3px_rgba(59,130,246,0.14)]',
+    iconClass: 'text-[var(--accent)]',
+    badgeClass: 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)]',
+    chipActiveClass: 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_10px_rgba(59,130,246,0.2)]',
+    chipIdleClass: 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]',
+    pulse: false,
+  },
+  ask: {
+    Icon: Bot,
+    label: 'ASK AI',
+    placeholder: 'Ask about any topic — AI answers from bytes…',
+    focusBorder: 'border-[var(--accent)]',
+    focusShadow: 'shadow-[0_0_0_3px_rgba(59,130,246,0.22)]',
+    iconClass: 'text-[var(--accent)]',
+    badgeClass: 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)]',
+    chipActiveClass: 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_12px_rgba(59,130,246,0.28)]',
+    chipIdleClass: 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]',
+    pulse: true,
+  },
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function SearchScreen() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const typewriterRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const hasAiSearchAsk = useFeatureFlag('ai-search-ask')
+
+  // Query + mode
   const [query, setQuery] = useState('')
-  const [selectedType, setSelectedType] = useState<SearchType | null>(null)
+  const [mode, setMode] = useState<SearchMode>('bytes')
+  const [modeSource, setModeSource] = useState<ModeSource>('intent')
+  const [isFocused, setIsFocused] = useState(false)
+
+  // Results
   const [contentResults, setContentResults] = useState<Post[]>([])
   const [peopleResults, setPeopleResults] = useState<PersonResult[]>([])
+  const [ragAnswer, setRagAnswer] = useState<string | null>(null)
+  const [ragSources, setRagSources] = useState<SearchAskSource[]>([])
+  const [similarByteId, setSimilarByteId] = useState<string | null>(null)
+  const [similarResults, setSimilarResults] = useState<SimilarByteResponse[]>([])
+
+  // UI state
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
   const [aiUnavailable, setAiUnavailable] = useState(false)
-  const hasAiSearchAsk = useFeatureFlag('ai-search-ask')
-
-  // RAG / ASK mode
-  const [askMode, setAskMode] = useState(false)
-  const [ragAnswer, setRagAnswer] = useState<string | null>(null)
-  const [ragSources, setRagSources] = useState<SearchAskSource[]>([])
   const [miniProfilePerson, setMiniProfilePerson] = useState<PersonResult | null>(null)
 
-  // Similar bytes mode — triggered from byte detail screen via ?byteId=
-  const [similarByteId, setSimilarByteId] = useState<string | null>(null)
-  const [similarResults, setSimilarResults] = useState<SimilarByteResponse[]>([])
+  // Typewriter state
+  const [displayedAnswer, setDisplayedAnswer] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
+
+  // ── Typewriter effect ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (typewriterRef.current) clearInterval(typewriterRef.current)
+    if (!ragAnswer) { setDisplayedAnswer(''); setIsTyping(false); return }
+
+    setDisplayedAnswer('')
+    setIsTyping(true)
+    let i = 0
+    const charDelay = Math.min(10, 1500 / ragAnswer.length)
+
+    typewriterRef.current = setInterval(() => {
+      i++
+      setDisplayedAnswer(ragAnswer.slice(0, i))
+      if (i >= ragAnswer.length) {
+        clearInterval(typewriterRef.current!)
+        setIsTyping(false)
+      }
+    }, charDelay)
+
+    return () => { if (typewriterRef.current) clearInterval(typewriterRef.current) }
+  }, [ragAnswer])
+
+  // ── Restore search state from URL on back-navigation ─────────────────────
+
+  useEffect(() => {
+    const q = searchParams.get('q')
+    const m = searchParams.get('mode') as SearchMode
+    if (!q || searchParams.get('byteId')) return
+
+    const resolvedMode: SearchMode = (m && ['bytes', 'people', 'ask'].includes(m)) ? m : detectIntent(q, hasAiSearchAsk)
+    setQuery(q)
+    setMode(resolvedMode)
+    setModeSource(m ? 'manual' : 'intent')
+    handleSearch(q, resolvedMode)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ── Similar bytes flow (via ?byteId= query param) ────────────────────────
 
   useEffect(() => {
     const byteId = searchParams.get('byteId')
     if (!byteId) return
     setSimilarByteId(byteId)
-    setSelectedType('bytes')
+    setMode('bytes')
     setIsLoading(true)
     setHasSearched(true)
-    api.getSimilarBytes(byteId).then((results) => {
-      setSimilarResults(results)
-    }).catch((err: Error) => {
-      if (err.message === 'AI_QUOTA_EXHAUSTED') setAiUnavailable(true)
-    }).finally(() => setIsLoading(false))
+    api.getSimilarBytes(byteId)
+      .then(setSimilarResults)
+      .catch((err: Error) => { if (err.message === 'AI_QUOTA_EXHAUSTED') setAiUnavailable(true) })
+      .finally(() => setIsLoading(false))
   }, [searchParams])
 
-  const resetResults = () => {
+  // ── Intent detection ─────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (modeSource === 'intent' && !similarByteId && query.trim()) {
+      setMode(detectIntent(query, hasAiSearchAsk))
+    }
+  }, [query, modeSource, hasAiSearchAsk, similarByteId])
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  const resetResults = useCallback(() => {
     setContentResults([])
     setPeopleResults([])
     setRagAnswer(null)
@@ -63,34 +243,57 @@ export function SearchScreen() {
     setSimilarByteId(null)
     setHasSearched(false)
     setAiUnavailable(false)
+    setDisplayedAnswer('')
+    setIsTyping(false)
+    router.replace(window.location.pathname, { scroll: false })
+  }, [router])
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value)
+    if (!value.trim()) { setModeSource('intent'); resetResults(); return }
+    if (hasSearched) resetResults()
   }
 
-  const handleSearch = async () => {
-    if (!query.trim()) return
+  const handleModeOverride = (m: SearchMode) => {
+    setMode(m)
+    setModeSource('manual')
+    resetResults()
+    inputRef.current?.focus()
+  }
+
+  const handleSearch = async (queryOverride?: string, modeOverride?: SearchMode) => {
+    const raw = (queryOverride ?? query).trim()
+    if (!raw) return
+
+    const activeMode = modeOverride ?? mode
+
+    const cleanQuery = activeMode === 'people' && raw.startsWith('@')
+      ? raw.slice(1)
+      : activeMode === 'ask' && raw.startsWith('?')
+      ? raw.slice(1).trim()
+      : raw
 
     setIsLoading(true)
     setHasSearched(true)
+    setRagAnswer(null)
+    setRagSources([])
+
+    // Persist query + mode so Next.js restores correct tab on back-navigation
+    router.replace(`?q=${encodeURIComponent(cleanQuery)}&mode=${activeMode}`, { scroll: false })
 
     try {
-      // Option B: no type selected → NLP RAG over both bytes + interviews
-      if (!selectedType || askMode) {
-        const type = selectedType === 'bytes' ? 'bytes'
-                   : selectedType === 'interviews' ? 'interviews'
-                   : undefined
-        const result = await api.searchAsk(query.trim(), type)
+      if (activeMode === 'ask') {
+        const result = await api.searchAsk(cleanQuery, 'bytes')
         setRagAnswer(result.answer)
         setRagSources(result.sources)
         setContentResults([])
         setPeopleResults([])
-        return
-      }
-
-      if (selectedType === 'people') {
-        const results = await api.searchPeople(query.trim())
+      } else if (activeMode === 'people') {
+        const results = await api.searchPeople(cleanQuery)
         setPeopleResults(results)
         setContentResults([])
       } else {
-        const { results } = await api.search({ query: query.trim(), type: selectedType })
+        const { results } = await api.search({ query: cleanQuery, type: 'bytes' })
         setContentResults(results)
         setPeopleResults([])
       }
@@ -103,245 +306,306 @@ export function SearchScreen() {
     }
   }
 
-  const handleQueryChange = (value: string) => {
-    setQuery(value)
-    if (hasSearched) resetResults()
-  }
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleSearch()
   }
 
-  const handleTypeSelect = (type: SearchType) => {
-    setSelectedType(type)
-    setAskMode(false)
-    resetResults()
-  }
+  // ── Derived ───────────────────────────────────────────────────────────────
 
-  const toggleAskMode = () => {
-    if (!hasAiSearchAsk) {
-      // Silently prevent enabling ask mode if feature not available
-      return
-    }
-    setAskMode((v) => !v)
-    resetResults()
-  }
+  const cfg = MODE_META[mode]
+  const ModeIcon = cfg.Icon
+  const totalResults = mode === 'people' ? peopleResults.length : contentResults.length
+  const showPreSearch = !hasSearched && !isLoading && !similarByteId
+  const availableModes: SearchMode[] = hasAiSearchAsk ? ['bytes', 'ask', 'people'] : ['bytes', 'people']
 
-  const isRagMode = !selectedType || askMode
-  const totalResults = selectedType === 'people' ? peopleResults.length : contentResults.length
+  const inputBorderClass = isFocused
+    ? `${cfg.focusBorder} ${cfg.focusShadow}`
+    : 'border-[var(--border-h)]'
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <PhoneFrame>
-      {/* Header with search */}
-      <div className="flex-shrink-0 border-b border-[var(--border)] bg-[var(--bg-o95)] backdrop-blur-md">
-        <div className="px-5 py-[13px] pb-[11px]">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => handleQueryChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  isRagMode && selectedType
-                    ? `Ask AI about ${selectedType}...`
-                    : isRagMode
-                    ? 'Ask anything about tech...'
-                    : selectedType === 'people'
-                    ? 'Search by username or name...'
-                    : `Search ${selectedType}...`
-                }
-                className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg py-[11px] pl-4 pr-10 font-mono text-[11px] text-[var(--t1)] outline-none transition-all placeholder:text-[var(--t3)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)]"
-              />
-              <button
-                onClick={handleSearch}
-                disabled={!query.trim()}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--t3)] hover:text-[var(--accent)] disabled:opacity-30 transition-all"
-              >
-                {isRagMode ? <Bot size={14} className="text-[var(--accent)]" /> : <Search size={14} />}
-              </button>
-            </div>
-            <button
-              onClick={() => router.back()}
-              className="font-mono text-[9px] text-[var(--accent)] font-bold tracking-[0.08em]"
-            >
-              CANCEL
-            </button>
-          </div>
 
-          {/* Type selector + ASK AI toggle */}
-          <div className="flex gap-2 mt-[10px] items-center">
-            {SEARCH_TYPES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => handleTypeSelect(t.id)}
-                className={`font-mono text-[10px] px-4 py-2 rounded-full transition-all border ${
-                  selectedType === t.id && !askMode
-                    ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-[0_2px_12px_var(--accent-glow)]'
-                    : 'text-[var(--t2)] border-[var(--border-m)] hover:text-[var(--t1)] hover:border-[var(--border-h)]'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+      {/* ── Search input + chips ─────────────────────────────────────────── */}
+      <div className="flex-shrink-0 px-5 pt-4 pb-3">
 
-            {/* ASK AI toggle — only for bytes/interviews, not people */}
-            {selectedType && selectedType !== 'people' && hasAiSearchAsk && (
+        {/* Input row */}
+        <div className="flex items-center gap-3">
+          <div className={`flex-1 flex items-center gap-3 bg-[var(--bg-el)] border rounded-xl px-4 py-3 transition-all ${inputBorderClass}`}>
+            <ModeIcon
+              size={15}
+              className={`flex-shrink-0 transition-colors ${cfg.iconClass} ${cfg.pulse && isFocused ? 'animate-pulse' : ''}`}
+            />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder={cfg.placeholder}
+              autoFocus
+              className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] outline-none placeholder:text-[var(--t2)] min-w-0"
+            />
+            {query && (
               <button
-                onClick={toggleAskMode}
-                className={`ml-auto flex items-center gap-1 font-mono text-[9px] px-3 py-2 rounded-full transition-all border ${
-                  askMode
-                    ? 'bg-[var(--accent-d)] text-[var(--accent)] border-[var(--accent)]'
-                    : 'text-[var(--t3)] border-[var(--border-m)] hover:text-[var(--accent)] hover:border-[var(--accent)]'
-                }`}
+                onClick={() => { setQuery(''); setModeSource('intent'); resetResults() }}
+                className="text-[var(--t2)] hover:text-[var(--t1)] transition-colors flex-shrink-0"
               >
-                <Bot size={10} /> ASK
+                <X size={14} />
               </button>
             )}
+            <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border flex-shrink-0 transition-all ${cfg.badgeClass}`}>
+              {cfg.label}
+            </span>
           </div>
+          <button
+            onClick={() => router.back()}
+            className="font-mono text-[10px] font-bold tracking-[0.08em] text-[var(--accent)] flex-shrink-0"
+          >
+            CANCEL
+          </button>
         </div>
+
+        {/* Mode override chips */}
+        {!similarByteId && (
+          <div className="flex gap-2 mt-2.5">
+            {availableModes.map((m) => {
+              const chipLabels: Record<SearchMode, string> = { bytes: 'BYTES', ask: 'ASK AI', people: 'PEOPLE' }
+              const isActive = mode === m
+              return (
+                <button
+                  key={m}
+                  onClick={() => handleModeOverride(m)}
+                  className={`font-mono text-[10px] font-bold px-3 py-1 rounded-lg border transition-all ${isActive ? cfg.chipActiveClass : MODE_META[m].chipIdleClass}`}
+                >
+                  {chipLabels[m]}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Body */}
+      {/* ── Body ─────────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
 
-        {/* Initial state — show ASK ANYTHING prompt */}
-        {!hasSearched && !isLoading && !similarByteId && (
-          <div className="flex flex-col items-center justify-center h-full text-center px-8 gap-4">
-            <div className={`w-12 h-12 rounded-full border flex items-center justify-center ${
-              isRagMode
-                ? 'bg-[var(--accent-d)] border-[var(--accent)]'
-                : 'bg-[var(--bg-el)] border-[var(--border-m)]'
-            }`}>
-              {isRagMode ? <Bot size={20} className="text-[var(--accent)]" /> : <Search size={20} className="text-[var(--t3)]" />}
-            </div>
-            <div>
-              {isRagMode ? (
-                <>
-                  <div className="font-mono text-xs font-bold text-[var(--accent)] mb-1">ASK AI</div>
-                  <div className="font-mono text-[10px] text-[var(--t3)]">
-                    {selectedType
-                      ? `Ask a question — AI will search ${selectedType} and synthesise an answer`
-                      : 'Ask any tech question — AI searches bytes + interviews and synthesises an answer'}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="font-mono text-xs font-bold text-[var(--t1)] mb-1">
-                    {selectedType ? `SEARCH ${selectedType.toUpperCase()}` : 'SELECT A CATEGORY'}
-                  </div>
-                  <div className="font-mono text-[10px] text-[var(--t3)]">
-                    {selectedType
-                      ? 'Type a query and press Enter, or tap ASK for AI answers'
-                      : 'Choose Bytes, Interviews, or People — or type to ask AI directly'}
-                  </div>
-                </>
-              )}
+        {/* Pre-search: BYTES — empty state */}
+        {showPreSearch && mode === 'bytes' && (
+          <div className="px-5 py-3">
+            <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-8
+                            text-center flex flex-col items-center gap-2">
+              <Search size={20} className="text-[var(--accent)] opacity-50" />
+              <p className="font-mono text-xs font-bold text-[var(--t1)]">SEARCH BYTES</p>
+              <p className="text-xs text-[var(--t2)]">Search anything — topics, titles, or ideas</p>
             </div>
           </div>
         )}
 
-        {/* Loading */}
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center h-full">
-            <div className={`font-mono text-xs animate-pulse ${similarByteId ? 'text-[var(--accent)]' : isRagMode ? 'text-[var(--accent)]' : 'text-[var(--t2)]'}`}>
-              {similarByteId ? 'FINDING SIMILAR...' : isRagMode ? 'THINKING...' : 'SEARCHING...'}
+        {/* Pre-search: ASK AI — empty state */}
+        {showPreSearch && mode === 'ask' && (
+          <div className="px-5 py-3">
+            <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-8
+                            text-center flex flex-col items-center gap-2">
+              <Bot size={20} className="text-[var(--accent)] opacity-50" />
+              <p className="font-mono text-xs font-bold text-[var(--t1)]">ASK AI</p>
+              <p className="text-xs text-[var(--t2)]">AI searches bytes and synthesises an answer</p>
             </div>
           </div>
         )}
 
-        {/* AI unavailable banner */}
-        {aiUnavailable && (
-          <div className="mx-5 mt-4 rounded-xl border border-[var(--border-m)] bg-[var(--bg-el)] px-4 py-3 flex items-center gap-2">
-            <span className="font-mono text-[9px] text-[var(--t2)]">AI features are unavailable — daily quota exhausted. Resets at UTC midnight.</span>
+        {/* Pre-search: PEOPLE — empty state */}
+        {showPreSearch && mode === 'people' && (
+          <div className="px-5 py-3">
+            <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-8
+                            text-center flex flex-col items-center gap-2">
+              <Users size={20} className="text-[var(--accent)] opacity-50" />
+              <p className="font-mono text-xs font-bold text-[var(--t1)]">SEARCH PEOPLE</p>
+              <p className="text-xs text-[var(--t2)]">Find engineers and developers by name or username</p>
+            </div>
           </div>
         )}
 
-        {/* Similar Bytes results */}
-        {!isLoading && similarByteId && similarResults.length > 0 && (
+        {/* Loading — AI mode: skeleton card */}
+        {isLoading && mode === 'ask' && (
           <div className="px-5 py-4">
-            <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--accent)] mb-4 flex items-center gap-1.5">
-              <Layers size={10} /> SIMILAR BYTES ({similarResults.length})
+            <div className="rounded-xl border border-[var(--accent)] bg-[var(--accent-d)] overflow-hidden shadow-[0_0_24px_rgba(59,130,246,0.12)]">
+              <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+              <div className="p-4 flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em] flex items-center gap-1.5">
+                    <Bot size={11} className="text-[var(--accent)]" /> AI THINKING
+                  </span>
+                  <div className="flex gap-1 ml-1 items-center">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-bounce [animation-delay:0s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-bounce [animation-delay:0.15s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-bounce [animation-delay:0.3s]" />
+                  </div>
+                </div>
+                <p className="text-xs text-[var(--t2)]">Searching bytes and synthesising an answer…</p>
+                <div className="flex flex-col gap-2.5">
+                  {[100, 88, 94, 72, 82].map((w, i) => (
+                    <div key={i} className="h-2 rounded-full bg-[rgba(59,130,246,0.12)] animate-pulse" style={{ width: `${w}%`, animationDelay: `${i * 0.1}s` }} />
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col gap-4">
-              {similarResults.map((b) => (
-                <button
-                  key={b.id}
-                  onClick={() => router.push(`/post/${b.id}`)}
-                  className="text-left bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg p-4 transition-all hover:border-[var(--border-h)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
-                >
-                  <div className="flex items-center gap-[10px] mb-2">
-                    <div className="w-6 h-6 rounded-full border border-[var(--border-m)] flex items-center justify-center font-mono text-[8px] bg-[var(--bg-el)] text-[var(--accent)]">
+          </div>
+        )}
+
+        {/* Loading — bytes/people/similar: simple indicator */}
+        {isLoading && mode !== 'ask' && (
+          <div className="flex items-center justify-center h-32">
+            <span className="font-mono text-xs text-[var(--accent)] animate-pulse">
+              {similarByteId ? 'FINDING SIMILAR…' : 'SEARCHING…'}
+            </span>
+          </div>
+        )}
+
+        {/* AI quota banner */}
+        {aiUnavailable && (
+          <div className="mx-5 mt-4 rounded-xl border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] px-4 py-3">
+            <p className="text-xs text-[var(--t2)]">
+              AI features unavailable — daily quota exhausted. Resets at UTC midnight.
+            </p>
+          </div>
+        )}
+
+        {/* ── Similar bytes results ──────────────────────────────────────── */}
+        {!isLoading && similarByteId && similarResults.length > 0 && (
+          <div className="px-5 py-4 flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+              <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">
+                SIMILAR BYTES ({similarResults.length})
+              </span>
+            </div>
+            {similarResults.map((b) => (
+              <button
+                key={b.id}
+                onClick={() => router.push(`/post/${b.id}`)}
+                className="text-left rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden
+                           transition-all hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
+              >
+                <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <div className="w-6 h-6 rounded-full border border-[var(--border-h)] flex items-center justify-center
+                                    font-mono text-[10px] bg-[var(--bg-el)] text-[var(--accent)]">
                       {b.authorUsername?.[0]?.toUpperCase() ?? 'U'}
                     </div>
-                    <span className="font-mono text-[9px] text-[var(--t2)]">@{b.authorUsername}</span>
+                    <span className="font-mono text-[11px] text-[var(--t2)]">@{b.authorUsername}</span>
                   </div>
-                  <h3 className="font-bold text-sm mb-2">{b.title}</h3>
-                  <p className="text-[11px] text-[var(--t2)] leading-relaxed mb-3 line-clamp-2">{b.body}</p>
+                  <h3 className="font-bold text-sm text-[var(--t1)] mb-1.5">{b.title}</h3>
+                  <p className="text-xs text-[var(--t2)] leading-relaxed mb-3 line-clamp-2">{b.body}</p>
                   {b.tags.length > 0 && (
-                    <div className="flex gap-[5px] flex-wrap mb-2">
+                    <div className="flex gap-1.5 flex-wrap mb-2.5">
                       {b.tags.slice(0, 4).map((tag) => (
-                        <span key={tag} className="font-mono text-[8px] py-[3px] px-2 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)]">
+                        <span key={tag} className="font-mono text-[10px] py-0.5 px-2 rounded border
+                                                    border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t2)]">
                           {tag}
                         </span>
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-4 font-mono text-[8px] text-[var(--t2)]">
+                  <div className="flex gap-4 font-mono text-[10px] text-[var(--t2)]">
                     <span>❤️ {b.likeCount ?? 0}</span>
                     <span>💬 {b.commentCount ?? 0}</span>
                   </div>
-                </button>
-              ))}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Similar bytes — empty */}
+        {!isLoading && similarByteId && similarResults.length === 0 && !aiUnavailable && hasSearched && (
+          <div className="px-5 pt-4">
+            <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-8
+                            text-center flex flex-col items-center gap-2">
+              <Layers size={20} className="text-[var(--accent)] opacity-50" />
+              <p className="font-mono text-xs font-bold text-[var(--t1)]">NO SIMILAR BYTES</p>
+              <p className="text-xs text-[var(--t2)]">This byte doesn&apos;t have a semantic embedding yet</p>
             </div>
           </div>
         )}
 
-        {/* Similar Bytes — no results */}
-        {!isLoading && similarByteId && similarResults.length === 0 && !aiUnavailable && hasSearched && (
-          <div className="flex flex-col items-center justify-center py-16 text-center px-8">
-            <div className="font-mono text-sm text-[var(--t1)] mb-2">NO SIMILAR BYTES</div>
-            <div className="font-mono text-[10px] text-[var(--t2)]">This byte doesn&apos;t have a semantic embedding yet</div>
-          </div>
-        )}
-
-        {/* RAG answer panel */}
+        {/* ── RAG answer ────────────────────────────────────────────────── */}
         {!isLoading && hasSearched && ragAnswer && (
           <div className="px-5 py-4 flex flex-col gap-4">
-            <div className="rounded-xl border border-[var(--accent)] bg-[var(--accent-d)] p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="font-mono text-[9px] font-bold tracking-[0.1em] text-[var(--accent)] flex items-center gap-1.5">
-                  <Bot size={11} /> AI ANSWER
+
+            {/* AI answer card */}
+            <div className="rounded-xl border border-[var(--accent)] bg-[var(--accent-d)] overflow-hidden shadow-[0_0_28px_rgba(59,130,246,0.14)]">
+              <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+              <div className="p-4 flex flex-col gap-4">
+
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                    <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em] flex items-center gap-1.5">
+                      <Bot size={11} className="text-[var(--accent)]" /> AI ANSWER
+                    </span>
+                    {isTyping && (
+                      <span className="font-mono text-[10px] text-[var(--accent)] animate-pulse ml-1">●</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setRagAnswer(null); setHasSearched(false) }}
+                    className="text-[var(--t2)] hover:text-[var(--t1)] transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => { setRagAnswer(null); setHasSearched(false) }}
-                  className="text-[var(--t3)] hover:text-[var(--t1)]"
-                >
-                  <X size={13} />
-                </button>
+
+                {/* Structured answer body */}
+                <div className="flex flex-col gap-2">
+                  {renderAnswer(displayedAnswer)}
+                  {isTyping && (
+                    <span className="inline-block w-0.5 h-3.5 bg-[var(--accent)] animate-pulse rounded-full" />
+                  )}
+                </div>
               </div>
-              <p className="font-mono text-[10px] lg:text-xs leading-relaxed text-[var(--t1)] whitespace-pre-wrap">
-                {ragAnswer}
-              </p>
             </div>
 
             {/* Sources */}
             {ragSources.length > 0 && (
-              <div>
-                <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t3)] mb-2">
-                  SOURCES ({ragSources.length})
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">
+                    SOURCES ({ragSources.length})
+                  </span>
                 </div>
                 <div className="flex flex-col gap-2">
                   {ragSources.map((src, i) => (
                     <button
                       key={src.id}
                       onClick={() => router.push(`/post/${src.id}`)}
-                      className="flex items-center gap-3 text-left bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg px-3 py-2.5 transition-all hover:border-[var(--border-h)] hover:-translate-y-0.5"
+                      className="text-left rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden
+                                 transition-all hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.3)]"
                     >
-                      <span className="font-mono text-[8px] text-[var(--t3)] flex-shrink-0 w-4">[{i + 1}]</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-mono text-[10px] font-bold text-[var(--t1)] truncate">{src.title}</div>
-                        <div className="font-mono text-[8px] text-[var(--t3)] mt-0.5 uppercase">{src.contentType}</div>
+                      <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+                      <div className="flex items-start gap-3 px-3 py-3">
+                        <span className="font-mono text-[10px] font-bold text-[var(--accent)] flex-shrink-0 w-5 mt-0.5">[{i + 1}]</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-mono text-[11px] font-bold text-[var(--t1)] truncate">{src.title}</div>
+                          {'body' in src && (src as { body?: string }).body && (
+                            <p className="text-xs text-[var(--t2)] mt-1 leading-relaxed line-clamp-2">
+                              {(src as { body?: string }).body}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="font-mono text-[10px] text-[var(--t2)] uppercase tracking-[0.06em]">{src.contentType}</span>
+                          </div>
+                        </div>
+                        <span className="font-mono text-[10px] text-[var(--accent)] flex-shrink-0 mt-0.5
+                                         px-2 py-0.5 rounded border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.08)]">
+                          READ →
+                        </span>
                       </div>
                     </button>
                   ))}
@@ -351,75 +615,88 @@ export function SearchScreen() {
           </div>
         )}
 
-        {/* Regular search results */}
+        {/* ── Regular search results ─────────────────────────────────────── */}
         {!isLoading && hasSearched && !ragAnswer && !similarByteId && (
-          <div className="px-5 py-4">
-            <div className="font-mono text-[8px] tracking-[0.1em] text-[var(--t2)] mb-4">
-              {totalResults === 0
-                ? 'NO RESULTS'
-                : `${totalResults} RESULT${totalResults !== 1 ? 'S' : ''} FOR "${query}"`}
-            </div>
+          <div className="px-5 py-4 flex flex-col gap-4">
 
-            {/* Content results (bytes / interviews) */}
-            {(selectedType === 'bytes' || selectedType === 'interviews') && (
-              <div className="flex flex-col gap-4">
+            {/* Result count */}
+            {totalResults > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">
+                  {totalResults} RESULT{totalResults !== 1 ? 'S' : ''}
+                </span>
+              </div>
+            )}
+
+            {/* Bytes results */}
+            {mode === 'bytes' && (
+              <div className="flex flex-col gap-2">
                 {contentResults.map((post) => (
                   <button
                     key={post.id}
                     onClick={() => router.push(`/post/${post.id}`)}
-                    className="text-left bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg p-4 transition-all hover:border-[var(--border-h)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
+                    className="text-left rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden
+                               transition-all hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
                   >
-                    <div className="flex items-center gap-[10px] mb-3">
-                      <Avatar
-                        initials={post.author.initials || (post.author.username?.[0] ?? 'U').toUpperCase()}
-                        imageUrl={post.author.avatarUrl}
-                        size="sm"
-                        variant="cyan"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-mono text-[10px] font-bold text-[var(--t1)] flex items-center gap-1.5">
-                          @{post.author.username}
-                          {post.author.isVerified && (
-                            <span className="text-[8px] text-[var(--accent)]">✦</span>
-                          )}
+                    <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+                    <div className="px-4 pt-3.5 pb-4">
+                      <div className="flex items-center gap-2.5 mb-3">
+                        <Avatar
+                          initials={post.author.initials || (post.author.username?.[0] ?? 'U').toUpperCase()}
+                          imageUrl={post.author.avatarUrl}
+                          size="sm"
+                          variant="cyan"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-mono text-[11px] font-bold text-[var(--t1)] flex items-center gap-1.5">
+                            @{post.author.username}
+                            {post.author.isVerified && (
+                              <span className="text-[10px] text-[var(--accent)]">✦</span>
+                            )}
+                          </div>
                         </div>
+                        <span className="font-mono text-[10px] text-[var(--t2)] flex-shrink-0">{post.createdAt}</span>
                       </div>
-                      <span className="font-mono text-[7px] text-[var(--t3)]">{post.createdAt}</span>
-                    </div>
 
-                    <h3 className="font-bold text-sm mb-2">{post.title}</h3>
-                    <p className="text-[11px] text-[var(--t2)] leading-relaxed mb-3 line-clamp-3">
-                      {query.length >= 3
-                        ? post.body
-                            .split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
-                            .map((part, i) =>
-                              part.toLowerCase() === query.toLowerCase() ? (
-                                <mark key={i} className="bg-[var(--accent-d)] text-[var(--accent)] px-0.5 rounded">
-                                  {part}
-                                </mark>
-                              ) : (
-                                part
+                      <h3 className="font-bold text-sm text-[var(--t1)] mb-1.5">{post.title}</h3>
+                      <p className="text-xs text-[var(--t2)] leading-relaxed mb-3 line-clamp-3">
+                        {query.length >= 3
+                          ? post.body
+                              .split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+                              .map((part, i) =>
+                                part.toLowerCase() === query.toLowerCase() ? (
+                                  <mark key={i} className="bg-[var(--accent-d)] text-[var(--accent)] px-0.5 rounded">
+                                    {part}
+                                  </mark>
+                                ) : part
                               )
-                            )
-                        : post.body}
-                    </p>
+                          : post.body}
+                      </p>
 
-                    {post.tags.length > 0 && (
-                      <div className="flex gap-[5px] flex-wrap mb-3">
-                        {post.tags.slice(0, 5).map((tag) => (
-                          <span
-                            key={tag}
-                            className="font-mono text-[8px] py-[3px] px-2 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)]"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                      {post.tags.length > 0 && (
+                        <div className="flex gap-1.5 flex-wrap mb-3">
+                          {post.tags.slice(0, 5).map((tag) => (
+                            <span key={tag} className="font-mono text-[10px] py-0.5 px-2 rounded border
+                                                        border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t2)]">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-4 font-mono text-[10px] text-[var(--t2)]">
+                          <span>❤️ {post.likes ?? 0}</span>
+                          <span>💬 {post.comments ?? 0}</span>
+                        </div>
+                        <span className="font-mono text-[10px] font-bold text-[var(--accent)]
+                                         px-3 py-1 rounded-lg border border-[rgba(59,130,246,0.3)]
+                                         bg-[rgba(59,130,246,0.08)] hover:border-[var(--accent)]
+                                         shadow-[0_0_8px_rgba(59,130,246,0.12)] transition-all">
+                          READ →
+                        </span>
                       </div>
-                    )}
-
-                    <div className="flex gap-4 font-mono text-[8px] text-[var(--t2)]">
-                      <span>❤️ {post.likes ?? 0}</span>
-                      <span>💬 {post.comments ?? 0}</span>
                     </div>
                   </button>
                 ))}
@@ -427,33 +704,59 @@ export function SearchScreen() {
             )}
 
             {/* People results */}
-            {selectedType === 'people' && (
-              <div className="flex flex-col gap-3">
+            {mode === 'people' && (
+              <div className="flex flex-col gap-2">
                 {peopleResults.map((person) => (
                   <button
                     key={person.id}
                     onClick={() => setMiniProfilePerson(person)}
-                    className="flex items-center gap-3 bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg p-4 transition-all hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.3)] text-left w-full"
+                    className="text-left w-full rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden
+                               transition-all hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.3)]"
                   >
-                    <Avatar
-                      initials={person.displayName?.[0]?.toUpperCase() ?? person.username[0].toUpperCase()}
-                      imageUrl={person.avatarUrl}
-                      size="sm"
-                      variant="purple"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-mono text-[11px] font-bold text-[var(--t1)] flex items-center gap-1.5">
-                        {person.displayName || person.username}
-                        {person.isVerified && <span className="text-[8px] text-[var(--accent)]">✦</span>}
+                    <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+                    <div className="flex items-center gap-3 px-4 py-3.5">
+                      <Avatar
+                        initials={person.displayName?.[0]?.toUpperCase() ?? person.username[0].toUpperCase()}
+                        imageUrl={person.avatarUrl}
+                        size="sm"
+                        variant="purple"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-mono text-xs font-bold text-[var(--t1)] flex items-center gap-1.5">
+                          {person.displayName || person.username}
+                          {person.isVerified && (
+                            <span className="text-[10px] text-[var(--accent)]">✦</span>
+                          )}
+                        </div>
+                        <div className="font-mono text-[11px] text-[var(--accent)] mt-0.5">@{person.username}</div>
+                        {person.bio && (
+                          <div className="text-xs text-[var(--t2)] mt-1 line-clamp-2 leading-relaxed">
+                            {person.bio}
+                          </div>
+                        )}
                       </div>
-                      <div className="font-mono text-[10px] text-[var(--accent)] mt-0.5">@{person.username}</div>
-                      {person.bio && (
-                        <div className="font-mono text-[9px] text-[var(--t3)] mt-1 line-clamp-2 leading-relaxed">{person.bio}</div>
-                      )}
+                      <span className="font-mono text-[10px] font-bold text-[var(--accent)] flex-shrink-0
+                                       px-3 py-1 rounded-lg border border-[rgba(59,130,246,0.3)]
+                                       bg-[rgba(59,130,246,0.08)] shadow-[0_0_8px_rgba(59,130,246,0.12)]">
+                        VIEW →
+                      </span>
                     </div>
-                    <span className="font-mono text-[9px] text-[var(--t3)] flex-shrink-0">VIEW →</span>
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* No results */}
+            {totalResults === 0 && (
+              <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-8
+                              text-center flex flex-col items-center gap-2">
+                <Search size={20} className="text-[var(--accent)] opacity-50" />
+                <p className="font-mono text-xs font-bold text-[var(--t1)]">NOTHING FOUND</p>
+                <p className="text-xs text-[var(--t2)]">
+                  {hasAiSearchAsk
+                    ? 'Try a different term or type ? to ask AI'
+                    : 'Try a different search term'}
+                </p>
               </div>
             )}
 
@@ -467,18 +770,9 @@ export function SearchScreen() {
                 onClose={() => setMiniProfilePerson(null)}
               />
             )}
-
-            {/* No results */}
-            {totalResults === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="font-mono text-sm text-[var(--t1)] mb-2">NOTHING FOUND</div>
-                <div className="font-mono text-[10px] text-[var(--t2)]">
-                  Try a different search term or tap ASK for AI answers
-                </div>
-              </div>
-            )}
           </div>
         )}
+
       </div>
     </PhoneFrame>
   )

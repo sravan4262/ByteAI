@@ -8,7 +8,7 @@ import { GoogleIcon } from './google-icon'
 import { GithubIcon } from './github-icon'
 
 const socialBtn =
-  'flex items-center justify-center gap-[9px] py-[14px] px-2 border border-[var(--border-m)] rounded-lg bg-[var(--bg-el)] font-mono text-sm font-semibold tracking-[0.04em] text-[var(--t1)] transition-all hover:border-[var(--border-h)] hover:bg-[var(--bg-card)] hover:-translate-y-px disabled:opacity-50'
+  'flex items-center justify-center gap-[9px] py-[14px] px-2 border border-[rgba(59,130,246,0.2)] rounded-lg bg-[rgba(59,130,246,0.03)] font-mono text-sm font-semibold tracking-[0.04em] text-[var(--t1)] transition-all hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:-translate-y-px disabled:opacity-50'
 
 type Provider = 'google' | 'github'
 
@@ -55,18 +55,12 @@ export function UnifiedAuthForm() {
       <button
         onClick={() => handleOAuth('github')}
         disabled={isLoading}
-        className={`${socialBtn} hover:border-[rgba(255,255,255,0.2)]`}
+        className={socialBtn}
       >
         <GithubIcon />
         {loadingProvider === 'github' ? 'Redirecting...' : 'Continue with GitHub'}
       </button>
 
-      <p className="font-mono text-xs text-[var(--t3)] text-center leading-relaxed">
-        {"By continuing, you agree to our "}
-        <span className="text-[var(--t2)] cursor-pointer hover:text-[var(--accent)]">Terms</span>
-        {' & '}
-        <span className="text-[var(--t2)] cursor-pointer hover:text-[var(--accent)]">Privacy</span>.
-      </p>
     </div>
   )
 }

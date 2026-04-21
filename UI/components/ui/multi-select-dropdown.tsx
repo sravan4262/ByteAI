@@ -105,7 +105,7 @@ export function MultiSelectDropdown({
         className={`flex items-center gap-2 font-mono text-xs tracking-[0.08em] px-3 py-2 rounded-lg border transition-all bg-[var(--bg-el)] ${
           values.length > 0
             ? accent.active
-            : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)] hover:text-[var(--t1)]'
+            : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
         }`}
       >
         <span className="truncate max-w-[160px]">{displayLabel()}</span>
@@ -121,30 +121,30 @@ export function MultiSelectDropdown({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-64 bg-[var(--bg-card)] border border-[var(--border)] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.6)] overflow-hidden">
+        <div className="absolute top-full left-0 mt-1 z-50 w-64 bg-[var(--bg-card)] border border-[var(--border-h)] rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] overflow-hidden">
           {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]">
-            <Search size={11} className="text-[var(--t3)] flex-shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border-h)]">
+            <Search size={11} className="text-[var(--t2)] flex-shrink-0" />
             <input
               ref={inputRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={`Search ${placeholder.toLowerCase()}...`}
-              className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t3)] outline-none"
+              className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none"
             />
             {search && (
               <button onClick={() => setSearch('')}>
-                <X size={10} className="text-[var(--t3)] hover:text-[var(--t1)]" />
+                <X size={10} className="text-[var(--t2)] hover:text-[var(--t1)]" />
               </button>
             )}
           </div>
 
           {/* Selected count */}
           {values.length > 0 && (
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
-              <span className={`font-mono text-[9px] ${accent.check}`}>{values.length} selected</span>
-              <button onClick={clearAll} className="font-mono text-[9px] text-[var(--t3)] hover:text-[var(--red)]">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border-h)] bg-[rgba(59,130,246,0.03)]">
+              <span className={`font-mono text-[10px] ${accent.check}`}>{values.length} selected</span>
+              <button onClick={clearAll} className="font-mono text-[10px] text-[var(--t2)] hover:text-[var(--red)]">
                 CLEAR ALL
               </button>
             </div>
@@ -153,7 +153,7 @@ export function MultiSelectDropdown({
           {/* Options */}
           <div className="max-h-52 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
             {filtered.length === 0 ? (
-              <div className="font-mono text-xs text-[var(--t3)] px-3 py-3 text-center">
+              <div className="font-mono text-[10px] text-[var(--t2)] px-3 py-3 text-center">
                 No results for &quot;{search}&quot;
               </div>
             ) : (
@@ -166,7 +166,7 @@ export function MultiSelectDropdown({
                     className={`w-full text-left font-mono text-xs px-3 py-2 transition-all flex items-center justify-between ${
                       isSelected
                         ? accent.row
-                        : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-white/5'
+                        : 'text-[var(--t1)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
                     }`}
                   >
                     <span>{opt.label}</span>

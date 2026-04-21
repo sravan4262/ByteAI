@@ -30,7 +30,6 @@ public sealed class AiController(
     /// Optionally pass a <c>context</c> string (e.g. the byte body) for RAG-style answers.
     /// </summary>
     [HttpPost("ask")]
-    [RequireFeatureFlag("ai-ask")]
     [ProducesResponseType(typeof(ApiResponse<AskResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

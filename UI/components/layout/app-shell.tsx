@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <NotificationContext.Provider value={notifCtx}>
     <div className="flex w-full h-full min-h-screen bg-[var(--bg)]">
       {/* Left Sidebar Navigation */}
-      <nav className="w-20 lg:w-64 flex-shrink-0 border-r border-[var(--border)] bg-[var(--bg-card)] backdrop-blur-xl flex flex-col items-center lg:items-start p-4 fixed left-0 top-0 bottom-0 z-50">
+      <nav className="w-20 lg:w-64 flex-shrink-0 border-r border-[var(--border-h)] bg-[var(--bg-card)] backdrop-blur-xl flex flex-col items-center lg:items-start p-4 fixed left-0 top-0 bottom-0 z-50" onClick={() => notifOpen && setNotifOpen(false)}>
         <div className="mb-8">
           {/* Full logo on wide sidebar */}
           <div className="hidden lg:block">
@@ -72,10 +72,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={tab.id}
                 href={tab.href}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all border ${
                   isActive
-                    ? 'bg-[rgba(59,130,246,0.15)] text-[var(--accent)]'
-                    : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.05)]'
+                    ? 'border-[var(--accent)] bg-[rgba(59,130,246,0.15)] text-[var(--accent)] shadow-[0_0_12px_rgba(59,130,246,0.15)]'
+                    : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
                 }`}
               >
                 <Icon size={20} className="flex-shrink-0" />
@@ -89,8 +89,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* Notification Bell */}
         <button
-          onClick={() => setNotifOpen(true)}
-          className="relative flex items-center gap-3 px-3 py-3 rounded-lg w-full text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.05)] transition-all"
+          onClick={(e) => { e.stopPropagation(); setNotifOpen((v) => !v) }}
+          className="relative flex items-center gap-3 px-3 py-3 rounded-lg w-full border transition-all border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]"
         >
           <span className="relative flex-shrink-0">
             <Bell size={20} />
@@ -109,10 +109,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         {isLoaded && isAdmin && (
           <Link
             href="/admin"
-            className={`flex items-center gap-3 px-3 py-3 rounded-lg w-full transition-all ${
+            className={`flex items-center gap-3 px-3 py-3 rounded-lg w-full transition-all border ${
               active === 'admin'
-                ? 'bg-[rgba(59,130,246,0.15)] text-[var(--accent)]'
-                : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[rgba(255,255,255,0.05)]'
+                ? 'border-[var(--accent)] bg-[rgba(59,130,246,0.15)] text-[var(--accent)] shadow-[0_0_12px_rgba(59,130,246,0.15)]'
+                : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
             }`}
           >
             <Settings size={20} className="flex-shrink-0" />

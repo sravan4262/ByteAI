@@ -30,21 +30,31 @@ export function AuthScreen() {
             <h1 className="text-[28px] font-extrabold tracking-tight leading-tight">
               Welcome to <span className="text-[var(--accent)] drop-shadow-[0_0_24px_rgba(59,130,246,0.4)]">ByteAI</span>
             </h1>
-            <p className="font-mono text-[11px] tracking-[0.14em] text-[var(--t2)]">// THE SOCIAL LAYER FOR AI DEVS</p>
+            <p className="font-mono text-[10px] tracking-[0.18em] uppercase">
+              <span className="text-[var(--t2)]">THE KNOWLEDGE LAYER FOR </span>
+              <span className="text-[var(--accent)] opacity-90">TECH PROFESSIONALS</span>
+            </p>
           </div>
 
           {/* Context copy */}
           <div
-            className="flex flex-col gap-[6px] text-center animate-fadeup"
+            className="flex flex-col gap-[8px] text-center animate-fadeup"
             style={{ animationDelay: '0.1s' }}
           >
-            <p className="font-mono text-xs text-[var(--t2)] leading-relaxed">
-              New here?{' '}
-              <span className="text-[var(--t1)]">{"We'll create your account automatically."}</span>
+            <p className="text-xs text-[var(--t2)] leading-relaxed">
+              <span className="underline underline-offset-2 decoration-[var(--t3)]">Job postings</span>
+              {'. '}
+              <span className="underline underline-offset-2 decoration-[var(--t3)]">Random videos</span>
+              {'. '}
+              <span className="underline underline-offset-2 decoration-[var(--t3)]">Dank memes</span>
+              {'. '}
+              <span className="underline underline-offset-2 decoration-[var(--t3)]">Content you never asked for</span>
+              {'. '}
+              <span className="text-[var(--t1)] font-medium">If that sounds like your feed — you&apos;re in the right place.</span>
             </p>
-            <p className="font-mono text-xs text-[var(--t2)] leading-relaxed">
-              Already a member?{' '}
-              <span className="text-[var(--t1)]">{"You'll be signed right in."}</span>
+            <p className="text-xs text-[var(--t2)] leading-relaxed">
+              ByteAI is strictly tech — knowledge, insights, and real interview experiences,{' '}
+              <span className="text-[var(--t1)]">shared by people who&apos;ve been there.</span>
             </p>
           </div>
 

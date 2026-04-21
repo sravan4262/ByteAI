@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Shield, Plus, Trash2, Globe, User, Search, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Lock, ShieldCheck } from 'lucide-react'
+import { Shield, Plus, Globe, User, Search, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Lock, ShieldCheck } from 'lucide-react'
 import { useIsAdmin } from '@/hooks/use-is-admin'
 import { searchUsers } from '@/lib/api/client'
 import { apiFetch } from '@/lib/api/http'
@@ -38,6 +38,7 @@ export function AdminScreen() {
   const [flagName, setFlagName] = useState('')
   const [flagDesc, setFlagDesc] = useState('')
   const [savingFlag, setSavingFlag] = useState(false)
+  const [confirmDeleteFlag, setConfirmDeleteFlag] = useState<string | null>(null)
 
   // ── Roles state ────────────────────────────────────────────────────────────
   const [roles, setRoles] = useState<RoleType[]>([])
@@ -100,7 +101,6 @@ export function AdminScreen() {
   }
 
   const handleDeleteFlag = async (key: string) => {
-    if (!window.confirm(`Delete flag '${key}'?`)) return
     const ok = await deleteFeatureFlag(key)
     if (ok) { toast.success('Flag deleted'); setFlags(prev => prev.filter(f => f.key !== key)) }
     else toast.error('Failed to delete flag')
@@ -187,7 +187,7 @@ export function AdminScreen() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-5 gap-3">
         <div className="w-7 h-7 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-        <span className="font-mono text-[10px] text-[var(--t3)] tracking-[0.08em] animate-pulse">LOADING ADMIN DATA...</span>
+        <span className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] animate-pulse">LOADING ADMIN DATA...</span>
       </div>
     )
   }
@@ -209,7 +209,7 @@ export function AdminScreen() {
               </div>
               <h1 className="font-mono text-lg font-bold tracking-[0.06em] text-[var(--t1)]">SYSTEM_ADMIN</h1>
             </div>
-            <p className="font-mono text-xs text-[var(--t2)] tracking-[0.06em] ml-[42px]">
+            <p className="text-xs text-[var(--t2)] tracking-[0.06em] ml-[42px]">
               Feature flags · RBAC roles · User overrides
             </p>
           </div>
@@ -231,48 +231,51 @@ export function AdminScreen() {
               <div className="flex items-center gap-2">
                 <Globe size={13} className="text-[var(--accent)]" />
                 <h2 className="font-mono text-[11px] font-bold tracking-[0.1em] text-[var(--t1)]">FEATURE FLAGS</h2>
-                <span className="font-mono text-[9px] text-[var(--t3)] bg-[var(--bg-el)] border border-[var(--border-m)] rounded-full px-2 py-px">{flags.length}</span>
+                <span className="font-mono text-[10px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-h)] rounded-full px-2 py-px">{flags.length}</span>
               </div>
               <button
                 onClick={() => setShowCreateFlag(v => !v)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-mono text-[9px] font-bold border transition-all ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-mono text-[10px] font-bold border transition-all ${
                   showCreateFlag ? 'text-[var(--t1)] border-[var(--accent)] bg-[rgba(59,130,246,0.08)]' : 'text-[var(--accent)] border-[var(--accent)] bg-[rgba(59,130,246,0.05)] hover:bg-[rgba(59,130,246,0.1)]'
                 }`}
               >
-                <Plus size={9} /> NEW {showCreateFlag ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
+                <Plus size={10} /> NEW {showCreateFlag ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
               </button>
             </div>
 
             {showCreateFlag && (
               <div className="border border-[rgba(59,130,246,0.3)] rounded-xl p-4 bg-[rgba(59,130,246,0.04)] flex flex-col gap-3">
-                <div className="font-mono text-[9px] text-[var(--accent)] tracking-[0.12em] font-bold">// NEW FLAG</div>
+                <div className="flex items-center gap-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">NEW FLAG</span>
+                </div>
                 <form onSubmit={handleCreateFlag} className="flex flex-col gap-2.5">
                   <div>
                     <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">KEY *</label>
                     <input type="text" placeholder="e.g. new-feed-v2" value={flagKey}
                       onChange={e => setFlagKey(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                      className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] outline-none transition-all placeholder:text-[var(--t3)]" />
-                    <p className="font-mono text-[8px] text-[var(--t3)] mt-0.5">Lowercase, hyphens only. Permanent.</p>
+                      className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] outline-none transition-all placeholder:text-[var(--t2)]" />
+                    <p className="text-[10px] text-[var(--t2)] mt-0.5">Lowercase, hyphens only. Permanent.</p>
                   </div>
                   <div>
                     <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">DISPLAY NAME *</label>
                     <input type="text" placeholder="e.g. New Feed Algorithm" value={flagName}
                       onChange={e => setFlagName(e.target.value)}
-                      className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] outline-none transition-all placeholder:text-[var(--t3)]" />
+                      className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] outline-none transition-all placeholder:text-[var(--t2)]" />
                   </div>
                   <div>
                     <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">DESCRIPTION</label>
                     <input type="text" placeholder="What does this flag do?" value={flagDesc}
                       onChange={e => setFlagDesc(e.target.value)}
-                      className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] outline-none transition-all placeholder:text-[var(--t3)]" />
+                      className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] outline-none transition-all placeholder:text-[var(--t2)]" />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button type="button" onClick={() => setShowCreateFlag(false)}
-                      className="flex-1 py-2 border border-[var(--border-m)] rounded-lg font-mono text-[9px] text-[var(--t2)] hover:border-[var(--border-h)] transition-all">
+                      className="flex-1 py-2 border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-lg font-mono text-[10px] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] transition-all">
                       CANCEL
                     </button>
                     <button type="submit" disabled={savingFlag || !flagKey || !flagName}
-                      className="flex-1 py-2 bg-[var(--accent)] rounded-lg font-mono text-[9px] font-bold text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                      className="flex-1 py-2 bg-gradient-to-br from-[var(--accent)] to-[#1d4ed8] rounded-lg font-mono text-[10px] font-bold text-white shadow-[0_4px_24px_rgba(59,130,246,0.4)] hover:shadow-[0_8px_36px_rgba(59,130,246,0.5)] disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                       {savingFlag ? 'CREATING...' : 'CREATE →'}
                     </button>
                   </div>
@@ -282,11 +285,13 @@ export function AdminScreen() {
 
             <div className="flex flex-col gap-2">
               {flags.length === 0 ? (
-                <div className="border border-dashed border-[var(--border-m)] rounded-xl p-8 text-center">
-                  <p className="font-mono text-[10px] text-[var(--t3)]">NO FLAGS YET</p>
+                <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-8 text-center flex flex-col items-center gap-2">
+                  <Globe size={20} className="text-[var(--accent)] opacity-50" />
+                  <p className="font-mono text-xs font-bold text-[var(--t1)]">NO FLAGS YET</p>
+                  <p className="text-xs text-[var(--t2)]">Create your first feature flag above.</p>
                 </div>
               ) : flags.map(flag => (
-                <div key={flag.key} className={`rounded-xl border p-3.5 transition-all ${flag.globalOpen ? 'border-[rgba(16,217,160,0.25)] bg-[rgba(16,217,160,0.04)]' : 'border-[var(--border-m)] bg-[var(--bg-card)]'}`}>
+                <div key={flag.key} className={`rounded-xl border p-3.5 transition-all ${flag.globalOpen ? 'border-[rgba(16,217,160,0.25)] bg-[rgba(16,217,160,0.04)]' : 'border-[var(--border-h)] bg-[var(--bg-card)]'}`}>
                   <div className="flex items-start gap-2.5">
                     <button onClick={() => handleToggleFlag(flag)} className="mt-0.5 flex-shrink-0 hover:opacity-80 transition-all" title={flag.globalOpen ? 'Disable globally' : 'Enable globally'}>
                       {flag.globalOpen
@@ -296,16 +301,25 @@ export function AdminScreen() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono text-[11px] font-bold text-[var(--t1)]">{flag.name}</span>
-                        <span className={`font-mono text-[7px] px-1.5 py-px rounded border ${flag.globalOpen ? 'text-[var(--green)] bg-[rgba(16,217,160,0.08)] border-[rgba(16,217,160,0.25)]' : 'text-[var(--t3)] bg-[var(--bg-el)] border-[var(--border-m)]'}`}>
+                        <span className={`font-mono text-[10px] px-1.5 py-px rounded border ${flag.globalOpen ? 'text-[var(--green)] bg-[rgba(16,217,160,0.08)] border-[rgba(16,217,160,0.25)]' : 'text-[var(--t2)] bg-[var(--bg-el)] border-[var(--border-h)]'}`}>
                           {flag.globalOpen ? 'ON' : 'OFF'}
                         </span>
                       </div>
                       <code className="font-mono text-[10px] text-[var(--t2)]">{flag.key}</code>
-                      {flag.description && <p className="font-mono text-xs text-[var(--t1)] mt-0.5 leading-relaxed">{flag.description}</p>}
+                      {flag.description && <p className="text-xs text-[var(--t2)] mt-0.5 leading-relaxed">{flag.description}</p>}
                     </div>
-                    <button onClick={() => handleDeleteFlag(flag.key)} className="flex-shrink-0 p-1 rounded text-[var(--t3)] hover:text-[var(--red)] hover:bg-[rgba(244,63,94,0.08)] transition-all" title="Delete">
-                      <Trash2 size={11} />
-                    </button>
+                    {confirmDeleteFlag === flag.key ? (
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.05em]">DELETE?</span>
+                        <button onClick={() => { handleDeleteFlag(flag.key); setConfirmDeleteFlag(null) }}
+                          className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[rgba(244,63,94,0.4)] bg-[rgba(244,63,94,0.08)] text-[var(--red)] hover:border-[rgba(244,63,94,0.7)] hover:bg-[rgba(244,63,94,0.15)] transition-all">YES</button>
+                        <button onClick={() => setConfirmDeleteFlag(null)}
+                          className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] transition-all">NO</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setConfirmDeleteFlag(flag.key)}
+                        className="flex-shrink-0 px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(244,63,94,0.4)] hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--red)] transition-all">rm</button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -318,48 +332,51 @@ export function AdminScreen() {
               <div className="flex items-center gap-2">
                 <ShieldCheck size={13} className="text-[var(--purple)]" />
                 <h2 className="font-mono text-[11px] font-bold tracking-[0.1em] text-[var(--t1)]">ROLES</h2>
-                <span className="font-mono text-[9px] text-[var(--t3)] bg-[var(--bg-el)] border border-[var(--border-m)] rounded-full px-2 py-px">{roles.length}</span>
+                <span className="font-mono text-[10px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-h)] rounded-full px-2 py-px">{roles.length}</span>
               </div>
               <button
                 onClick={() => setShowCreateRole(v => !v)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-mono text-[9px] font-bold border transition-all ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-mono text-[10px] font-bold border transition-all ${
                   showCreateRole ? 'text-[var(--t1)] border-[var(--purple)] bg-[rgba(167,139,250,0.08)]' : 'text-[var(--purple)] border-[rgba(167,139,250,0.4)] bg-[rgba(167,139,250,0.05)] hover:bg-[rgba(167,139,250,0.1)]'
                 }`}
               >
-                <Plus size={9} /> NEW {showCreateRole ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
+                <Plus size={10} /> NEW {showCreateRole ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
               </button>
             </div>
 
             {showCreateRole && (
               <div className="border border-[rgba(167,139,250,0.3)] rounded-xl p-4 bg-[rgba(167,139,250,0.04)] flex flex-col gap-3">
-                <div className="font-mono text-[9px] text-[var(--purple)] tracking-[0.12em] font-bold">// NEW ROLE</div>
+                <div className="flex items-center gap-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)] flex-shrink-0" />
+                  <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">NEW ROLE</span>
+                </div>
                 <form onSubmit={handleCreateRole} className="flex flex-col gap-2.5">
                   <div>
                     <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">NAME (SLUG) *</label>
                     <input type="text" placeholder="e.g. moderator" value={roleName}
                       onChange={e => setRoleName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                      className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--purple)] outline-none transition-all placeholder:text-[var(--t3)]" />
-                    <p className="font-mono text-[8px] text-[var(--t3)] mt-0.5">Lowercase, hyphens only. Cannot be <code>user</code> or <code>admin</code>.</p>
+                      className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--purple)] focus:shadow-[0_0_0_3px_rgba(167,139,250,0.14)] outline-none transition-all placeholder:text-[var(--t2)]" />
+                    <p className="text-[10px] text-[var(--t2)] mt-0.5">Lowercase, hyphens only. Cannot be <code>user</code> or <code>admin</code>.</p>
                   </div>
                   <div>
                     <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">DISPLAY LABEL *</label>
                     <input type="text" placeholder="e.g. Content Moderator" value={roleLabel}
                       onChange={e => setRoleLabel(e.target.value)}
-                      className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--purple)] outline-none transition-all placeholder:text-[var(--t3)]" />
+                      className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--purple)] focus:shadow-[0_0_0_3px_rgba(167,139,250,0.14)] outline-none transition-all placeholder:text-[var(--t2)]" />
                   </div>
                   <div>
                     <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1 block">DESCRIPTION</label>
                     <input type="text" placeholder="What can this role do?" value={roleDesc}
                       onChange={e => setRoleDesc(e.target.value)}
-                      className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--purple)] outline-none transition-all placeholder:text-[var(--t3)]" />
+                      className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg px-3 py-2 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--purple)] focus:shadow-[0_0_0_3px_rgba(167,139,250,0.14)] outline-none transition-all placeholder:text-[var(--t2)]" />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button type="button" onClick={() => setShowCreateRole(false)}
-                      className="flex-1 py-2 border border-[var(--border-m)] rounded-lg font-mono text-[9px] text-[var(--t2)] hover:border-[var(--border-h)] transition-all">
+                      className="flex-1 py-2 border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-lg font-mono text-[10px] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] transition-all">
                       CANCEL
                     </button>
                     <button type="submit" disabled={savingRole || !roleName || !roleLabel}
-                      className="flex-1 py-2 bg-[var(--purple)] rounded-lg font-mono text-[9px] font-bold text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                      className="flex-1 py-2 bg-gradient-to-br from-[var(--purple)] to-[#5b21b6] rounded-lg font-mono text-[10px] font-bold text-white shadow-[0_4px_24px_rgba(167,139,250,0.4)] hover:shadow-[0_8px_36px_rgba(167,139,250,0.5)] disabled:opacity-40 disabled:cursor-not-allowed transition-all">
                       {savingRole ? 'CREATING...' : 'CREATE →'}
                     </button>
                   </div>
@@ -371,20 +388,20 @@ export function AdminScreen() {
               {roles.map(role => {
                 const isSystem = SYSTEM_ROLES.includes(role.name)
                 return (
-                  <div key={role.id} className={`rounded-xl border p-3.5 ${isSystem ? 'border-[rgba(167,139,250,0.2)] bg-[rgba(167,139,250,0.04)]' : 'border-[var(--border-m)] bg-[var(--bg-card)]'}`}>
+                  <div key={role.id} className={`rounded-xl border p-3.5 ${isSystem ? 'border-[rgba(167,139,250,0.2)] bg-[rgba(167,139,250,0.04)]' : 'border-[var(--border-h)] bg-[var(--bg-card)]'}`}>
                     <div className="flex items-start gap-2.5">
-                      <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isSystem ? 'bg-[rgba(167,139,250,0.12)] border border-[rgba(167,139,250,0.2)]' : 'bg-[var(--bg-el)] border border-[var(--border-m)]'}`}>
-                        {isSystem ? <Lock size={11} className="text-[var(--purple)]" /> : <ShieldCheck size={11} className="text-[var(--t3)]" />}
+                      <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isSystem ? 'bg-[rgba(167,139,250,0.12)] border border-[rgba(167,139,250,0.2)]' : 'bg-[var(--bg-el)] border border-[var(--border-h)]'}`}>
+                        {isSystem ? <Lock size={11} className="text-[var(--purple)]" /> : <ShieldCheck size={11} className="text-[var(--t2)]" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono text-[11px] font-bold text-[var(--t1)]">{role.label}</span>
                           {isSystem && (
-                            <span className="font-mono text-[7px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-1.5 py-px rounded">SYSTEM</span>
+                            <span className="font-mono text-[10px] text-[var(--purple)] bg-[rgba(167,139,250,0.1)] border border-[rgba(167,139,250,0.2)] px-1.5 py-px rounded">SYSTEM</span>
                           )}
                         </div>
                         <code className="font-mono text-[10px] text-[var(--t2)]">{role.name}</code>
-                        {role.description && <p className="font-mono text-xs text-[var(--t1)] mt-0.5 leading-relaxed">{role.description}</p>}
+                        {role.description && <p className="text-xs text-[var(--t2)] mt-0.5 leading-relaxed">{role.description}</p>}
                       </div>
                     </div>
                   </div>
@@ -396,28 +413,28 @@ export function AdminScreen() {
           {/* ── Col 3: User Overrides ──────────────────────────────────────── */}
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <User size={13} className="text-[var(--cyan,#06b6d4)]" />
+              <User size={13} className="text-[var(--accent)]" />
               <h2 className="font-mono text-[11px] font-bold tracking-[0.1em] text-[var(--t1)]">USER OVERRIDES</h2>
             </div>
-            <p className="font-mono text-xs text-[var(--t2)] -mt-2 leading-relaxed">
+            <p className="text-xs text-[var(--t2)] -mt-2 leading-relaxed">
               Assign roles and grant individual flags to a specific user.
             </p>
 
             {/* Search */}
             <div className="relative">
-              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--t3)]" />
+              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--t2)]" />
               <input type="text" placeholder="Search by username..." value={searchQuery}
                 onChange={e => handleSearch(e.target.value)}
-                className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] rounded-lg pl-8 pr-4 py-2.5 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] outline-none transition-all placeholder:text-[var(--t3)]" />
+                className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg pl-8 pr-4 py-2.5 font-mono text-[10px] text-[var(--t1)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] outline-none transition-all placeholder:text-[var(--t2)]" />
             </div>
 
-            {isSearching && <p className="font-mono text-[9px] text-[var(--t3)] text-center animate-pulse">SEARCHING...</p>}
+            {isSearching && <p className="font-mono text-[10px] text-[var(--t2)] text-center animate-pulse">SEARCHING...</p>}
 
             {searchResults.length > 0 && (
-              <div className="border border-[var(--border-m)] rounded-xl overflow-hidden bg-[var(--bg-card)]">
+              <div className="border border-[var(--border-h)] rounded-xl overflow-hidden bg-[var(--bg-card)]">
                 {searchResults.map((user, i) => (
                   <button key={user.id} onClick={() => selectUser(user)}
-                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-all hover:bg-[rgba(255,255,255,0.04)] ${i !== searchResults.length - 1 ? 'border-b border-[var(--border)]' : ''}`}>
+                    className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-all hover:bg-[rgba(255,255,255,0.04)] ${i !== searchResults.length - 1 ? 'border-b border-[var(--border-h)]' : ''}`}>
                     <div className="w-7 h-7 rounded-full bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] flex items-center justify-center font-mono text-[10px] text-[var(--accent)] font-bold flex-shrink-0">
                       {(user.displayName?.[0] ?? user.username[0]).toUpperCase()}
                     </div>
@@ -431,27 +448,27 @@ export function AdminScreen() {
             )}
 
             {selectedUser ? (
-              <div className="border border-[var(--border-m)] rounded-xl overflow-hidden bg-[var(--bg-card)]">
+              <div className="border border-[var(--border-h)] rounded-xl overflow-hidden bg-[var(--bg-card)]">
                 {/* User header */}
-                <div className="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg-el)]">
+                <div className="px-4 py-3 border-b border-[var(--border-h)] flex items-center justify-between bg-[var(--bg-el)]">
                   <div>
                     <div className="font-mono text-[11px] font-bold text-[var(--t1)]">{selectedUser.displayName}</div>
                     <div className="font-mono text-[10px] text-[var(--t2)]">@{selectedUser.username}</div>
                   </div>
                   <button onClick={() => { setSelectedUser(null); setAssignedRoleIds(new Set()); setAssignedFlags(new Set()) }}
-                    className="font-mono text-[9px] text-[var(--t3)] hover:text-[var(--t1)] transition-all px-2 py-1 rounded border border-transparent hover:border-[var(--border-m)]">
+                    className="font-mono text-[10px] text-[var(--t2)] hover:text-[var(--t1)] transition-all px-2 py-1 rounded border border-transparent hover:border-[var(--border-h)]">
                     CLEAR
                   </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex border-b border-[var(--border)]">
+                {/* Tabs — pill style */}
+                <div className="flex gap-2 p-3 border-b border-[var(--border-h)]">
                   {(['roles', 'flags'] as const).map(tab => (
                     <button key={tab} onClick={() => setUserTab(tab)}
-                      className={`flex-1 py-2.5 font-mono text-[9px] font-bold tracking-[0.08em] transition-all ${
+                      className={`flex-1 py-1.5 px-4 rounded-lg font-mono text-[10px] font-bold tracking-[0.08em] border transition-all ${
                         userTab === tab
-                          ? 'text-[var(--t1)] border-b-2 border-[var(--accent)] -mb-px'
-                          : 'text-[var(--t2)] hover:text-[var(--t1)]'
+                          ? 'text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-d)] shadow-[0_0_12px_rgba(59,130,246,0.2)]'
+                          : 'text-[var(--t1)] border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
                       }`}>
                       {tab === 'roles' ? `ROLES (${assignedRoleIds.size})` : `FLAGS (${assignedFlags.size})`}
                     </button>
@@ -459,9 +476,9 @@ export function AdminScreen() {
                 </div>
 
                 {userDataLoading ? (
-                  <div className="py-8 text-center font-mono text-[9px] text-[var(--t3)] animate-pulse">LOADING...</div>
+                  <div className="py-8 text-center font-mono text-[10px] text-[var(--t2)] animate-pulse">LOADING...</div>
                 ) : userTab === 'roles' ? (
-                  <div className="divide-y divide-[var(--border)]">
+                  <div className="divide-y divide-[var(--border-h)]">
                     {roles.map(role => {
                       const isAssigned = assignedRoleIds.has(role.id)
                       const isBaseRole = role.name === 'user'
@@ -470,19 +487,19 @@ export function AdminScreen() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="font-mono text-[10px] font-bold text-[var(--t1)]">{role.label}</span>
-                              {isAssigned && <span className="font-mono text-[7px] text-[var(--green)] border border-[rgba(16,217,160,0.3)] px-1 rounded">ACTIVE</span>}
-                              {isBaseRole && <span className="font-mono text-[7px] text-[var(--t3)] border border-[var(--border-m)] px-1 rounded">BASE</span>}
+                              {isAssigned && <span className="font-mono text-[10px] text-[var(--green)] border border-[rgba(16,217,160,0.3)] px-1.5 rounded">ACTIVE</span>}
+                              {isBaseRole && <span className="font-mono text-[10px] text-[var(--t2)] border border-[var(--border-h)] px-1.5 rounded">BASE</span>}
                             </div>
                             <code className="font-mono text-[10px] text-[var(--t2)]">{role.name}</code>
                           </div>
                           {isBaseRole ? (
-                            <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-m)] text-[var(--t3)]">
+                            <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-h)] text-[var(--t2)]">
                               <Lock size={9} />
-                              <span className="font-mono text-[8px]">LOCKED</span>
+                              <span className="font-mono text-[10px]">LOCKED</span>
                             </div>
                           ) : (
                             <button onClick={() => handleToggleRole(role.id, role.label)}
-                              className={`font-mono text-[9px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
+                              className={`font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
                                 isAssigned
                                   ? 'text-[var(--red)] border-[rgba(244,63,94,0.3)] bg-[rgba(244,63,94,0.06)] hover:bg-[rgba(244,63,94,0.12)]'
                                   : 'text-[var(--purple)] border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.06)] hover:bg-[rgba(167,139,250,0.12)]'
@@ -495,7 +512,7 @@ export function AdminScreen() {
                     })}
                   </div>
                 ) : (
-                  <div className="divide-y divide-[var(--border)]">
+                  <div className="divide-y divide-[var(--border-h)]">
                     {flags.map(flag => {
                       const isAssigned = assignedFlags.has(flag.key)
                       return (
@@ -503,12 +520,12 @@ export function AdminScreen() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="font-mono text-[10px] font-bold text-[var(--t1)]">{flag.name}</span>
-                              {flag.globalOpen && <span className="font-mono text-[7px] text-[var(--green)] border border-[rgba(16,217,160,0.3)] px-1 rounded">GLOBAL ON</span>}
+                              {flag.globalOpen && <span className="font-mono text-[10px] text-[var(--green)] border border-[rgba(16,217,160,0.3)] px-1.5 rounded">GLOBAL ON</span>}
                             </div>
                             <code className="font-mono text-[10px] text-[var(--t2)]">{flag.key}</code>
                           </div>
                           <button onClick={() => handleToggleFlagForUser(flag.key, flag.name)}
-                            className={`font-mono text-[9px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
+                            className={`font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
                               isAssigned
                                 ? 'text-[var(--red)] border-[rgba(244,63,94,0.3)] bg-[rgba(244,63,94,0.06)] hover:bg-[rgba(244,63,94,0.12)]'
                                 : 'text-[var(--accent)] border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.06)] hover:bg-[rgba(59,130,246,0.12)]'
@@ -522,10 +539,10 @@ export function AdminScreen() {
                 )}
               </div>
             ) : (
-              <div className="border border-dashed border-[var(--border-m)] rounded-xl p-10 text-center">
-                <User size={20} className="text-[var(--t3)] mx-auto mb-2 opacity-40" />
-                <div className="font-mono text-xs font-bold text-[var(--t2)]">NO USER SELECTED</div>
-                <div className="font-mono text-[10px] text-[var(--t2)] mt-1">Search above to manage a user&apos;s roles and flags</div>
+              <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-10 text-center flex flex-col items-center gap-2">
+                <User size={20} className="text-[var(--accent)] opacity-50" />
+                <p className="font-mono text-xs font-bold text-[var(--t1)]">NO USER SELECTED</p>
+                <p className="text-xs text-[var(--t2)]">Search above to manage a user&apos;s roles and flags.</p>
               </div>
             )}
           </div>

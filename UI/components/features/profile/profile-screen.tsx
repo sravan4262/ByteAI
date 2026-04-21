@@ -66,7 +66,7 @@ function BadgeCard({ badge, index, forceOpen, onClose, isNext }: { badge: Badge;
         transition={{ delay: index * 0.06, type: 'spring', stiffness: 220, damping: 18 }}
         whileHover={badge.earned ? { scale: 1.06, y: -3 } : { scale: 1.02 }}
         whileTap={{ scale: 0.94 }}
-        className={`flex-shrink-0 flex flex-col items-center gap-1.5 p-3 min-w-[76px] rounded-xl border relative overflow-hidden cursor-pointer focus:outline-none ${
+        className={`flex-shrink-0 flex flex-col items-center gap-1.5 p-3 min-w-[80px] rounded-xl border relative overflow-hidden cursor-pointer focus:outline-none ${
           badge.earned
             ? isFirst
               ? 'border-[rgba(251,191,36,0.55)] bg-[rgba(251,191,36,0.07)] shadow-[0_0_28px_rgba(251,191,36,0.22),inset_0_0_20px_rgba(251,191,36,0.04)] animate-badge-float'
@@ -96,19 +96,19 @@ function BadgeCard({ badge, index, forceOpen, onClose, isNext }: { badge: Badge;
           </div>
         )}
 
-        <span className={`font-mono text-[8.5px] font-semibold text-center leading-tight relative z-10 ${
+        <span className={`font-mono text-[10px] font-semibold text-center leading-tight relative z-10 ${
           badge.earned ? 'text-[rgba(251,191,36,0.85)]' : isNext ? 'text-[var(--cyan)]' : 'text-[var(--t2)]'
         }`}>
           {badge.earned ? badge.name : isNext ? badge.label : '???'}
         </span>
 
         {badge.earned && (
-          <span className="font-mono text-xs text-[rgba(251,191,36,0.5)] tracking-[0.06em] relative z-10">
+          <span className="font-mono text-[10px] text-[rgba(251,191,36,0.5)] tracking-[0.06em] relative z-10">
             {isFirst ? '✦ FIRST' : '✓ EARNED'}
           </span>
         )}
         {!badge.earned && (
-          <span className={`font-mono text-[8px] tracking-[0.06em] ${isNext ? 'text-[var(--cyan)]' : 'text-[var(--t3)]'}`}>
+          <span className={`font-mono text-[10px] tracking-[0.06em] ${isNext ? 'text-[var(--cyan)]' : 'text-[var(--t3)]'}`}>
             {isNext ? '▶ NEXT' : 'LOCKED'}
           </span>
         )}
@@ -530,8 +530,8 @@ export function ProfileScreen() {
       {editMode && (
         <div className="absolute inset-0 z-50 flex flex-col">
           <div className="flex-1 bg-[var(--bg-o70)] backdrop-blur-sm" onClick={() => setEditMode(false)} />
-          <div className="bg-[var(--bg-card)] border-t border-[var(--border-m)] rounded-t-2xl flex flex-col max-h-[90%] overflow-hidden shadow-[0_-16px_64px_rgba(0,0,0,0.6)]">
-            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[var(--border)] flex-shrink-0">
+          <div className="bg-[var(--bg-card)] border-t border-[var(--border-h)] rounded-t-2xl flex flex-col max-h-[90%] overflow-hidden shadow-[0_-16px_64px_rgba(0,0,0,0.6)]">
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[var(--border-h)] flex-shrink-0">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs font-bold tracking-[0.1em]">EDIT_PROFILE</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
@@ -541,7 +541,7 @@ export function ProfileScreen() {
                   className="flex items-center gap-1.5 font-mono text-xs font-semibold px-4 py-[7px] rounded-full bg-gradient-to-r from-[var(--accent)] to-[#2563eb] text-white tracking-[0.06em] disabled:opacity-50 transition-all hover:shadow-[0_0_16px_var(--accent-glow)]">
                   {editSaving ? <span className="animate-pulse">SAVING...</span> : <><Check size={11} />SAVE</>}
                 </button>
-                <button onClick={() => setEditMode(false)} className="w-7 h-7 rounded-full bg-[var(--bg-el)] border border-[var(--border-m)] flex items-center justify-center hover:border-[var(--red)] hover:text-[var(--red)] transition-all">
+                <button onClick={() => setEditMode(false)} className="w-7 h-7 rounded-full bg-[var(--bg-el)] border border-[var(--border-h)] flex items-center justify-center hover:border-[var(--red)] hover:text-[var(--red)] transition-all">
                   <X size={12} />
                 </button>
               </div>
@@ -549,7 +549,10 @@ export function ProfileScreen() {
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)] px-5 py-4 flex flex-col gap-4">
               {/* Avatar selection */}
               <div>
-                <label className="font-mono text-xs text-[var(--t1)] font-bold tracking-[0.08em] mb-3 block">// AVATAR</label>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">AVATAR</span>
+                </div>
                 <div className="flex flex-col gap-4">
 
                   {/* ── Row 1: Provider photo ── */}
@@ -627,56 +630,71 @@ export function ProfileScreen() {
 
               {/* Username */}
               <div>
-                <label className="font-mono text-xs text-[var(--t1)] font-bold tracking-[0.08em] mb-1.5 block">// USERNAME</label>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">USERNAME</span>
+                </div>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-[var(--t3)]">@</span>
                   <input value={editForm.username} onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
                     placeholder="your_handle" maxLength={30}
-                    className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--accent)] rounded-lg pl-7 pr-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors" />
+                    className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] rounded-lg pl-7 pr-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none transition-all" />
                 </div>
               </div>
 
               <div>
-                <label className="font-mono text-xs text-[var(--t1)] font-bold tracking-[0.08em] mb-1.5 block">// DISPLAY_NAME</label>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">DISPLAY_NAME</span>
+                </div>
                 <input value={editForm.displayName} onChange={(e) => setEditForm((f) => ({ ...f, displayName: e.target.value }))}
                   placeholder="Your name" maxLength={60}
-                  className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--accent)] rounded-lg px-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors" />
+                  className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] rounded-lg px-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none transition-all" />
               </div>
               <div>
-                <label className="font-mono text-xs text-[var(--t1)] font-bold tracking-[0.08em] mb-1.5 block">// BIO</label>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">BIO</span>
+                </div>
                 <textarea value={editForm.bio} onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
                   placeholder="Tell the world what you build..." maxLength={280} rows={3}
-                  className="w-full bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--accent)] rounded-lg px-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors resize-none leading-relaxed" />
+                  className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] rounded-lg px-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none transition-all resize-none leading-relaxed" />
                 <div className="text-right font-mono text-xs text-[var(--t3)] mt-0.5">{editForm.bio.length}/280</div>
               </div>
               <div>
-                <label className="font-mono text-xs text-[var(--t1)] font-bold tracking-[0.08em] mb-1.5 block">// ROLE_TITLE @ COMPANY</label>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">ROLE_TITLE @ COMPANY</span>
+                </div>
                 <div className="flex items-center gap-2">
                   <input value={editForm.roleTitle} onChange={(e) => setEditForm((f) => ({ ...f, roleTitle: e.target.value }))} placeholder="Sr. Engineer" maxLength={40}
-                    className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--purple)] rounded-lg px-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors" />
-                  <span className="font-mono text-sm text-[var(--t3)] flex-shrink-0">@</span>
+                    className="flex-1 bg-[var(--bg-el)] border border-[var(--border-h)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] rounded-lg px-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none transition-all" />
+                  <span className="font-mono text-sm text-[var(--t2)] opacity-60 flex-shrink-0">@</span>
                   <input value={editForm.company} onChange={(e) => setEditForm((f) => ({ ...f, company: e.target.value }))} placeholder="company.io" maxLength={50}
-                    className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--cyan)] rounded-lg px-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors" />
+                    className="flex-1 bg-[var(--bg-el)] border border-[var(--border-h)] focus:border-[var(--green)] focus:shadow-[0_0_0_3px_rgba(16,217,160,0.12)] rounded-lg px-3 py-2.5 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none transition-all" />
                 </div>
               </div>
               <div>
-                <label className="font-mono text-xs text-[var(--t1)] font-bold tracking-[0.08em] mb-2 block">// SOCIAL_LINKS</label>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">SOCIAL_LINKS</span>
+                </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-[var(--bg)] border border-[var(--border-m)] flex items-center justify-center text-[var(--t3)]"><Github size={12} /></div>
+                    <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-[var(--bg)] border border-[var(--border-h)] flex items-center justify-center text-[var(--t2)]"><Github size={12} /></div>
                     <input value={editForm.github} onChange={(e) => setEditForm((f) => ({ ...f, github: e.target.value }))} placeholder="https://github.com/username"
-                      className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--cyan)] rounded-lg px-3 py-2 font-mono text-sm text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors" />
+                      className="flex-1 bg-[var(--bg-el)] border border-[var(--border-h)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] rounded-lg px-3 py-2 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none transition-all" />
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-[var(--bg)] border border-[var(--border-m)] flex items-center justify-center text-[var(--t3)]"><span className="font-bold text-sm">in</span></div>
+                    <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-[var(--bg)] border border-[var(--border-h)] flex items-center justify-center text-[var(--t2)]"><span className="font-bold text-sm">in</span></div>
                     <input value={editForm.linkedin} onChange={(e) => setEditForm((f) => ({ ...f, linkedin: e.target.value }))} placeholder="https://linkedin.com/in/username"
-                      className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--cyan)] rounded-lg px-3 py-2 font-mono text-sm text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors" />
+                      className="flex-1 bg-[var(--bg-el)] border border-[var(--border-h)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] rounded-lg px-3 py-2 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none transition-all" />
                   </div>
                   {editForm.websites.map((url, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-[var(--bg)] border border-[var(--border-m)] flex items-center justify-center text-[var(--t3)]"><Globe size={12} /></div>
+                      <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-[var(--bg)] border border-[var(--border-h)] flex items-center justify-center text-[var(--t2)]"><Globe size={12} /></div>
                       <input value={url} onChange={(e) => { const next = [...editForm.websites]; next[idx] = e.target.value; setEditForm((f) => ({ ...f, websites: next })) }} placeholder="https://yoursite.dev"
-                        className="flex-1 bg-[var(--bg-el)] border border-[var(--border-m)] focus:border-[var(--cyan)] rounded-lg px-3 py-2 font-mono text-sm text-[var(--t1)] placeholder:text-[var(--t3)] outline-none transition-colors" />
+                        className="flex-1 bg-[var(--bg-el)] border border-[var(--border-h)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(59,130,246,0.14)] rounded-lg px-3 py-2 font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none transition-all" />
                       {editForm.websites.length > 1 && (
                         <button type="button" onClick={() => setEditForm((f) => ({ ...f, websites: f.websites.filter((_, i) => i !== idx) }))} className="text-[var(--t3)] hover:text-red-400 transition-colors flex-shrink-0"><X size={14} /></button>
                       )}
@@ -694,7 +712,7 @@ export function ProfileScreen() {
       )}
 
       {/* ── HEADER ── */}
-      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
+      <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border-h)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
         <div className="flex items-center gap-[9px]">
           <span className="font-mono text-sm text-[var(--cyan)] border-[1.5px] border-[var(--cyan)] rounded px-[5px] py-[2px] tracking-[0.05em] shadow-[0_0_10px_var(--cyan)]">{'</>'}</span>
           <span className="font-mono text-xs font-bold tracking-[0.1em]">PROFILE</span>
@@ -708,16 +726,19 @@ export function ProfileScreen() {
       <div className="flex-1 flex overflow-hidden">
 
         {/* Left nav */}
-        <nav className="w-[68px] flex-shrink-0 flex flex-col border-r border-[var(--border)] bg-[var(--bg-card)]">
-          {PROFILE_NAV.map(({ id, icon: Icon, label, color, activeBg }) => {
+        <nav className="w-[68px] flex-shrink-0 flex flex-col gap-1 pt-1.5 pb-1 border-r border-[var(--border-h)] bg-[var(--bg-card)]">
+          {PROFILE_NAV.map(({ id, icon: Icon, label }) => {
             const active = activeTab === id
             return (
               <button key={id} onClick={() => setActiveTab(id)}
-                className="flex flex-col items-center justify-center gap-[5px] py-4 w-full transition-all relative"
-                style={active ? { color, background: activeBg } : { color: 'var(--t2)' }}>
-                {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-7 rounded-r-full" style={{ background: color }} />}
+                className={`flex flex-col items-center justify-center gap-1.5 py-3 mx-1.5 rounded-lg border transition-all relative ${
+                  active
+                    ? 'border-[var(--accent)] bg-[rgba(59,130,246,0.15)] text-[var(--accent)] shadow-[0_0_12px_rgba(59,130,246,0.15)]'
+                    : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
+                }`}>
+                {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-[var(--accent)]" />}
                 <Icon size={15} />
-                <span className="font-mono text-[8px] font-bold tracking-[0.05em]">{label}</span>
+                <span className="font-mono text-[10px] font-bold tracking-[0.05em]">{label}</span>
               </button>
             )
           })}
@@ -725,15 +746,15 @@ export function ProfileScreen() {
           {/* Spacer + sign out at bottom */}
           <div className="flex-1" />
           <button onClick={handleLogout}
-            className="flex flex-col items-center justify-center gap-[6px] py-5 w-full text-[var(--t2)] hover:text-[var(--red)] transition-all group">
-            <LogOut size={18} />
-            <span className="font-mono text-[8px] font-bold tracking-[0.06em]">SIGN OUT</span>
-            <span className="flex flex-col items-center gap-0">
-              <span className="font-mono text-[9px] tracking-[0.04em] opacity-90 group-hover:opacity-100">Ctrl</span>
-              <span className="text-[10px] font-black opacity-60 group-hover:opacity-90 leading-none">+</span>
-              <span className="font-mono text-[9px] tracking-[0.04em] opacity-90 group-hover:opacity-100">Shift</span>
-              <span className="text-[10px] font-black opacity-60 group-hover:opacity-90 leading-none">+</span>
-              <span className="font-mono text-[9px] tracking-[0.04em] opacity-90 group-hover:opacity-100">Esc</span>
+            className="flex flex-col items-center justify-center gap-1.5 py-3 mx-1.5 mb-1.5 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(244,63,94,0.4)] hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--red)] transition-all group">
+            <LogOut size={15} />
+            <span className="font-mono text-[10px] font-bold tracking-[0.05em]">SIGN OUT</span>
+            <span className="flex flex-col items-center gap-0 opacity-50 group-hover:opacity-80 transition-opacity">
+              <span className="font-mono text-[9px] tracking-[0.04em]">Ctrl</span>
+              <span className="font-mono text-[9px] font-black leading-none">+</span>
+              <span className="font-mono text-[9px] tracking-[0.04em]">Shift</span>
+              <span className="font-mono text-[9px] font-black leading-none">+</span>
+              <span className="font-mono text-[9px] tracking-[0.04em]">Esc</span>
             </span>
           </button>
         </nav>
@@ -746,7 +767,7 @@ export function ProfileScreen() {
             <div className="flex flex-col">
 
               {/* Hero */}
-              <div className="p-4 border-b border-[var(--border)] bg-gradient-to-b from-[rgba(59,130,246,0.05)] to-transparent">
+              <div className="p-4 border-b border-[var(--border-h)] bg-gradient-to-b from-[rgba(59,130,246,0.05)] to-transparent">
                 <div className="flex items-start justify-between mb-3">
                   <div className="relative">
                     <div className="absolute -inset-[3px] rounded-full bg-[conic-gradient(from_0deg,var(--cyan),var(--accent),var(--purple),var(--cyan))] animate-spin-ring blur-[2px] opacity-70" />
@@ -782,9 +803,9 @@ export function ProfileScreen() {
                       {currentUser?.displayName ?? '—'}
                       <span className="text-[11px] text-[var(--accent)] drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]">✦</span>
                     </div>
-                    <div className="font-mono text-[11px] text-[var(--t1)] opacity-60 mt-0.5">{currentUser?.username ? `@${currentUser.username}` : ''}</div>
+                    <div className="font-mono text-[11px] text-[var(--t2)] mt-0.5">{currentUser?.username ? `@${currentUser.username}` : ''}</div>
                     {(currentUser?.roleTitle || currentUser?.company) && (
-                      <div className="font-mono text-xs text-[var(--t1)] opacity-70 mt-0.5">
+                      <div className="font-mono text-xs text-[var(--t2)] mt-0.5">
                         {currentUser.roleTitle}{currentUser.company && ` @ ${currentUser.company}`}
                       </div>
                     )}
@@ -792,7 +813,7 @@ export function ProfileScreen() {
                 )}
 
                 {/* Bio */}
-                <div className="mt-2.5 p-2.5 bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg">
+                <div className="mt-2.5 p-2.5 bg-[var(--bg-card)] border border-[var(--border-h)] rounded-lg">
                   <div className="font-mono text-xs text-[var(--t3)] mb-0.5">/*</div>
                   {userLoading ? (
                     <div className="animate-pulse flex flex-col gap-1"><div className="h-2 bg-[var(--border-m)] rounded w-full" /><div className="h-2 bg-[var(--border-m)] rounded w-4/5" /></div>
@@ -806,14 +827,14 @@ export function ProfileScreen() {
                 <div className="flex gap-1.5 flex-wrap mt-2.5">
                   {hasGithub && (
                     <a href={githubLink!.url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-[4px] px-[8px] py-[4px] bg-[rgba(34,211,238,0.08)] border border-[rgba(34,211,238,0.3)] rounded-full font-mono text-[10px] text-[var(--cyan)] transition-all hover:bg-[rgba(34,211,238,0.15)]">
+                      className="flex items-center gap-[4px] px-[8px] py-[4px] bg-[rgba(59,130,246,0.08)] border border-[rgba(59,130,246,0.3)] rounded-full font-mono text-[10px] text-[var(--accent)] transition-all hover:bg-[rgba(59,130,246,0.15)]">
                       <Github size={10} />{githubLink!.label || 'github'}
                     </a>
                   )}
                   {hasLinkedin && (
                     <a href={linkedinLink!.url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-[4px] px-[8px] py-[4px] bg-[rgba(34,211,238,0.08)] border border-[rgba(34,211,238,0.3)] rounded-full font-mono text-[10px] text-[var(--cyan)] transition-all hover:bg-[rgba(34,211,238,0.15)]">
-                      <span className="font-bold text-[9px]">in</span>linkedin
+                      className="flex items-center gap-[4px] px-[8px] py-[4px] bg-[rgba(59,130,246,0.08)] border border-[rgba(59,130,246,0.3)] rounded-full font-mono text-[10px] text-[var(--accent)] transition-all hover:bg-[rgba(59,130,246,0.15)]">
+                      <span className="font-bold text-[10px]">in</span>linkedin
                     </a>
                   )}
                   {websiteLinks.map((link, i) => (
@@ -823,20 +844,20 @@ export function ProfileScreen() {
                     </a>
                   ))}
                   {(!hasGithub || !hasLinkedin || websiteLinks.length === 0) && (
-                    <span className="font-mono text-[10px] text-[var(--t3)] self-center">// todo</span>
+                    <span className="font-mono text-[10px] text-[var(--t2)] self-center opacity-50">+ add links</span>
                   )}
                   {!hasGithub && (
-                    <button onClick={openEditProfile} className="flex items-center gap-[4px] px-[8px] py-[4px] border border-[rgba(34,211,238,0.3)] rounded-full font-mono text-[10px] text-[var(--cyan)] bg-[rgba(34,211,238,0.08)] transition-all hover:bg-[rgba(34,211,238,0.14)]">
+                    <button onClick={openEditProfile} className="flex items-center gap-[4px] px-[8px] py-[4px] border border-[rgba(59,130,246,0.3)] rounded-full font-mono text-[10px] text-[var(--accent)] bg-[rgba(59,130,246,0.08)] transition-all hover:bg-[rgba(59,130,246,0.15)]">
                       <Github size={10} />+ GITHUB
                     </button>
                   )}
                   {!hasLinkedin && (
-                    <button onClick={openEditProfile} className="flex items-center gap-[4px] px-[8px] py-[4px] border border-[rgba(34,211,238,0.3)] rounded-full font-mono text-[10px] text-[var(--cyan)] bg-[rgba(34,211,238,0.08)] transition-all hover:bg-[rgba(34,211,238,0.14)]">
-                      <span className="font-bold text-[9px]">in</span>+ LINKEDIN
+                    <button onClick={openEditProfile} className="flex items-center gap-[4px] px-[8px] py-[4px] border border-[rgba(59,130,246,0.3)] rounded-full font-mono text-[10px] text-[var(--accent)] bg-[rgba(59,130,246,0.08)] transition-all hover:bg-[rgba(59,130,246,0.15)]">
+                      <span className="font-bold text-[10px]">in</span>+ LINKEDIN
                     </button>
                   )}
                   {websiteLinks.length === 0 && (
-                    <button onClick={openEditProfile} className="flex items-center gap-[4px] px-[8px] py-[4px] border border-[rgba(34,211,238,0.3)] rounded-full font-mono text-[10px] text-[var(--cyan)] bg-[rgba(34,211,238,0.08)] transition-all hover:bg-[rgba(34,211,238,0.14)]">
+                    <button onClick={openEditProfile} className="flex items-center gap-[4px] px-[8px] py-[4px] border border-[rgba(59,130,246,0.3)] rounded-full font-mono text-[10px] text-[var(--accent)] bg-[rgba(59,130,246,0.08)] transition-all hover:bg-[rgba(59,130,246,0.15)]">
                       <Globe size={10} />+ WEBSITE
                     </button>
                   )}
@@ -880,7 +901,7 @@ export function ProfileScreen() {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-4 mx-4 mt-3 border border-[var(--border-m)] rounded-lg overflow-hidden">
+              <div className="grid grid-cols-4 mx-4 mt-3 border border-[var(--border-h)] rounded-xl overflow-hidden">
                 {[
                   { label: 'BYTES',     value: myBytes.length,                      clickable: true,  onClick: () => setActiveTab('bytes') },
                   { label: 'FOLLOWING', value: currentUser?.followingCount ?? '—',   clickable: true,  onClick: async () => { if (!currentUser) return; const list = await api.getFollowing(currentUser.id); setPeopleSheet({ type: 'following', list }) } },
@@ -891,12 +912,12 @@ export function ProfileScreen() {
                     <button key={stat.label} onClick={stat.onClick}
                       className={`py-3 px-1 text-center bg-[var(--bg-card)] ${i < 3 ? 'border-r border-[var(--border-m)]' : ''} hover:bg-[var(--bg-el)] transition-colors`}>
                       <div className="font-mono text-base font-bold text-[var(--accent)]">{stat.value}</div>
-                      <div className="font-mono text-[9px] tracking-[0.07em] text-[var(--t2)] mt-[3px] underline underline-offset-2">{stat.label}</div>
+                      <div className="font-mono text-[10px] tracking-[0.07em] text-[var(--t2)] mt-[3px] underline underline-offset-2">{stat.label}</div>
                     </button>
                   ) : (
                     <div key={stat.label} className={`py-3 px-1 text-center bg-[var(--bg-card)] ${i < 3 ? 'border-r border-[var(--border-m)]' : ''} ${'isStreak' in stat && stat.isStreak ? 'bg-gradient-to-br from-[rgba(16,217,160,0.06)] to-transparent' : ''}`}>
                       <div className={`font-mono text-base font-bold ${'isStreak' in stat && stat.isStreak ? 'text-[var(--green)]' : 'text-[var(--t1)]'}`}>{stat.value}</div>
-                      <div className="font-mono text-[9px] tracking-[0.07em] text-[var(--t2)] mt-[3px]">{stat.label}</div>
+                      <div className="font-mono text-[10px] tracking-[0.07em] text-[var(--t2)] mt-[3px]">{stat.label}</div>
                     </div>
                   )
                 ))}
@@ -905,8 +926,11 @@ export function ProfileScreen() {
               {/* Badges */}
               <div className="mt-4 px-4">
                 <div className="flex items-center justify-between mb-2.5">
-                  <div className="font-mono text-xs font-bold tracking-[0.12em] text-[var(--t1)]">// BADGES</div>
-                  <span className="font-mono text-[10px] text-[var(--t3)]">{mergedBadges.filter(b => b.earned).length}/{mergedBadges.length} UNLOCKED</span>
+                  <div className="flex items-center gap-2">
+                    <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                    <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">BADGES</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-[var(--t2)]">{mergedBadges.filter(b => b.earned).length}/{mergedBadges.length} UNLOCKED</span>
                 </div>
               </div>
               <div className="flex gap-2 px-4 pb-1 overflow-x-auto scrollbar-none">
@@ -919,12 +943,15 @@ export function ProfileScreen() {
 
               {/* Account Visibility */}
               <div className="mx-4 mt-4 mb-6">
-                <div className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.1em] mb-2">// VISIBILITY</div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">VISIBILITY</span>
+                </div>
                 <div className="flex gap-2">
                   {(['public', 'private'] as const).map((opt) => (
                     <button key={opt} onClick={() => handlePrivacyChange(opt)}
                       className={`flex-1 py-2 px-2 text-center border-[1.5px] rounded-lg font-mono text-xs transition-all flex items-center justify-center gap-1.5 ${
-                        privacy === opt ? 'border-[var(--green)] text-[var(--green)] bg-[var(--green-d)]' : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)]'
+                        privacy === opt ? 'border-[var(--green)] text-[var(--green)] bg-[var(--green-d)]' : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
                       }`}>
                       {opt === 'public' ? <Globe size={11} /> : <Lock size={9} />}
                       {opt.toUpperCase()}
@@ -939,7 +966,7 @@ export function ProfileScreen() {
           {activeTab === 'bytes' && (
             <div className="flex flex-col">
               {/* Sub-tabs */}
-              <div className="flex border-b border-[var(--border)] bg-[var(--bg-card)]">
+              <div className="flex gap-2 px-4 py-3 border-b border-[var(--border-h)] sticky top-0 bg-[var(--bg)] z-10">
                 {([
                   { id: 'posted', label: 'POSTED', count: myBytes.length },
                   { id: 'saved',  label: 'SAVED',  count: savedBytes.length },
@@ -949,8 +976,10 @@ export function ProfileScreen() {
                   return (
                     <button key={id}
                       onClick={() => { setBytesTab(id); if (id === 'drafts' && myDrafts.length === 0) handleLoadDrafts() }}
-                      className={`flex-1 py-3 font-mono text-[10px] font-bold tracking-[0.08em] transition-all border-b-2 ${
-                        active ? 'text-[var(--cyan)] border-[var(--cyan)]' : 'text-[var(--t3)] border-transparent hover:text-[var(--t2)]'
+                      className={`font-mono text-[10px] font-bold tracking-[0.08em] px-4 py-1.5 rounded-lg border transition-all ${
+                        active
+                          ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_12px_rgba(59,130,246,0.2)]'
+                          : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
                       }`}>
                       {label}{count > 0 && <span className="ml-1 opacity-60">({count})</span>}
                     </button>
@@ -966,7 +995,7 @@ export function ProfileScreen() {
                   <div className="py-12 flex flex-col items-center gap-3 px-5">
                     <div className="text-2xl opacity-30">◎</div>
                     <p className="font-mono text-xs font-bold text-[var(--t2)]">NO DRAFTS</p>
-                    <p className="font-mono text-xs text-[var(--t3)] text-center leading-relaxed">Save work-in-progress from the compose screen</p>
+                    <p className="font-mono text-xs text-[var(--t2)] text-center leading-relaxed">Save work-in-progress from the compose screen</p>
                     <button onClick={() => router.push('/compose')} className="font-mono text-xs px-3 py-1.5 rounded-lg border border-[rgba(249,115,22,0.3)] text-[var(--orange)] bg-[rgba(249,115,22,0.07)] transition-all hover:opacity-80">→ COMPOSE</button>
                   </div>
                 ) : (
@@ -979,7 +1008,7 @@ export function ProfileScreen() {
                         <div key={draft.id} className={`group relative rounded-xl border transition-all ${
                           isConfirming
                             ? 'border-[var(--red)] bg-[rgba(244,63,94,0.06)]'
-                            : 'border-[var(--border-m)] bg-[var(--bg-card)] hover:border-[var(--border-h)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]'
+                            : 'border-[var(--border-h)] bg-[var(--bg-card)] hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]'
                         }`}>
                           <button onClick={() => router.push(`/compose?draftId=${draft.id}`)} className="w-full text-left p-4">
                             <p className="font-bold text-base text-[var(--t1)] leading-snug mb-2 pr-8">{preview}</p>
@@ -999,7 +1028,7 @@ export function ProfileScreen() {
                             {isConfirming ? (
                               <div className="flex items-center gap-1.5">
                                 <button onClick={() => handleDeleteDraft(draft.id)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg bg-[var(--red)] text-white font-bold">YES</button>
-                                <button onClick={() => setConfirmDeleteDraft(null)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--border-m)] text-[var(--t2)] hover:text-[var(--t1)]">NO</button>
+                                <button onClick={() => setConfirmDeleteDraft(null)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--border-h)] text-[var(--t1)] hover:text-[var(--t1)]">NO</button>
                               </div>
                             ) : (
                               <button onClick={() => setConfirmDeleteDraft(draft.id)} className="font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[rgba(244,63,94,0.5)] text-[var(--red)] bg-[rgba(244,63,94,0.1)] hover:bg-[rgba(244,63,94,0.2)] hover:border-[var(--red)] transition-all tracking-wide">
@@ -1018,7 +1047,7 @@ export function ProfileScreen() {
                 <div className="py-12 flex flex-col items-center gap-3 px-5">
                   <div className="text-2xl opacity-30">⬡</div>
                   <p className="font-mono text-xs font-bold text-[var(--t2)]">{bytesTab === 'posted' ? 'NO BYTES YET' : 'NOTHING SAVED'}</p>
-                  <p className="font-mono text-xs text-[var(--t3)] text-center leading-relaxed">{bytesTab === 'posted' ? 'Share a technique, pattern, or lesson' : 'Bookmark bytes to revisit later'}</p>
+                  <p className="font-mono text-xs text-[var(--t2)] text-center leading-relaxed">{bytesTab === 'posted' ? 'Share a technique, pattern, or lesson' : 'Bookmark bytes to revisit later'}</p>
                   {bytesTab === 'posted' && <button onClick={() => router.push('/compose')} className="font-mono text-xs px-3 py-1.5 rounded-lg border border-[rgba(34,211,238,0.3)] text-[var(--cyan)] bg-[rgba(34,211,238,0.07)] transition-all hover:opacity-80">→ POST A BYTE</button>}
                 </div>
               ) : (
@@ -1032,7 +1061,7 @@ export function ProfileScreen() {
                         className={`group relative rounded-xl border transition-all ${
                           isConfirming
                             ? 'border-[var(--red)] bg-[rgba(244,63,94,0.06)]'
-                            : 'border-[var(--border-m)] bg-[var(--bg-card)] hover:border-[var(--border-h)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]'
+                            : 'border-[var(--border-h)] bg-[var(--bg-card)] hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]'
                         }`}
                       >
                         <button
@@ -1046,7 +1075,7 @@ export function ProfileScreen() {
                           {byte.tags && byte.tags.length > 0 && (
                             <div className="flex gap-1.5 flex-wrap mb-3">
                               {byte.tags.slice(0, 3).map((tag) => (
-                                <span key={tag} className="font-mono text-[10px] py-1 px-2.5 rounded border border-[var(--border-m)] text-[var(--t1)] bg-[var(--bg-el)]">
+                                <span key={tag} className="font-mono text-[10px] py-1 px-2.5 rounded border border-[var(--border-h)] text-[var(--t1)] bg-[var(--bg-el)]">
                                   {tag}
                                 </span>
                               ))}
@@ -1069,7 +1098,7 @@ export function ProfileScreen() {
                             isConfirming ? (
                               <div className="flex items-center gap-1.5">
                                 <button onClick={() => handleDeleteByte(byte.id)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg bg-[var(--red)] text-white font-bold">YES</button>
-                                <button onClick={() => setConfirmDelete(null)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--border-m)] text-[var(--t2)] hover:text-[var(--t1)]">NO</button>
+                                <button onClick={() => setConfirmDelete(null)} className="font-mono text-[10px] px-2.5 py-1.5 rounded-lg border border-[var(--border-h)] text-[var(--t1)] hover:text-[var(--t1)]">NO</button>
                               </div>
                             ) : (
                               <button
@@ -1100,7 +1129,7 @@ export function ProfileScreen() {
           {activeTab === 'interviews' && (
             <div className="flex flex-col">
               {/* Sub-tabs */}
-              <div className="flex border-b border-[var(--border)] bg-[var(--bg-card)]">
+              <div className="flex gap-2 px-4 py-3 border-b border-[var(--border-h)] sticky top-0 bg-[var(--bg)] z-10">
                 {([
                   { id: 'posted', label: 'POSTED', count: myInterviews.length },
                   { id: 'saved',  label: 'SAVED',  count: savedInterviews.length },
@@ -1108,8 +1137,10 @@ export function ProfileScreen() {
                   const active = interviewsTab === id
                   return (
                     <button key={id} onClick={() => setInterviewsTab(id)}
-                      className={`flex-1 py-3 font-mono text-[10px] font-bold tracking-[0.08em] transition-all border-b-2 ${
-                        active ? 'text-[var(--purple)] border-[var(--purple)]' : 'text-[var(--t3)] border-transparent hover:text-[var(--t2)]'
+                      className={`font-mono text-[10px] font-bold tracking-[0.08em] px-4 py-1.5 rounded-lg border transition-all ${
+                        active
+                          ? 'border-[var(--purple)] bg-[rgba(167,139,250,0.12)] text-[var(--purple)] shadow-[0_0_12px_rgba(167,139,250,0.2)]'
+                          : 'border-[rgba(167,139,250,0.2)] bg-[rgba(167,139,250,0.03)] text-[var(--t1)] hover:border-[var(--purple)] hover:bg-[rgba(167,139,250,0.07)] hover:text-[var(--purple)]'
                       }`}>
                       {label}{count > 0 && <span className="ml-1 opacity-60">({count})</span>}
                     </button>
@@ -1124,7 +1155,7 @@ export function ProfileScreen() {
                 <div className="py-12 flex flex-col items-center gap-3 px-5">
                   <div className="text-2xl opacity-30">◈</div>
                   <p className="font-mono text-xs font-bold text-[var(--t2)]">{interviewsTab === 'posted' ? 'NO INTERVIEWS YET' : 'NONE SAVED'}</p>
-                  <p className="font-mono text-xs text-[var(--t3)] text-center leading-relaxed">{interviewsTab === 'posted' ? 'Document your interview experience' : 'Save interviews to study later'}</p>
+                  <p className="font-mono text-xs text-[var(--t2)] text-center leading-relaxed">{interviewsTab === 'posted' ? 'Document your interview experience' : 'Save interviews to study later'}</p>
                   {interviewsTab === 'posted' && <button onClick={() => router.push('/interviews')} className="font-mono text-xs px-3 py-1.5 rounded-lg border border-[rgba(168,85,247,0.3)] text-[var(--purple)] bg-[rgba(168,85,247,0.07)] transition-all hover:opacity-80">→ SHARE ONE</button>}
                 </div>
               ) : (
@@ -1141,18 +1172,18 @@ export function ProfileScreen() {
                       <div key={interview.id} className={`group relative rounded-xl border transition-all ${
                         isConfirming
                           ? 'border-[var(--red)] bg-[rgba(244,63,94,0.06)]'
-                          : 'border-[var(--border-m)] bg-[var(--bg-card)] hover:border-[var(--border-h)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]'
+                          : 'border-[var(--border-h)] bg-[var(--bg-card)] hover:border-[var(--purple)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]'
                       }`}>
                         <button onClick={() => !isConfirming && router.push(`/interviews/${interview.id}`)} className="w-full text-left p-4">
                           <p className="font-bold text-base text-[var(--t1)] leading-snug mb-2 pr-16">{interview.title}</p>
                           <div className="flex items-center gap-2 flex-wrap mb-3">
                             {interview.company && (
-                              <span className="font-mono text-[10px] px-2.5 py-1 rounded border border-[var(--border-m)] text-[var(--t1)] bg-[var(--bg-el)]">{interview.company}</span>
+                              <span className="font-mono text-[10px] px-2.5 py-1 rounded border border-[var(--border-h)] text-[var(--t1)] bg-[var(--bg-el)]">{interview.company}</span>
                             )}
                             {interview.difficulty && (
                               <span className={`font-mono text-[10px] px-2.5 py-1 rounded border font-bold ${diffColor}`}>{interview.difficulty.toUpperCase()}</span>
                             )}
-                            <span className="font-mono text-[10px] px-2.5 py-1 rounded border border-[var(--border-m)] text-[var(--t2)] bg-[var(--bg-el)]">{interview.questions?.length ?? 0}Q</span>
+                            <span className="font-mono text-[10px] px-2.5 py-1 rounded border border-[var(--border-h)] text-[var(--t2)] bg-[var(--bg-el)]">{interview.questions?.length ?? 0}Q</span>
                           </div>
                           <span className="font-mono text-[10px] text-[var(--t2)]">{dateStr}</span>
                         </button>
@@ -1161,7 +1192,7 @@ export function ProfileScreen() {
                             isConfirming ? (
                               <div className="flex items-center gap-1.5">
                                 <button onClick={() => handleDeleteInterview(interview.id)} className="font-mono text-[9px] px-2.5 py-1 rounded-md bg-[var(--red)] text-white font-bold tracking-wide">YES</button>
-                                <button onClick={() => setConfirmDelete(null)} className="font-mono text-[9px] px-2.5 py-1 rounded-md border border-[var(--border-m)] text-[var(--t2)] hover:text-[var(--t1)]">NO</button>
+                                <button onClick={() => setConfirmDelete(null)} className="font-mono text-[10px] px-2.5 py-1 rounded-md border border-[var(--border-h)] text-[var(--t1)] hover:text-[var(--t1)]">NO</button>
                               </div>
                             ) : (
                               <button onClick={() => setConfirmDelete(interview.id)} className="font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border border-[rgba(244,63,94,0.5)] text-[var(--red)] bg-[rgba(244,63,94,0.1)] hover:bg-[rgba(244,63,94,0.2)] hover:border-[var(--red)] transition-all tracking-wide">rm</button>
@@ -1185,7 +1216,10 @@ export function ProfileScreen() {
             <div className="flex flex-col p-4 gap-5">
               {/* Tech stack */}
               <div>
-                <div className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.1em] mb-3">// TECH_STACK</div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">TECH_STACK</span>
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {techStack.map((tech) => (
                     <button key={tech} onClick={() => handleRemoveTech(tech)}
@@ -1213,7 +1247,10 @@ export function ProfileScreen() {
 
               {/* Theme */}
               <div>
-                <div className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.1em] mb-3">// THEME</div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">THEME</span>
+                </div>
                 <div className="flex gap-2 flex-wrap">
                   {(themes as { id: string; label: string; color: string }[]).map((theme) => (
                     <button key={theme.id} onClick={() => handleThemeChange(theme.id)}
@@ -1232,20 +1269,23 @@ export function ProfileScreen() {
           {/* ══ ALERTS TAB ══ */}
           {activeTab === 'alerts' && (
             <div className="flex flex-col p-4">
-              <div className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.1em] mb-3">// NOTIFICATIONS</div>
-              <div className="flex flex-col rounded-xl border border-[var(--border-m)] overflow-hidden">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">NOTIFICATIONS</span>
+              </div>
+              <div className="flex flex-col rounded-xl border border-[var(--border-h)] overflow-hidden">
                 {[
                   { key: 'reactions',    icon: '💡', label: 'Reactions',    sub: 'When someone reacts to your bytes' },
                   { key: 'comments',     icon: '💬', label: 'Comments',     sub: 'When someone replies to your byte' },
                   { key: 'newFollowers', icon: '👤', label: 'New Followers', sub: 'When someone follows you' },
                   { key: 'unfollows',    icon: '👻', label: 'Unfollows',     sub: 'When someone unfollows you' },
                 ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--border)] last:border-b-0 bg-[var(--bg-card)]">
+                  <div key={item.key} className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--border-h)] last:border-b-0 bg-[var(--bg-card)]">
                     <div className="flex items-center gap-3">
                       <span className="text-base w-5 text-center">{item.icon}</span>
                       <div>
                         <div className="font-mono text-xs text-[var(--t1)]">{item.label}</div>
-                        <div className="font-mono text-[10px] text-[var(--t3)] mt-0.5">{item.sub}</div>
+                        <div className="font-mono text-[10px] text-[var(--t2)] mt-0.5">{item.sub}</div>
                       </div>
                     </div>
                     <button onClick={() => handleNotificationChange(item.key as keyof typeof notifications)}
@@ -1269,16 +1309,16 @@ export function ProfileScreen() {
               className="absolute inset-0 z-[80] bg-black/50 backdrop-blur-[2px]" onClick={() => setPeopleSheet(null)} />
             <motion.div key="people-sheet" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 340, damping: 30 }}
-              className="absolute bottom-0 left-0 right-0 z-[81] bg-[var(--bg-card)] border-t border-[var(--border)] rounded-t-2xl max-h-[75vh] flex flex-col"
+              className="absolute bottom-0 left-0 right-0 z-[81] bg-[var(--bg-card)] border-t border-[var(--border-h)] rounded-t-2xl max-h-[75vh] flex flex-col"
               onClick={e => e.stopPropagation()}>
               <div className="flex justify-center pt-3 pb-1 flex-shrink-0"><div className="w-10 h-1 rounded-full bg-[var(--border-m)]" /></div>
-              <div className="flex items-center justify-between px-5 py-2 flex-shrink-0 border-b border-[var(--border)]">
+              <div className="flex items-center justify-between px-5 py-2 flex-shrink-0 border-b border-[var(--border-h)]">
                 <span className="font-mono text-xs font-bold tracking-[0.08em]">
                   {peopleSheet.type === 'followers' ? 'FOLLOWERS' : 'FOLLOWING'} ({peopleSheet.list.length})
                 </span>
                 <button onClick={() => setPeopleSheet(null)} className="text-[var(--t3)] hover:text-[var(--t1)]"><X size={16} /></button>
               </div>
-              <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
+              <div className="flex-1 overflow-y-auto divide-y divide-[var(--border-h)]">
                 {peopleSheet.list.length === 0 ? (
                   <div className="flex items-center justify-center py-12 font-mono text-xs text-[var(--t3)]">No {peopleSheet.type} yet</div>
                 ) : peopleSheet.list.map(person => (
@@ -1288,9 +1328,9 @@ export function ProfileScreen() {
                     <div className="flex-1 min-w-0">
                       <div className="font-mono text-sm font-bold text-[var(--t1)]">{person.displayName || person.username}</div>
                       <div className="font-mono text-xs text-[var(--accent)]">@{person.username}</div>
-                      {person.bio && <div className="font-mono text-xs text-[var(--t3)] truncate mt-0.5">{person.bio}</div>}
+                      {person.bio && <div className="font-mono text-xs text-[var(--t2)] truncate mt-0.5">{person.bio}</div>}
                     </div>
-                    <span className="font-mono text-xs text-[var(--t3)]">→</span>
+                    <span className="font-mono text-xs text-[var(--t2)]">→</span>
                   </button>
                 ))}
               </div>
@@ -1314,7 +1354,10 @@ export function ProfileScreen() {
         <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="bg-[var(--bg-card)] border border-[var(--border-h)] rounded-2xl p-6 mx-4 w-full max-w-sm flex flex-col gap-5 shadow-2xl">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.1em]">// ADJUST PHOTO</span>
+              <div className="flex items-center gap-2">
+                <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">ADJUST PHOTO</span>
+              </div>
               <button onClick={() => { setShowCropModal(false); setCropStagingZoom(avatarZoom) }}
                 className="w-7 h-7 rounded-full border border-[var(--border-m)] flex items-center justify-center text-[var(--t3)] hover:text-[var(--t1)] hover:border-[var(--border-h)] transition-all">
                 <X size={12} />

@@ -94,7 +94,7 @@ Questions are embedded in the response, ordered by `OrderIndex`.
 > **Type: Single-Document RAG**
 > No retrieval step — the interview is already known. Content is fed directly to the LLM as context and the LLM generates a grounded answer. This is not a search; nothing is looked up by similarity.
 
-**Endpoint:** `POST /api/interviews/{id}/ask` `[Authorize]` `[RequireFeatureFlag("ai-ask")]`
+**Endpoint:** `POST /api/interviews/{id}/ask` `[Authorize]`
 
 **Request:**
 ```json

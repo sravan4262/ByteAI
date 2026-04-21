@@ -58,7 +58,6 @@ export const LANGUAGES: Language[] = [
 ]
 
 async function formatWithPrettier(code: string, lang: Language): Promise<string> {
-  // Prettier v3: plugins are passed as the whole module object, not .default
   const prettier = await import('prettier/standalone')
 
   if (lang.parser === 'babel') {
@@ -66,14 +65,7 @@ async function formatWithPrettier(code: string, lang: Language): Promise<string>
       import('prettier/plugins/babel'),
       import('prettier/plugins/estree'),
     ])
-    return prettier.format(code, {
-      parser: 'babel',
-      plugins: [babel, estree],
-      semi: true,
-      singleQuote: true,
-      tabWidth: 2,
-      printWidth: 80,
-    })
+    return prettier.format(code, { parser: 'babel', plugins: [babel, estree], semi: true, singleQuote: true, tabWidth: 2, printWidth: 80 })
   }
 
   if (lang.parser === 'typescript') {
@@ -81,14 +73,7 @@ async function formatWithPrettier(code: string, lang: Language): Promise<string>
       import('prettier/plugins/typescript'),
       import('prettier/plugins/estree'),
     ])
-    return prettier.format(code, {
-      parser: 'typescript',
-      plugins: [ts, estree],
-      semi: true,
-      singleQuote: true,
-      tabWidth: 2,
-      printWidth: 80,
-    })
+    return prettier.format(code, { parser: 'typescript', plugins: [ts, estree], semi: true, singleQuote: true, tabWidth: 2, printWidth: 80 })
   }
 
   if (lang.parser === 'html') {
@@ -144,7 +129,6 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
   )
 
   const handleSelectLanguage = (lang: Language) => {
-    // clicking the already-selected language deselects it
     if (lang.id === language) {
       onLanguageChange('')
       setShowLangPicker(true)
@@ -158,6 +142,7 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
 
   const handleClearLanguage = () => {
     onLanguageChange('')
+    onChange('')
     setShowLangPicker(true)
     setSearch('')
   }
@@ -169,10 +154,8 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
     try {
       let formatted: string
       if (selected.parser) {
-        // Prettier for supported languages (JS, TS, HTML, CSS, JSON, etc.)
         formatted = await formatWithPrettier(value, selected)
       } else {
-        // Groq for everything else (C#, Go, Java, Python, Rust, etc.)
         if (!hasAiFormatCode) {
           setFormatError('AI code formatting is not available — contact your admin')
           return
@@ -190,41 +173,38 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
   const canFormat = selected != null && value.trim().length > 0 && (selected.parser !== null || hasAiFormatCode)
 
   return (
-    <div className="bg-[var(--bg-card)] border border-[var(--border-m)] rounded-lg overflow-hidden">
+    <div className="bg-[var(--bg-card)] border border-[var(--border-h)] rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)]">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border-h)]">
         <div className="flex items-center gap-2">
-          <Code2 size={14} className="text-[var(--cyan)]" />
-          <span className="font-mono text-xs tracking-[0.08em] text-[var(--t2)]">CODE_SNIPPET</span>
+          <Code2 size={14} className="text-[var(--accent)]" />
+          <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">CODE_SNIPPET</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Format button */}
-          <button
-            onClick={handleFormat}
-            disabled={!canFormat || isFormatting}
-            title={
-              !selected ? 'Select a language first'
-              : selected.parser ? 'Format with Prettier'
-              : !hasAiFormatCode ? 'AI formatting not available'
-              : 'Format with AI (Groq)'
-            }
-            className={`flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded border transition-all ${
-              canFormat
-                ? 'border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-d)]'
-                : 'border-[var(--border-m)] text-[var(--t3)] cursor-not-allowed opacity-50'
-            }`}
-          >
-            <Wand2 size={11} />
-            {isFormatting ? 'FORMATTING...' : 'FORMAT'}
-          </button>
+          {/* Format button — only visible when ff is on */}
+          {hasAiFormatCode && (
+            <button
+              onClick={handleFormat}
+              disabled={!canFormat || isFormatting}
+              title={!selected ? 'Select a language first' : selected.parser ? 'Format with Prettier' : 'Format with AI (Groq)'}
+              className={`flex items-center gap-1.5 font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
+                canFormat && !isFormatting
+                  ? 'border-[rgba(59,130,246,0.6)] bg-[rgba(59,130,246,0.22)] text-[var(--accent)] shadow-[0_0_10px_rgba(59,130,246,0.18)] hover:border-[var(--accent)] hover:shadow-[0_0_14px_rgba(59,130,246,0.25)]'
+                  : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t2)] cursor-not-allowed opacity-50'
+              }`}
+            >
+              <Wand2 size={11} />
+              {isFormatting ? 'FORMATTING...' : 'FORMAT'}
+            </button>
+          )}
           {/* Language selector button */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <button
               onClick={() => setShowLangPicker(v => !v)}
-              className={`flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-l border transition-all ${
+              className={`flex items-center gap-1.5 font-mono text-[10px] font-bold px-3 py-1.5 rounded-l-lg border transition-all ${
                 selected
-                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)]'
-                  : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)] hover:text-[var(--t1)]'
+                  ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-d)] shadow-[0_0_10px_rgba(59,130,246,0.15)]'
+                  : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
               }`}
             >
               {selected ? selected.id : 'SELECT LANG'}
@@ -234,7 +214,7 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
               <button
                 onClick={handleClearLanguage}
                 title="Clear language"
-                className="flex items-center justify-center px-2 py-1.5 rounded-r border border-l-0 border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] hover:bg-[rgba(59,130,246,0.2)] transition-all"
+                className="flex items-center justify-center px-2 py-1.5 rounded-r-lg border border-l-0 border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] hover:bg-[rgba(59,130,246,0.2)] transition-all"
               >
                 <X size={10} />
               </button>
@@ -245,41 +225,41 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
 
       {/* Language picker */}
       {showLangPicker && (
-        <div className="border-b border-[var(--border)] bg-[var(--bg-el)]">
-          <div className="px-3 py-2.5 flex items-center gap-2 border-b border-[var(--border)]">
-            <Search size={13} className="text-[var(--t3)] flex-shrink-0" />
+        <div className="border-b border-[var(--border-h)] bg-[var(--bg-el)]">
+          <div className="px-3 py-2.5 flex items-center gap-2 border-b border-[var(--border-h)]">
+            <Search size={13} className="text-[var(--t2)] flex-shrink-0" />
             <input
               autoFocus
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search language..."
-              className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] outline-none placeholder:text-[var(--t3)]"
+              className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] outline-none placeholder:text-[var(--t2)]"
             />
           </div>
-          <div className="flex flex-wrap gap-2 p-3 max-h-44 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
+          <div className="flex flex-wrap gap-1.5 p-3 max-h-44 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
             {filtered.map(lang => (
               <button
                 key={lang.id}
                 onClick={() => handleSelectLanguage(lang)}
-                className={`flex items-center gap-1.5 font-mono text-[11px] px-3 py-1.5 rounded border transition-all ${
+                className={`flex items-center gap-1.5 font-mono text-[10px] px-3 py-1.5 rounded-lg border transition-all ${
                   lang.id === language
-                    ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)]'
-                    : 'border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)] hover:text-[var(--t1)]'
+                    ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_10px_rgba(59,130,246,0.15)]'
+                    : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
                 }`}
               >
-                <span className="text-[9px] text-[var(--t3)]">{lang.id}</span>
+                <span className="text-[10px] text-[var(--t2)] font-bold">{lang.id}</span>
                 <span>{lang.label}</span>
                 {lang.parser
-                  ? <span className="text-[9px] text-[var(--green)]">✦</span>
+                  ? <span className="text-[10px] text-[var(--green)]">✦</span>
                   : hasAiFormatCode
-                    ? <span className="text-[9px] text-[var(--accent)]">⚡</span>
+                    ? <span className="text-[10px] text-[var(--accent)]">⚡</span>
                     : null
                 }
               </button>
             ))}
           </div>
-          <div className="px-3 pb-2.5 font-mono text-[10px] text-[var(--t3)] flex gap-3">
+          <div className="px-3 pb-2.5 font-mono text-[10px] text-[var(--t2)] flex gap-3">
             <span><span className="text-[var(--green)]">✦</span> Prettier</span>
             {hasAiFormatCode && (
               <span><span className="text-[var(--accent)]">⚡</span> Groq</span>
@@ -291,14 +271,14 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
       {/* Code textarea */}
       <div className="relative">
         {!selected && (
-          <div className="absolute inset-0 bg-[var(--bg-card)]/80 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-b-lg">
-            <span className="font-mono text-xs text-[var(--t3)]">← Select a language · paste your relevant code here</span>
+          <div className="absolute inset-0 bg-[var(--bg-card)]/80 backdrop-blur-[1px] flex items-center justify-center z-10 rounded-b-xl">
+            <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.05em]">SELECT A LANGUAGE TO ADD A CODE SNIPPET</span>
           </div>
         )}
         <div className="flex px-4 py-3 gap-3">
           <div className="flex flex-col gap-1 select-none pt-px">
             {(value || ' ').split('\n').map((_, i) => (
-              <span key={i} className="font-mono text-[11px] text-[var(--t3)] leading-relaxed w-6 text-right">
+              <span key={i} className="font-mono text-[10px] text-[var(--t3)] leading-relaxed w-6 text-right">
                 {String(i + 1).padStart(2, '0')}
               </span>
             ))}
@@ -309,14 +289,14 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
             placeholder={selected ? `// ${selected.label} code here` : ''}
             disabled={!selected}
             rows={Math.max(4, value.split('\n').length)}
-            className="flex-1 bg-transparent font-mono text-[11px] text-[var(--t2)] outline-none resize-none leading-relaxed disabled:cursor-not-allowed"
+            className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] outline-none resize-none leading-relaxed disabled:cursor-not-allowed placeholder:text-[var(--t2)]"
           />
         </div>
       </div>
 
       {/* Format error */}
       {formatError && (
-        <div className="px-4 py-2 border-t border-[var(--border)] font-mono text-xs text-[var(--red)]">
+        <div className="px-4 py-2 border-t border-[var(--border-h)] font-mono text-xs text-[var(--red)]">
           {formatError}
         </div>
       )}
