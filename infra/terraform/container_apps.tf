@@ -6,9 +6,12 @@ resource "azurerm_container_app" "api" {
   revision_mode                = "Multiple" # Required for blue-green labeled revisions
   tags                         = var.tags
 
-  # CD pipeline owns the image, env vars, secrets, and revision suffix — Terraform must not overwrite them
+  # CD pipeline owns image, env vars, secrets, revision suffix, and traffic weights.
+  # ingress is included so Terraform never resets traffic splits back to latest_revision=true
+  # after the CD pipeline has taken ownership. Re-enable ingress temporarily if you need
+  # to change external_enabled / target_port / transport via Terraform.
   lifecycle {
-    ignore_changes = [template, secret]
+    ignore_changes = [template, secret, ingress]
   }
 
   ingress {
@@ -60,9 +63,12 @@ resource "azurerm_container_app" "gateway" {
   revision_mode                = "Multiple"
   tags                         = var.tags
 
-  # CD pipeline owns the image, env vars, secrets, and revision suffix — Terraform must not overwrite them
+  # CD pipeline owns image, env vars, secrets, revision suffix, and traffic weights.
+  # ingress is included so Terraform never resets traffic splits back to latest_revision=true
+  # after the CD pipeline has taken ownership. Re-enable ingress temporarily if you need
+  # to change external_enabled / target_port / transport via Terraform.
   lifecycle {
-    ignore_changes = [template, secret]
+    ignore_changes = [template, secret, ingress]
   }
 
   ingress {

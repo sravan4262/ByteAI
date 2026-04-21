@@ -15,8 +15,8 @@ on:
         default: ""
 
 env:
-  IMAGE_API:     ghcr.io/${{ github.repository_owner }}/byteai-api
-  IMAGE_GATEWAY: ghcr.io/${{ github.repository_owner }}/byteai-gateway
+  IMAGE_API:      ghcr.io/${{ github.repository_owner }}/byteai-api
+  IMAGE_GATEWAY:  ghcr.io/${{ github.repository_owner }}/byteai-gateway
   RESOURCE_GROUP: byteai-rg
   API_APP:        byteai-api
   GATEWAY_APP:    byteai-gateway
@@ -29,9 +29,9 @@ permissions:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # Gate: only run when CI publish succeeded (skip on CI failure)
+  # Gate: only run when CI publish succeeded
   # ─────────────────────────────────────────────────────────────────────────────
-  check:
+  gate:
     name: Gate — CI must have succeeded
     runs-on: ubuntu-latest
     if: >
@@ -41,26 +41,33 @@ jobs:
       - run: echo "CI passed or manual trigger — proceeding with deployment"
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Deploy: inactive slot → migrations → health check → swap traffic
+  # Resolve: compute SHA, slots, collision-safe suffix, FQDNs
+  # Outputs all values consumed by downstream jobs so Azure login happens once.
   # ─────────────────────────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy (blue-green)
+  resolve:
+    name: Resolve — slots, suffix, FQDNs
     runs-on: ubuntu-latest
-    needs: check
+    needs: gate
+    outputs:
+      sha:            ${{ steps.vars.outputs.sha }}
+      suffix:         ${{ steps.vars.outputs.suffix }}
+      inactive:       ${{ steps.vars.outputs.inactive }}
+      api_active_rev: ${{ steps.vars.outputs.api_active_rev }}
+      gw_active_rev:  ${{ steps.vars.outputs.gw_active_rev }}
+      gw_fqdn:        ${{ steps.vars.outputs.gw_fqdn }}
+      env_domain:     ${{ steps.vars.outputs.env_domain }}
 
     steps:
-      - uses: actions/checkout@v4
-
       - uses: azure/login@v2
         with:
           client-id:       ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # ── Resolve deploy SHA ───────────────────────────────────────────────────
-      - name: Resolve deploy SHA
-        id: sha
+      - name: Resolve all deployment variables
+        id: vars
         run: |
+          # ── Deploy SHA ────────────────────────────────────────────────────────
           if [[ -n "${{ inputs.sha }}" ]]; then
             SHA="${{ inputs.sha }}"
           elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
@@ -68,193 +75,372 @@ jobs:
           else
             SHA="${{ github.sha }}"
           fi
-          echo "sha=$SHA" >> $GITHUB_OUTPUT
-          echo "Deploying SHA: $SHA"
 
-      # ── Detect active / inactive slot ────────────────────────────────────────
-      - name: Detect active slot
-        id: slot
-        run: |
-          ACTIVE_REV=$(az containerapp revision list \
+          # ── Active revision per app (independent — each app tracked separately)
+          API_ACTIVE=$(az containerapp revision list \
             -n "$API_APP" -g "$RESOURCE_GROUP" \
             --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv 2>/dev/null || echo "")
 
-          echo "Current active revision: $ACTIVE_REV"
+          GW_ACTIVE=$(az containerapp revision list \
+            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv 2>/dev/null || echo "")
 
-          if [[ "$ACTIVE_REV" == *"--g-"* ]]; then
-            ACTIVE="green"; INACTIVE="blue"
+          echo "API  active revision: ${API_ACTIVE:-(none)}"
+          echo "GW   active revision: ${GW_ACTIVE:-(none)}"
+
+          # ── Slot direction (blue→green or green→blue) based on API ────────────
+          if [[ "$API_ACTIVE" == *"--g-"* ]]; then
+            INACTIVE="blue"
           else
-            ACTIVE="blue"; INACTIVE="green"
+            INACTIVE="green"
           fi
 
-          SHA_SHORT=$(echo "${{ steps.sha.outputs.sha }}" | cut -c1-6)
-          SUFFIX="${INACTIVE:0:1}-${SHA_SHORT}"
-          echo "active=$ACTIVE"     >> $GITHUB_OUTPUT
-          echo "inactive=$INACTIVE" >> $GITHUB_OUTPUT
-          echo "suffix=$SUFFIX"     >> $GITHUB_OUTPUT
-          echo "active_rev=$ACTIVE_REV" >> $GITHUB_OUTPUT
-          echo "Deploying to slot: $INACTIVE (suffix: $SUFFIX)"
+          # ── Collision-safe suffix: slot + sha6 + epoch-seconds last 4 digits ──
+          # Prevents same-revision reuse when the same SHA is redeployed.
+          SHA_SHORT=$(echo "$SHA" | cut -c1-6)
+          TS=$(printf '%04d' $(( $(date +%s) % 10000 )))
+          SUFFIX="${INACTIVE:0:1}-${SHA_SHORT}-${TS}"
 
-      # ── Deploy new revisions at 0% traffic ───────────────────────────────────
-      - name: Deploy API → inactive slot (0% traffic)
+          # ── External FQDN (gateway) + env default domain (for label URLs) ─────
+          GW_FQDN=$(az containerapp show \
+            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+
+          ENV_DOMAIN=$(az containerapp env show \
+            -n "$ENV_NAME" -g "$RESOURCE_GROUP" \
+            --query "properties.defaultDomain" -o tsv)
+
+          echo "Slot:       active=$([[ $INACTIVE == blue ]] && echo green || echo blue) → inactive=$INACTIVE"
+          echo "Suffix:     $SUFFIX"
+          echo "GW FQDN:    $GW_FQDN"
+          echo "Env domain: $ENV_DOMAIN"
+
+          echo "sha=$SHA"                    >> $GITHUB_OUTPUT
+          echo "suffix=$SUFFIX"              >> $GITHUB_OUTPUT
+          echo "inactive=$INACTIVE"          >> $GITHUB_OUTPUT
+          echo "api_active_rev=$API_ACTIVE"  >> $GITHUB_OUTPUT
+          echo "gw_active_rev=$GW_ACTIVE"    >> $GITHUB_OUTPUT
+          echo "gw_fqdn=$GW_FQDN"           >> $GITHUB_OUTPUT
+          echo "env_domain=$ENV_DOMAIN"      >> $GITHUB_OUTPUT
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Deploy API: new revision at 0% traffic, wait for Running (not ScaledToZero)
+  # min-replicas=1 forces the container to actually start so ACA health probes
+  # run and prove the revision is healthy before traffic is ever sent to it.
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-api:
+    name: Deploy API → inactive slot
+    runs-on: ubuntu-latest
+    needs: resolve
+    env:
+      SHA:      ${{ needs.resolve.outputs.sha }}
+      SUFFIX:   ${{ needs.resolve.outputs.suffix }}
+      INACTIVE: ${{ needs.resolve.outputs.inactive }}
+
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Guard — API must be in Multiple revision mode
         run: |
+          MODE=$(az containerapp show -n "$API_APP" -g "$RESOURCE_GROUP" \
+            --query "properties.configuration.activeRevisionsMode" -o tsv)
+          if [[ "$MODE" != "Multiple" ]]; then
+            echo "ERROR: $API_APP is not in Multiple revision mode (got: $MODE). Fix in Terraform before deploying."
+            exit 1
+          fi
+          echo "$API_APP revision mode: $MODE ✓"
+
+      - name: Deploy new API revision at 0% traffic
+        run: |
+          # min-replicas=1 ensures the container starts and ACA probes run.
+          # The revision is created with 0% traffic — it won't serve users until swap.
           az containerapp update \
             -n "$API_APP" -g "$RESOURCE_GROUP" \
-            --image "$IMAGE_API:${{ steps.sha.outputs.sha }}" \
-            --revision-suffix "${{ steps.slot.outputs.suffix }}" \
+            --image "$IMAGE_API:$SHA" \
+            --revision-suffix "$SUFFIX" \
+            --min-replicas 1 \
             --set-env-vars \
               "ConnectionStrings__Postgres=${{ secrets.DATABASE_URL }}" \
               "Groq__ApiKey=${{ secrets.GROQ_API_KEY }}" \
               "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}" \
               "Supabase__Url=${{ secrets.SUPABASE_URL }}" \
               "Supabase__JwtSecret=${{ secrets.SUPABASE_JWT_SECRET }}" \
-              "Supabase__ServiceRoleKey=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+              "Supabase__ServiceRoleKey=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            --no-wait
+          echo "Submitted revision: ${API_APP}--${SUFFIX}"
 
-      # ── Wait for API provisioning to complete before touching Gateway ─────────
-      - name: Wait for API provisioning to complete
+      - name: Poll API revision → Running (reject ScaledToZero)
         run: |
-          echo "Waiting for byteai-api provisioning to complete..."
-          for i in $(seq 1 18); do
-            STATE=$(az containerapp show \
+          REV="${API_APP}--${SUFFIX}"
+          echo "Polling $REV for Running state (30 × 15s = 7.5 min max)..."
+          for i in $(seq 1 30); do
+            STATE=$(az containerapp revision show \
               -n "$API_APP" -g "$RESOURCE_GROUP" \
-              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "Unknown")
-            echo "Attempt $i/18: provisioningState = $STATE"
-            if [[ "$STATE" == "Succeeded" ]]; then
-              echo "API provisioning complete"
-              break
+              --revision "$REV" \
+              --query "properties.runningState" -o tsv 2>/dev/null || echo "Provisioning")
+            echo "  Attempt $i/30: $STATE"
+            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" ]]; then
+              echo "API revision $REV is $STATE ✓"
+              exit 0
             fi
-            if [[ "$STATE" == "Failed" || "$STATE" == "Canceled" ]]; then
-              echo "ERROR: API provisioning ended in state $STATE"
+            if [[ "$STATE" == "Stopped" || "$STATE" == "Failed" || "$STATE" == "Degraded" ]]; then
+              echo "ERROR: API revision entered terminal failure state: $STATE"
               exit 1
             fi
-            sleep 10
+            sleep 15
           done
+          echo "ERROR: API revision did not reach Running state within 7.5 minutes"
+          exit 1
 
-      - name: Wait for Gateway provisioning to complete
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Deploy Gateway: new revision at 0% traffic, label it, HTTP health check
+  # Gateway is external so we can probe its label URL directly from CI.
+  # Runs after API is confirmed Running — gateway needs a live API to route to.
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-gateway:
+    name: Deploy Gateway → inactive slot
+    runs-on: ubuntu-latest
+    needs: [resolve, deploy-api]
+    env:
+      SHA:        ${{ needs.resolve.outputs.sha }}
+      SUFFIX:     ${{ needs.resolve.outputs.suffix }}
+      INACTIVE:   ${{ needs.resolve.outputs.inactive }}
+      ENV_DOMAIN: ${{ needs.resolve.outputs.env_domain }}
+
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Guard — Gateway must be in Multiple revision mode
         run: |
-          echo "Waiting for byteai-gateway provisioning to complete..."
-          for i in $(seq 1 18); do
-            STATE=$(az containerapp show \
-              -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-              --query "properties.provisioningState" -o tsv 2>/dev/null || echo "Unknown")
-            echo "Attempt $i/18: provisioningState = $STATE"
-            if [[ "$STATE" == "Succeeded" ]]; then
-              echo "Gateway provisioning complete"
-              break
-            fi
-            if [[ "$STATE" == "Failed" || "$STATE" == "Canceled" ]]; then
-              echo "ERROR: Gateway provisioning ended in state $STATE"
-              exit 1
-            fi
-            sleep 10
-          done
+          MODE=$(az containerapp show -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+            --query "properties.configuration.activeRevisionsMode" -o tsv)
+          if [[ "$MODE" != "Multiple" ]]; then
+            echo "ERROR: $GATEWAY_APP is not in Multiple revision mode (got: $MODE). Fix in Terraform before deploying."
+            exit 1
+          fi
+          echo "$GATEWAY_APP revision mode: $MODE ✓"
 
-      - name: Deploy Gateway → inactive slot (0% traffic)
+      - name: Deploy new Gateway revision at 0% traffic
         run: |
           az containerapp update \
             -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --image "$IMAGE_GATEWAY:${{ steps.sha.outputs.sha }}" \
-            --revision-suffix "${{ steps.slot.outputs.suffix }}" \
+            --image "$IMAGE_GATEWAY:$SHA" \
+            --revision-suffix "$SUFFIX" \
+            --min-replicas 1 \
             --set-env-vars \
               "ApiUpstreamUrl=http://$API_APP" \
               "ApiKeys=${{ secrets.API_KEYS }}" \
-              "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}"
+              "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}" \
+            --no-wait
+          echo "Submitted revision: ${GATEWAY_APP}--${SUFFIX}"
 
-      # ── Health gate 1: wait for API revision Running state ───────────────────
-      - name: Health gate — API revision reaches Running state
+      - name: Poll Gateway revision → Running (reject ScaledToZero)
         run: |
-          API_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
-          echo "Waiting for revision $API_REV to reach Running state..."
-          for i in $(seq 1 18); do
+          REV="${GATEWAY_APP}--${SUFFIX}"
+          echo "Polling $REV for Running state (30 × 15s = 7.5 min max)..."
+          REACHED_RUNNING=false
+          for i in $(seq 1 30); do
             STATE=$(az containerapp revision show \
-              -n "$API_APP" -g "$RESOURCE_GROUP" \
-              --revision "$API_REV" \
-              --query "properties.runningState" -o tsv 2>/dev/null || echo "Unknown")
-            echo "Attempt $i/18: state = $STATE"
-            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" || "$STATE" == "ScaledToZero" ]]; then
-              echo "API revision is $STATE — proceeding"
-              exit 0
+              -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+              --revision "$REV" \
+              --query "properties.runningState" -o tsv 2>/dev/null || echo "Provisioning")
+            echo "  Attempt $i/30: $STATE"
+            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" ]]; then
+              echo "Gateway revision $REV is $STATE ✓"
+              REACHED_RUNNING=true
+              break
             fi
             if [[ "$STATE" == "Stopped" || "$STATE" == "Failed" || "$STATE" == "Degraded" ]]; then
-              echo "ERROR: API revision entered terminal state: $STATE"
+              echo "ERROR: Gateway revision entered terminal failure state: $STATE"
               exit 1
             fi
-            sleep 10
+            sleep 15
           done
-          echo "ERROR: API revision did not reach Running state within 3 minutes"
-          exit 1
+          if [[ "$REACHED_RUNNING" != "true" ]]; then
+            echo "ERROR: Gateway revision did not reach Running state within 7.5 minutes"
+            exit 1
+          fi
 
-
-      # ── Health gate 2: label inactive revision + HTTP check ──────────────────
       - name: Label inactive Gateway revision
         run: |
-          GW_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
-          INACTIVE="${{ steps.slot.outputs.inactive }}"
           az containerapp revision label add \
             -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --revision "$GW_REV" \
+            --revision "${GATEWAY_APP}--${SUFFIX}" \
             --label "$INACTIVE" \
             --yes
 
-      - name: Health gate — Gateway revision reaches ready state
+      - name: HTTP health check — Gateway via label URL (10 × 10s)
         run: |
-          GW_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
-          echo "Waiting for revision $GW_REV to reach ready state..."
-          for i in $(seq 1 18); do
-            STATE=$(az containerapp revision show \
-              -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-              --revision "$GW_REV" \
-              --query "properties.runningState" -o tsv 2>/dev/null || echo "Unknown")
-            echo "Attempt $i/18: state = $STATE"
-            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" || "$STATE" == "ScaledToZero" ]]; then
-              echo "Gateway revision is $STATE — proceeding"
+          # Label URL format: https://<label>---<app>.<env-domain>
+          LABEL_URL="https://${INACTIVE}---${GATEWAY_APP}.${ENV_DOMAIN}/health/ready"
+          echo "Probing: $LABEL_URL"
+          for i in $(seq 1 10); do
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$LABEL_URL" || echo "000")
+            echo "  Attempt $i/10: HTTP $HTTP"
+            if [[ "$HTTP" == "200" ]]; then
+              echo "Gateway health check passed ✓"
               exit 0
-            fi
-            if [[ "$STATE" == "Stopped" || "$STATE" == "Failed" || "$STATE" == "Degraded" ]]; then
-              echo "ERROR: Gateway revision entered terminal state: $STATE"
-              exit 1
             fi
             sleep 10
           done
-          echo "ERROR: Gateway revision did not reach ready state within 3 minutes"
+          echo "ERROR: Gateway label health check failed after 10 attempts (last: HTTP $HTTP)"
           exit 1
 
-      # ── Swap: 100% traffic to newly promoted slot ─────────────────────────────
-      - name: Swap API traffic
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Swap: atomically shift 100% traffic to new revisions, then smoke-test.
+  # On smoke failure: auto-rollback both apps to the previous revision.
+  # ─────────────────────────────────────────────────────────────────────────────
+  swap:
+    name: Swap traffic + smoke test
+    runs-on: ubuntu-latest
+    needs: [resolve, deploy-gateway]
+    env:
+      SUFFIX:         ${{ needs.resolve.outputs.suffix }}
+      INACTIVE:       ${{ needs.resolve.outputs.inactive }}
+      API_ACTIVE_REV: ${{ needs.resolve.outputs.api_active_rev }}
+      GW_ACTIVE_REV:  ${{ needs.resolve.outputs.gw_active_rev }}
+      GW_FQDN:        ${{ needs.resolve.outputs.gw_fqdn }}
+
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Swap API traffic → new revision 100%
         run: |
-          INACTIVE_REV="${API_APP}--${{ steps.slot.outputs.suffix }}"
-          ACTIVE_REV="${{ steps.slot.outputs.active_rev }}"
+          NEW_REV="${API_APP}--${SUFFIX}"
           SUB=$(az account show --query id -o tsv)
+
+          if [[ -n "$API_ACTIVE_REV" ]]; then
+            TRAFFIC="[{\"revisionName\":\"${NEW_REV}\",\"weight\":100},{\"revisionName\":\"${API_ACTIVE_REV}\",\"weight\":0}]"
+          else
+            TRAFFIC="[{\"revisionName\":\"${NEW_REV}\",\"weight\":100}]"
+          fi
 
           az rest --method patch \
             --url "https://management.azure.com/subscriptions/${SUB}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/containerApps/${API_APP}?api-version=2023-05-01" \
-            --body "{\"properties\":{\"configuration\":{\"ingress\":{\"traffic\":[{\"revisionName\":\"${INACTIVE_REV}\",\"weight\":100},{\"revisionName\":\"${ACTIVE_REV}\",\"weight\":0}]}}}}"
+            --body "{\"properties\":{\"configuration\":{\"ingress\":{\"traffic\":${TRAFFIC}}}}}"
+          echo "API traffic → $NEW_REV (100%) ✓"
 
-          echo "API traffic swapped: $INACTIVE_REV is now live"
-
-      - name: Swap Gateway traffic
+      - name: Swap Gateway traffic → new revision 100%
         run: |
-          INACTIVE_REV="${GATEWAY_APP}--${{ steps.slot.outputs.suffix }}"
-          ACTIVE_GW_REV=$(az containerapp revision list \
-            -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
-            --query "[?properties.trafficWeight==\`100\`].name | [0]" -o tsv 2>/dev/null || echo "")
+          NEW_REV="${GATEWAY_APP}--${SUFFIX}"
           SUB=$(az account show --query id -o tsv)
+
+          if [[ -n "$GW_ACTIVE_REV" ]]; then
+            TRAFFIC="[{\"revisionName\":\"${NEW_REV}\",\"weight\":100},{\"revisionName\":\"${GW_ACTIVE_REV}\",\"weight\":0}]"
+          else
+            TRAFFIC="[{\"revisionName\":\"${NEW_REV}\",\"weight\":100}]"
+          fi
 
           az rest --method patch \
             --url "https://management.azure.com/subscriptions/${SUB}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/containerApps/${GATEWAY_APP}?api-version=2023-05-01" \
-            --body "{\"properties\":{\"configuration\":{\"ingress\":{\"traffic\":[{\"revisionName\":\"${INACTIVE_REV}\",\"weight\":100},{\"revisionName\":\"${ACTIVE_GW_REV}\",\"weight\":0}]}}}}"
+            --body "{\"properties\":{\"configuration\":{\"ingress\":{\"traffic\":${TRAFFIC}}}}}"
+          echo "Gateway traffic → $NEW_REV (100%) ✓"
 
-          echo "Gateway traffic swapped: $INACTIVE_REV is now live"
-          echo "Deploy complete — ${{ steps.slot.outputs.inactive }} slot is now production"
-
-      # ── Deactivate old revision (cost saving — instant reactivate for rollback)
-      - name: Deactivate previous revision
-        if: success()
+      - name: Post-swap smoke test — production endpoint (5 × 10s)
+        id: smoke
         run: |
-          ACTIVE_REV="${{ steps.slot.outputs.active_rev }}"
-          if [[ -n "$ACTIVE_REV" ]]; then
+          echo "Smoke testing: https://$GW_FQDN/health/ready"
+          PASSED=false
+          for i in $(seq 1 5); do
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "https://$GW_FQDN/health/ready" || echo "000")
+            echo "  Attempt $i/5: HTTP $HTTP"
+            if [[ "$HTTP" == "200" ]]; then
+              echo "Smoke test passed ✓"
+              PASSED=true
+              break
+            fi
+            sleep 10
+          done
+          # Write output before exit so rollback step can read it
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          if [[ "$PASSED" != "true" ]]; then
+            echo "ERROR: Production smoke test failed (last HTTP: $HTTP)"
+            exit 1
+          fi
+
+      # Runs only when the smoke step specifically failed — swap steps failing
+      # means traffic state is unknown; smoke failure means new code is bad.
+      - name: AUTO-ROLLBACK — restore previous revisions
+        if: failure() && steps.smoke.outputs.passed == 'false'
+        run: |
+          SUB=$(az account show --query id -o tsv)
+          echo "ROLLBACK: new deploy is unhealthy — restoring previous revisions"
+
+          if [[ -n "$API_ACTIVE_REV" ]]; then
+            az containerapp revision activate \
+              -n "$API_APP" -g "$RESOURCE_GROUP" \
+              --revision "$API_ACTIVE_REV" || true
+            TRAFFIC="[{\"revisionName\":\"${API_ACTIVE_REV}\",\"weight\":100},{\"revisionName\":\"${API_APP}--${SUFFIX}\",\"weight\":0}]"
+            az rest --method patch \
+              --url "https://management.azure.com/subscriptions/${SUB}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/containerApps/${API_APP}?api-version=2023-05-01" \
+              --body "{\"properties\":{\"configuration\":{\"ingress\":{\"traffic\":${TRAFFIC}}}}}"
+            echo "API rolled back to $API_ACTIVE_REV ✓"
+          fi
+
+          if [[ -n "$GW_ACTIVE_REV" ]]; then
+            az containerapp revision activate \
+              -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+              --revision "$GW_ACTIVE_REV" || true
+            TRAFFIC="[{\"revisionName\":\"${GW_ACTIVE_REV}\",\"weight\":100},{\"revisionName\":\"${GATEWAY_APP}--${SUFFIX}\",\"weight\":0}]"
+            az rest --method patch \
+              --url "https://management.azure.com/subscriptions/${SUB}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/containerApps/${GATEWAY_APP}?api-version=2023-05-01" \
+              --body "{\"properties\":{\"configuration\":{\"ingress\":{\"traffic\":${TRAFFIC}}}}}"
+            echo "Gateway rolled back to $GW_ACTIVE_REV ✓"
+          fi
+
+          echo "Rollback complete. Investigate logs before re-deploying."
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Cleanup: deactivate old revisions for both apps (cost saving).
+  # Old revisions stay registered for instant rollback via manual workflow_dispatch.
+  # Only runs when swap + smoke succeeded.
+  # ─────────────────────────────────────────────────────────────────────────────
+  cleanup:
+    name: Cleanup — deactivate old revisions
+    runs-on: ubuntu-latest
+    needs: [resolve, swap]
+    if: success()
+    env:
+      API_ACTIVE_REV: ${{ needs.resolve.outputs.api_active_rev }}
+      GW_ACTIVE_REV:  ${{ needs.resolve.outputs.gw_active_rev }}
+
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deactivate old API revision
+        run: |
+          if [[ -n "$API_ACTIVE_REV" ]]; then
             az containerapp revision deactivate \
               -n "$API_APP" -g "$RESOURCE_GROUP" \
-              --revision "$ACTIVE_REV" || true
-            echo "Deactivated old revision: $ACTIVE_REV"
+              --revision "$API_ACTIVE_REV" || true
+            echo "Deactivated old API revision: $API_ACTIVE_REV ✓"
+          else
+            echo "No previous API revision to deactivate"
+          fi
+
+      - name: Deactivate old Gateway revision
+        run: |
+          if [[ -n "$GW_ACTIVE_REV" ]]; then
+            az containerapp revision deactivate \
+              -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
+              --revision "$GW_ACTIVE_REV" || true
+            echo "Deactivated old Gateway revision: $GW_ACTIVE_REV ✓"
+          else
+            echo "No previous Gateway revision to deactivate"
           fi
