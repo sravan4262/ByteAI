@@ -27,6 +27,12 @@ permissions:
   packages: read
   id-token: write    # OIDC login to Azure
 
+# Prevent concurrent deploys racing each other's traffic swap.
+# cancel-in-progress: false — never cancel a deploy mid-swap (could leave traffic at 0%).
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   # Gate: only run when CI publish succeeded
@@ -230,15 +236,15 @@ jobs:
 
       - name: Deploy new Gateway revision at 0% traffic
         run: |
-          # No --min-replicas override: gateway stays at scale-to-zero until the
-          # label URL curl below forces it to start. This avoids a known ACA quirk
-          # where --min-replicas in Multiple revision mode updates the app template
-          # but may not apply to the in-flight revision, causing an indefinite
-          # ScaledToZero poll. The HTTP health check is the real gate.
+          # min-replicas=1 ensures the container starts so the readiness probe runs
+          # and ACA marks the revision Running before traffic is ever sent to it.
+          # Gateway /health/ready is decoupled from upstream API health (Predicate=false),
+          # so this will not get stuck in ScaledToZero waiting for an unhealthy upstream.
           az containerapp update \
             -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
             --image "$IMAGE_GATEWAY:$SHA" \
             --revision-suffix "$SUFFIX" \
+            --min-replicas 1 \
             --set-env-vars \
               "ApiUpstreamUrl=http://$API_APP" \
               "ApiKeys=${{ secrets.API_KEYS }}" \
@@ -246,32 +252,29 @@ jobs:
             --no-wait
           echo "Submitted revision: ${GATEWAY_APP}--${SUFFIX}"
 
-      - name: Poll Gateway revision → provisioned (accept ScaledToZero, reject failures)
+      - name: Poll Gateway revision → Running (reject failures)
         run: |
-          # We only need the revision to exist without errors. ScaledToZero is fine
-          # here — the label URL curl in the next steps is what forces scale-up and
-          # acts as the real health gate.
           REV="${GATEWAY_APP}--${SUFFIX}"
-          echo "Polling $REV for provisioned state (20 × 10s = 3.5 min max)..."
-          for i in $(seq 1 20); do
+          echo "Polling $REV for Running state (30 × 15s = 7.5 min max)..."
+          for i in $(seq 1 30); do
             STATE=$(az containerapp revision show \
               -n "$GATEWAY_APP" -g "$RESOURCE_GROUP" \
               --revision "$REV" \
               --query "properties.runningState" -o tsv 2>/dev/null || echo "Provisioning")
-            echo "  Attempt $i/20: $STATE"
-            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" || "$STATE" == "ScaledToZero" ]]; then
-              echo "Gateway revision $REV is provisioned ($STATE) ✓"
+            echo "  Attempt $i/30: $STATE"
+            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" ]]; then
+              echo "Gateway revision $REV is $STATE ✓"
               break
             fi
             if [[ "$STATE" == "Stopped" || "$STATE" == "Failed" || "$STATE" == "Degraded" ]]; then
               echo "ERROR: Gateway revision entered terminal failure state: $STATE"
               exit 1
             fi
-            if [[ "$i" -eq 20 ]]; then
-              echo "ERROR: Gateway revision not provisioned after 3.5 minutes (last: $STATE)"
+            if [[ "$i" -eq 30 ]]; then
+              echo "ERROR: Gateway revision did not reach Running state within 7.5 minutes (last: $STATE)"
               exit 1
             fi
-            sleep 10
+            sleep 15
           done
 
       - name: Label inactive Gateway revision
@@ -282,11 +285,9 @@ jobs:
             --label "$INACTIVE" \
             --yes
 
-      - name: HTTP health check — Gateway via label URL (triggers scale-up + verifies response)
+      - name: HTTP health check — Gateway via label URL
         run: |
-          # Hitting the label URL is what wakes the container if ScaledToZero.
-          # ACA scales the revision up on first request to its label endpoint.
-          # We give it generous retries to cover cold-start time.
+          # Verifies the running revision is healthy via its revision-specific URL.
           # Label URL format: https://<label>---<app>.<env-domain>
           LABEL_URL="https://${INACTIVE}---${GATEWAY_APP}.${ENV_DOMAIN}/health/ready"
           echo "Probing: $LABEL_URL"
