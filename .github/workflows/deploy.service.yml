@@ -171,7 +171,7 @@ jobs:
               --revision "$API_REV" \
               --query "properties.runningState" -o tsv 2>/dev/null || echo "Unknown")
             echo "Attempt $i/18: state = $STATE"
-            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" ]]; then
+            if [[ "$STATE" == "Running" || "$STATE" == "RunningAtMaxScale" || "$STATE" == "ScaledToZero" ]]; then
               echo "API revision is $STATE — proceeding"
               exit 0
             fi
