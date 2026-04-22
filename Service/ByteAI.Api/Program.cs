@@ -84,8 +84,9 @@ try
         .AddStandardResilienceHandler()
         .Configure(options =>
         {
-            options.AttemptTimeout.Timeout      = TimeSpan.FromSeconds(20);
-            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(45);
+            options.AttemptTimeout.Timeout                  = TimeSpan.FromSeconds(20);
+            options.CircuitBreaker.SamplingDuration         = TimeSpan.FromSeconds(60);
+            options.TotalRequestTimeout.Timeout             = TimeSpan.FromSeconds(45);
             options.Retry.MaxRetryAttempts      = 2;
             options.Retry.BackoffType           = DelayBackoffType.Exponential;
             options.Retry.UseJitter             = true;
