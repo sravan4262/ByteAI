@@ -38,12 +38,8 @@ import { FeedFilters } from '@/components/features/feed/feed-filters'
 
 const defaultProps = {
   activeTab: 'for_you',
-  sortBy: 'latest',
-  showSortDropdown: false,
   activeStackFilter: null,
   onTabChange: vi.fn(),
-  onSortChange: vi.fn(),
-  onToggleSortDropdown: vi.fn(),
   onStackFilter: vi.fn(),
 }
 
@@ -67,38 +63,15 @@ describe('FeedFilters', () => {
     expect(onTabChange).toHaveBeenCalledWith('trending')
   })
 
-  it('calls onToggleSortDropdown when SORT button clicked (for_you tab)', async () => {
-    const user = userEvent.setup()
-    const onToggleSortDropdown = vi.fn()
-    render(<FeedFilters {...defaultProps} onToggleSortDropdown={onToggleSortDropdown} />)
-    await user.click(screen.getByText(/SORT:/))
-    expect(onToggleSortDropdown).toHaveBeenCalled()
+  it('shows tech stack filter on for_you tab', () => {
+    render(<FeedFilters {...defaultProps} />)
+    expect(screen.getByText('TECH_STACK')).toBeInTheDocument()
   })
 
-  it('shows sort options when showSortDropdown is true', () => {
-    render(<FeedFilters {...defaultProps} showSortDropdown={true} />)
-    // sortOptions from @/lib/mock-data should be rendered — at least one option visible
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(2)
-  })
-
-  it('calls onSortChange when a sort option is clicked', async () => {
-    const user = userEvent.setup()
-    const onSortChange = vi.fn()
-    render(
-      <FeedFilters
-        {...defaultProps}
-        showSortDropdown={true}
-        onSortChange={onSortChange}
-      />
-    )
-    // Click the first sort option in the dropdown
-    const sortBtns = screen.getAllByRole('button').filter((b) =>
-      b.className.includes('text-left')
-    )
-    if (sortBtns.length > 0) {
-      await user.click(sortBtns[0])
-      expect(onSortChange).toHaveBeenCalled()
-    }
+  it('hides tech stack filter on trending tab', () => {
+    const { rerender } = render(<FeedFilters {...defaultProps} />)
+    rerender(<FeedFilters {...defaultProps} activeTab="trending" />)
+    expect(screen.queryByText('TECH_STACK')).not.toBeInTheDocument()
   })
 
   it('does not show sort dropdown on trending tab', () => {

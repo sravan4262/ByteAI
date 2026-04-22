@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { Post, Comment } from '@/lib/api'
 
@@ -99,7 +99,7 @@ describe('CommentsScreen', () => {
   it('shows empty state when there are no comments', async () => {
     render(<CommentsScreen post={makePost()} />)
     await waitFor(() =>
-      expect(screen.getByText(/No comments yet/)).toBeInTheDocument()
+      expect(screen.getByText(/NO COMMENTS YET/)).toBeInTheDocument()
     )
   })
 
@@ -117,9 +117,9 @@ describe('CommentsScreen', () => {
   it('submits a comment and shows it optimistically', async () => {
     const user = userEvent.setup()
     render(<CommentsScreen post={makePost()} />)
-    await waitFor(() => screen.getByPlaceholderText('Add your thoughts...'))
+    await waitFor(() => screen.getByPlaceholderText('Add a comment...'))
 
-    await user.type(screen.getByPlaceholderText('Add your thoughts...'), 'Hello world')
+    await user.type(screen.getByPlaceholderText('Add a comment...'), 'Hello world')
     await user.click(screen.getByRole('button', { name: /POST/ }))
 
     await waitFor(() => {
@@ -128,15 +128,13 @@ describe('CommentsScreen', () => {
     expect(mockToastSuccess).toHaveBeenCalledWith('Comment posted')
   })
 
-  it('enforces 500-char limit on comment textarea', async () => {
-    const user = userEvent.setup()
+  it('enforces 500-char limit on comment input', async () => {
     render(<CommentsScreen post={makePost()} />)
-    await waitFor(() => screen.getByPlaceholderText('Add your thoughts...'))
+    await waitFor(() => screen.getByPlaceholderText('Add a comment...'))
 
-    const longText = 'a'.repeat(600)
-    await user.type(screen.getByPlaceholderText('Add your thoughts...'), longText)
-    const textarea = screen.getByPlaceholderText('Add your thoughts...') as HTMLTextAreaElement
-    expect(textarea.value.length).toBeLessThanOrEqual(500)
+    const input = screen.getByPlaceholderText('Add a comment...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'a'.repeat(600) } })
+    expect(input.value.length).toBeLessThanOrEqual(500)
   })
 
   it('shows delete button for own comments (id === currentUserId)', async () => {

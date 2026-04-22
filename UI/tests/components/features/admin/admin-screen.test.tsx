@@ -111,7 +111,7 @@ describe('AdminScreen', () => {
     await user.click(newBtn!)
 
     // Form appears — submit it directly without filling fields (submit button is disabled)
-    await waitFor(() => screen.getByText('// NEW FLAG'))
+    await waitFor(() => screen.getByText('NEW FLAG'))
     const form = document.querySelector('form')!
     fireEvent.submit(form)
     expect(mockToastError).toHaveBeenCalledWith('Key and Name are required')

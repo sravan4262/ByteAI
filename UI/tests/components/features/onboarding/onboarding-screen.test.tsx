@@ -79,23 +79,25 @@ describe('OnboardingScreen', () => {
     await waitFor(() => expect(screen.getByText('Frontend')).toBeInTheDocument())
   })
 
-  it('calls getTechStacks when a domain is selected', async () => {
+  it('calls getTechStacks when a domain is selected and Continue is clicked', async () => {
     const user = userEvent.setup()
     render(<OnboardingScreen />)
     await waitFor(() => screen.getByText('Junior'))
     await user.click(screen.getByText('Junior'))
     await waitFor(() => screen.getByText('Frontend'))
     await user.click(screen.getByText('Frontend'))
+    await user.click(screen.getByText('Continue with 1 domain →'))
     await waitFor(() => expect(mockGetTechStacks).toHaveBeenCalled())
   })
 
-  it('shows tech stack options after domain selection', async () => {
+  it('shows tech stack options after domain selection and Continue', async () => {
     const user = userEvent.setup()
     render(<OnboardingScreen />)
     await waitFor(() => screen.getByText('Junior'))
     await user.click(screen.getByText('Junior'))
     await waitFor(() => screen.getByText('Frontend'))
     await user.click(screen.getByText('Frontend'))
+    await user.click(screen.getByText('Continue with 1 domain →'))
     await waitFor(() => expect(screen.getByText('React')).toBeInTheDocument())
   })
 
@@ -106,6 +108,7 @@ describe('OnboardingScreen', () => {
     await user.click(screen.getByText('Junior'))
     await waitFor(() => screen.getByText('Frontend'))
     await user.click(screen.getByText('Frontend'))
+    await user.click(screen.getByText('Continue with 1 domain →'))
     await waitFor(() => screen.getByText('React'))
 
     // Select 6 tech items
@@ -126,6 +129,7 @@ describe('OnboardingScreen', () => {
     await user.click(screen.getByText('Junior'))
     await waitFor(() => screen.getByText('Frontend'))
     await user.click(screen.getByText('Frontend'))
+    await user.click(screen.getByText('Continue with 1 domain →'))
     await waitFor(() => screen.getByText('React'))
     await user.click(screen.getByText('React'))
     await user.click(screen.getByText('Continue →'))

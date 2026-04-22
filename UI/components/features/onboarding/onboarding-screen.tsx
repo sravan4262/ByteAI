@@ -68,10 +68,14 @@ export function OnboardingScreen() {
     setActiveStep('tech')
   }
 
+  const MAX_TECH = 6
+
   const toggleTechStack = (name: string) => {
-    setSelectedTechStack(prev =>
-      prev.includes(name) ? prev.filter(t => t !== name) : [...prev, name]
-    )
+    setSelectedTechStack(prev => {
+      if (prev.includes(name)) return prev.filter(t => t !== name)
+      if (prev.length >= MAX_TECH) return prev
+      return [...prev, name]
+    })
   }
 
   const handleComplete = async () => {
@@ -313,7 +317,7 @@ export function OnboardingScreen() {
                 <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
                 <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">TECH STACK</span>
                 {selectedTechStack.length > 0 && (
-                  <span className="ml-auto font-mono text-[10px] text-[var(--accent)]">{selectedTechStack.length} selected</span>
+                  <span className="ml-auto font-mono text-[10px] text-[var(--accent)]">{selectedTechStack.length}/{MAX_TECH} selected</span>
                 )}
               </div>
 
@@ -329,20 +333,25 @@ export function OnboardingScreen() {
                 {filteredTechStacks
                   ? /* search mode — flat list */
                     <div className="flex flex-wrap gap-2">
-                      {filteredTechStacks.map((tech) => (
-                        <button
-                          key={tech.id}
-                          onClick={() => toggleTechStack(tech.name)}
-                          className={`py-1.5 px-3 rounded-lg border font-mono text-[11px] transition-all inline-flex items-center gap-1.5 whitespace-nowrap ${
-                            selectedTechStack.includes(tech.name)
-                              ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.2)]'
-                              : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
-                          }`}
-                        >
-                          {tech.label}
-                          {selectedTechStack.includes(tech.name) && <span className="text-[10px]">✓</span>}
-                        </button>
-                      ))}
+                      {filteredTechStacks.map((tech) => {
+                        const isSelected = selectedTechStack.includes(tech.name)
+                        const isDisabled = !isSelected && selectedTechStack.length >= MAX_TECH
+                        return (
+                          <button
+                            key={tech.id}
+                            onClick={() => toggleTechStack(tech.name)}
+                            disabled={isDisabled}
+                            className={`py-1.5 px-3 rounded-lg border font-mono text-[11px] transition-all inline-flex items-center gap-1.5 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed ${
+                              isSelected
+                                ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.2)]'
+                                : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
+                            }`}
+                          >
+                            {tech.label}
+                            {isSelected && <span className="text-[10px]">✓</span>}
+                          </button>
+                        )
+                      })}
                     </div>
                   : /* grouped by domain */
                     selectedDomains.map((domain) => (
@@ -352,20 +361,25 @@ export function OnboardingScreen() {
                           <span className="font-mono text-[10px] font-bold text-[var(--t2)] tracking-[0.06em] uppercase">{domain.label}</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {(techStackByDomain[domain.id] ?? []).map((tech) => (
-                            <button
-                              key={tech.id}
-                              onClick={() => toggleTechStack(tech.name)}
-                              className={`py-1.5 px-3 rounded-lg border font-mono text-[11px] transition-all inline-flex items-center gap-1.5 whitespace-nowrap ${
-                                selectedTechStack.includes(tech.name)
-                                  ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.2)]'
-                                  : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
-                              }`}
-                            >
-                              {tech.label}
-                              {selectedTechStack.includes(tech.name) && <span className="text-[10px]">✓</span>}
-                            </button>
-                          ))}
+                          {(techStackByDomain[domain.id] ?? []).map((tech) => {
+                            const isSelected = selectedTechStack.includes(tech.name)
+                            const isDisabled = !isSelected && selectedTechStack.length >= MAX_TECH
+                            return (
+                              <button
+                                key={tech.id}
+                                onClick={() => toggleTechStack(tech.name)}
+                                disabled={isDisabled}
+                                className={`py-1.5 px-3 rounded-lg border font-mono text-[11px] transition-all inline-flex items-center gap-1.5 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed ${
+                                  isSelected
+                                    ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_16px_rgba(59,130,246,0.2)]'
+                                    : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
+                                }`}
+                              >
+                                {tech.label}
+                                {isSelected && <span className="text-[10px]">✓</span>}
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
                     ))

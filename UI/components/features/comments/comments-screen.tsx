@@ -55,6 +55,7 @@ function CommentCard({ comment: c, currentUserId, onDelete }: {
                 ) : (
                   <button
                     onClick={() => setConfirming(true)}
+                    title="Delete comment"
                     className="font-mono text-xs font-bold px-3 py-1.5 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(244,63,94,0.4)] hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--red)] transition-all tracking-[0.05em]"
                   >
                     rm
@@ -267,6 +268,7 @@ export function CommentsScreen({ post }: CommentsScreenProps) {
           <button
             onClick={handleSubmit}
             disabled={!body.trim() || isSubmitting}
+            aria-label="POST"
             className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--accent)] to-[#1d4ed8] flex items-center justify-center text-white flex-shrink-0 shadow-[0_4px_16px_var(--accent-glow)] transition-all hover:shadow-[0_6px_24px_var(--accent-glow)] hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
             <Send size={14} />
