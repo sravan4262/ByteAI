@@ -6,6 +6,7 @@ using ByteAI.Core.Services.AI;
 using ByteAI.Core.Services.Search;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
 
@@ -30,6 +31,7 @@ public sealed class AiController(
     /// Optionally pass a <c>context</c> string (e.g. the byte body) for RAG-style answers.
     /// </summary>
     [HttpPost("ask")]
+    [EnableRateLimiting("ai")]
     [ProducesResponseType(typeof(ApiResponse<AskResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -88,6 +90,7 @@ public sealed class AiController(
     /// Returns the synthesised answer plus the source items used.
     /// </summary>
     [HttpPost("search-ask")]
+    [EnableRateLimiting("ai")]
     [RequireFeatureFlag("ai-search-ask")]
     [ProducesResponseType(typeof(ApiResponse<SearchAskResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -136,6 +139,7 @@ public sealed class AiController(
     /// Format code using Groq. Used for languages not supported by Prettier (C#, Go, Java, Python, etc.).
     /// </summary>
     [HttpPost("format-code")]
+    [EnableRateLimiting("ai")]
     [RequireFeatureFlag("ai-format-code")]
     [ProducesResponseType(typeof(ApiResponse<FormatCodeResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

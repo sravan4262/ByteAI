@@ -2,6 +2,7 @@ using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -13,6 +14,7 @@ namespace ByteAI.Api.Controllers;
 [Route("api/lookup")]
 [Produces("application/json")]
 [Tags("Lookup")]
+[DisableRateLimiting]
 public sealed class LookupController(ILookupBusiness lookupBusiness) : ControllerBase
 {
     /// <summary>All seniority levels for onboarding selection.</summary>

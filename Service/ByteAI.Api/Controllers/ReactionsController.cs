@@ -5,6 +5,7 @@ using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -27,6 +28,7 @@ public sealed class ReactionsController(IReactionsBusiness reactionsBusiness) : 
     /// <summary>Add a reaction to a byte. <c>type</c> must be one of: <c>like</c>, <c>fire</c>, <c>mind_blown</c>, <c>bookmark</c>.</summary>
     [HttpPost]
     [Authorize]
+    [EnableRateLimiting("social")]
     [ProducesResponseType(typeof(ApiResponse<ToggleLikeResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

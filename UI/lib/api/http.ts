@@ -34,6 +34,9 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 
   if (!res.ok) {
     const text = await res.text().catch(() => '')
+    if (res.status === 502) {
+      throw new ApiError(502, 'SERVICE_UNAVAILABLE', 'Service is temporarily unavailable. Please try again.')
+    }
     if (res.status === 503) {
       throw new ApiError(503, 'AI_QUOTA_EXHAUSTED', 'AI services are temporarily overloaded. Please try again in a few minutes.')
     }

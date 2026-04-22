@@ -7,6 +7,7 @@ using ByteAI.Core.Entities;
 using ByteAI.Core.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -117,6 +118,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
 
     [HttpPost]
     [Authorize]
+    [EnableRateLimiting("write")]
     [ProducesResponseType(typeof(ApiResponse<InterviewResponse>), 201)]
     public async Task<ActionResult<ApiResponse<InterviewResponse>>> Create(
         [FromBody] CreateInterviewRequest request, CancellationToken ct)
@@ -137,6 +139,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     /// <summary>Create an interview with structured Q&A questions.</summary>
     [HttpPost("with-questions")]
     [Authorize]
+    [EnableRateLimiting("write")]
     [ProducesResponseType(typeof(ApiResponse<InterviewWithQuestionsResponse>), 201)]
     public async Task<ActionResult<ApiResponse<InterviewWithQuestionsResponse>>> CreateWithQuestions(
         [FromBody] CreateInterviewWithQuestionsRequest request, CancellationToken ct)
@@ -200,6 +203,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
 
     [HttpPost("questions/{questionId:guid}/likes")]
     [Authorize]
+    [EnableRateLimiting("social")]
     public async Task<ActionResult> LikeQuestion(Guid questionId, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
@@ -228,6 +232,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
 
     [HttpPost("questions/{questionId:guid}/comments")]
     [Authorize]
+    [EnableRateLimiting("social")]
     public async Task<ActionResult> AddQuestionComment(
         Guid questionId, [FromBody] AddInterviewCommentRequest request, CancellationToken ct)
     {
@@ -270,6 +275,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
 
     [HttpPost("{id:guid}/comments")]
     [Authorize]
+    [EnableRateLimiting("social")]
     public async Task<ActionResult> AddComment(Guid id, [FromBody] AddInterviewCommentRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
@@ -311,6 +317,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
 
     [HttpPost("{id:guid}/reactions")]
     [Authorize]
+    [EnableRateLimiting("social")]
     public async Task<ActionResult> AddReaction(Guid id, [FromBody] AddInterviewReactionRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
@@ -340,6 +347,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     /// <summary>Toggle bookmark on an interview. Returns isSaved=true if now bookmarked, false if removed.</summary>
     [HttpPost("{id:guid}/bookmarks")]
     [Authorize]
+    [EnableRateLimiting("social")]
     public async Task<ActionResult> ToggleBookmark(Guid id, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();

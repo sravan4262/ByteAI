@@ -5,6 +5,7 @@ using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -29,6 +30,7 @@ public sealed class CommentsController(ICommentsBusiness commentsBusiness) : Con
     /// <summary>Add a comment to a byte. Supports threaded replies via ParentCommentId.</summary>
     [HttpPost]
     [Authorize]
+    [EnableRateLimiting("social")]
     [ProducesResponseType(typeof(ApiResponse<CommentResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<CommentResponse>>> CreateComment(

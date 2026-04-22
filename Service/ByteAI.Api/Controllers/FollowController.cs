@@ -3,6 +3,7 @@ using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -16,6 +17,7 @@ public sealed class FollowController(IFollowBusiness followBusiness) : Controlle
     /// <summary>Follow a user.</summary>
     [HttpPost]
     [Authorize]
+    [EnableRateLimiting("social")]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

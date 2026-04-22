@@ -49,6 +49,12 @@ try
                 new ClusterConfig
                 {
                     ClusterId    = "byteai-api",
+                    // 60s covers cold starts (min replicas = 0, ACA spin-up ~15-30s)
+                    // and AI endpoints (~10-15s). Prevents infinite hangs with no upper bound.
+                    HttpRequest  = new Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig
+                    {
+                        ActivityTimeout = TimeSpan.FromSeconds(60),
+                    },
                     Destinations = new Dictionary<string, DestinationConfig>
                     {
                         ["primary"] = new DestinationConfig { Address = apiUrl },

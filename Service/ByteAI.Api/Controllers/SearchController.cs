@@ -4,6 +4,7 @@ using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -21,6 +22,7 @@ public sealed class SearchController(ISearchBusiness searchBusiness) : Controlle
     /// <param name="type">Content type: "bytes" | "interviews" | "people".</param>
     /// <param name="limit">Maximum results to return (max 50).</param>
     [HttpGet]
+    [EnableRateLimiting("search")]
     [ProducesResponseType(typeof(ApiResponse<List<SearchResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<List<UserSearchResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

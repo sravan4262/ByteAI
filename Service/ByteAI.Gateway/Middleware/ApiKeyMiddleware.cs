@@ -1,3 +1,6 @@
+using System.Threading.RateLimiting;
+using Microsoft.Extensions.Caching.Memory;
+
 namespace ByteAI.Gateway.Middleware;
 
 /// <summary>
@@ -11,13 +14,57 @@ namespace ByteAI.Gateway.Middleware;
 ///   5. X-Api-Key: &lt;key&gt; — machine-to-machine; key must be in the ApiKeys config value
 ///
 /// Rejects everything else with 401.
+/// Also enforces an IP-based rate limit on POST /api/auth/provision (5 req/hour) to prevent account spam.
 /// </summary>
 public sealed class ApiKeyMiddleware(RequestDelegate next, IConfiguration config)
 {
     private const string ApiKeyHeader = "X-Api-Key";
 
+    // Per-IP FixedWindowLimiters for POST /api/auth/provision — 5 requests per hour.
+    // MemoryCache evicts inactive IPs after 2 hours, preventing unbounded timer and memory growth.
+    private static readonly MemoryCache _provisionLimiters = new(new MemoryCacheOptions());
+
+    private static FixedWindowRateLimiter GetProvisionLimiter(string ip) =>
+        _provisionLimiters.GetOrCreate(ip, entry =>
+        {
+            entry.SlidingExpiration = TimeSpan.FromHours(2);
+            return new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
+            {
+                Window            = TimeSpan.FromHours(1),
+                PermitLimit       = 5,
+                QueueLimit        = 0,
+                AutoReplenishment = true,
+            });
+        })!;
+
+    // Reads the real client IP, accounting for reverse proxies (Azure Container Apps, NGINX, etc.)
+    // that inject X-Forwarded-For. Falls back to the direct connection IP if the header is absent.
+    private static string GetClientIp(HttpContext ctx) =>
+        ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
+        ?? ctx.Connection.RemoteIpAddress?.ToString()
+        ?? "unknown";
+
     public async Task InvokeAsync(HttpContext ctx)
     {
+        // IP-based rate limit on account creation — prevents bot account spam
+        if (ctx.Request.Method == HttpMethods.Post &&
+            ctx.Request.Path.Equals("/api/auth/provision", StringComparison.OrdinalIgnoreCase))
+        {
+            var ip      = GetClientIp(ctx);
+            var limiter = GetProvisionLimiter(ip);
+            using var lease = await limiter.AcquireAsync(permitCount: 1);
+
+            if (!lease.IsAcquired)
+            {
+                ctx.Response.StatusCode  = StatusCodes.Status429TooManyRequests;
+                ctx.Response.ContentType = "application/json";
+                ctx.Response.Headers.RetryAfter = "3600";
+                await ctx.Response.WriteAsync(
+                    """{"error":"Too many account creation attempts. Try again in an hour."}""");
+                return;
+            }
+        }
+
         // Health endpoints are always accessible without auth
         if (ctx.Request.Path.StartsWithSegments("/health"))
         {

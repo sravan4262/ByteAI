@@ -27,12 +27,16 @@ using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Pgvector.EntityFrameworkCore;
 using System.Text.Json;
 
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
+using System.Net;
 using Serilog;
 
 // ── Serilog bootstrap ────────────────────────────────────────────────────────
@@ -76,7 +80,23 @@ try
     builder.Services.AddSingleton<TechDomainAnchors>();
     builder.Services.AddSingleton<GroqLoadBalancer>();
     builder.Services.AddScoped<IEmbeddingService, EmbeddingService>();
-    builder.Services.AddHttpClient<IGroqService, GroqService>();
+    builder.Services.AddHttpClient<IGroqService, GroqService>()
+        .AddStandardResilienceHandler()
+        .Configure(options =>
+        {
+            options.AttemptTimeout.Timeout      = TimeSpan.FromSeconds(20);
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(45);
+            options.Retry.MaxRetryAttempts      = 2;
+            options.Retry.BackoffType           = DelayBackoffType.Exponential;
+            options.Retry.UseJitter             = true;
+            // Skip 429 — GroqService handles those internally with model fallback.
+            options.Retry.ShouldHandle = args => args.Outcome switch
+            {
+                { Exception: HttpRequestException }                       => PredicateResult.True(),
+                { Result: { } r } when (int)r.StatusCode >= 500          => PredicateResult.True(),
+                _                                                         => PredicateResult.False(),
+            };
+        });
 
     // ── Domain services ───────────────────────────────────────────────────────
     builder.Services.AddScoped<IByteService, ByteService>();
@@ -138,8 +158,11 @@ try
                     Obtain the token from your Supabase session (`session.access_token` on the frontend).
 
                     ## Rate Limiting
-                    - Global: 120 requests / minute
-                    - AI endpoints (`/api/ai/*`): stricter — see individual endpoints
+                    All limits are per-user (partitioned by Supabase user ID), 10 req/min:
+                    - `ai` (sliding window): `/api/ai/ask`, `/api/ai/search-ask`, `/api/ai/format-code`
+                    - `write` (fixed window): `POST /api/bytes`, `POST /api/interviews`
+                    - `search` (fixed window): `GET /api/search`
+                    - `social` (fixed window): reactions, comments, follow
                     """,
                 Contact = new OpenApiContact { Name = "ByteAI", Email = "hello@byteai.dev" },
             };
@@ -197,12 +220,72 @@ try
                   .AllowCredentials()));
 
     // ── Rate limiting ─────────────────────────────────────────────────────────
+    // All policies partition by Supabase user ID (sub claim), falling back to IP.
+    // "ai" uses a sliding window to prevent burst-at-reset; others use fixed windows.
     builder.Services.AddRateLimiter(opt =>
-        opt.AddFixedWindowLimiter("api", limiter =>
+    {
+        opt.OnRejected = async (ctx, ct) =>
         {
-            limiter.Window = TimeSpan.FromMinutes(1);
-            limiter.PermitLimit = 120;
-        }));
+            ctx.HttpContext.Response.StatusCode  = StatusCodes.Status429TooManyRequests;
+            ctx.HttpContext.Response.ContentType = "application/json";
+
+            if (ctx.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                ctx.HttpContext.Response.Headers.RetryAfter =
+                    ((int)retryAfter.TotalSeconds).ToString();
+
+            await ctx.HttpContext.Response.WriteAsJsonAsync(new
+            {
+                type   = "https://tools.ietf.org/html/rfc6585#section-4",
+                title  = "Too Many Requests",
+                status = 429,
+                detail = "Rate limit exceeded. Please slow down.",
+            }, ct);
+        };
+
+        static string PartitionByUser(HttpContext ctx) =>
+            ctx.User.FindFirst("sub")?.Value ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        opt.AddPolicy<string>("ai", ctx => RateLimitPartition.GetSlidingWindowLimiter(
+            PartitionByUser(ctx),
+            _ => new SlidingWindowRateLimiterOptions
+            {
+                Window            = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 6,
+                PermitLimit       = 10,
+                QueueLimit        = 0,
+                AutoReplenishment = true,
+            }));
+
+        opt.AddPolicy<string>("write", ctx => RateLimitPartition.GetFixedWindowLimiter(
+            PartitionByUser(ctx),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window            = TimeSpan.FromMinutes(1),
+                PermitLimit       = 10,
+                QueueLimit        = 0,
+                AutoReplenishment = true,
+            }));
+
+        opt.AddPolicy<string>("search", ctx => RateLimitPartition.GetFixedWindowLimiter(
+            PartitionByUser(ctx),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window            = TimeSpan.FromMinutes(1),
+                PermitLimit       = 10,
+                QueueLimit        = 0,
+                AutoReplenishment = true,
+            }));
+
+        opt.AddPolicy<string>("social", ctx => RateLimitPartition.GetFixedWindowLimiter(
+            PartitionByUser(ctx),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window            = TimeSpan.FromMinutes(1),
+                PermitLimit       = 10,
+                QueueLimit        = 0,
+                AutoReplenishment = true,
+            }));
+    });
 
     var app = builder.Build();
 

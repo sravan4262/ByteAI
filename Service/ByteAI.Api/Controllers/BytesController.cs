@@ -6,6 +6,7 @@ using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -53,6 +54,7 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
     /// </summary>
     [HttpPost]
     [Authorize]
+    [EnableRateLimiting("write")]
     [ProducesResponseType(typeof(ApiResponse<ByteResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> CreateByte([FromBody] CreateByteRequest request, [FromQuery] bool force = false, CancellationToken ct = default)
@@ -85,6 +87,7 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
     /// <summary>Update a byte. Only the author may update their own bytes.</summary>
     [HttpPut("{byteId:guid}")]
     [Authorize]
+    [EnableRateLimiting("write")]
     [ProducesResponseType(typeof(ApiResponse<ByteResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<ByteResponse>>> UpdateByte(Guid byteId, [FromBody] UpdateByteRequest request, CancellationToken ct)
     {
@@ -115,6 +118,7 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
 
     /// <summary>Record a view event. Dwell >= 5 s triggers interest-embedding update.</summary>
     [HttpPost("{byteId:guid}/view")]
+    [EnableRateLimiting("social")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> RecordView(Guid byteId, [FromBody] RecordViewRequest request, CancellationToken ct)
     {
