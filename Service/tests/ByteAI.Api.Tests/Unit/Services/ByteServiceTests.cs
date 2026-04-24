@@ -18,7 +18,7 @@ namespace ByteAI.Api.Tests.Unit.Services;
 ///   Stage 2 — TechDomainAnchors similarity check:
 ///     - AlwaysReject()  → max similarity = 0 (< 0.15) → InvalidContentException thrown here
 ///     - AlwaysPass()    → max similarity = 1 (>= 0.15) → falls through to Stage 3
-///   Stage 3 — Groq classification (mocked IGroqService)
+///   Stage 3 — Gemini classification (mocked ILlmService)
 ///
 /// Dedup check (CosineDistance, pgvector-only):
 ///   Bypassed in all happy-path tests via force=true.
@@ -28,7 +28,7 @@ public sealed class ByteServiceTests : IDisposable
     private readonly ByteAI.Core.Infrastructure.Persistence.AppDbContext _db;
     private readonly Mock<IPublisher> _publisher = new();
     private readonly Mock<IEmbeddingService> _embedding = new();
-    private readonly Mock<IGroqService> _groq = new();
+    private readonly Mock<ILlmService> _llm = new();
     private readonly ByteService _sut;
 
     private readonly Guid _authorId = Guid.NewGuid();
@@ -41,8 +41,8 @@ public sealed class ByteServiceTests : IDisposable
         _embedding.Setup(e => e.EmbedQueryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(new float[768]);
 
-        // Default: Groq returns tech-related + coherent
-        _groq.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        // Default: LLM returns tech-related + coherent
+        _llm.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new ContentValidationResult(true, true, "ok"));
 
         // Publisher does nothing (must match the generic Publish<TNotification> overload MediatR uses)
@@ -55,7 +55,7 @@ public sealed class ByteServiceTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     private ByteService BuildSut(ByteAI.Core.Services.AI.TechDomainAnchors anchors) =>
-        new(_db, _publisher.Object, _embedding.Object, anchors, _groq.Object, NullLogger<ByteService>.Instance);
+        new(_db, _publisher.Object, _embedding.Object, anchors, _llm.Object, NullLogger<ByteService>.Instance);
 
     private void SeedAuthor()
     {
@@ -110,12 +110,12 @@ public sealed class ByteServiceTests : IDisposable
             () => sut.CreateByteAsync(_authorId, "My cat is fluffy today", "Nothing about tech at all", null, null, "article", default, true));
     }
 
-    // ── Stage 3: Groq validation ──────────────────────────────────────────────
+    // ── Stage 3: LLM validation ───────────────────────────────────────────────
 
     [Fact]
-    public async Task CreateByte_GroqSaysNotTechRelated_ThrowsInvalidContentException()
+    public async Task CreateByte_LlmSaysNotTechRelated_ThrowsInvalidContentException()
     {
-        _groq.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _llm.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new ContentValidationResult(false, true, "Not tech content"));
         _embedding.Setup(e => e.EmbedQueryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(TechAnchorsTestHelper.UnitVector);
@@ -125,9 +125,9 @@ public sealed class ByteServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateByte_GroqSaysNotCoherent_ThrowsInvalidContentException()
+    public async Task CreateByte_LlmSaysNotCoherent_ThrowsInvalidContentException()
     {
-        _groq.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _llm.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync(new ContentValidationResult(true, false, "Incoherent content"));
         _embedding.Setup(e => e.EmbedQueryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(TechAnchorsTestHelper.UnitVector);
@@ -137,10 +137,10 @@ public sealed class ByteServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateByte_GroqReturnsNull_ThrowsServiceUnavailableException()
+    public async Task CreateByte_LlmReturnsNull_ThrowsServiceUnavailableException()
     {
-        // Groq unavailable → null → service unavailable (not invalid content)
-        _groq.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        // LLM unavailable → null → service unavailable (not invalid content)
+        _llm.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync((ContentValidationResult?)null);
         _embedding.Setup(e => e.EmbedQueryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(TechAnchorsTestHelper.UnitVector);
@@ -256,7 +256,7 @@ public sealed class ByteServiceTests : IDisposable
 
         Assert.Equal("Original Title", result.Title);
         Assert.Equal("new code snippet", result.CodeSnippet);
-        _groq.Verify(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _llm.Verify(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -281,7 +281,7 @@ public sealed class ByteServiceTests : IDisposable
             entity.Id, _authorId, "New Kubernetes Title", null, null, null, default);
 
         Assert.Equal("New Kubernetes Title", result.Title);
-        _groq.Verify(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        _llm.Verify(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── DeleteByteAsync ───────────────────────────────────────────────────────

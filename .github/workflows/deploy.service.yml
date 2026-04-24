@@ -171,7 +171,7 @@ jobs:
             --min-replicas 1 \
             --set-env-vars \
               "ConnectionStrings__Postgres=${{ secrets.DATABASE_URL }}" \
-              "Groq__ApiKey=${{ secrets.GROQ_API_KEY }}" \
+              "Gemini__ApiKey=${{ secrets.GEMINI_API_KEY }}" \
               "Cors__AllowedOrigin=${{ secrets.FRONTEND_URL }}" \
               "Supabase__Url=${{ secrets.SUPABASE_URL }}" \
               "Supabase__JwtSecret=${{ secrets.SUPABASE_JWT_SECRET }}" \

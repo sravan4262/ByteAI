@@ -13,7 +13,7 @@ namespace ByteAI.Core.Events;
 public sealed class ByteCreatedEventHandler(
     AppDbContext db,
     IEmbeddingService embedding,
-    IGroqService groq,
+    ILlmService llm,
     IByteService byteService,
     IBadgeService badgeService,
     IServiceScopeFactory scopeFactory,
@@ -36,12 +36,12 @@ public sealed class ByteCreatedEventHandler(
             logger.LogError(ex, "Failed to generate embedding for byte {ByteId}", notification.ByteId);
         }
 
-        // ── 2. Quality scoring (Groq) ─────────────────────────────────────────
+        // ── 2. Quality scoring (Gemini) ───────────────────────────────────────
         _ = Task.Run(async () =>
         {
             try
             {
-                var score = await groq.ScoreQualityAsync(notification.Title, notification.Body, CancellationToken.None);
+                var score = await llm.ScoreQualityAsync(notification.Title, notification.Body, CancellationToken.None);
                 if (score is null) return;
 
                 using var scope = scopeFactory.CreateScope();

@@ -13,7 +13,7 @@ using Pgvector.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Bytes;
 
-public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddingService embedding, TechDomainAnchors anchors, IGroqService groq, ILogger<ByteService> logger) : IByteService
+public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddingService embedding, TechDomainAnchors anchors, ILlmService llm, ILogger<ByteService> logger) : IByteService
 {
     public async Task UpdateEmbeddingAsync(Guid byteId, float[] embedding, CancellationToken ct = default)
     {
@@ -91,13 +91,13 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
         if (maxSim < 0.15f)
             throw new InvalidContentException("ByteAI is for tech content only. This doesn't appear to be tech-related.");
 
-        // ── Stage 3: Groq is the real content gate ────────────────────────────
+        // ── Stage 3: Gemini is the real content gate ─────────────────────────
         // nomic scores general English too high against tech anchors (0.55+),
         // so embedding is only used as a cheap hard-reject at very low scores.
-        // Groq decides for everything else.
+        // Gemini decides for everything else.
         {
-            var validation = await groq.ValidateTechContentAsync(title, body, ct);
-            logger.LogInformation("Groq validation result: {Result}", validation);
+            var validation = await llm.ValidateTechContentAsync(title, body, ct);
+            logger.LogInformation("LLM validation result: {Result}", validation);
             if (validation is not null)
             {
                 if (!validation.IsCoherent)
@@ -107,8 +107,8 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
             }
             else
             {
-                logger.LogWarning("Groq validation unavailable (API down, rate-limited, or key missing) for: {Title}", title);
-                throw new ServiceUnavailableException("Content validation is temporarily unavailable. Please try again in a moment.");
+                // Stages 1 & 2 already passed — let the post through rather than block on a transient AI failure.
+                logger.LogWarning("LLM validation unavailable — falling back to embedding-only check for: {Title}", title);
             }
         }
 
@@ -192,11 +192,11 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
             if (maxSim < 0.15f)
                 throw new InvalidContentException("ByteAI is for tech content only. This doesn't appear to be tech-related.");
 
-            // Stage 3: Groq is the authoritative gate
-            var validation = await groq.ValidateTechContentAsync(newTitle, newBody, ct);
+            // Stage 3: Gemini is the authoritative gate
+            var validation = await llm.ValidateTechContentAsync(newTitle, newBody, ct);
             if (validation is null)
             {
-                logger.LogWarning("Groq validation unavailable during update for byte {ByteId}", byteId);
+                logger.LogWarning("LLM validation unavailable during update for byte {ByteId}", byteId);
                 throw new ServiceUnavailableException("Content validation is temporarily unavailable. Please try again in a moment.");
             }
             if (!validation.IsCoherent)
@@ -268,7 +268,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
     /// <summary>
     /// Returns true if the combined title+body looks like gibberish:
     /// too short, very low character entropy, or suspiciously short average word length.
-    /// This is a cheap pre-filter — runs before any embedding or Groq call.
+    /// This is a cheap pre-filter — runs before any embedding or LLM call.
     /// </summary>
     private static bool IsGibberish(string title, string body)
     {

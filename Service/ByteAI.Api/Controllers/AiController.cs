@@ -18,16 +18,16 @@ namespace ByteAI.Api.Controllers;
 [Produces("application/json")]
 [Tags("AI")]
 public sealed class AiController(
-    IGroqService groq,
+    ILlmService llm,
     IEmbeddingService embedding,
     ISearchService search,
     AppDbContext db) : ControllerBase
 {
     // suggest-tags endpoint removed — auto-tagging happens in ByteCreatedEventHandler after every post.
-    // SuggestTagsAsync on IGroqService is kept because ByteCreatedEventHandler still calls it internally.
+    // SuggestTagsAsync on ILlmService is kept because ByteCreatedEventHandler still calls it internally.
 
     /// <summary>
-    /// Ask a tech question answered by Groq Llama 3.3 70B.
+    /// Ask a tech question answered by Gemini Flash 2.0.
     /// Optionally pass a <c>context</c> string (e.g. the byte body) for RAG-style answers.
     /// </summary>
     [HttpPost("ask")]
@@ -39,7 +39,7 @@ public sealed class AiController(
         [FromBody] AskRequest request,
         CancellationToken ct)
     {
-        var answer = await groq.AskAsync(request.Question, request.Context, ct);
+        var answer = await llm.AskAsync(request.Question, request.Context, ct);
         return Ok(ApiResponse<AskResponse>.Success(new AskResponse(answer)));
     }
 
@@ -51,6 +51,7 @@ public sealed class AiController(
     /// Used by the "Show similar bytes" button — navigates to the search screen pre-populated with results.
     /// </summary>
     [HttpGet("~/api/bytes/{byteId:guid}/similar")]
+    [EnableRateLimiting("search")]
     [ProducesResponseType(typeof(ApiResponse<List<SimilarByteResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<List<SimilarByteResponse>>>> GetSimilarBytes(
@@ -130,13 +131,13 @@ public sealed class AiController(
             return Ok(ApiResponse<SearchAskResponse>.Success(
                 new SearchAskResponse("No relevant content found in ByteAI for that question. Try posting bytes on this topic first!", [])));
 
-        var answer = await groq.RagAnswerAsync(request.Question, passages, ct);
+        var answer = await llm.RagAnswerAsync(request.Question, passages, ct);
 
         return Ok(ApiResponse<SearchAskResponse>.Success(new SearchAskResponse(answer, sources)));
     }
 
     /// <summary>
-    /// Format code using Groq. Used for languages not supported by Prettier (C#, Go, Java, Python, etc.).
+    /// Format code using Gemini. Used for languages not supported by Prettier (C#, Go, Java, Python, etc.).
     /// </summary>
     [HttpPost("format-code")]
     [EnableRateLimiting("ai")]
@@ -148,7 +149,9 @@ public sealed class AiController(
         [FromBody] FormatCodeRequest request,
         CancellationToken ct)
     {
-        var formatted = await groq.FormatCodeAsync(request.Code, request.Language, ct);
+        var formatted = await llm.FormatCodeAsync(request.Code, request.Language, ct);
+        if (formatted is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ApiError("service_unavailable", "AI formatting service is currently unavailable."));
         return Ok(ApiResponse<FormatCodeResponse>.Success(new FormatCodeResponse(formatted)));
     }
 }

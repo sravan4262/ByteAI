@@ -21,6 +21,7 @@ using ByteAI.Core.Services.Preferences;
 using ByteAI.Core.Services.Drafts;
 using ByteAI.Core.Services.Avatar;
 using ByteAI.Core.Services.Users;
+using ByteAI.Core.Services.Support;
 using ByteAI.Core.Validators;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -78,24 +79,23 @@ try
     // ── AI infrastructure (ONNX singleton — optional model file) ─────────────
     builder.Services.AddSingleton<OnnxEmbedder>();
     builder.Services.AddSingleton<TechDomainAnchors>();
-    builder.Services.AddSingleton<GroqLoadBalancer>();
     builder.Services.AddScoped<IEmbeddingService, EmbeddingService>();
-    builder.Services.AddHttpClient<IGroqService, GroqService>()
+    builder.Services.AddHttpClient<ILlmService, GeminiService>()
         .AddStandardResilienceHandler()
         .Configure(options =>
         {
-            options.AttemptTimeout.Timeout                  = TimeSpan.FromSeconds(20);
-            options.CircuitBreaker.SamplingDuration         = TimeSpan.FromSeconds(60);
-            options.TotalRequestTimeout.Timeout             = TimeSpan.FromSeconds(45);
-            options.Retry.MaxRetryAttempts      = 2;
-            options.Retry.BackoffType           = DelayBackoffType.Exponential;
-            options.Retry.UseJitter             = true;
-            // Skip 429 — GroqService handles those internally with model fallback.
+            options.AttemptTimeout.Timeout          = TimeSpan.FromSeconds(20);
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+            options.TotalRequestTimeout.Timeout     = TimeSpan.FromSeconds(45);
+            options.Retry.MaxRetryAttempts          = 2;
+            options.Retry.BackoffType               = DelayBackoffType.Exponential;
+            options.Retry.UseJitter                 = true;
             options.Retry.ShouldHandle = args => args.Outcome switch
             {
-                { Exception: HttpRequestException }                       => PredicateResult.True(),
-                { Result: { } r } when (int)r.StatusCode >= 500          => PredicateResult.True(),
-                _                                                         => PredicateResult.False(),
+                { Exception: HttpRequestException }                      => PredicateResult.True(),
+                { Result: { } r } when (int)r.StatusCode >= 500         => PredicateResult.True(),
+                { Result: { } r } when (int)r.StatusCode == 429         => PredicateResult.True(),
+                _                                                        => PredicateResult.False(),
             };
         });
 
@@ -116,7 +116,22 @@ try
     builder.Services.AddScoped<IUserPreferencesService, UserPreferencesService>();
     builder.Services.AddScoped<IDraftService, DraftService>();
     builder.Services.AddScoped<ByteAI.Core.Services.FeatureFlags.IFeatureFlagService, ByteAI.Core.Services.FeatureFlags.FeatureFlagService>();
-    builder.Services.AddHttpClient<IAvatarService, AvatarService>();
+    builder.Services.AddHttpClient<IAvatarService, AvatarService>()
+        .AddStandardResilienceHandler()
+        .Configure(options =>
+        {
+            options.AttemptTimeout.Timeout          = TimeSpan.FromSeconds(15);
+            options.TotalRequestTimeout.Timeout     = TimeSpan.FromSeconds(30);
+            options.Retry.MaxRetryAttempts          = 1;
+            options.Retry.BackoffType               = DelayBackoffType.Constant;
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+            options.Retry.ShouldHandle = args => args.Outcome switch
+            {
+                { Exception: HttpRequestException }              => PredicateResult.True(),
+                { Result: { } r } when (int)r.StatusCode >= 500 => PredicateResult.True(),
+                _                                                => PredicateResult.False(),
+            };
+        });
 
     // ── Business layer ────────────────────────────────────────────────────────
     builder.Services.AddScoped<IBytesBusiness, BytesBusiness>();
@@ -132,6 +147,8 @@ try
     builder.Services.AddScoped<IReactionsBusiness, ReactionsBusiness>();
     builder.Services.AddScoped<IAdminBusiness, AdminBusiness>();
     builder.Services.AddScoped<IDraftsBusiness, DraftsBusiness>();
+    builder.Services.AddScoped<ISupportService, SupportService>();
+    builder.Services.AddScoped<ISupportBusiness, SupportBusiness>();
 
     // ── Health checks ─────────────────────────────────────────────────────────
     builder.Services.AddHealthChecks()
@@ -283,6 +300,26 @@ try
             {
                 Window            = TimeSpan.FromMinutes(1),
                 PermitLimit       = 10,
+                QueueLimit        = 0,
+                AutoReplenishment = true,
+            }));
+
+        opt.AddPolicy<string>("support", ctx => RateLimitPartition.GetFixedWindowLimiter(
+            PartitionByUser(ctx),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window            = TimeSpan.FromMinutes(1),
+                PermitLimit       = 5,
+                QueueLimit        = 0,
+                AutoReplenishment = true,
+            }));
+
+        opt.AddPolicy<string>("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
+            PartitionByUser(ctx),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                Window            = TimeSpan.FromMinutes(5),
+                PermitLimit       = 3,
                 QueueLimit        = 0,
                 AutoReplenishment = true,
             }));

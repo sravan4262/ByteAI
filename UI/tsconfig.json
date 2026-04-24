@@ -24,9 +24,12 @@
     ],
     "types": ["vitest/globals"],
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"],
+      "@/components/*": ["./components/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/hooks/*": ["./hooks/*"],
+      "@/types/*": ["./lib/types/*"],
+      "@/constants/*": ["./lib/constants/*"]
     }
   },
   "include": [

@@ -23,7 +23,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:        LocalDocker
       ConnectionStrings__Postgres:   Host=host.docker.internal;Port=54322;Database=postgres;Username=postgres;Password=postgres
-      Groq__ApiKey:                  ${GROQ_API_KEY}
+      Gemini__ApiKey:                ${GEMINI_API_KEY}
       Cors__AllowedOrigin:           http://localhost:3000,http://127.0.0.1:3000
       Supabase__Url:                 ${SUPABASE_URL:-http://host.docker.internal:54321}
       Supabase__PublicUrl:           http://127.0.0.1:54321

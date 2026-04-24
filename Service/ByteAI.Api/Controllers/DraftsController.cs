@@ -5,6 +5,7 @@ using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -18,6 +19,7 @@ public sealed class DraftsController(IDraftsBusiness draftsBusiness) : Controlle
 {
     /// <summary>Save or update a draft. Pass DraftId to update an existing one; omit to create new.</summary>
     [HttpPost]
+    [EnableRateLimiting("write")]
     [ProducesResponseType(typeof(ApiResponse<DraftResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<DraftResponse>>> SaveDraft([FromBody] SaveDraftRequest request, CancellationToken ct)

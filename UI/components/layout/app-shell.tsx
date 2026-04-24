@@ -10,6 +10,7 @@ import { NotificationContext } from '@/components/layout/notification-context'
 import { useIsAdmin } from '@/hooks/use-is-admin'
 import { useEffect, useState, useMemo } from 'react'
 import { getUnreadNotificationCount } from '@/lib/api/client'
+import { TerminalWidget } from '@/components/features/terminal/TerminalWidget'
 import type { ReactNode } from 'react'
 
 const pathToActiveTab = (pathname: string) => {
@@ -134,6 +135,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         onClose={() => setNotifOpen(false)}
         onCountChange={setUnreadCount}
       />
+
+      {/* Terminal feedback widget — Ctrl+` to toggle */}
+      <TerminalWidget />
     </div>
     </NotificationContext.Provider>
   )

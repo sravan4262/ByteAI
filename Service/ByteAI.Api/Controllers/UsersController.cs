@@ -7,6 +7,7 @@ using ByteAI.Core.Services.Avatar;
 using ByteAI.Core.Services.Preferences;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -185,6 +186,7 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     /// <summary>Upload a profile photo — resized to 256×256 WebP and stored in Supabase Storage.</summary>
     [HttpPost("me/avatar")]
     [Authorize]
+    [EnableRateLimiting("write")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ApiResponse<AvatarUploadResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

@@ -1,4 +1,5 @@
 using ByteAI.Api.Common.Auth;
+using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Entities;
@@ -13,7 +14,7 @@ namespace ByteAI.Api.Controllers;
 [Tags("Admin")]
 [Authorize]
 [RequireRole("admin")] // Only admins can access these endpoints
-public sealed class AdminController(IAdminBusiness adminBusiness) : ControllerBase
+public sealed class AdminController(IAdminBusiness adminBusiness, ISupportBusiness supportBusiness) : ControllerBase
 {
     public sealed record UpsertFeatureFlagRequest(string Key, string Name, string? Description, bool GlobalOpen);
     public sealed record ToggleFeatureFlagRequest(bool GlobalOpen);
@@ -155,4 +156,39 @@ public sealed class AdminController(IAdminBusiness adminBusiness) : ControllerBa
         new(r.Id, r.Name, r.Label, r.Description);
 
     public sealed record RoleResponse(Guid Id, string Name, string Label, string? Description);
+
+    // ── Feedback management ──────────────────────────────────────────────────
+
+    /// <summary>List all user feedback. Filter by type (good|bad|idea) and status (open|reviewed|closed).</summary>
+    [HttpGet("feedback")]
+    [ProducesResponseType(typeof(ApiResponse<PagedResponse<AdminFeedbackResponse>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<PagedResponse<AdminFeedbackResponse>>>> GetAllFeedback(
+        [FromQuery] string? type,
+        [FromQuery] string? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await supportBusiness.GetAllFeedbackAsync(type, status, page, pageSize, ct);
+        var items  = result.Items.Select(f => f.ToAdminResponse()).ToList();
+        return Ok(ApiResponse<PagedResponse<AdminFeedbackResponse>>.Success(
+            new PagedResponse<AdminFeedbackResponse>(items, result.Total, result.Page, result.PageSize)));
+    }
+
+    /// <summary>Update feedback status and optionally leave a note. Fires a notification to the user when status changes.</summary>
+    [HttpPut("feedback/{feedbackId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<AdminFeedbackResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<AdminFeedbackResponse>>> UpdateFeedbackStatus(
+        Guid feedbackId, [FromBody] UpdateFeedbackStatusRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var updated = await supportBusiness.UpdateFeedbackStatusAsync(feedbackId, request.Status, request.AdminNote, ct);
+            return Ok(ApiResponse<AdminFeedbackResponse>.Success(updated.ToAdminResponse()));
+        }
+        catch (ArgumentException ex)   { return BadRequest(new { message = ex.Message }); }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+    }
 }

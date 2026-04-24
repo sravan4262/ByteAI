@@ -259,12 +259,6 @@ export function CodeEditor({ value, language, onChange, onLanguageChange }: Code
               </button>
             ))}
           </div>
-          <div className="px-3 pb-2.5 font-mono text-[10px] text-[var(--t2)] flex gap-3">
-            <span><span className="text-[var(--green)]">✦</span> Prettier</span>
-            {hasAiFormatCode && (
-              <span><span className="text-[var(--accent)]">⚡</span> Groq</span>
-            )}
-          </div>
         </div>
       )}
 

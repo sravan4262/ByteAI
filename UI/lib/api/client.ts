@@ -1064,7 +1064,7 @@ export interface NotificationPayloadBadge {
 export interface NotificationResponse {
   id: string
   userId: string
-  type: 'like' | 'comment' | 'follow' | 'badge' | 'system'
+  type: 'like' | 'comment' | 'follow' | 'badge' | 'system' | 'feedback_update'
   payload: NotificationPayloadLike | NotificationPayloadComment | NotificationPayloadBadge | Record<string, unknown> | null
   read: boolean
   createdAt: string

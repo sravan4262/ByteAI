@@ -49,6 +49,7 @@ public sealed class CommentsController(ICommentsBusiness commentsBusiness) : Con
     /// <summary>Update a comment's body. Only the comment author may update it.</summary>
     [HttpPut("~/api/comments/{commentId:guid}")]
     [Authorize]
+    [EnableRateLimiting("social")]
     [ProducesResponseType(typeof(ApiResponse<CommentResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

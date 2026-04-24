@@ -5,16 +5,16 @@ public sealed record QualityScore(int Clarity, int Specificity, int Relevance)
     public int Overall => (Clarity + Specificity + Relevance) / 3;
 }
 
-/// <summary>A tag suggestion returned by Groq, including its classified subdomain.</summary>
+/// <summary>A tag suggestion including its classified subdomain.</summary>
 public sealed record TagSuggestion(string Tag, string Subdomain);
 
-/// <summary>Result of the Groq-based tech-relevance classification (Stage 3 of content validation).</summary>
+/// <summary>Result of the LLM-based tech-relevance classification (Stage 3 of content validation).</summary>
 public sealed record ContentValidationResult(bool IsTechRelated, bool IsCoherent, string Reason);
 
 /// <summary>A single retrieved passage fed into the RAG context window.</summary>
 public sealed record RagPassage(string Title, string Body, string? SourceId = null);
 
-public interface IGroqService
+public interface ILlmService
 {
     /// <summary>
     /// Suggests up to 5 tech stack tags for the byte content, ranked most to least relevant.
@@ -36,12 +36,11 @@ public interface IGroqService
     Task<string> AskAsync(string question, string? context, CancellationToken ct = default);
 
     /// <summary>
-    /// Stage 3 of content validation: Groq classifies whether the content is tech-related and coherent.
-    /// Returns null on Groq failure — callers must fail open (pass) when null.
-    /// Only called for borderline content (embedding similarity 0.20–0.30).
+    /// Stage 3 of content validation: classifies whether the content is tech-related and coherent.
+    /// Returns null on LLM failure — callers must fail open (pass) when null.
     /// </summary>
     Task<ContentValidationResult?> ValidateTechContentAsync(string title, string body, CancellationToken ct = default);
 
-    /// <summary>Formats code in the given language. Returns the original code if Groq is unavailable.</summary>
-    Task<string> FormatCodeAsync(string code, string language, CancellationToken ct = default);
+    /// <summary>Formats code in the given language. Returns null if the LLM is unavailable.</summary>
+    Task<string?> FormatCodeAsync(string code, string language, CancellationToken ct = default);
 }

@@ -24,20 +24,24 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(seconds / 86400)}d ago`
 }
 
-function notificationMeta(n: NotificationResponse): {
+type NotificationMeta = {
   icon: React.ReactNode
-  color: string
+  badgeColor: string
+  badgeBg: string
   text: string
   preview?: string
-} {
+}
+
+function notificationMeta(n: NotificationResponse): NotificationMeta {
   const p = n.payload as Record<string, unknown> | null
 
   switch (n.type) {
     case 'like': {
       const lp = p as NotificationPayloadLike | null
       return {
-        icon: <Heart size={14} className="fill-current" />,
-        color: 'text-rose-400',
+        icon: <Heart size={10} className="fill-current" />,
+        badgeColor: 'text-rose-400',
+        badgeBg: 'bg-[rgba(244,63,94,0.12)] border-[rgba(244,63,94,0.25)]',
         text: lp
           ? `${lp.actorDisplayName || lp.actorUsername} liked your byte`
           : 'Someone liked your byte',
@@ -46,8 +50,9 @@ function notificationMeta(n: NotificationResponse): {
     case 'comment': {
       const cp = p as NotificationPayloadComment | null
       return {
-        icon: <MessageCircle size={14} />,
-        color: 'text-blue-400',
+        icon: <MessageCircle size={10} />,
+        badgeColor: 'text-[var(--accent)]',
+        badgeBg: 'bg-[rgba(59,130,246,0.12)] border-[rgba(59,130,246,0.25)]',
         text: cp
           ? `${cp.actorDisplayName || cp.actorUsername} commented on your byte`
           : 'Someone commented on your byte',
@@ -56,32 +61,44 @@ function notificationMeta(n: NotificationResponse): {
     }
     case 'follow':
       return {
-        icon: <UserPlus size={14} />,
-        color: 'text-green-400',
+        icon: <UserPlus size={10} />,
+        badgeColor: 'text-green-400',
+        badgeBg: 'bg-[rgba(16,217,160,0.12)] border-[rgba(16,217,160,0.25)]',
         text: (p?.actorDisplayName as string) || (p?.actorUsername as string)
           ? `${p?.actorDisplayName || p?.actorUsername} started following you`
           : 'Someone followed you',
       }
     case 'unfollow':
       return {
-        icon: <UserMinus size={14} />,
-        color: 'text-orange-400',
+        icon: <UserMinus size={10} />,
+        badgeColor: 'text-orange-400',
+        badgeBg: 'bg-[rgba(251,146,60,0.12)] border-[rgba(251,146,60,0.25)]',
         text: (p?.actorDisplayName as string) || (p?.actorUsername as string)
           ? `${p?.actorDisplayName || p?.actorUsername} unfollowed you`
           : 'Someone unfollowed you',
       }
     case 'badge':
       return {
-        icon: <Award size={14} />,
-        color: 'text-yellow-400',
+        icon: <Award size={10} />,
+        badgeColor: 'text-yellow-400',
+        badgeBg: 'bg-[rgba(251,191,36,0.12)] border-[rgba(251,191,36,0.25)]',
         text: p?.badgeLabel
           ? `You earned the "${p.badgeLabel}" badge!`
           : 'You earned a new badge!',
       }
+    case 'feedback_update':
+      return {
+        icon: <Bell size={10} />,
+        badgeColor: 'text-[var(--purple)]',
+        badgeBg: 'bg-[rgba(167,139,250,0.12)] border-[rgba(167,139,250,0.25)]',
+        text: (p?.message as string) || 'Your feedback was updated',
+        preview: p?.preview as string | undefined,
+      }
     default:
       return {
-        icon: <Bell size={14} />,
-        color: 'text-[var(--t2)]',
+        icon: <Bell size={10} />,
+        badgeColor: 'text-[var(--t2)]',
+        badgeBg: 'bg-[rgba(255,255,255,0.06)] border-[rgba(255,255,255,0.1)]',
         text: 'New notification',
       }
   }
@@ -97,9 +114,13 @@ function ActorAvatar({ url, name }: { url?: string | null; name: string }) {
 
   return url ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt={name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+    <img
+      src={url}
+      alt={name}
+      className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-card)]"
+    />
   ) : (
-    <div className="w-8 h-8 rounded-full bg-[rgba(59,130,246,0.18)] flex items-center justify-center flex-shrink-0">
+    <div className="w-9 h-9 rounded-full bg-[rgba(59,130,246,0.12)] border border-[rgba(59,130,246,0.25)] flex items-center justify-center flex-shrink-0">
       <span className="font-mono text-[10px] font-bold text-[var(--accent)]">{initials || '?'}</span>
     </div>
   )
@@ -114,12 +135,12 @@ function NotificationItem({
   onRead: (id: string) => void
   onDelete: (id: string) => void
 }) {
-  const { icon, color, text, preview } = notificationMeta(notification)
+  const { icon, badgeColor, badgeBg, text, preview } = notificationMeta(notification)
   const p = notification.payload as Record<string, unknown> | null
 
+  const isFeedbackUpdate = notification.type === 'feedback_update'
   const avatarUrl = (p?.actorAvatarUrl as string | null) ?? null
-  const actorName =
-    (p?.actorDisplayName as string) || (p?.actorUsername as string) || '?'
+  const actorName = (p?.actorDisplayName as string) || (p?.actorUsername as string) || '?'
 
   return (
     <motion.div
@@ -128,18 +149,27 @@ function NotificationItem({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 24, transition: { duration: 0.15 } }}
       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-      className={`group flex items-start gap-3 px-4 py-3 transition-colors border-b border-[var(--border)] last:border-none
+      className={`group flex items-start gap-3 px-4 py-3.5 transition-colors border-b border-[var(--border-h)] last:border-none
         ${notification.read
           ? 'opacity-50 hover:opacity-70'
-          : 'bg-[rgba(59,130,246,0.04)] hover:bg-[rgba(59,130,246,0.08)]'
+          : 'bg-[rgba(59,130,246,0.04)] hover:bg-[rgba(59,130,246,0.07)]'
         }`}
     >
       {/* Avatar */}
       <div
-        className="cursor-pointer"
+        className="cursor-pointer flex-shrink-0 mt-0.5"
         onClick={() => !notification.read && onRead(notification.id)}
       >
-        <ActorAvatar url={avatarUrl} name={actorName} />
+        {isFeedbackUpdate ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="https://api.dicebear.com/7.x/bottts/svg?seed=byteai"
+            alt="ByteAI"
+            className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-[var(--purple)] ring-offset-2 ring-offset-[var(--bg-card)]"
+          />
+        ) : (
+          <ActorAvatar url={avatarUrl} name={actorName} />
+        )}
       </div>
 
       {/* Content */}
@@ -149,30 +179,32 @@ function NotificationItem({
       >
         <p className="text-[13px] text-[var(--t1)] leading-snug">{text}</p>
         {preview && (
-          <p className="text-[11px] text-[var(--t2)] mt-0.5 leading-snug line-clamp-1 italic">
-            "{preview}"
+          <p className="text-xs text-[var(--t2)] mt-1 leading-snug line-clamp-1 italic">
+            &ldquo;{preview}&rdquo;
           </p>
         )}
-        <p className="font-mono text-[10px] text-[var(--t3)] mt-0.5 tracking-wide">
+        <p className="font-mono text-[10px] text-[var(--t3)] mt-1 tracking-wide">
           {timeAgo(notification.createdAt)}
         </p>
       </div>
 
-      {/* Right side: type icon + delete */}
-      <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
-        <span className={`${color}`}>{icon}</span>
+      {/* Right: type badge + delete */}
+      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+        <span className={`flex items-center justify-center w-5 h-5 rounded border ${badgeBg} ${badgeColor}`}>
+          {icon}
+        </span>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(notification.id) }}
           className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--t3)] hover:text-red-400"
           aria-label="Delete notification"
         >
-          <Trash2 size={12} />
+          <Trash2 size={11} />
         </button>
       </div>
 
       {/* Unread dot */}
       {!notification.read && (
-        <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-1.5" />
+        <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-2 animate-pulse shadow-[0_0_5px_var(--accent)]" />
       )}
     </motion.div>
   )
@@ -200,7 +232,6 @@ export function NotificationPanel({ open, onClose, onCountChange }: Notification
     setLoading(false)
   }, [])
 
-  // Reload whenever panel opens
   useEffect(() => {
     if (!open) return
     setPage(1)
@@ -223,7 +254,6 @@ export function NotificationPanel({ open, onClose, onCountChange }: Notification
       const count = await getUnreadNotificationCount()
       onCountChange?.(count)
     } catch {
-      // re-fetch on failure so UI stays in sync
       load(1, true)
     }
   }, [load, onCountChange])
@@ -264,12 +294,15 @@ export function NotificationPanel({ open, onClose, onCountChange }: Notification
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-            className="fixed right-0 top-0 bottom-0 z-50 w-[380px] max-w-[100vw] flex flex-col bg-[var(--bg)] border-l border-[var(--border)] shadow-2xl"
+            className="fixed right-0 top-0 bottom-0 z-50 w-[380px] max-w-[100vw] flex flex-col bg-[var(--bg)] border-l border-[var(--border-h)] shadow-2xl"
           >
+            {/* Accent top line */}
+            <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <Bell size={16} className="text-[var(--accent)]" />
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-h)]">
+              <div className="flex items-center gap-2.5">
+                <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
                 <span className="font-mono text-xs font-bold tracking-[0.08em] text-[var(--t1)] uppercase">
                   Notifications
                 </span>
@@ -278,7 +311,7 @@ export function NotificationPanel({ open, onClose, onCountChange }: Notification
                     key={unreadCount}
                     initial={{ scale: 0.6 }}
                     animate={{ scale: 1 }}
-                    className="flex items-center justify-center w-4 h-4 rounded-full bg-[var(--accent)] text-white font-mono text-[9px] font-bold"
+                    className="flex items-center justify-center w-4 h-4 rounded-full bg-[var(--accent)] text-white font-mono text-[9px] font-bold shadow-[0_0_8px_rgba(59,130,246,0.5)]"
                   >
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </motion.span>
@@ -309,7 +342,7 @@ export function NotificationPanel({ open, onClose, onCountChange }: Notification
                 <div className="flex flex-col items-center justify-center h-40 gap-3">
                   <div className="w-5 h-5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
                   <span className="font-mono text-[10px] text-[var(--t3)] tracking-[0.1em]">
-                    // LOADING...
+                    LOADING...
                   </span>
                 </div>
               ) : notifications.length === 0 ? (
@@ -317,12 +350,11 @@ export function NotificationPanel({ open, onClose, onCountChange }: Notification
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 }}
-                  className="flex flex-col items-center justify-center h-48 gap-3"
+                  className="mx-4 mt-6 border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-8 flex flex-col items-center gap-2 text-center"
                 >
-                  <Bell size={32} className="text-[var(--t3)]" />
-                  <p className="font-mono text-[11px] text-[var(--t3)] tracking-[0.08em]">
-                    // NO NOTIFICATIONS YET
-                  </p>
+                  <Bell size={20} className="text-[var(--accent)] opacity-50" />
+                  <p className="font-mono text-xs font-bold text-[var(--t1)]">NO NOTIFICATIONS YET</p>
+                  <p className="text-xs text-[var(--t2)]">Activity from your bytes and followers will appear here.</p>
                 </motion.div>
               ) : (
                 <AnimatePresence initial={false}>
@@ -344,7 +376,7 @@ export function NotificationPanel({ open, onClose, onCountChange }: Notification
                     disabled={loading}
                     className="font-mono text-[10px] text-[var(--accent)] hover:underline tracking-wide disabled:opacity-40"
                   >
-                    {loading ? '// LOADING...' : '// LOAD MORE'}
+                    {loading ? 'LOADING...' : 'LOAD MORE'}
                   </button>
                 </div>
               )}

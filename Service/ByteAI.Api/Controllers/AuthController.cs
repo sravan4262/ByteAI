@@ -3,6 +3,7 @@ using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -21,6 +22,7 @@ public sealed class AuthController(
     /// </summary>
     [HttpPost("provision")]
     [Authorize]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(ApiResponse<ProvisionResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<ProvisionResponse>>> Provision(
@@ -49,6 +51,7 @@ public sealed class AuthController(
     /// </summary>
     [HttpDelete("account")]
     [Authorize]
+    [EnableRateLimiting("auth")]
     [RequireRole("user")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

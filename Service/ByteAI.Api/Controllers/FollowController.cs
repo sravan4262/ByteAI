@@ -37,6 +37,7 @@ public sealed class FollowController(IFollowBusiness followBusiness) : Controlle
     /// <summary>Unfollow a user.</summary>
     [HttpDelete]
     [Authorize]
+    [EnableRateLimiting("social")]
     [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

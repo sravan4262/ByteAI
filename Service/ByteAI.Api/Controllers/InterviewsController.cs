@@ -166,6 +166,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
 
     [HttpPut("{id:guid}")]
     [Authorize]
+    [EnableRateLimiting("write")]
     [ProducesResponseType(typeof(ApiResponse<InterviewResponse>), 200)]
     public async Task<ActionResult<ApiResponse<InterviewResponse>>> Update(
         Guid id, [FromBody] UpdateInterviewRequest request, CancellationToken ct)

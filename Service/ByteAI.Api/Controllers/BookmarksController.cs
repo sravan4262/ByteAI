@@ -5,6 +5,7 @@ using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ByteAI.Api.Controllers;
 
@@ -18,6 +19,7 @@ public sealed class BookmarksController(IBookmarksBusiness bookmarksBusiness) : 
     /// <summary>Toggle bookmark on a byte. Returns isSaved=true if now bookmarked, false if removed.</summary>
     [HttpPost]
     [Authorize]
+    [EnableRateLimiting("social")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<ApiResponse<object>>> ToggleBookmark(Guid byteId, CancellationToken ct)

@@ -2,16 +2,16 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace ByteAI.Core.Services.AI;
 
-public sealed class GroqService(
+public sealed class GeminiService(
     HttpClient http,
     IConfiguration config,
-    ILogger<GroqService> logger,
-    GroqLoadBalancer balancer) : IGroqService
+    ILogger<GeminiService> logger) : ILlmService
 {
+    private const string Endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
     private const string SubdomainList =
         "be_languages, be_frameworks, api_protocols, queues_cache, " +
         "ui_frameworks, meta_frameworks, styling, build_tools, fe_testing, " +
@@ -63,7 +63,7 @@ public sealed class GroqService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to parse tag suggestions from Groq response: {Raw}", raw);
+            logger.LogWarning(ex, "Failed to parse tag suggestions from Gemini response: {Raw}", raw);
             return [];
         }
     }
@@ -101,7 +101,7 @@ public sealed class GroqService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to parse quality score from Groq response: {Raw}", raw);
+            logger.LogWarning(ex, "Failed to parse quality score from Gemini response: {Raw}", raw);
             return null;
         }
     }
@@ -162,7 +162,7 @@ public sealed class GroqService(
             """;
 
         var raw = await ChatAsync(prompt, maxTokens: 80, ct);
-        if (string.IsNullOrEmpty(raw)) return null; // fail open — don't block if Groq is down
+        if (string.IsNullOrEmpty(raw)) return null;
 
         try
         {
@@ -179,12 +179,12 @@ public sealed class GroqService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to parse tech content validation from Groq: {Raw}", raw);
-            return null; // fail open
+            logger.LogWarning(ex, "Failed to parse tech content validation from Gemini: {Raw}", raw);
+            return null;
         }
     }
 
-    public async Task<string> FormatCodeAsync(string code, string language, CancellationToken ct = default)
+    public async Task<string?> FormatCodeAsync(string code, string language, CancellationToken ct = default)
     {
         var prompt = $"""
             Format the following {language} code according to standard style conventions.
@@ -193,33 +193,22 @@ public sealed class GroqService(
             {code}
             """;
 
-        return await ChatAsync(prompt, maxTokens: 2000, ct) ?? code;
+        return await ChatAsync(prompt, maxTokens: 2000, ct);
     }
 
     // ── Private ──────────────────────────────────────────────────────────────
 
     private async Task<string?> ChatAsync(string prompt, int maxTokens, CancellationToken ct)
     {
-        var apiKey = config["Groq:ApiKey"];
+        var apiKey = config["Gemini:ApiKey"];
         if (string.IsNullOrEmpty(apiKey))
         {
-            logger.LogWarning("Groq:ApiKey is not configured. Skipping Groq request.");
+            logger.LogWarning("Gemini:ApiKey is not configured. Skipping Gemini request.");
             return null;
         }
 
-        if (!balancer.IsAvailable)
-        {
-            logger.LogWarning("Both Groq models RPD-exhausted. Dropping request until UTC midnight.");
-            return null;
-        }
-
-        return await SendAsync(prompt, maxTokens, balancer.GetModel(), isRetry: false, apiKey, ct);
-    }
-
-    private async Task<string?> SendAsync(
-        string prompt, int maxTokens, string model, bool isRetry, string apiKey, CancellationToken ct)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.groq.com/openai/v1/chat/completions");
+        var model = config["Gemini:Model"] ?? "gemini-2.5-flash";
+        var request = new HttpRequestMessage(HttpMethod.Post, Endpoint);
         request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
         request.Content = JsonContent.Create(new
         {
@@ -232,49 +221,23 @@ public sealed class GroqService(
         try
         {
             var response = await http.SendAsync(request, ct);
-
-            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            {
-                var body = await response.Content.ReadAsStringAsync(ct);
-                var isRpd = body.Contains("per_day", StringComparison.OrdinalIgnoreCase);
-
-                if (isRpd)
-                {
-                    balancer.RecordRpd(model);
-                    if (!isRetry && balancer.IsAvailable)
-                    {
-                        logger.LogWarning("Groq RPD hit on {Model}. Retrying with fallback model.", model);
-                        return await SendAsync(prompt, maxTokens, balancer.GetModel(), isRetry: true, apiKey, ct);
-                    }
-                    logger.LogError("Both Groq models RPD-exhausted. Request dropped.");
-                    return null;
-                }
-
-                // per_minute — transient, switch model for this retry only
-                if (!isRetry)
-                {
-                    var fallback = balancer.GetFallback(model);
-                    logger.LogWarning("Groq RPM hit on {Model}. Retrying with {Fallback}.", model, fallback);
-                    return await SendAsync(prompt, maxTokens, fallback, isRetry: true, apiKey, ct);
-                }
-
-                // Both RPM-blocked simultaneously — drop rather than blocking thread for 60s
-                logger.LogWarning("Both Groq models RPM-blocked. Dropping request.");
-                return null;
-            }
-
             response.EnsureSuccessStatusCode();
 
             using var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-            return doc.RootElement
+            var content = doc.RootElement
                 .GetProperty("choices")[0]
                 .GetProperty("message")
                 .GetProperty("content")
                 .GetString();
+
+            if (content is null)
+                logger.LogWarning("Gemini returned null content — model may be in extended thinking mode");
+
+            return content;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Groq API call failed for model {Model}", model);
+            logger.LogError(ex, "Gemini API call failed");
             return null;
         }
     }

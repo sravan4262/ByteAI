@@ -12,8 +12,8 @@ namespace ByteAI.Api.Tests.Unit.Events;
 /// <summary>
 /// Tests ByteCreatedEventHandler:
 ///  Step 1 — embed content and store (sync, awaited)
-///  Step 2 — auto-tag via Groq (fire-and-forget Task.Run, not directly testable here)
-///  Step 3 — quality score via Groq (fire-and-forget Task.Run)
+///  Step 2 — auto-tag via Gemini (fire-and-forget Task.Run, not directly testable here)
+///  Step 3 — quality score via Gemini (fire-and-forget Task.Run)
 ///  Step 4 — XP to author
 ///  Step 5 — badge check
 ///  Step 6 — feed cache invalidation (feedCache is null in tests → skipped)
@@ -25,7 +25,7 @@ public sealed class ByteCreatedEventHandlerTests : IDisposable
 {
     private readonly ByteAI.Core.Infrastructure.Persistence.AppDbContext _db;
     private readonly Mock<IEmbeddingService> _embedding = new();
-    private readonly Mock<IGroqService> _groq = new();
+    private readonly Mock<ILlmService> _llm = new();
     private readonly Mock<IByteService> _byteService = new();
     private readonly Mock<IBadgeService> _badgeService = new();
     private readonly Mock<IServiceScopeFactory> _scopeFactory = new();
@@ -65,7 +65,7 @@ public sealed class ByteCreatedEventHandlerTests : IDisposable
         _scopeFactory.Setup(f => f.CreateScope()).Returns(scope.Object);
 
         _sut = new ByteCreatedEventHandler(
-            _db, _embedding.Object, _groq.Object, _byteService.Object,
+            _db, _embedding.Object, _llm.Object, _byteService.Object,
             _badgeService.Object, _scopeFactory.Object,
             NullLogger<ByteCreatedEventHandler>.Instance);
     }

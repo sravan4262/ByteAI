@@ -61,6 +61,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Social> Socials => Set<Social>();
     public DbSet<UserXpLog> UserXpLogs => Set<UserXpLog>();
 
+    // Support
+    public DbSet<Feedback> Feedbacks => Set<Feedback>();
+
     // Observability / engagement
     public DbSet<AppLog> AppLogs => Set<AppLog>();
 

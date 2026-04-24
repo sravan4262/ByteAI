@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Shield, Plus, Globe, User, Search, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Lock, ShieldCheck } from 'lucide-react'
+import { Shield, Plus, Globe, User, Search, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Lock, ShieldCheck, MessageSquare, CheckCheck } from 'lucide-react'
 import { useIsAdmin } from '@/hooks/use-is-admin'
 import { searchUsers } from '@/lib/api/client'
 import { apiFetch } from '@/lib/api/http'
@@ -23,12 +23,19 @@ import {
   assignRoleToUser,
   revokeRoleFromUser,
 } from '@/lib/api/admin-roles'
+import {
+  AdminFeedbackResponse,
+  getAllFeedback,
+  updateFeedbackStatus,
+} from '@/lib/api/support'
 
 const SYSTEM_ROLES = ['user', 'admin']
+type AdminTab = 'system' | 'feedback'
 
 export function AdminScreen() {
   const { isAdmin, isLoaded } = useIsAdmin()
   const router = useRouter()
+  const [adminTab, setAdminTab] = useState<AdminTab>('system')
 
   // ── Feature flags state ────────────────────────────────────────────────────
   const [flags, setFlags] = useState<FeatureFlag[]>([])
@@ -48,6 +55,16 @@ export function AdminScreen() {
   const [roleLabel, setRoleLabel] = useState('')
   const [roleDesc, setRoleDesc] = useState('')
   const [savingRole, setSavingRole] = useState(false)
+
+  // ── Feedback state ─────────────────────────────────────────────────────────
+  const [feedbackItems, setFeedbackItems]       = useState<AdminFeedbackResponse[]>([])
+  const [feedbackTotal, setFeedbackTotal]       = useState(0)
+  const [feedbackPage, setFeedbackPage]         = useState(1)
+  const [feedbackLoading, setFeedbackLoading]   = useState(false)
+  const [feedbackStatusFilter, setFeedbackStatusFilter] = useState('')
+  const [noteModal, setNoteModal]               = useState<AdminFeedbackResponse | null>(null)
+  const [noteText, setNoteText]                 = useState('')
+  const [savingNote, setSavingNote]             = useState(false)
 
   // ── User override state ────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
@@ -70,6 +87,50 @@ export function AdminScreen() {
       getAllRoles().then(data => { setRoles(data); setRolesLoading(false) }),
     ])
   }, [isAdmin])
+
+  // ── Feedback loader ────────────────────────────────────────────────────────
+  const loadFeedback = useCallback(async (page = 1) => {
+    setFeedbackLoading(true)
+    const data = await getAllFeedback({
+      status: feedbackStatusFilter || undefined,
+      page,
+      pageSize: 50,
+    })
+    setFeedbackItems(data.items)
+    setFeedbackTotal(data.total)
+    setFeedbackPage(page)
+    setFeedbackLoading(false)
+  }, [feedbackStatusFilter])
+
+  useEffect(() => {
+    if (!isAdmin || adminTab !== 'feedback') return
+    loadFeedback(1)
+  }, [isAdmin, adminTab, loadFeedback])
+
+  const handleMarkReviewed = async (item: AdminFeedbackResponse) => {
+    const updated = await updateFeedbackStatus(item.id, 'reviewed')
+    if (updated) {
+      toast.success('Marked as reviewed — user notified')
+      setFeedbackItems(prev => prev.map(f => f.id === item.id ? updated : f))
+    } else {
+      toast.error('Failed to update')
+    }
+  }
+
+  const handleCloseWithNote = async () => {
+    if (!noteModal) return
+    setSavingNote(true)
+    const updated = await updateFeedbackStatus(noteModal.id, 'closed', noteText || undefined)
+    setSavingNote(false)
+    if (updated) {
+      toast.success('Feedback closed — user notified')
+      setFeedbackItems(prev => prev.map(f => f.id === noteModal.id ? updated : f))
+      setNoteModal(null)
+      setNoteText('')
+    } else {
+      toast.error('Failed to update')
+    }
+  }
 
   // ── Flag handlers ──────────────────────────────────────────────────────────
   const handleCreateFlag = async (e: React.FormEvent) => {
@@ -195,10 +256,11 @@ export function AdminScreen() {
   if (!isAdmin) return null
 
   const enabledCount = flags.filter(f => f.globalOpen).length
+  const openCount    = feedbackItems.filter(f => f.status === 'open').length
 
   return (
     <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
-      <div className="max-w-6xl mx-auto p-5 lg:p-8 flex flex-col gap-8">
+      <div className="max-w-6xl mx-auto p-5 lg:p-8 flex flex-col gap-6">
 
         {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-3">
@@ -210,7 +272,7 @@ export function AdminScreen() {
               <h1 className="font-mono text-lg font-bold tracking-[0.06em] text-[var(--t1)]">SYSTEM_ADMIN</h1>
             </div>
             <p className="text-xs text-[var(--t2)] tracking-[0.06em] ml-[42px]">
-              Feature flags · RBAC roles · User overrides
+              Feature flags · RBAC roles · User overrides · Feedback
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -223,7 +285,22 @@ export function AdminScreen() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Top-level tabs */}
+        <div className="flex gap-2">
+          {([['system', Shield, 'SYSTEM_CONFIG'], ['feedback', MessageSquare, 'FEEDBACK']] as const).map(([tab, Icon, label]) => (
+            <button key={tab} onClick={() => setAdminTab(tab)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-[10px] font-bold tracking-[0.08em] border transition-all ${
+                adminTab === tab
+                  ? 'text-[var(--accent)] border-[var(--accent)] bg-[var(--accent-d)] shadow-[0_0_12px_rgba(59,130,246,0.2)]'
+                  : 'text-[var(--t1)] border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
+              }`}>
+              <Icon size={11} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {adminTab === 'system' && <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* ── Col 1: Global Feature Flags ────────────────────────────────── */}
           <div className="flex flex-col gap-4">
@@ -547,7 +624,196 @@ export function AdminScreen() {
             )}
           </div>
 
-        </div>
+        </div>}
+
+        {/* ── Feedback tab ──────────────────────────────────────────────────── */}
+        {adminTab === 'feedback' && (
+          <div className="flex flex-col gap-6">
+
+            {/* Section header */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <span className="w-[3px] h-4 rounded-full bg-[var(--green)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">USER FEEDBACK</span>
+                <span className="font-mono text-[10px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-h)] rounded-full px-2 py-px">{feedbackTotal} total</span>
+                {openCount > 0 && (
+                  <span className="font-mono text-[10px] text-[var(--red)] bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.25)] rounded-full px-2 py-px">{openCount} open</span>
+                )}
+              </div>
+              <button onClick={() => loadFeedback(feedbackPage)}
+                className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] transition-all">
+                REFRESH
+              </button>
+            </div>
+
+            {/* Content */}
+            {feedbackLoading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-6 h-6 border-2 border-[var(--green)] border-t-transparent rounded-full animate-spin" />
+                <span className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] animate-pulse">LOADING FEEDBACK...</span>
+              </div>
+            ) : feedbackItems.length === 0 ? (
+              <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-12 text-center flex flex-col items-center gap-2">
+                <MessageSquare size={20} className="text-[var(--accent)] opacity-50" />
+                <p className="font-mono text-xs font-bold text-[var(--t1)]">NO FEEDBACK YET</p>
+                <p className="text-xs text-[var(--t2)]">Feedback from users will appear here.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-8">
+                {([
+                  { status: 'open',     bar: 'bg-[var(--red)]',    label: 'OPEN' },
+                  { status: 'reviewed', bar: 'bg-[var(--accent)]', label: 'REVIEWED' },
+                  { status: 'closed',   bar: 'bg-[var(--green)]',  label: 'CLOSED' },
+                ] as const).map(({ status, bar, label }) => {
+                  const statusItems = feedbackItems.filter(f => f.status === status)
+                  if (statusItems.length === 0) return null
+                  return (
+                    <div key={status} className="flex flex-col gap-4">
+                      {/* Status section header */}
+                      <div className="flex items-center gap-2">
+                        <span className={`w-[3px] h-4 rounded-full ${bar} flex-shrink-0`} />
+                        <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">{label}</span>
+                        <span className="font-mono text-[10px] text-[var(--t2)]">({statusItems.length})</span>
+                      </div>
+
+                      {/* Type sub-groups */}
+                      <div className="flex flex-col gap-4 pl-3">
+                        {([
+                          { type: 'good', color: 'text-[var(--green)]', gradient: 'from-[var(--green)] via-[rgba(16,217,160,0.3)]' },
+                          { type: 'bad',  color: 'text-[var(--red)]',   gradient: 'from-[var(--red)] via-[rgba(244,63,94,0.3)]' },
+                          { type: 'idea', color: 'text-[var(--purple)]',gradient: 'from-[var(--purple)] via-[rgba(167,139,250,0.3)]' },
+                        ] as const).map(({ type, color, gradient }) => {
+                          const typeItems = statusItems.filter(f => f.type === type)
+                          if (typeItems.length === 0) return null
+                          return (
+                            <div key={type} className="flex flex-col gap-2">
+                              {/* Type separator label */}
+                              <div className="flex items-center gap-2">
+                                <div className="h-px flex-1 bg-[var(--border-h)]" />
+                                <span className={`font-mono text-[10px] font-bold ${color}`}>{type.toUpperCase()}</span>
+                                <div className="h-px flex-1 bg-[var(--border-h)]" />
+                              </div>
+
+                              {/* Cards */}
+                              {typeItems.map(item => (
+                                <div key={item.id} className="rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden">
+                                  <div className={`h-px bg-gradient-to-r ${gradient} to-transparent`} />
+                                  <div className="px-4 py-3 flex flex-col gap-2">
+                                    {/* Meta row */}
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        {item.pageContext && (
+                                          <span className="font-mono text-[10px] text-[var(--t2)]">{item.pageContext}</span>
+                                        )}
+                                        {item.username && (
+                                          <span className="font-mono text-[10px] text-[var(--t2)]">@{item.username}</span>
+                                        )}
+                                      </div>
+                                      <span className="font-mono text-[10px] text-[var(--t2)] flex-shrink-0">
+                                        {new Date(item.createdAt).toLocaleDateString()}
+                                      </span>
+                                    </div>
+
+                                    {/* Message */}
+                                    <p className="text-xs text-[var(--t1)] leading-relaxed">{item.message}</p>
+
+                                    {/* Admin note */}
+                                    {item.adminNote && (
+                                      <p className="text-xs text-[var(--t2)] italic pl-3 border-l-2 border-[rgba(59,130,246,0.3)]">
+                                        {item.adminNote}
+                                      </p>
+                                    )}
+
+                                    {/* Actions */}
+                                    {item.status !== 'closed' && (
+                                      <div className="flex items-center gap-4 pt-0.5">
+                                        {item.status === 'open' && (
+                                          <button onClick={() => handleMarkReviewed(item)}
+                                            className="flex items-center gap-1 font-mono text-[10px] text-[var(--t2)] hover:text-[var(--accent)] transition-colors">
+                                            <CheckCheck size={10} /> Mark reviewed
+                                          </button>
+                                        )}
+                                        <button onClick={() => { setNoteModal(item); setNoteText('') }}
+                                          className="font-mono text-[10px] text-[var(--t2)] hover:text-[var(--red)] transition-colors">
+                                          Close
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {feedbackTotal > 15 && (
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <button onClick={() => loadFeedback(feedbackPage - 1)} disabled={feedbackPage <= 1}
+                  className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                  ← PREV
+                </button>
+                <span className="font-mono text-[10px] text-[var(--t2)]">
+                  {feedbackPage} / {Math.ceil(feedbackTotal / 15)}
+                </span>
+                <button onClick={() => loadFeedback(feedbackPage + 1)} disabled={feedbackPage >= Math.ceil(feedbackTotal / 15)}
+                  className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                  NEXT →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Close-with-note modal */}
+        {noteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setNoteModal(null)} />
+            <div className="relative w-full max-w-md rounded-xl border border-[rgba(16,217,160,0.35)] bg-[var(--bg-card)] overflow-hidden shadow-[0_16px_64px_rgba(0,0,0,0.8)]">
+              <div className="h-px bg-gradient-to-r from-[var(--green)] via-[rgba(16,217,160,0.3)] to-transparent" />
+              <div className="p-5 flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-[3px] h-4 rounded-full bg-[var(--green)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">CLOSE FEEDBACK</span>
+                </div>
+                <p className="text-xs text-[var(--t2)] leading-relaxed">
+                  Optionally leave a note for the user explaining what was changed or resolved.
+                </p>
+                <div>
+                  <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1.5 block">
+                    ADMIN NOTE <span className="text-[var(--t3)]">(optional, shown to user)</span>
+                  </label>
+                  <textarea
+                    value={noteText}
+                    onChange={e => setNoteText(e.target.value)}
+                    rows={3}
+                    maxLength={500}
+                    placeholder="e.g. Fixed in v1.3 — search now works on mobile Safari."
+                    className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg px-3 py-2.5 font-mono text-[11px] text-[var(--t1)] focus:border-[var(--green)] focus:shadow-[0_0_0_3px_rgba(16,217,160,0.12)] outline-none transition-all placeholder:text-[var(--t2)] resize-none"
+                  />
+                  <p className="font-mono text-[10px] text-[var(--t3)] mt-0.5 text-right">{noteText.length}/500</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setNoteModal(null)}
+                    className="flex-1 py-2 border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-lg font-mono text-[10px] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] transition-all">
+                    CANCEL
+                  </button>
+                  <button onClick={handleCloseWithNote} disabled={savingNote}
+                    className="flex-1 py-2 bg-gradient-to-br from-[var(--green)] to-[#059669] rounded-lg font-mono text-[10px] font-bold text-[var(--bg)] shadow-[0_4px_24px_rgba(16,217,160,0.3)] hover:shadow-[0_8px_36px_rgba(16,217,160,0.4)] disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                    {savingNote ? 'CLOSING...' : 'CLOSE & NOTIFY →'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   )
