@@ -612,6 +612,11 @@ export function SearchScreen() {
                 </div>
               </div>
             )}
+
+            {/* Disclaimer */}
+            <p className="font-mono text-[10px] text-[var(--t3)] text-center tracking-wide">
+              AI answers may contain inaccuracies — verify with the source bytes above.
+            </p>
           </div>
         )}
 

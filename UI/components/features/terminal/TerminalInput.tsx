@@ -19,9 +19,11 @@ interface Props {
   onSubmit: (value: string) => void
   disabled: boolean
   stage: 'idle' | 'awaiting-message'
+  completions?: string[]
 }
 
-export function TerminalInput({ onSubmit, disabled, stage }: Props) {
+export function TerminalInput({ onSubmit, disabled, stage, completions: completionsProp }: Props) {
+  const completions = completionsProp ?? COMPLETIONS
   const [value, setValue]        = useState('')
   const [historyIdx, setHistIdx] = useState(-1)
   const historyRef               = useRef<string[]>([])
@@ -54,9 +56,8 @@ export function TerminalInput({ onSubmit, disabled, stage }: Props) {
 
     if (e.key === 'Tab') {
       e.preventDefault()
-      if (stage !== 'idle') return
       const lower = value.toLowerCase()
-      const match = COMPLETIONS.find(c => c.startsWith(lower) && c !== lower)
+      const match = completions.find(c => c.startsWith(lower) && c !== lower)
       if (match) setValue(match)
       return
     }
@@ -134,9 +135,9 @@ export function TerminalInput({ onSubmit, disabled, stage }: Props) {
         <span className="w-1.5 h-3.5 bg-[var(--green)] animate-[pulse_1s_ease-in-out_infinite] rounded-[1px] flex-shrink-0 opacity-80 ml-1" />
       </div>
 
-      {stage === 'idle' && value.length > 0 && (() => {
+      {value.length > 0 && (() => {
         const lower = value.toLowerCase()
-        const match = COMPLETIONS.find(c => c.startsWith(lower) && c !== lower)
+        const match = completions.find(c => c.startsWith(lower) && c !== lower)
         if (!match) return null
         return (
           <div className="px-4 pb-2 flex items-center gap-1.5">

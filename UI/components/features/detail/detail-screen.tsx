@@ -263,6 +263,11 @@ export function DetailScreen({ post }: DetailScreenProps) {
                     {post.author.isVerified && (
                       <span className="text-[10px] text-[var(--accent)]">✦</span>
                     )}
+                    {post.author.isSystem && (
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded border border-[var(--accent)] bg-[rgba(99,102,241,0.08)] text-[var(--accent)] tracking-wider leading-none">
+                        AI CURATED
+                      </span>
+                    )}
                   </div>
                   {(post.author.role || post.author.company) && (
                     <div className="font-mono text-[10px] lg:text-xs text-[var(--t2)] mt-0.5 tracking-[0.04em]">

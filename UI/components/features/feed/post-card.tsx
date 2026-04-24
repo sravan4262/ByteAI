@@ -44,6 +44,11 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
             {post.author.isVerified && (
               <BadgeCheck size={12} className="text-[var(--accent)]" />
             )}
+            {post.author.isSystem && (
+              <span className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-[var(--accent)] bg-[rgba(99,102,241,0.08)] text-[var(--accent)] tracking-wider leading-none">
+                AI CURATED
+              </span>
+            )}
           </div>
           <div className="font-mono text-xs md:text-[13px] text-[var(--t2)] mt-0.5 tracking-[0.04em]">
             {post.author.role} @ {post.author.company}

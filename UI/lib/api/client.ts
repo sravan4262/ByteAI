@@ -1,6 +1,8 @@
 import { apiFetch } from './http'
 import type { User } from '../types'
 
+export const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001'
+
 // Domain types
 export type {
   User,
@@ -164,6 +166,7 @@ function byteToPost(b: ByteResponse): Post {
       badges: [],
       isVerified: false,
       isOnline: false,
+      isSystem: b.authorId === SYSTEM_USER_ID,
     },
     code: b.codeSnippet ? { language: b.language ?? 'TEXT', filename: 'snippet', content: b.codeSnippet } : undefined,
     tags: b.tags ?? [],

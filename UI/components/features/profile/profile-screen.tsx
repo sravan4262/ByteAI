@@ -246,9 +246,8 @@ export function ProfileScreen() {
   // Auto-pop badge celebration
   const [autoShowBadge, setAutoShowBadge] = useState<Badge | null>(null)
 
-  // Notification / privacy
+  // Notification
   const [notifications, setNotifications] = useState({ reactions: true, comments: true, newFollowers: true, unfollows: true })
-  const [privacy, setPrivacy] = useState<'public' | 'private'>('public')
 
   // People sheets
   const [peopleSheet, setPeopleSheet] = useState<{ type: 'followers' | 'following'; list: PersonResult[] } | null>(null)
@@ -268,7 +267,6 @@ export function ProfileScreen() {
     api.getMyPreferences().then((prefs) => {
       if (!prefs) return
       setActiveTheme(prefs.theme)
-      setPrivacy(prefs.visibility as 'public' | 'private')
       setNotifications({ reactions: prefs.notifReactions, comments: prefs.notifComments, newFollowers: prefs.notifFollowers, unfollows: prefs.notifUnfollows })
     })
     const handleVisibility = () => {
@@ -380,11 +378,7 @@ export function ProfileScreen() {
     await api.updateNotificationSettings({ [apiMap[key]]: next[key] } as Parameters<typeof api.updateNotificationSettings>[0])
   }
 
-  const handlePrivacyChange = async (value: 'public' | 'private') => {
-    setPrivacy(value); await api.updatePrivacy(value)
-  }
-
-  const handleLogout = async () => {
+const handleLogout = async () => {
     await logout(); toast.success('Signed out')
   }
 
@@ -941,24 +935,6 @@ export function ProfileScreen() {
                 ))}
               </div>
 
-              {/* Account Visibility */}
-              <div className="mx-4 mt-4 mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
-                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">VISIBILITY</span>
-                </div>
-                <div className="flex gap-2">
-                  {(['public', 'private'] as const).map((opt) => (
-                    <button key={opt} onClick={() => handlePrivacyChange(opt)}
-                      className={`flex-1 py-2 px-2 text-center border-[1.5px] rounded-lg font-mono text-xs transition-all flex items-center justify-center gap-1.5 ${
-                        privacy === opt ? 'border-[var(--green)] text-[var(--green)] bg-[var(--green-d)]' : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)]'
-                      }`}>
-                      {opt === 'public' ? <Globe size={11} /> : <Lock size={9} />}
-                      {opt.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 

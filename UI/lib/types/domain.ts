@@ -26,6 +26,7 @@ export interface User {
   badges: Badge[]
   isVerified: boolean
   isOnline: boolean
+  isSystem?: boolean
 }
 
 export interface BytePost {

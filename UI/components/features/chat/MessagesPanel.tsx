@@ -26,6 +26,16 @@ interface MessagesPanelProps {
   bumpConversation: (conversationId: string, lastMessage: string) => void
 }
 
+const CHAT_COMPLETIONS = [
+  '/shrug',
+  '/lgtm',
+  '/wip',
+  '/brb',
+  '/gtg',
+  '/thanks',
+  '/wave',
+]
+
 // ── Thread view ───────────────────────────────────────────────────────────────
 
 function ThreadView({ thread, currentUserId }: { thread: TabData; currentUserId: string }) {
@@ -89,7 +99,7 @@ function ThreadView({ thread, currentUserId }: { thread: TabData; currentUserId:
         ))}
         <div ref={bottomRef} />
       </div>
-      <TerminalInput onSubmit={handleSubmit} disabled={sending} stage="awaiting-message" />
+      <TerminalInput onSubmit={handleSubmit} disabled={sending} stage="awaiting-message" completions={CHAT_COMPLETIONS} />
     </>
   )
 }
