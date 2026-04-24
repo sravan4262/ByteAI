@@ -66,6 +66,7 @@ export function AdminScreen() {
   const [noteModal, setNoteModal]               = useState<AdminFeedbackResponse | null>(null)
   const [noteText, setNoteText]                 = useState('')
   const [savingNote, setSavingNote]             = useState(false)
+  const [feedbackTypeTabs, setFeedbackTypeTabs] = useState<Record<string, 'good' | 'bad' | 'idea'>>({ open: 'bad', reviewed: 'good', closed: 'good' })
 
   // ── User override state ────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
@@ -632,20 +633,19 @@ export function AdminScreen() {
 
         {/* ── Feedback tab ──────────────────────────────────────────────────── */}
         {adminTab === 'feedback' && (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5">
 
             {/* Section header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-2">
-                <span className="w-[3px] h-4 rounded-full bg-[var(--green)] flex-shrink-0" />
-                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">USER FEEDBACK</span>
+              <div className="flex items-center gap-2.5">
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.06em]">USER FEEDBACK</span>
                 <span className="font-mono text-[10px] text-[var(--t2)] bg-[var(--bg-el)] border border-[var(--border-h)] rounded-full px-2 py-px">{feedbackTotal} total</span>
                 {openCount > 0 && (
-                  <span className="font-mono text-[10px] text-[var(--red)] bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.25)] rounded-full px-2 py-px">{openCount} open</span>
+                  <span className="font-mono text-[10px] font-bold text-[var(--red)] bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.2)] rounded-full px-2 py-px">{openCount} open</span>
                 )}
               </div>
               <button onClick={() => loadFeedback(feedbackPage)}
-                className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] transition-all">
+                className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[var(--border-h)] text-[var(--t2)] hover:text-[var(--t1)] hover:border-[var(--border-m)] transition-all">
                 REFRESH
               </button>
             </div>
@@ -653,99 +653,122 @@ export function AdminScreen() {
             {/* Content */}
             {feedbackLoading ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="w-6 h-6 border-2 border-[var(--green)] border-t-transparent rounded-full animate-spin" />
-                <span className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] animate-pulse">LOADING FEEDBACK...</span>
+                <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                <span className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] animate-pulse">LOADING...</span>
               </div>
             ) : feedbackItems.length === 0 ? (
-              <div className="border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-xl px-5 py-12 text-center flex flex-col items-center gap-2">
-                <MessageSquare size={20} className="text-[var(--accent)] opacity-50" />
-                <p className="font-mono text-xs font-bold text-[var(--t1)]">NO FEEDBACK YET</p>
+              <div className="border border-[var(--border-h)] rounded-xl px-5 py-12 text-center flex flex-col items-center gap-2">
+                <MessageSquare size={18} className="text-[var(--t2)] opacity-40" />
+                <p className="text-sm font-semibold text-[var(--t1)]">No feedback yet</p>
                 <p className="text-xs text-[var(--t2)]">Feedback from users will appear here.</p>
               </div>
             ) : (
-              <div className="flex flex-col gap-8">
+              <div className="flex flex-col gap-5">
                 {([
-                  { status: 'open',     bar: 'bg-[var(--red)]',    label: 'OPEN' },
-                  { status: 'reviewed', bar: 'bg-[var(--accent)]', label: 'REVIEWED' },
-                  { status: 'closed',   bar: 'bg-[var(--green)]',  label: 'CLOSED' },
-                ] as const).map(({ status, bar, label }) => {
+                  { status: 'open',     dotColor: 'bg-[var(--red)]',    label: 'Open' },
+                  { status: 'reviewed', dotColor: 'bg-[var(--accent)]', label: 'Reviewed' },
+                  { status: 'closed',   dotColor: 'bg-[var(--green)]',  label: 'Closed' },
+                ] as const).map(({ status, dotColor, label }) => {
                   const statusItems = feedbackItems.filter(f => f.status === status)
                   if (statusItems.length === 0) return null
+
+                  const typeConfig = {
+                    good: {
+                      border: 'border-l-[var(--green)]',
+                      badge: 'text-[var(--green)] bg-[rgba(16,217,160,0.08)] border-[rgba(16,217,160,0.2)]',
+                      activeTab: 'text-[var(--green)] border-b-[var(--green)]',
+                    },
+                    bad: {
+                      border: 'border-l-[var(--red)]',
+                      badge: 'text-[var(--red)] bg-[rgba(244,63,94,0.08)] border-[rgba(244,63,94,0.2)]',
+                      activeTab: 'text-[var(--red)] border-b-[var(--red)]',
+                    },
+                    idea: {
+                      border: 'border-l-[var(--purple)]',
+                      badge: 'text-[var(--purple)] bg-[rgba(167,139,250,0.08)] border-[rgba(167,139,250,0.2)]',
+                      activeTab: 'text-[var(--purple)] border-b-[var(--purple)]',
+                    },
+                  } as const
+
+                  const availableTypes = (['good', 'bad', 'idea'] as const).filter(t => statusItems.some(f => f.type === t))
+                  const activeType = (feedbackTypeTabs[status] && availableTypes.includes(feedbackTypeTabs[status])) ? feedbackTypeTabs[status] : availableTypes[0]
+                  const visibleItems = statusItems.filter(f => f.type === activeType)
+
                   return (
-                    <div key={status} className="flex flex-col gap-4">
-                      {/* Status section header */}
-                      <div className="flex items-center gap-2">
-                        <span className={`w-[3px] h-4 rounded-full ${bar} flex-shrink-0`} />
-                        <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">{label}</span>
-                        <span className="font-mono text-[10px] text-[var(--t2)]">({statusItems.length})</span>
+                    <div key={status} className="border border-[var(--border-h)] rounded-xl overflow-hidden bg-[var(--bg-card)]">
+                      {/* Status header */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-h)] bg-[var(--bg-el)]">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-1.5 h-1.5 rounded-full ${dotColor} flex-shrink-0`} />
+                          <span className="text-xs font-semibold text-[var(--t1)]">{label}</span>
+                          <span className="text-xs text-[var(--t2)]">({statusItems.length})</span>
+                        </div>
                       </div>
 
-                      {/* Type sub-groups */}
-                      <div className="flex flex-col gap-4 pl-3">
-                        {([
-                          { type: 'good', color: 'text-[var(--green)]', gradient: 'from-[var(--green)] via-[rgba(16,217,160,0.3)]' },
-                          { type: 'bad',  color: 'text-[var(--red)]',   gradient: 'from-[var(--red)] via-[rgba(244,63,94,0.3)]' },
-                          { type: 'idea', color: 'text-[var(--purple)]',gradient: 'from-[var(--purple)] via-[rgba(167,139,250,0.3)]' },
-                        ] as const).map(({ type, color, gradient }) => {
-                          const typeItems = statusItems.filter(f => f.type === type)
-                          if (typeItems.length === 0) return null
+                      {/* Type sub-tabs */}
+                      <div className="flex border-b border-[var(--border-h)]">
+                        {availableTypes.map(type => {
+                          const isActive = type === activeType
+                          const tc = typeConfig[type]
+                          const count = statusItems.filter(f => f.type === type).length
                           return (
-                            <div key={type} className="flex flex-col gap-2">
-                              {/* Type separator label */}
-                              <div className="flex items-center gap-2">
-                                <div className="h-px flex-1 bg-[var(--border-h)]" />
-                                <span className={`font-mono text-[10px] font-bold ${color}`}>{type.toUpperCase()}</span>
-                                <div className="h-px flex-1 bg-[var(--border-h)]" />
+                            <button
+                              key={type}
+                              onClick={() => setFeedbackTypeTabs(prev => ({ ...prev, [status]: type }))}
+                              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-all ${
+                                isActive
+                                  ? `${tc.activeTab} border-b-2`
+                                  : 'text-[var(--t2)] border-b-transparent hover:text-[var(--t1)]'
+                              }`}
+                            >
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                              <span className={`font-mono text-[10px] px-1.5 py-px rounded border ${isActive ? tc.badge : 'text-[var(--t2)] border-[var(--border-h)] bg-transparent'}`}>
+                                {count}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Scrollable cards */}
+                      <div className="overflow-y-auto max-h-72 scrollbar-thin scrollbar-thumb-[var(--border-m)]">
+                        {visibleItems.map((item, i) => {
+                          const tc = typeConfig[item.type as keyof typeof typeConfig] ?? typeConfig.idea
+                          return (
+                            <div key={item.id} className={`px-4 py-3 flex flex-col gap-2 border-l-2 ${tc.border} ${i !== visibleItems.length - 1 ? 'border-b border-[var(--border-h)]' : ''}`}>
+                              {/* Top row: page context + date */}
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono text-[10px] text-[var(--t2)]">{item.pageContext ?? '—'}</span>
+                                <span className="font-mono text-[10px] text-[var(--t2)] flex-shrink-0">
+                                  {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </span>
                               </div>
 
-                              {/* Cards */}
-                              {typeItems.map(item => (
-                                <div key={item.id} className="rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden">
-                                  <div className={`h-px bg-gradient-to-r ${gradient} to-transparent`} />
-                                  <div className="px-4 py-3 flex flex-col gap-2">
-                                    {/* Meta row */}
-                                    <div className="flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2">
-                                        {item.pageContext && (
-                                          <span className="font-mono text-[10px] text-[var(--t2)]">{item.pageContext}</span>
-                                        )}
-                                        {item.username && (
-                                          <span className="font-mono text-[10px] text-[var(--t2)]">@{item.username}</span>
-                                        )}
-                                      </div>
-                                      <span className="font-mono text-[10px] text-[var(--t2)] flex-shrink-0">
-                                        {new Date(item.createdAt).toLocaleDateString()}
-                                      </span>
-                                    </div>
+                              {/* Message */}
+                              <p className="text-sm text-[var(--t1)] leading-relaxed">{item.message}</p>
 
-                                    {/* Message */}
-                                    <p className="text-xs text-[var(--t1)] leading-relaxed">{item.message}</p>
+                              {/* Admin note */}
+                              {item.adminNote && (
+                                <p className="text-xs text-[var(--t2)] italic pl-3 border-l-2 border-[var(--border-m)]">
+                                  {item.adminNote}
+                                </p>
+                              )}
 
-                                    {/* Admin note */}
-                                    {item.adminNote && (
-                                      <p className="text-xs text-[var(--t2)] italic pl-3 border-l-2 border-[rgba(59,130,246,0.3)]">
-                                        {item.adminNote}
-                                      </p>
-                                    )}
-
-                                    {/* Actions */}
-                                    {item.status !== 'closed' && (
-                                      <div className="flex items-center gap-4 pt-0.5">
-                                        {item.status === 'open' && (
-                                          <button onClick={() => handleMarkReviewed(item)}
-                                            className="flex items-center gap-1 font-mono text-[10px] text-[var(--t2)] hover:text-[var(--accent)] transition-colors">
-                                            <CheckCheck size={10} /> Mark reviewed
-                                          </button>
-                                        )}
-                                        <button onClick={() => { setNoteModal(item); setNoteText('') }}
-                                          className="font-mono text-[10px] text-[var(--t2)] hover:text-[var(--red)] transition-colors">
-                                          Close
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
+                              {/* Actions */}
+                              {item.status !== 'closed' && (
+                                <div className="flex items-center gap-3 pt-0.5">
+                                  {item.status === 'open' && (
+                                    <button onClick={() => handleMarkReviewed(item)}
+                                      className="flex items-center gap-1 text-xs text-[var(--t2)] hover:text-[var(--accent)] transition-colors">
+                                      <CheckCheck size={11} /> Mark reviewed
+                                    </button>
+                                  )}
+                                  <button onClick={() => { setNoteModal(item); setNoteText('') }}
+                                    className="text-xs text-[var(--t2)] hover:text-[var(--t1)] transition-colors">
+                                    Close
+                                  </button>
                                 </div>
-                              ))}
+                              )}
                             </div>
                           )
                         })}
@@ -760,15 +783,15 @@ export function AdminScreen() {
             {feedbackTotal > 15 && (
               <div className="flex items-center justify-center gap-2 pt-2">
                 <button onClick={() => loadFeedback(feedbackPage - 1)} disabled={feedbackPage <= 1}
-                  className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                  ← PREV
+                  className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[var(--border-h)] text-[var(--t2)] hover:text-[var(--t1)] hover:border-[var(--border-m)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                  ← Prev
                 </button>
                 <span className="font-mono text-[10px] text-[var(--t2)]">
                   {feedbackPage} / {Math.ceil(feedbackTotal / 15)}
                 </span>
                 <button onClick={() => loadFeedback(feedbackPage + 1)} disabled={feedbackPage >= Math.ceil(feedbackTotal / 15)}
-                  className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                  NEXT →
+                  className="px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold border border-[var(--border-h)] text-[var(--t2)] hover:text-[var(--t1)] hover:border-[var(--border-m)] disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                  Next →
                 </button>
               </div>
             )}
