@@ -4,6 +4,7 @@ namespace ByteAI.Core.Business.Interfaces;
 
 public interface IAdminBusiness
 {
+    Task<UserActivityResponse> GetUserActivityAsync(int page, int pageSize, CancellationToken ct);
     Task<List<FeatureFlagType>> GetAllFeatureFlagsAsync(CancellationToken ct);
     Task<List<FeatureFlagType>> GetEnabledFeatureFlagsAsync(string? supabaseUserId, CancellationToken ct);
     Task<FeatureFlagType> UpsertFeatureFlagAsync(string key, string name, string? description, bool globalOpen, CancellationToken ct);

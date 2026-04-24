@@ -10,6 +10,29 @@ public sealed class AdminBusiness(IFeatureFlagService featureFlagService, AppDbC
 {
     private static readonly HashSet<string> ReservedRoles = ["user", "admin"];
 
+    public async Task<UserActivityResponse> GetUserActivityAsync(int page, int pageSize, CancellationToken ct)
+    {
+        var offset = (page - 1) * pageSize;
+
+        var todayCount  = await db.LoggedInToday.CountAsync(ct);
+        var todayItems  = await db.LoggedInToday
+            .OrderByDescending(u => u.ActivityAt)
+            .Skip(offset).Take(pageSize)
+            .Select(u => new ActivityUserDto(u.UserId, u.DisplayName, u.Username, u.AvatarUrl, u.Email, u.ActivityAt))
+            .ToListAsync(ct);
+
+        var onlineCount = await db.CurrentlyLoggedIn.CountAsync(ct);
+        var onlineItems = await db.CurrentlyLoggedIn
+            .OrderByDescending(u => u.ActivityAt)
+            .Skip(offset).Take(pageSize)
+            .Select(u => new ActivityUserDto(u.UserId, u.DisplayName, u.Username, u.AvatarUrl, u.Email, u.ActivityAt))
+            .ToListAsync(ct);
+
+        return new UserActivityResponse(
+            LoggedInToday:     new ActivityPagedResult(todayItems,  todayCount,  page, pageSize),
+            CurrentlyLoggedIn: new ActivityPagedResult(onlineItems, onlineCount, page, pageSize));
+    }
+
     public Task<List<FeatureFlagType>> GetAllFeatureFlagsAsync(CancellationToken ct) =>
         featureFlagService.GetAllAsync(ct);
 

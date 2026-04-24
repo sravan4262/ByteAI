@@ -69,6 +69,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     // Support
     public DbSet<Feedback> Feedbacks => Set<Feedback>();
 
+    // Admin activity views (keyless)
+    public DbSet<LoggedInTodayUser>    LoggedInToday     => Set<LoggedInTodayUser>();
+    public DbSet<CurrentlyLoggedInUser> CurrentlyLoggedIn => Set<CurrentlyLoggedInUser>();
+
     // Observability / engagement
     public DbSet<AppLog> AppLogs => Set<AppLog>();
 
@@ -84,5 +88,27 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
         // Apply all IEntityTypeConfiguration<T> classes in this assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        modelBuilder.Entity<LoggedInTodayUser>(e =>
+        {
+            e.HasNoKey().ToView("v_logged_in_today", "users");
+            e.Property(u => u.UserId).HasColumnName("user_id");
+            e.Property(u => u.DisplayName).HasColumnName("display_name");
+            e.Property(u => u.Username).HasColumnName("username");
+            e.Property(u => u.AvatarUrl).HasColumnName("avatar_url");
+            e.Property(u => u.Email).HasColumnName("email");
+            e.Property(u => u.ActivityAt).HasColumnName("activity_at");
+        });
+
+        modelBuilder.Entity<CurrentlyLoggedInUser>(e =>
+        {
+            e.HasNoKey().ToView("v_currently_logged_in", "users");
+            e.Property(u => u.UserId).HasColumnName("user_id");
+            e.Property(u => u.DisplayName).HasColumnName("display_name");
+            e.Property(u => u.Username).HasColumnName("username");
+            e.Property(u => u.AvatarUrl).HasColumnName("avatar_url");
+            e.Property(u => u.Email).HasColumnName("email");
+            e.Property(u => u.ActivityAt).HasColumnName("activity_at");
+        });
     }
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Shield, Plus, Globe, User, Search, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Lock, ShieldCheck, MessageSquare, CheckCheck } from 'lucide-react'
+import { Shield, Plus, Globe, User, Search, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Lock, ShieldCheck, MessageSquare, CheckCheck, Activity } from 'lucide-react'
 import { useIsAdmin } from '@/hooks/use-is-admin'
 import { searchUsers } from '@/lib/api/client'
 import { apiFetch } from '@/lib/api/http'
@@ -28,9 +28,10 @@ import {
   getAllFeedback,
   updateFeedbackStatus,
 } from '@/lib/api/support'
+import { UserActivityPanels } from './user-activity-panels'
 
 const SYSTEM_ROLES = ['user', 'admin']
-type AdminTab = 'system' | 'feedback'
+type AdminTab = 'system' | 'feedback' | 'activity'
 
 export function AdminScreen() {
   const { isAdmin, isLoaded } = useIsAdmin()
@@ -287,7 +288,7 @@ export function AdminScreen() {
 
         {/* Top-level tabs */}
         <div className="flex gap-2">
-          {([['system', Shield, 'SYSTEM_CONFIG'], ['feedback', MessageSquare, 'FEEDBACK']] as const).map(([tab, Icon, label]) => (
+          {([['system', Shield, 'SYSTEM_CONFIG'], ['feedback', MessageSquare, 'FEEDBACK'], ['activity', Activity, 'USER ACTIVITY']] as const).map(([tab, Icon, label]) => (
             <button key={tab} onClick={() => setAdminTab(tab)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-[10px] font-bold tracking-[0.08em] border transition-all ${
                 adminTab === tab
@@ -625,6 +626,9 @@ export function AdminScreen() {
           </div>
 
         </div>}
+
+        {/* ── Activity tab ─────────────────────────────────────────────────── */}
+        {adminTab === 'activity' && <UserActivityPanels />}
 
         {/* ── Feedback tab ──────────────────────────────────────────────────── */}
         {adminTab === 'feedback' && (

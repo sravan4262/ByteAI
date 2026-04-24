@@ -1,6 +1,7 @@
 using ByteAI.Api.Common.Auth;
 using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
+using ByteAI.Core.Business;
 using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -156,6 +157,19 @@ public sealed class AdminController(IAdminBusiness adminBusiness, ISupportBusine
         new(r.Id, r.Name, r.Label, r.Description);
 
     public sealed record RoleResponse(Guid Id, string Name, string Label, string? Description);
+
+    // ── User activity ────────────────────────────────────────────────────────
+
+    [HttpGet("users/activity")]
+    [ProducesResponseType(typeof(ApiResponse<UserActivityResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<UserActivityResponse>>> GetUserActivity(
+        [FromQuery] int page     = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct     = default)
+    {
+        var result = await adminBusiness.GetUserActivityAsync(page, pageSize, ct);
+        return Ok(ApiResponse<UserActivityResponse>.Success(result));
+    }
 
     // ── Feedback management ──────────────────────────────────────────────────
 
