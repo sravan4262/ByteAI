@@ -1,197 +1,250 @@
-# ByteAI — AI Agent Roadmap
+# ByteAI — In-App Agent Plan
 
-## What Makes These Agents (Not Scripts)
-A script executes fixed steps. An agent **observes** current state, **plans** what to do next, **acts** using tools, and **reflects** to retry or adjust. Claude claude-haiku-4-5 acts as the orchestrator brain; Groq handles content generation; tools interface with Postgres and external APIs.
+## Overview
+A `ByteAI.Agents` C# class library that adds agent-based logic to the app. Separate from `ByteAI.Api` and `ByteAI.Core` — pure orchestration, no EF Core, no ASP.NET.
 
-## Agent Stack
-| Component | Tech |
+The two agents it contains:
+1. **Support Terminal Agent** — user types natural language in the terminal → agent classifies and submits feedback
+2. **Triage Agent** — admin clicks "Mark Reviewed" → agent greps codebase, diagnoses the issue, creates a GitHub issue
+
+---
+
+## Project Structure
+
+```
+Service/
+├── ByteAI.Api/
+├── ByteAI.Core/
+├── ByteAI.Gateway/
+└── ByteAI.Agents/              ← new class library
+    ├── ByteAI.Agents.csproj
+    ├── Abstractions/
+    │   ├── IAgent.cs           ← RunAsync(goal, ct) → AgentResult
+    │   ├── AgentTool.cs        ← record: Name, Description, JsonSchema, Handler
+    │   ├── AgentResult.cs      ← record: Reply, Actions[], Confidence
+    │   └── AgentContext.cs     ← conversation history for multi-turn
+    ├── Engine/
+    │   └── GeminiAgentEngine.cs  ← the tool-call loop; only place that calls Gemini HTTP
+    ├── Agents/
+    │   └── Support/
+    │       ├── SupportAgent.cs   ← Level 1: classify + deduplicate + submit feedback
+    │       └── TriageAgent.cs    ← Level 2: grep codebase + diagnose + create GitHub issue
+    ├── Tools/
+    │   ├── SupportTools.cs       ← submit_feedback, get_ticket_status, search_similar_tickets
+    │   ├── CodebaseTools.cs      ← search_codebase (grep/rg), get_file
+    │   └── GitHubTools.cs        ← create_issue, trigger_fix_workflow
+    ├── Events/
+    │   └── Handlers/
+    │       └── FeedbackTriageHandler.cs  ← MediatR: handles FeedbackReviewedEvent
+    └── Extensions/
+        └── AgentsServiceExtensions.cs   ← AddByteAIAgents() — one call in Api/Program.cs
+```
+
+---
+
+## Dependency Graph
+
+```
+ByteAI.Api ──► ByteAI.Agents ──► ByteAI.Core
+     └─────────────────────────► ByteAI.Core
+```
+
+- `ByteAI.Agents` references `ByteAI.Core` for `ILlmService`, `IEmbeddingService`, `ISupportService`, MediatR events
+- `ByteAI.Api` adds a single `<ProjectReference>` to `ByteAI.Agents` for DI registration only
+- `ByteAI.Core` never references `ByteAI.Agents` — no circular deps
+
+---
+
+## ByteAI.Agents.csproj
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ByteAI.Core\ByteAI.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="12.5.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Octokit" Version="13.0.1" />
+  </ItemGroup>
+</Project>
+```
+
+---
+
+## Agent 1 — Support Terminal Agent ⏳
+
+**Trigger:** User types anything in the support terminal that isn't a known command (fallback from `commandParser.ts`)
+
+**What it does:**
+- Understands free-text input ("dark mode is broken", "can't upload images")
+- Classifies severity and component
+- Checks for duplicate open tickets before submitting
+- Submits structured feedback automatically
+- Returns a human-readable reply to display in the terminal
+
+**Flow:**
+```
+Terminal input: "the search is broken on mobile"
+  → POST /api/support/ask  { query, pageContext }
+  → SupportAgent runs Gemini tool-call loop
+  → tools: search_similar_tickets → classify_issue → submit_feedback
+  → returns: "Filed as BUG-043 (search, high). We're on it."
+```
+
+**Tools:**
+| Tool | What it does |
 |---|---|
-| Orchestrator brain | Claude claude-haiku-4-5 (Anthropic SDK — tool-use loop) |
-| Content generation | Groq Llama 3.3 70B (OpenAI-compatible endpoint) |
-| Embeddings | nomic-embed-text-v1.5 (in-process ONNX, same as production) |
-| DB access | psycopg2 → same PostgreSQL + pgvector instance |
-| Language | Python (standalone, not part of the C# backend) |
+| `search_similar_tickets` | Queries `Feedback` table for open issues with similar message |
+| `classify_issue` | Extracts component, severity, type from natural language |
+| `submit_feedback` | Wraps `ISupportService.SubmitFeedbackAsync` |
+| `get_ticket_status` | Looks up a specific ticket by ID |
 
-## Agent Ecosystem Map
-```
-ByteAI Agent Ecosystem
-│
-├── Data Layer
-│   ├── Seeding Agent          ← fills DB with bytes + interviews
-│   ├── Trending Harvester     ← daily fresh content from HN/GitHub/Reddit
-│   └── Content Gap Agent      ← weekly coverage audit per tech stack
-│
-├── User Layer
-│   ├── Writing Coach          ← draft → publish assistant (conversational)
-│   ├── Onboarding Concierge   ← replaces boring signup form with dialogue
-│   └── Interview Prep Coach   ← mock interview session with scoring
-│
-├── Trust Layer
-│   ├── Fact-Check Agent       ← flags technically incorrect bytes
-│   └── Moderation Agent       ← nuanced content review with written rationale
-│
-└── Growth Layer
-    ├── SEO Amplifier          ← cross-platform distribution (X, LinkedIn, dev.to)
-    └── Newsletter Curator     ← weekly digest, no human editor needed
-```
+**Frontend changes:**
+- Add `ask` command to `commandParser.ts` — catch-all for unrecognised input
+- Handle in `useTerminal.ts` → call `POST /api/support/ask` → stream lines to terminal output
+- Existing explicit commands (`feedback --type X`, `history`, etc.) stay as-is
 
 ---
 
-## Priority Order
-| Agent | Value | Complexity | When |
-|---|---|---|---|
-| Seeding Agent | High | Medium | Now |
-| Writing Coach | High | Low | After seeding |
-| Onboarding Concierge | High | Low | Before launch |
-| Trending Harvester | High | Medium | Post-launch |
-| Interview Prep Coach | Very High | High | Phase 3 |
-| Fact-Check Agent | Medium | Medium | Post-launch |
-| Newsletter Curator | Medium | Low | Post-launch |
-| Moderation Agent | Medium | High | At scale |
-| SEO Amplifier | Medium | Medium | Post-launch |
-| Content Gap Agent | Low | Low | Post-launch |
+## Agent 2 — Triage Agent ⏳
 
----
+**Trigger:** Admin clicks "Mark Reviewed" on a feedback ticket in the admin portal
 
-## Agent 1 — Seeding Agent ⏳
-**What:** Autonomous agent that observes content gaps in the DB, plans what to generate, calls Groq in batches, validates quality, and inserts bytes + interviews across 22 tech stacks. Goal: 30 bytes + 30 interviews per stack.
-**How it works:**
-- Claude observes: calls `get_tech_stacks()` + `check_content_gaps()` across all stacks → builds a priority list (biggest gap first)
-- Claude plans: batches topic generation per stack, rotates company/role combos for interviews
-- Claude acts: `generate_topics()` → `generate_byte()` → `quality_score()` → `dedup_check()` → `insert_byte()`. Same loop for interviews.
-- Claude reflects: quality score < 6 → regenerate; dedup hit → skip and generate new topic
-- Runs as a one-shot CLI: `python agent.py --target-bytes 30 --target-interviews 30`
-- Extensible: adding new content types = adding 2 tools (`generate_X`, `insert_X`). Agent loop unchanged.
-**Tools:** `get_tech_stacks`, `check_content_gaps`, `generate_topics`, `generate_byte`, `generate_interview`, `quality_score`, `dedup_check`, `insert_byte`, `insert_interview`, `report_progress`
-**Tech stacks to seed:** React, Angular, Vue, Next.js, TypeScript, .NET/C#, Node.js, Python, Java, Go, Flutter, React Native, Swift, Kotlin, PostgreSQL, MongoDB, Redis, Docker, Kubernetes, AWS, Azure, ML/AI
-**Interview combos:** Companies (Google, Microsoft, Amazon, Meta, Apple, Netflix, Stripe, Airbnb, Uber, Atlassian) × Roles (Senior SWE, Frontend Engineer, Backend Engineer, Fullstack, ML Engineer, DevOps/SRE, Mobile Engineer)
-**Project structure:**
+**What it does:**
+- Greps the codebase for files related to the reported issue
+- Builds a structured diagnosis: affected files, hypothesis, confidence score
+- If confidence ≥ 0.7 → creates a GitHub issue with full diagnosis attached
+- Stores enriched diagnosis back on the `Feedback` record
+
+**Flow:**
 ```
-seeding-agent/
-├── agent.py              ← Claude tool-use loop + orchestration
-├── tools/
-│   ├── db_tools.py       ← get_stacks, check_gaps, insert_byte, insert_interview
-│   ├── groq_tools.py     ← gen_topics, gen_byte, gen_interview
-│   └── validation.py     ← quality_score, dedup_check
-├── config.py             ← stack list, company/role combos, targets
-├── requirements.txt
-└── .env                  ← DB_URL, GROQ_API_KEY, ANTHROPIC_API_KEY
+Admin: PUT /api/support/feedback/{id}/status  { status: "reviewed" }
+  → SupportService.UpdateFeedbackStatusAsync publishes FeedbackReviewedEvent
+  → FeedbackTriageHandler (MediatR) picks it up
+  → TriageAgent runs Gemini tool-call loop
+  → tools: search_codebase → get_file → estimate_severity → enrich_ticket
+  → confidence ≥ 0.7: create_github_issue
+  → Feedback record updated with diagnosis JSON
 ```
 
----
+**Tools:**
+| Tool | What it does |
+|---|---|
+| `search_codebase` | Shells out to `rg` (ripgrep) against the repo path |
+| `get_file` | Reads a specific file at a given path |
+| `estimate_severity` | Scores impact based on component + message |
+| `enrich_ticket` | Writes `{ affectedFiles, hypothesis, confidence }` back to `Feedback` |
+| `create_github_issue` | Octokit call with structured diagnosis as body |
 
-## Agent 2 — Writing Coach Agent ⏳
-**What:** User pastes a draft byte → agent reads it, asks 2-3 clarifying questions ("what's the key takeaway for a junior dev?"), then rewrites/improves it collaboratively. Multi-turn conversational loop, not a one-shot improve button.
-**How it works:**
-- User submits draft → agent calls `analyze_draft()` to score clarity, specificity, relevance
-- Agent asks targeted questions based on what's weak (low clarity → asks for simpler explanation; low specificity → asks for a concrete example or code snippet)
-- User replies → agent incorporates feedback and rewrites
-- Agent calls `check_similar_bytes()` to ensure the improved byte isn't duplicating existing content
-- Final output: improved `{ title, body, codeSnippet }` ready to post via normal `POST /api/bytes`
-- Exposed as `POST /api/ai/writing-coach` (streaming SSE for conversational feel)
-**Tools:** `analyze_draft`, `suggest_code_snippet`, `check_similar_bytes`, `rewrite_byte`, `score_improvement`
-
----
-
-## Agent 3 — Onboarding Concierge Agent ⏳
-**What:** New user signs up → agent starts a short conversation ("What do you build? What are you learning?") and sets up their entire profile — tech stacks, seniority, interests, interest embedding, feed preferences — through dialogue instead of a boring form.
-**How it works:**
-- Agent asks 3-4 open questions, parses natural language answers
-- Calls `match_tech_stacks(user_description)` — embeds the user's answer and finds nearest tech stack vectors
-- Calls `infer_seniority(description)` — maps self-description to SeniorityType enum
-- Calls `seed_interest_embedding(matched_stacks)` — averages the matched stack embeddings as starting `InterestEmbedding`
-- Calls `set_user_profile()` — writes everything to DB in one transaction
-- Calls `suggest_first_bytes()` — returns 5 bytes to show immediately on first feed load
-- Exposed as `POST /api/ai/onboarding` (SSE streaming, multi-turn)
-**Tools:** `match_tech_stacks`, `infer_seniority`, `seed_interest_embedding`, `set_user_profile`, `suggest_first_bytes`
+**MediatR event (new in ByteAI.Core/Events/):**
+```csharp
+public sealed record FeedbackReviewedEvent(
+    Guid FeedbackId,
+    string Message,
+    string? PageContext) : INotification;
+```
+Published in `SupportService.UpdateFeedbackStatusAsync` when `newStatus == "reviewed"`.
 
 ---
 
-## Agent 4 — Trending Harvester Agent ⏳
-**What:** Runs daily. Fetches what's trending in tech from Hacker News, GitHub Trending, and Reddit tech subs. Identifies topics with no existing byte coverage. Generates bytes and posts them under a `@ByteAIDaily` seed account.
-**How it works:**
-- Fetches: HN Algolia API (top 20 today) + GitHub Trending API (top repos by language) + Reddit `/r/programming` hot posts
-- Calls `check_topic_coverage(topic)` — embeds topic title, cosine search in DB. If max similarity < 0.4, topic is uncovered.
-- For uncovered topics: `generate_byte(topic)` → `quality_score()` → `insert_byte(author = @ByteAIDaily)`
-- Runs as a scheduled job (cron or Azure Container App scheduled trigger)
-- Rate-aware: max 10 new bytes per day to avoid flooding the feed
-**Tools:** `fetch_hn_trending`, `fetch_github_trending`, `fetch_reddit_hot`, `check_topic_coverage`, `generate_byte`, `quality_score`, `insert_byte`
-**Schedule:** Daily at 08:00 UTC
+## Agent 3 — Fix Agent 🔮 (Future)
+
+**Trigger:** GitHub issue created by Triage Agent (via GitHub Actions `issues` event — `opened` activity type)
+
+**What it does:**
+- Reads the GitHub issue body (contains the structured diagnosis: affected files, hypothesis, reproduction context)
+- Uses that information to locate and understand the relevant code
+- Writes a targeted fix
+- Opens a PR against `main` with the fix and a link back to the originating issue
+
+**Flow:**
+```
+Triage Agent creates GitHub issue  →  diagnosis attached as issue body
+  → GitHub Actions workflow triggered on issues: [opened]
+  → Runs: claude --print "Read issue #N and fix it. Open a PR against main."
+  → Claude Code reads issue → finds affected files → writes fix → opens PR
+  → PR description links back to issue + includes the original user feedback
+  → You review and merge
+```
+
+**GitHub Actions workflow (`.github/workflows/fix-agent.yml`):**
+```yaml
+on:
+  issues:
+    types: [opened]
+    # only fires for issues labelled "agent-fix" — set this label in GitHubTools.cs
+    
+jobs:
+  fix:
+    if: contains(github.event.issue.labels.*.name, 'agent-fix')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          prompt: |
+            Read GitHub issue #${{ github.event.issue.number }} and fix the reported bug.
+            The issue body contains affected files and a hypothesis — use them as your starting point.
+            Open a PR against main. Link the PR to issue #${{ github.event.issue.number }}.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Label convention:** `GitHubTools.cs` sets the `agent-fix` label only when Triage Agent confidence ≥ 0.7. Lower confidence issues are created without the label — no workflow fires, human handles it manually.
+
+**Why this stays future:**
+- Requires production GitHub repo + Actions secrets configured
+- Claude Code Action needs review of what it's allowed to push
+- Safe to add after Support Terminal Agent + Triage Agent are live and trusted
 
 ---
 
-## Agent 5 — Interview Prep Coach Agent ⏳
-**What:** User picks a company + role → agent RAGs over real stored interviews → generates a full mock session → evaluates user's answers → gives structured feedback with a readiness score. True multi-turn agent loop.
-**How it works:**
-- Agent calls `rag_search_interviews(company, role)` — top 10 semantic matches from stored interviews
-- Agent generates 5 mock questions grounded in real patterns from the RAG results
-- User answers each question → agent calls `evaluate_answer(question, answer, context)` → gives feedback per answer
-- After all questions: agent calls `calculate_readiness_score()` → returns `{ score, strengths[], gaps[], suggested_bytes[] }`
-- `suggested_bytes` are real bytes from DB that address the identified gaps
-- Exposed as `POST /api/interviews/prep-coach` (SSE streaming)
-**Tools:** `rag_search_interviews`, `generate_mock_question`, `evaluate_answer`, `calculate_readiness_score`, `suggest_gap_filling_bytes`
-**Note:** This is the Phase 3 roadmap item 11 reframed as a proper agent loop.
+## Engine — GeminiAgentEngine
+
+The only class that knows about HTTP. Implements the tool-call loop:
+
+```
+while (true) {
+    response = CallGemini(messages, tools)
+    if response.FinishReason == "stop" → return response.Content
+    foreach toolCall in response.ToolCalls:
+        result = tools[toolCall.Name].Handler(toolCall.Arguments)
+        messages.Add(ToolResultMessage(toolCall.Id, result))
+}
+```
+
+Both agents share this engine — they only differ in their system prompt and tool list.
 
 ---
 
-## Agent 6 — Fact-Check Agent ⏳
-**What:** After a byte is published, agent reads its technical claims and reasons about correctness. Flags potentially wrong information with a confidence score and adds a soft "unverified claim" badge. Does not delete content — surfaces it for author review.
-**How it works:**
-- Triggered async post-publish (via `ByteCreatedEvent`, fire-and-forget)
-- Agent calls `extract_technical_claims(body)` — Groq identifies discrete factual claims ("useState is synchronous", "Go has a GC")
-- For each claim: `verify_via_rag(claim)` — cosine search across all bytes + interviews for corroborating or contradicting content
-- If contradicted with high confidence: `flag_byte(byteId, claim, confidence)` — sets `IsFlagged = true`, stores reason
-- Author gets a notification with specific flagged claim and why
-**Tools:** `extract_technical_claims`, `verify_via_rag`, `search_documentation_bytes`, `flag_byte`, `notify_author`
+## API Touch Points (ByteAI.Api)
+
+| What | Where |
+|---|---|
+| `POST /api/support/ask` | New action in `SupportController.cs` |
+| `builder.Services.AddByteAIAgents(config)` | One line added to `Program.cs` |
+| `<ProjectReference>` to `ByteAI.Agents` | `ByteAI.Api.csproj` |
+
+No other changes to the existing API codebase.
 
 ---
 
-## Agent 7 — Moderation Agent ⏳
-**What:** Goes beyond the Phase 2 toxicity ONNX classifier (which is binary). This agent *reasons* about edge cases — borderline content, context-dependent posts, appeals — and makes nuanced decisions with a written rationale stored for audit trail.
-**How it works:**
-- Triggered when toxicity classifier score is in the 0.65–0.85 borderline range (flagged but not auto-rejected)
-- Agent reads byte + author history + community standards policy (stored as RAG context)
-- Calls `assess_content(byte, policy_context)` → reasons step-by-step, returns `{ decision, rationale, confidence }`
-- `approve` → clears flag; `reject` → removes byte, notifies author with rationale; `escalate` → queues for human review
-- All decisions + rationale stored in `ModerationLog` for audit
-**Tools:** `read_byte`, `get_author_history`, `rag_search_policy`, `approve`, `reject`, `escalate`, `log_decision`
-
----
-
-## Agent 8 — Newsletter Curator Agent ⏳
-**What:** Every Sunday, agent scans the week's bytes, picks the best 7 per domain (frontend, backend, devops, mobile, AI/ML), writes transition copy between them, and generates a full weekly digest newsletter. No human editor.
-**How it works:**
-- Fetches all bytes from last 7 days with engagement data (likes, views, bookmarks)
-- Calls `rank_by_engagement(bytes)` + `cluster_by_domain(bytes)` → top 7 per domain
-- Calls `ensure_diversity(selected)` — checks no two consecutive bytes are from the same author or tech stack
-- Calls `write_digest(selected_bytes)` — Groq writes intro, transitions, and a closing "this week in tech" paragraph
-- Calls `send_newsletter(digest)` — sends via email provider (Resend/SendGrid)
-**Tools:** `fetch_week_bytes`, `rank_by_engagement`, `cluster_by_domain`, `ensure_diversity`, `write_digest`, `send_newsletter`
-**Schedule:** Sundays at 09:00 UTC
-
----
-
-## Agent 9 — SEO Amplifier Agent ⏳
-**What:** Takes top-performing bytes (high likes + views in last 7 days), generates platform-specific versions — X/Twitter thread, LinkedIn post, dev.to article — and queues them for distribution under the ByteAI brand account.
-**How it works:**
-- Weekly: `fetch_top_bytes(limit=5, window_days=7)` — top bytes by engagement
-- For each: generates 3 formats in parallel:
-  - X thread: `generate_twitter_thread(byte)` — 5-7 tweets, hook → detail → CTA
-  - LinkedIn: `generate_linkedin_post(byte)` — 150 words, professional tone, hashtags
-  - dev.to: `generate_devto_article(byte)` — expanded version with full code, canonical URL back to ByteAI
-- `schedule_post(platform, content, time)` — staggers posts across the week
-- `track_referral_clicks(byte_id)` — monitors inbound traffic from each platform
-**Tools:** `fetch_top_bytes`, `generate_twitter_thread`, `generate_linkedin_post`, `generate_devto_article`, `schedule_post`, `track_referral_clicks`
-
----
-
-## Agent 10 — Content Gap Agent ⏳
-**What:** Runs weekly. Scans the DB to identify which tech stacks are underrepresented relative to user interest and search volume. Reports a prioritised list of gaps and optionally triggers the Seeding Agent for the top 3 stacks.
-**How it works:**
-- `get_stack_coverage()` — bytes + interviews count per tech stack
-- `get_search_volume_by_stack()` — how many search queries per stack in last 7 days (from search logs)
-- `get_interest_by_stack()` — how many users have each stack in their `UserTechStacks`
-- Computes coverage ratio: `content_count / (search_volume + interest_count)` — lower = bigger gap
-- Top 3 gap stacks → triggers Seeding Agent with `--stacks angular,rust,kotlin --target-bytes 10`
-**Tools:** `get_stack_coverage`, `get_search_volume_by_stack`, `get_interest_by_stack`, `compute_gap_score`, `trigger_seeding_agent`
-**Schedule:** Mondays at 06:00 UTC
+## Status
+- [ ] Create `ByteAI.Agents` project + add to solution
+- [ ] Implement `Abstractions/` layer (`IAgent`, `AgentTool`, `AgentResult`, `AgentContext`)
+- [ ] Implement `GeminiAgentEngine` (tool-call loop)
+- [ ] Implement `SupportTools` + `SupportAgent`
+- [ ] Add `POST /api/support/ask` endpoint
+- [ ] Wire terminal frontend (`commandParser.ts` fallback + `useTerminal.ts` ask handler)
+- [ ] Add `FeedbackReviewedEvent` to `ByteAI.Core/Events/`
+- [ ] Publish event in `SupportService.UpdateFeedbackStatusAsync` when `newStatus == "reviewed"`
+- [ ] Implement `CodebaseTools` + `GitHubTools` + `TriageAgent`
+- [ ] Implement `FeedbackTriageHandler`
+- [ ] Register everything via `AgentsServiceExtensions.AddByteAIAgents()`

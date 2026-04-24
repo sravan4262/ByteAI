@@ -1,18 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
-import * as signalR from '@microsoft/signalr'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useRef } from 'react'
+import { useChatConnectionContext, type IncomingMessage } from '@/context/chat-connection-context'
 
-const HUB_URL = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5239'}/hubs/chat`
-
-export interface IncomingMessage {
-  messageId: string
-  conversationId: string
-  senderId: string
-  content: string
-  sentAt: string
-}
+export type { IncomingMessage }
 
 interface UseChatConnectionOptions {
   onReceiveMessage?: (msg: IncomingMessage) => void
@@ -20,45 +11,23 @@ interface UseChatConnectionOptions {
 }
 
 export function useChatConnection({ onReceiveMessage, onMessageSent }: UseChatConnectionOptions = {}) {
-  const connectionRef = useRef<signalR.HubConnection | null>(null)
+  const { subscribe, sendMessage, markRead } = useChatConnectionContext()
+
+  // Refs keep the latest callback without re-subscribing on every render
+  const onReceiveRef = useRef(onReceiveMessage)
+  const onSentRef = useRef(onMessageSent)
+  useEffect(() => { onReceiveRef.current = onReceiveMessage }, [onReceiveMessage])
+  useEffect(() => { onSentRef.current = onMessageSent }, [onMessageSent])
 
   useEffect(() => {
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl(HUB_URL, {
-        accessTokenFactory: async () => {
-          const { data } = await supabase.auth.getSession()
-          return data.session?.access_token ?? ''
-        },
-      })
-      .withAutomaticReconnect()
-      .configureLogging(signalR.LogLevel.Warning)
-      .build()
+    if (!onReceiveMessage) return
+    return subscribe('ReceiveMessage', (msg) => onReceiveRef.current?.(msg))
+  }, [subscribe]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    connection.on('ReceiveMessage', (msg: IncomingMessage) => {
-      onReceiveMessage?.(msg)
-    })
-
-    connection.on('MessageSent', (msg: IncomingMessage) => {
-      onMessageSent?.(msg)
-    })
-
-    connection.start().catch(() => {})
-    connectionRef.current = connection
-
-    return () => {
-      connection.stop().catch(() => {})
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const sendMessage = useCallback(async (recipientId: string, content: string) => {
-    if (connectionRef.current?.state !== signalR.HubConnectionState.Connected) return
-    await connectionRef.current.invoke('SendMessage', recipientId, content)
-  }, [])
-
-  const markRead = useCallback(async (conversationId: string) => {
-    if (connectionRef.current?.state !== signalR.HubConnectionState.Connected) return
-    await connectionRef.current.invoke('MarkRead', conversationId)
-  }, [])
+  useEffect(() => {
+    if (!onMessageSent) return
+    return subscribe('MessageSent', (msg) => onSentRef.current?.(msg))
+  }, [subscribe]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return { sendMessage, markRead }
 }

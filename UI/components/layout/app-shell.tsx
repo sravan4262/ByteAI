@@ -8,6 +8,7 @@ import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { NotificationPanel } from '@/components/features/notifications/notification-panel'
 import { NotificationContext } from '@/components/layout/notification-context'
 import { MessagesPanel } from '@/components/features/chat/MessagesPanel'
+import { ChatConnectionProvider } from '@/context/chat-connection-context'
 import { useIsAdmin } from '@/hooks/use-is-admin'
 import { useFeatureFlag } from '@/hooks/use-feature-flags'
 import { useConversations } from '@/hooks/use-conversations'
@@ -36,6 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const active = pathToActiveTab(pathname)
   const [notifOpen, setNotifOpen] = useState(false)
   const [msgOpen, setMsgOpen] = useState(false)
+  const [chatEverOpened, setChatEverOpened] = useState(false)
   const [termOpen, setTermOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const { isAdmin, isLoaded } = useIsAdmin()
@@ -145,7 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Messages floating button — left of terminal/support button */}
       {hasChatFlag && (
         <button
-          onClick={() => { setMsgOpen(v => !v); setTermOpen(false) }}
+          onClick={() => { setMsgOpen(v => !v); setChatEverOpened(true); setTermOpen(false) }}
           title="Messages"
           className={`fixed bottom-5 right-[3.75rem] z-50 w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 ${
             msgOpen
@@ -163,15 +165,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       {/* Messages Panel */}
-      {hasChatFlag && (
-        <MessagesPanel
-          open={msgOpen}
-          onClose={() => setMsgOpen(false)}
-          conversations={conversations}
-          conversationsLoading={conversationsLoading}
-          markConversationRead={markConversationRead}
-          bumpConversation={bumpConversation}
-        />
+      {hasChatFlag && chatEverOpened && (
+        <ChatConnectionProvider>
+          <MessagesPanel
+            open={msgOpen}
+            onClose={() => setMsgOpen(false)}
+            conversations={conversations}
+            conversationsLoading={conversationsLoading}
+            markConversationRead={markConversationRead}
+            bumpConversation={bumpConversation}
+          />
+        </ChatConnectionProvider>
       )}
 
       {/* Terminal feedback widget — Ctrl+` to toggle */}
