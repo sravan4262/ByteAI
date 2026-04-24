@@ -93,9 +93,13 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, IConfiguration config
             return;
         }
 
-        // JWT passthrough — the downstream API validates the token itself
+        // JWT passthrough — the downstream API validates the token itself.
+        // SignalR WebSocket transport cannot set headers, so the client sends the token
+        // via the ?access_token= query parameter instead.
         if (ctx.Request.Headers.Authorization.ToString()
-                .StartsWith("Bearer ", StringComparison.Ordinal))
+                .StartsWith("Bearer ", StringComparison.Ordinal)
+            || (ctx.Request.Path.StartsWithSegments("/hubs")
+                && ctx.Request.Query.ContainsKey("access_token")))
         {
             await next(ctx);
             return;

@@ -98,6 +98,7 @@ export function UserMiniProfile({
     onClose()
   }
 
+
   const stats = [
     { label: 'BYTES', value: resolvedBytes },
     { label: 'FOLLOWERS', value: resolvedFollowers },

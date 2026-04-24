@@ -150,6 +150,10 @@ try
     builder.Services.AddScoped<ISupportService, SupportService>();
     builder.Services.AddScoped<ISupportBusiness, SupportBusiness>();
 
+    // ── Chat ──────────────────────────────────────────────────────────────────
+    builder.Services.AddScoped<ByteAI.Core.Services.Chat.ChatService>();
+    builder.Services.AddSignalR();
+
     // ── Health checks ─────────────────────────────────────────────────────────
     builder.Services.AddHealthChecks()
         .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"], timeout: TimeSpan.FromSeconds(15))
@@ -373,6 +377,7 @@ try
     app.MapGet("/health", () => Results.Redirect("/health/ready"));
 
     app.MapControllers();
+    app.MapHub<ByteAI.Api.Hubs.ChatHub>("/hubs/chat");
 
     app.Run();
 }

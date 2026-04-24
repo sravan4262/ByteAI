@@ -130,6 +130,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
     setLoading(true)
     getProfile(username).then(p => {
       setProfile(p)
+      if (p?.isFollowedByMe !== undefined) setIsFollowing(p.isFollowedByMe)
       setLoading(false)
     })
   }, [username])

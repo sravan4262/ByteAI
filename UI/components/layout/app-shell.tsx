@@ -2,12 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Briefcase, Search, SquarePen, Bell, Settings } from 'lucide-react'
+import { Home, Briefcase, Search, SquarePen, Bell, Settings, MessageSquare } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { NotificationPanel } from '@/components/features/notifications/notification-panel'
 import { NotificationContext } from '@/components/layout/notification-context'
+import { MessagesPanel } from '@/components/features/chat/MessagesPanel'
 import { useIsAdmin } from '@/hooks/use-is-admin'
+import { useFeatureFlag } from '@/hooks/use-feature-flags'
+import { useConversations } from '@/hooks/use-conversations'
 import { useEffect, useState, useMemo } from 'react'
 import { getUnreadNotificationCount } from '@/lib/api/client'
 import { TerminalWidget } from '@/components/features/terminal/TerminalWidget'
@@ -32,10 +35,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const active = pathToActiveTab(pathname)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [msgOpen, setMsgOpen] = useState(false)
+  const [termOpen, setTermOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const { isAdmin, isLoaded } = useIsAdmin()
+  const hasChatFlag = useFeatureFlag('chat')
+  const { conversations, loading: conversationsLoading, markConversationRead, bumpConversation } = useConversations(hasChatFlag === true)
+  const hasUnreadMessages = hasChatFlag && conversations.some(c => c.hasUnread)
 
-  // Poll unread count every 60 seconds
+  // Poll unread notification count every 60 seconds
   useEffect(() => {
     let cancelled = false
     const fetch = async () => {
@@ -55,11 +63,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Left Sidebar Navigation */}
       <nav className="w-20 lg:w-64 flex-shrink-0 border-r border-[var(--border-h)] bg-[var(--bg-card)] backdrop-blur-xl flex flex-col items-center lg:items-start p-4 fixed left-0 top-0 bottom-0 z-50" onClick={() => notifOpen && setNotifOpen(false)}>
         <div className="mb-8">
-          {/* Full logo on wide sidebar */}
           <div className="hidden lg:block">
             <ByteAILogo size="md" showText />
           </div>
-          {/* Icon-only on narrow sidebar */}
           <div className="lg:hidden">
             <ByteAILogo size="sm" showText={false} />
           </div>
@@ -136,8 +142,43 @@ export function AppShell({ children }: { children: ReactNode }) {
         onCountChange={setUnreadCount}
       />
 
+      {/* Messages floating button — left of terminal/support button */}
+      {hasChatFlag && (
+        <button
+          onClick={() => { setMsgOpen(v => !v); setTermOpen(false) }}
+          title="Messages"
+          className={`fixed bottom-5 right-[3.75rem] z-50 w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 ${
+            msgOpen
+              ? 'bg-[rgba(16,217,160,0.15)] border-[var(--green)] text-[var(--green)] shadow-[0_0_20px_rgba(16,217,160,0.45)]'
+              : 'bg-[var(--bg-card)] border-[rgba(16,217,160,0.25)] text-[var(--t2)] hover:border-[var(--green)] hover:text-[var(--green)] hover:shadow-[0_0_16px_rgba(16,217,160,0.25)]'
+          }`}
+        >
+          <span className="relative">
+            <MessageSquare size={16} />
+            {hasUnreadMessages && !msgOpen && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[var(--green)] shadow-[0_0_6px_rgba(16,217,160,0.8)]" />
+            )}
+          </span>
+        </button>
+      )}
+
+      {/* Messages Panel */}
+      {hasChatFlag && (
+        <MessagesPanel
+          open={msgOpen}
+          onClose={() => setMsgOpen(false)}
+          conversations={conversations}
+          conversationsLoading={conversationsLoading}
+          markConversationRead={markConversationRead}
+          bumpConversation={bumpConversation}
+        />
+      )}
+
       {/* Terminal feedback widget — Ctrl+` to toggle */}
-      <TerminalWidget />
+      <TerminalWidget
+        open={termOpen}
+        onOpenChange={(v) => { setTermOpen(v); if (v) setMsgOpen(false) }}
+      />
     </div>
     </NotificationContext.Provider>
   )

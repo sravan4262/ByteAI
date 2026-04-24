@@ -1,33 +1,36 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Terminal } from 'lucide-react'
 import { TerminalShell } from './TerminalShell'
 import { useTerminal } from './useTerminal'
 
-export function TerminalWidget() {
-  const [open, setOpen] = useState(false)
+interface Props {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
 
-  const close  = useCallback(() => setOpen(false), [])
+export function TerminalWidget({ open, onOpenChange }: Props) {
+  const close = useCallback(() => onOpenChange(false), [onOpenChange])
   const { lines, loading, stage, handleInput, clear } = useTerminal(close)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === '`') {
         e.preventDefault()
-        setOpen(v => !v)
+        onOpenChange(!open)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [open, onOpenChange])
 
   return (
     <>
       {/* Trigger button */}
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={() => onOpenChange(!open)}
         title="Open terminal (Ctrl+`)"
         className={`fixed bottom-5 right-5 z-50 w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200
           ${open
@@ -62,7 +65,7 @@ export function TerminalWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-20 right-5 z-50 w-[500px] h-[380px] max-w-[calc(100vw-2.5rem)]"
+            className="fixed bottom-20 right-5 z-50 w-[500px] h-[520px] max-w-[calc(100vw-2.5rem)]"
           >
             <TerminalShell
               lines={lines}

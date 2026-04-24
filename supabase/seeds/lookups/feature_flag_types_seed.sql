@@ -8,5 +8,6 @@ INSERT INTO lookups.feature_flag_types (key, name, description, global_open, cre
 VALUES
   ('ai-search-ask',  'AI Search & Answer',  'Semantic search + RAG powered answers using Groq',                   false, now(), now()),
   ('ai-format-code', 'AI Code Formatter',   'Format code using Groq for multiple programming languages',          false, now(), now()),
-  ('reach-estimate', 'Reach Estimate',      'Show estimated reach (dev audience size) on the compose byte screen',false, now(), now())
+  ('reach-estimate', 'Reach Estimate',      'Show estimated reach (dev audience size) on the compose byte screen',false, now(), now()),
+  ('chat',           'Chat',               'Real-time direct messaging between mutually following users.',        false, now(), now())
 ON CONFLICT (key) DO NOTHING;

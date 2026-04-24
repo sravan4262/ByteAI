@@ -5,5 +5,6 @@ INSERT INTO users.notification_types (key, label, icon_name) VALUES
   ('follow',   'New Follower',   'user-plus'),
   ('unfollow', 'Unfollowed',     'user-minus'),
   ('badge',    'Badge Earned',   'award'),
-  ('system',   'System Notice',  'bell')
+  ('system',          'System Notice',  'bell'),
+  ('feedback_update', 'Feedback Update', 'message-square')
 ON CONFLICT (key) DO NOTHING;

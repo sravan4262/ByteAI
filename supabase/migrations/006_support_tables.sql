@@ -28,8 +28,3 @@ COMMENT ON TABLE support.feedback IS 'User-submitted app feedback — positive, 
 COMMENT ON COLUMN support.feedback.type IS 'good | bad | idea';
 COMMENT ON COLUMN support.feedback.status IS 'open | reviewed | closed — managed by admin';
 COMMENT ON COLUMN support.feedback.admin_note IS 'Optional admin message shown to user via notification when status changes';
-
--- ── Notification type seed ──────────────────────────────────────────────────
-INSERT INTO users.notification_types (key, label, icon_name)
-VALUES ('feedback_update', 'Feedback Update', 'message-square')
-ON CONFLICT (key) DO NOTHING;

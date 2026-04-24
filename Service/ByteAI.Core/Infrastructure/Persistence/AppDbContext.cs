@@ -61,6 +61,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Social> Socials => Set<Social>();
     public DbSet<UserXpLog> UserXpLogs => Set<UserXpLog>();
 
+    // Chat
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<Message> Messages => Set<Message>();
+    public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
+
     // Support
     public DbSet<Feedback> Feedbacks => Set<Feedback>();
 

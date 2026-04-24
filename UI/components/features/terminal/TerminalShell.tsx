@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Minus, Terminal } from 'lucide-react'
+import { X, Minus, LifeBuoy } from 'lucide-react'
 import { TerminalOutput } from './TerminalOutput'
 import { TerminalInput } from './TerminalInput'
 import type { TerminalLine } from './useTerminal'
@@ -18,6 +18,9 @@ export function TerminalShell({ lines, loading, stage, onInput, onClose, onClear
   return (
     <div className="flex flex-col h-full rounded-xl overflow-hidden border border-[rgba(16,217,160,0.3)] bg-[var(--bg-card)] shadow-[0_24px_80px_rgba(0,0,0,0.85),0_0_0_1px_rgba(16,217,160,0.08),0_0_60px_rgba(16,217,160,0.05)]">
 
+      {/* Accent line */}
+      <div className="h-px bg-gradient-to-r from-[var(--green)] via-[rgba(16,217,160,0.25)] to-transparent flex-shrink-0" />
+
       {/* Title bar */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-[rgba(16,217,160,0.15)] bg-[rgba(16,217,160,0.03)] select-none">
 
@@ -26,16 +29,16 @@ export function TerminalShell({ lines, loading, stage, onInput, onClose, onClear
           <button
             onClick={onClose}
             title="Close"
-            className="group w-3 h-3 rounded-full bg-[#ff5f57] border border-[rgba(0,0,0,0.15)] flex items-center justify-center hover:brightness-90 transition-all"
+            className="w-3 h-3 rounded-full bg-[#ff5f57] border border-[rgba(0,0,0,0.15)] flex items-center justify-center hover:brightness-90 transition-all"
           >
-            <X size={6} className="text-[rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 transition-opacity" />
+            <X size={6} className="text-[rgba(0,0,0,0.65)]" />
           </button>
           <button
             onClick={onClear}
             title="Clear"
-            className="group w-3 h-3 rounded-full bg-[#febc2e] border border-[rgba(0,0,0,0.15)] flex items-center justify-center hover:brightness-90 transition-all"
+            className="w-3 h-3 rounded-full bg-[#febc2e] border border-[rgba(0,0,0,0.15)] flex items-center justify-center hover:brightness-90 transition-all"
           >
-            <Minus size={6} className="text-[rgba(0,0,0,0.5)] opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Minus size={6} className="text-[rgba(0,0,0,0.65)]" />
           </button>
           <div className="w-3 h-3 rounded-full bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.08)]" />
         </div>
@@ -43,10 +46,10 @@ export function TerminalShell({ lines, loading, stage, onInput, onClose, onClear
         {/* Title */}
         <div className="flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
           <div className="w-4 h-4 rounded-sm bg-[rgba(16,217,160,0.1)] border border-[rgba(16,217,160,0.2)] flex items-center justify-center">
-            <Terminal size={9} className="text-[var(--green)]" />
+            <LifeBuoy size={9} className="text-[var(--green)]" />
           </div>
           <span className="font-mono text-[10px] font-semibold text-[var(--t1)] tracking-[0.12em]">
-            BYTEAI_TERMINAL
+            SUPPORT
           </span>
           <span className="font-mono text-[10px] text-[var(--t3)]">v1.0</span>
         </div>
@@ -64,9 +67,6 @@ export function TerminalShell({ lines, loading, stage, onInput, onClose, onClear
           )}
         </div>
       </div>
-
-      {/* Accent line */}
-      <div className="h-px bg-gradient-to-r from-[var(--green)] via-[rgba(16,217,160,0.25)] to-transparent" />
 
       {/* Output + Input */}
       <TerminalOutput lines={lines} loading={loading} />

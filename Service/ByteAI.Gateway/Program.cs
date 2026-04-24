@@ -37,6 +37,14 @@ try
         .LoadFromMemory(
             routes:
             [
+                // SignalR hubs require long-lived connections — must be matched before the
+                // catch-all so the hub cluster (no activity timeout) is used instead.
+                new RouteConfig
+                {
+                    RouteId   = "signalr-route",
+                    ClusterId = "byteai-api-signalr",
+                    Match     = new RouteMatch { Path = "/hubs/{**catch-all}" },
+                },
                 new RouteConfig
                 {
                     RouteId   = "api-route",
@@ -46,6 +54,19 @@ try
             ],
             clusters:
             [
+                // SignalR cluster: no ActivityTimeout — connection lifetime is managed by the hub.
+                new ClusterConfig
+                {
+                    ClusterId    = "byteai-api-signalr",
+                    HttpRequest  = new Yarp.ReverseProxy.Forwarder.ForwarderRequestConfig
+                    {
+                        ActivityTimeout = Timeout.InfiniteTimeSpan,
+                    },
+                    Destinations = new Dictionary<string, DestinationConfig>
+                    {
+                        ["primary"] = new DestinationConfig { Address = apiUrl },
+                    },
+                },
                 new ClusterConfig
                 {
                     ClusterId    = "byteai-api",
