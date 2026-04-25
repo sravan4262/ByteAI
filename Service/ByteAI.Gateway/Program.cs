@@ -13,10 +13,11 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    // Sinks are declared in appsettings.*.json — do NOT add WriteTo.Console() here
+    // or every log line will be emitted twice (one per sink).
     builder.Host.UseSerilog((ctx, lc) => lc
         .ReadFrom.Configuration(ctx.Configuration)
-        .Enrich.FromLogContext()
-        .WriteTo.Console());
+        .Enrich.FromLogContext());
 
     // ── CORS — allow the SWA frontend origin ────────────────────────────────
     var allowedOrigins = (builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000")
@@ -98,10 +99,17 @@ try
 
     app.UseSerilogRequestLogging(opts =>
     {
-        opts.GetLevel = (ctx, _, _) =>
-            ctx.Request.Path.StartsWithSegments("/health")
-                ? Serilog.Events.LogEventLevel.Debug
-                : Serilog.Events.LogEventLevel.Information;
+        // Levels chosen so that in prod (MinimumLevel.Default = Warning) only failed,
+        // erroring, or slow requests survive — successful 2xx, OPTIONS preflights,
+        // and health probes drop below the threshold and are filtered out.
+        opts.GetLevel = (ctx, elapsed, ex) =>
+            ex is not null                                   ? Serilog.Events.LogEventLevel.Error
+            : ctx.Response.StatusCode >= 500                 ? Serilog.Events.LogEventLevel.Error
+            : ctx.Response.StatusCode >= 400                 ? Serilog.Events.LogEventLevel.Warning
+            : elapsed > 1000                                 ? Serilog.Events.LogEventLevel.Warning
+            : ctx.Request.Method == "OPTIONS"                ? Serilog.Events.LogEventLevel.Verbose
+            : ctx.Request.Path.StartsWithSegments("/health") ? Serilog.Events.LogEventLevel.Verbose
+            : Serilog.Events.LogEventLevel.Information;
     });
     app.UseCors();
 
