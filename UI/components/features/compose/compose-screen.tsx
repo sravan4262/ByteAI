@@ -6,6 +6,7 @@ import { X, AlertTriangle, Plus, Zap, Briefcase } from 'lucide-react'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { CreatableDropdown } from '@/components/ui/creatable-dropdown'
 import { MultiSelectDropdown, type DropdownOption } from '@/components/ui/multi-select-dropdown'
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown'
 import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
@@ -15,6 +16,12 @@ import * as api from '@/lib/api'
 import { useFeatureFlag } from '@/hooks/use-feature-flags'
 
 type ComposeType = 'byte' | 'interview' | null
+
+const DIFFICULTY_OPTIONS = [
+  { value: 'easy', label: 'EASY' },
+  { value: 'medium', label: 'MEDIUM' },
+  { value: 'hard', label: 'HARD' },
+]
 
 interface QuestionPair {
   id: string
@@ -59,6 +66,7 @@ export function ComposeScreen() {
   const [company, setCompany] = useState('')
   const [role, setRole] = useState('')
   const [location, setLocation] = useState('')
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium')
   const [companyOptions, setCompanyOptions] = useState<string[]>([])
   const [roleOptions, setRoleOptions] = useState<string[]>([])
   const [locationOptions, setLocationOptions] = useState<string[]>([])
@@ -220,6 +228,7 @@ export function ComposeScreen() {
         company: company.trim(),
         role: role.trim(),
         location: location.trim(),
+        difficulty,
         questions: validQuestions.map((q) => ({ question: q.question.trim(), answer: q.answer.trim() })),
         isAnonymous,
       })
@@ -397,6 +406,7 @@ export function ComposeScreen() {
                 onChange={setSelectedTechStacks}
                 placeholder="SELECT TECH STACKS"
                 accentColor="accent"
+                creatable
                 className="w-full [&>button]:w-full [&>button]:justify-between"
               />
             </div>
@@ -493,19 +503,36 @@ export function ComposeScreen() {
               </div>
             </div>
 
-            {/* Location */}
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)] flex-shrink-0" />
-                <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">LOCATION <span className="text-[var(--red)]">*</span></span>
+            {/* Location + Difficulty */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)] flex-shrink-0" />
+                  <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">LOCATION <span className="text-[var(--red)]">*</span></span>
+                </div>
+                <CreatableDropdown
+                  options={locationOptions}
+                  value={location}
+                  onChange={setLocation}
+                  placeholder="e.g. San Francisco"
+                  accentColor="purple"
+                />
               </div>
-              <CreatableDropdown
-                options={locationOptions}
-                value={location}
-                onChange={setLocation}
-                placeholder="e.g. San Francisco"
-                accentColor="purple"
-              />
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)] flex-shrink-0" />
+                  <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">DIFFICULTY <span className="text-[var(--red)]">*</span></span>
+                </div>
+                <SearchableDropdown
+                  options={DIFFICULTY_OPTIONS}
+                  value={difficulty}
+                  onChange={(v) => { if (v === 'easy' || v === 'medium' || v === 'hard') setDifficulty(v) }}
+                  placeholder="DIFFICULTY"
+                  showAllOption={false}
+                  accentColor="purple"
+                  className="w-full [&>button]:w-full [&>button]:justify-between"
+                />
+              </div>
             </div>
 
             {/* Questions */}

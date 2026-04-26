@@ -24,7 +24,7 @@ public sealed class NotificationService(AppDbContext db) : INotificationService
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<PagedResult<Notification>> GetNotificationsAsync(Guid userId, PaginationParams pagination, bool unreadOnly, CancellationToken ct)
+    public async Task<PagedResult<NotificationWithActor>> GetNotificationsAsync(Guid userId, PaginationParams pagination, bool unreadOnly, CancellationToken ct)
     {
         var query = db.Notifications
             .AsNoTracking()
@@ -40,7 +40,42 @@ public sealed class NotificationService(AppDbContext db) : INotificationService
             .Take(pagination.PageSize)
             .ToListAsync(CancellationToken.None);
 
-        return new PagedResult<Notification>(items, total, pagination.Page, pagination.PageSize);
+        // Pull actor IDs out of the payloads, then join Users in one query so each
+        // notification renders with the actor's *current* username/displayName/avatarUrl
+        // rather than the snapshot frozen at write time.
+        var actorIds = items
+            .Select(n => TryGetActorId(n.Payload))
+            .OfType<Guid>()
+            .Distinct()
+            .ToList();
+
+        var actorMap = actorIds.Count == 0
+            ? new Dictionary<Guid, NotificationActor>()
+            : await db.Users
+                .AsNoTracking()
+                .Where(u => actorIds.Contains(u.Id))
+                .Select(u => new { u.Id, Actor = new NotificationActor(u.Username, u.DisplayName, u.AvatarUrl) })
+                .ToDictionaryAsync(x => x.Id, x => x.Actor, ct);
+
+        var paired = items
+            .Select(n =>
+            {
+                var id = TryGetActorId(n.Payload);
+                NotificationActor? actor = id.HasValue && actorMap.TryGetValue(id.Value, out var a) ? a : null;
+                return new NotificationWithActor(n, actor);
+            })
+            .ToList();
+
+        return new PagedResult<NotificationWithActor>(paired, total, pagination.Page, pagination.PageSize);
+    }
+
+    private static Guid? TryGetActorId(JsonDocument? payload)
+    {
+        if (payload is null) return null;
+        if (payload.RootElement.ValueKind != JsonValueKind.Object) return null;
+        if (!payload.RootElement.TryGetProperty("actorId", out var a)) return null;
+        if (a.ValueKind != JsonValueKind.String) return null;
+        return Guid.TryParse(a.GetString(), out var id) ? id : null;
     }
 
     public async Task<bool> MarkReadAsync(Guid notificationId, Guid userId, CancellationToken ct)

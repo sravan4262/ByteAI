@@ -71,28 +71,33 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
             .Select(b => b.AuthorId)
             .FirstOrDefaultAsync(CancellationToken.None);
 
-        if (byteAuthorId != Guid.Empty)
+        if (byteAuthorId != Guid.Empty && byteAuthorId != authorId)
         {
-            var actor = await db.Users
-                .AsNoTracking()
-                .Where(u => u.Id == authorId)
-                .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
-                .FirstOrDefaultAsync(CancellationToken.None);
+            // Respect notification preference
+            var prefs = await db.UserPreferences.FindAsync([byteAuthorId], ct);
+            if (prefs is null || prefs.NotifComments)
+            {
+                var actor = await db.Users
+                    .AsNoTracking()
+                    .Where(u => u.Id == authorId)
+                    .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
+                    .FirstOrDefaultAsync(CancellationToken.None);
 
-            await notifications.CreateAsync(
-                userId: byteAuthorId,
-                type: "comment",
-                payload: new
-                {
-                    byteId,
-                    commentId = comment.Id,
-                    actorId = authorId,
-                    actorUsername = actor?.Username ?? string.Empty,
-                    actorDisplayName = actor?.DisplayName ?? string.Empty,
-                    actorAvatarUrl = actor?.AvatarUrl,
-                    preview = body.Length > 50 ? body[..50] + "…" : body,
-                },
-                ct: ct);
+                await notifications.CreateAsync(
+                    userId: byteAuthorId,
+                    type: "comment",
+                    payload: new
+                    {
+                        byteId,
+                        commentId = comment.Id,
+                        actorId = authorId,
+                        actorUsername = actor?.Username ?? string.Empty,
+                        actorDisplayName = actor?.DisplayName ?? string.Empty,
+                        actorAvatarUrl = actor?.AvatarUrl,
+                        preview = body.Length > 50 ? body[..50] + "…" : body,
+                    },
+                    ct: ct);
+            }
         }
 
         // ── XP event — published after all DB operations complete ──────────────

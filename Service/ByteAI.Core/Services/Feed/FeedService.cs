@@ -154,43 +154,10 @@ public sealed class FeedService(AppDbContext db) : IFeedService
 
                 return (items, total);
             }
-
-            // ── Cold start: no embedding yet — filter by onboarding tech stack preferences ──
-            var preferredStackIds = await db.UserTechStacks
-                .Where(uts => uts.UserId == userId.Value)
-                .Select(uts => uts.TechStackId)
-                .ToListAsync(CancellationToken.None);
-
-            if (preferredStackIds.Count > 0)
-            {
-                var preferredByteIds = db.ByteTechStacks
-                    .Where(bts => preferredStackIds.Contains(bts.TechStackId))
-                    .Select(bts => bts.ByteId);
-
-                var coldQuery = ApplyTagFilter(
-                    db.Bytes.AsNoTracking()
-                        .Where(b => b.IsActive && preferredByteIds.Contains(b.Id))
-                        .OrderByDescending(b => b.CreatedAt),
-                    tags);
-
-                var coldTotal = await coldQuery.CountAsync(CancellationToken.None);
-                var coldItems = await coldQuery
-                    .Skip(pagination.Skip)
-                    .Take(pagination.PageSize)
-                    .Select(b => new ByteResult(
-                        b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
-                        b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(),
-                        b.UserLikes.Any(l => l.UserId == userId.Value),
-                        b.UserBookmarks.Any(bk => bk.UserId == userId.Value),
-                        b.Author.Username, b.Author.DisplayName ?? b.Author.Username,
-                        b.Author.AvatarUrl, b.Author.RoleTitle, b.Author.Company))
-                    .ToListAsync(CancellationToken.None);
-
-                return (coldItems, coldTotal);
-            }
         }
 
-        // ── Fallback: pure recency (anonymous or no preferences set) ────────────
+        // ── No embedding: anonymous, or signed-in pre-engagement. Recency only;
+        //    tech-stack filtering is driven by the explicit `tags` query param. ──
         var fallbackQuery = ApplyTagFilter(
             db.Bytes.AsNoTracking().Where(b => b.IsActive).OrderByDescending(b => b.CreatedAt),
             tags);

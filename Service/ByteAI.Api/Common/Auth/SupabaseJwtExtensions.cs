@@ -59,13 +59,32 @@ public static class SupabaseJwtExtensions
                 {
                     ValidateIssuer = true,
                     ValidIssuer = issuer,
-                    ValidateAudience = false,
+                    // Supabase mints user tokens with aud="authenticated". Validating this
+                    // prevents tokens from other Supabase projects sharing the JWT secret
+                    // (or service-role tokens with aud="service_role") from being accepted.
+                    ValidateAudience = true,
+                    ValidAudience = "authenticated",
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
                     // HS256 fallback — middleware merges these with JWKS keys automatically.
                     IssuerSigningKeys = [hs256Key],
                     NameClaimType = "sub",
                     ClockSkew = TimeSpan.FromSeconds(30),
+                };
+
+                // SignalR's SSE / long-polling fallback transports pass the JWT as
+                // ?access_token=... in the URL (WebSockets carry it via the negotiate
+                // handshake header). Read it here so /hubs/* auth works on those transports too.
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = ctx =>
+                    {
+                        var token = ctx.Request.Query["access_token"];
+                        var path = ctx.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/hubs"))
+                            ctx.Token = token;
+                        return Task.CompletedTask;
+                    },
                 };
             });
 

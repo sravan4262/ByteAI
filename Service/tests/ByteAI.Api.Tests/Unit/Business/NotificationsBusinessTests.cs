@@ -45,7 +45,7 @@ public sealed class NotificationsBusinessTests
     public async Task GetNotifications_ValidUser_DelegatesToService()
     {
         _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
-        var expected = new PagedResult<Notification>([], 0, 1, 20);
+        var expected = new PagedResult<NotificationWithActor>([], 0, 1, 20);
         _notificationService
             .Setup(s => s.GetNotificationsAsync(_userId, It.IsAny<PaginationParams>(), false, default))
             .ReturnsAsync(expected);
@@ -61,7 +61,7 @@ public sealed class NotificationsBusinessTests
         _currentUser.Setup(s => s.GetCurrentUserIdAsync(SupabaseUserId, default)).ReturnsAsync(_userId);
         _notificationService
             .Setup(s => s.GetNotificationsAsync(_userId, It.Is<PaginationParams>(p => p.PageSize == 50), false, default))
-            .ReturnsAsync(new PagedResult<Notification>([], 0, 1, 50));
+            .ReturnsAsync(new PagedResult<NotificationWithActor>([], 0, 1, 50));
 
         await _sut.GetNotificationsAsync(SupabaseUserId, 1, 999, false, default);
 

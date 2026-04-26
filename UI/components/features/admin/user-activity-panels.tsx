@@ -16,14 +16,23 @@ function formatRelative(iso: string): string {
 
 function UserRow({ user }: { user: ActivityUser }) {
   const initials = (user.displayName?.[0] ?? user.username[0]).toUpperCase()
+  const url = user.avatarUrl
+  const isUrl = !!url && (url.startsWith('http') || url.startsWith('/'))
+  const isEmoji = !!url && !isUrl
   return (
     <div className="px-4 py-3 flex items-center gap-3 border-b border-[var(--border-h)] last:border-0">
-      {user.avatarUrl ? (
+      {isUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={user.avatarUrl}
+          src={url!}
           alt={user.displayName}
+          referrerPolicy="no-referrer"
           className="w-7 h-7 rounded-full object-cover ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg-card)] flex-shrink-0"
         />
+      ) : isEmoji ? (
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#131b40] to-[#1e3580] flex items-center justify-center flex-shrink-0 ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-[var(--bg-card)]">
+          <span className="text-sm leading-none select-none">{url}</span>
+        </div>
       ) : (
         <div className="w-7 h-7 rounded-full bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] flex items-center justify-center font-mono text-[10px] text-[var(--accent)] font-bold flex-shrink-0">
           {initials}

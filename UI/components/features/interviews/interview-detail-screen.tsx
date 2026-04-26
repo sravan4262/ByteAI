@@ -346,6 +346,17 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
                     <MapPin size={10} /> {interview.location}
                   </span>
                 )}
+                {interview.difficulty && (
+                  <span className={`font-mono text-[10px] px-2.5 py-1 rounded border font-bold ${
+                    interview.difficulty.toLowerCase() === 'hard'
+                      ? 'text-[var(--red)] border-[rgba(244,63,94,0.35)] bg-[rgba(244,63,94,0.07)]'
+                      : interview.difficulty.toLowerCase() === 'medium'
+                      ? 'text-[var(--orange)] border-[rgba(249,115,22,0.35)] bg-[rgba(249,115,22,0.07)]'
+                      : 'text-[var(--green)] border-[rgba(16,217,160,0.35)] bg-[rgba(16,217,160,0.07)]'
+                  }`}>
+                    {interview.difficulty.toUpperCase()}
+                  </span>
+                )}
               </div>
 
               {showMiniProfile && !interview.isAnonymous && (

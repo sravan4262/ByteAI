@@ -12,6 +12,11 @@ public sealed record UserSearchResponse(
 public sealed record SearchResponse(
     Guid Id,
     Guid AuthorId,
+    string AuthorUsername,
+    string? AuthorDisplayName,
+    string? AuthorAvatarUrl,
+    string? AuthorRoleTitle,
+    string? AuthorCompany,
     string Title,
     string Body,
     string? CodeSnippet,

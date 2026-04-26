@@ -1,17 +1,27 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Search, X } from 'lucide-react'
+import { Check, ChevronDown, Search, X } from 'lucide-react'
 
 export interface DropdownOption {
   value: string
   label: string
 }
 
-interface SearchableDropdownProps {
-  options: DropdownOption[]
+type SingleProps = {
+  multiple?: false
   value: string | null
   onChange: (value: string | null) => void
+}
+
+type MultiProps = {
+  multiple: true
+  value: string[]
+  onChange: (value: string[]) => void
+}
+
+type SearchableDropdownProps = (SingleProps | MultiProps) & {
+  options: DropdownOption[]
   placeholder?: string
   allLabel?: string
   showAllOption?: boolean
@@ -38,25 +48,34 @@ const ACCENT_CLASSES = {
   },
 }
 
-export function SearchableDropdown({
-  options,
-  value,
-  onChange,
-  placeholder = 'SELECT',
-  allLabel = 'ALL',
-  showAllOption = true,
-  className = '',
-  accentColor = 'accent',
-}: SearchableDropdownProps) {
+export function SearchableDropdown(props: SearchableDropdownProps) {
+  const {
+    options,
+    placeholder = 'SELECT',
+    allLabel = 'ALL',
+    showAllOption = true,
+    className = '',
+    accentColor = 'accent',
+  } = props
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const accent = ACCENT_CLASSES[accentColor]
 
-  const selectedLabel = value
-    ? options.find((o) => o.value === value)?.label ?? value
-    : allLabel
+  const selectedValues: string[] = props.multiple
+    ? props.value
+    : props.value
+      ? [props.value]
+      : []
+  const isSelected = (v: string) => selectedValues.includes(v)
+  const hasSelection = selectedValues.length > 0
+
+  const selectedLabel = !hasSelection
+    ? allLabel
+    : selectedValues.length === 1
+      ? options.find((o) => o.value === selectedValues[0])?.label ?? selectedValues[0]
+      : `${options.find((o) => o.value === selectedValues[0])?.label ?? selectedValues[0]} +${selectedValues.length - 1}`
 
   const filtered = options
     .filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
@@ -84,8 +103,23 @@ export function SearchableDropdown({
     if (open) inputRef.current?.focus()
   }, [open])
 
-  const select = (val: string | null) => {
-    onChange(val)
+  const selectOne = (val: string) => {
+    if (props.multiple) {
+      const next = isSelected(val)
+        ? props.value.filter((v) => v !== val)
+        : [...props.value, val]
+      props.onChange(next)
+      // Keep open in multi mode so users can pick more
+    } else {
+      props.onChange(val)
+      setOpen(false)
+      setSearch('')
+    }
+  }
+
+  const clear = () => {
+    if (props.multiple) props.onChange([])
+    else props.onChange(null)
     setOpen(false)
     setSearch('')
   }
@@ -95,17 +129,17 @@ export function SearchableDropdown({
       <button
         onClick={() => setOpen((o) => !o)}
         className={`flex items-center gap-2 font-mono text-xs tracking-[0.08em] px-3 py-2 rounded-xl border transition-all ${
-          value
+          hasSelection
             ? accent.active
             : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
         }`}
       >
-        <span className="truncate max-w-[120px]">{selectedLabel}</span>
-        {value ? (
+        <span className="truncate max-w-[140px]">{selectedLabel}</span>
+        {hasSelection ? (
           <X
             size={10}
             className="flex-shrink-0 opacity-70 hover:opacity-100"
-            onClick={(e) => { e.stopPropagation(); select(null) }}
+            onClick={(e) => { e.stopPropagation(); clear() }}
           />
         ) : (
           <ChevronDown size={10} className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -136,9 +170,9 @@ export function SearchableDropdown({
           <div className="max-h-52 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
             {showAllOption && (
               <button
-                onClick={() => select(null)}
+                onClick={() => clear()}
                 className={`w-full text-left font-mono text-xs px-3 py-2.5 transition-all ${
-                  !value
+                  !hasSelection
                     ? accent.highlight
                     : 'text-[var(--t1)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
                 }`}
@@ -152,19 +186,23 @@ export function SearchableDropdown({
                 No results for &quot;{search}&quot;
               </div>
             ) : (
-              filtered.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => select(opt.value)}
-                  className={`w-full text-left text-xs px-3 py-2.5 transition-all ${
-                    value === opt.value
-                      ? accent.highlight + ' font-mono'
-                      : 'text-[var(--t1)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))
+              filtered.map((opt) => {
+                const selected = isSelected(opt.value)
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => selectOne(opt.value)}
+                    className={`w-full flex items-center justify-between gap-2 text-left text-xs px-3 py-2.5 transition-all ${
+                      selected
+                        ? accent.highlight + ' font-mono'
+                        : 'text-[var(--t1)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
+                    }`}
+                  >
+                    <span className="truncate">{opt.label}</span>
+                    {props.multiple && selected && <Check size={12} className="flex-shrink-0" />}
+                  </button>
+                )
+              })
             )}
           </div>
         </div>

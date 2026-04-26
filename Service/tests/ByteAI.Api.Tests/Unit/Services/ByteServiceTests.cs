@@ -137,16 +137,20 @@ public sealed class ByteServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateByte_LlmReturnsNull_ThrowsServiceUnavailableException()
+    public async Task CreateByte_LlmReturnsNull_FailsOpenAndPersists()
     {
-        // LLM unavailable → null → service unavailable (not invalid content)
+        // LLM unavailable → null → fail open (Stages 1 & 2 already passed, so don't block on a
+        // transient AI failure during create). Update path is fail-closed; create is intentionally not.
+        SeedAuthor();
         _llm.Setup(g => g.ValidateTechContentAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
              .ReturnsAsync((ContentValidationResult?)null);
         _embedding.Setup(e => e.EmbedQueryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(TechAnchorsTestHelper.UnitVector);
 
-        await Assert.ThrowsAsync<ServiceUnavailableException>(
-            () => _sut.CreateByteAsync(_authorId, "Docker containers explained", "A guide to Docker networking", null, null, "article", default, true));
+        var result = await _sut.CreateByteAsync(_authorId, "Docker containers explained", "A guide to Docker networking", null, null, "article", default, true);
+
+        Assert.NotNull(result);
+        Assert.Equal(_authorId, result.AuthorId);
     }
 
     // ── Happy path ────────────────────────────────────────────────────────────

@@ -147,12 +147,38 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
 
         if (techStackNames is { Count: > 0 })
         {
-            var names = techStackNames.Select(n => n.ToLowerInvariant()).ToList();
-            var stacks = await db.TechStacks
-                .Where(t => names.Contains(t.Name.ToLower()))
-                .ToListAsync(ct);
+            var inputs = techStackNames
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Select(n => (Original: n.Trim(), Slug: SlugifyTechStack(n)))
+                .GroupBy(p => p.Slug)
+                .Select(g => g.First())
+                .ToList();
 
-            foreach (var stack in stacks)
+            var slugs = inputs.Select(i => i.Slug).ToList();
+            var existing = await db.TechStacks
+                .Where(t => slugs.Contains(t.Name))
+                .ToListAsync(ct);
+            var existingSlugs = existing.Select(t => t.Name).ToHashSet();
+
+            var newStacks = inputs
+                .Where(i => !existingSlugs.Contains(i.Slug))
+                .Select(i => new TechStack
+                {
+                    Id = Guid.NewGuid(),
+                    SubdomainId = null,
+                    Name = i.Slug,
+                    Label = TitleCaseLabel(i.Original),
+                    SortOrder = 999,
+                })
+                .ToList();
+
+            if (newStacks.Count > 0)
+            {
+                db.TechStacks.AddRange(newStacks);
+                await db.SaveChangesAsync(ct);
+            }
+
+            foreach (var stack in existing.Concat(newStacks))
                 db.ByteTechStacks.Add(new ByteTechStack { ByteId = entity.Id, TechStackId = stack.Id });
 
             await db.SaveChangesAsync(ct);
@@ -250,16 +276,49 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
 
     public async Task RecordViewAsync(Guid byteId, Guid? userId, int? dwellMs, CancellationToken ct)
     {
-        db.UserViews.Add(new Entities.UserView
+        var now = DateTime.UtcNow;
+
+        // Anonymous: no dedup possible (no identity), and no EMA. Just record for analytics.
+        if (!userId.HasValue)
         {
-            ByteId    = byteId,
-            UserId    = userId,
-            ViewedAt  = DateTime.UtcNow,
-            DwellMs   = dwellMs,
-        });
+            db.UserViews.Add(new Entities.UserView { ByteId = byteId, UserId = null, ViewedAt = now, DwellMs = dwellMs });
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+
+        // Dedup at (user_id, byte_id) per 24h: collapse repeated opens into one row, taking the longest dwell.
+        // Prevents tab-loop gaming of trending and rabbit-hole drift in the interest-embedding EMA.
+        var since24h = now.AddHours(-24);
+        var existing = await db.UserViews
+            .Where(v => v.UserId == userId.Value && v.ByteId == byteId && v.ViewedAt >= since24h)
+            .OrderByDescending(v => v.ViewedAt)
+            .FirstOrDefaultAsync(ct);
+
+        bool emaShouldFire;
+        if (existing is null)
+        {
+            db.UserViews.Add(new Entities.UserView
+            {
+                ByteId   = byteId,
+                UserId   = userId,
+                ViewedAt = now,
+                DwellMs  = dwellMs,
+            });
+            emaShouldFire = dwellMs >= 5000;
+        }
+        else
+        {
+            var prevDwell = existing.DwellMs ?? 0;
+            var newDwell  = Math.Max(prevDwell, dwellMs ?? 0);
+            existing.ViewedAt = now;
+            existing.DwellMs  = newDwell;
+            // Fire EMA only on the transition into "qualified read" — never twice for the same (user, byte) per day.
+            emaShouldFire = prevDwell < 5000 && newDwell >= 5000;
+        }
+
         await db.SaveChangesAsync(ct);
 
-        if (userId.HasValue && dwellMs >= 5000)
+        if (emaShouldFire)
             await publisher.Publish(new UserViewedByteEvent(userId.Value, byteId), ct);
     }
 
@@ -294,4 +353,20 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
 
         return entropy < 3.0 || avgWordLen < 2.5 || vowelRatio < 0.15 || nonAlphaRatio > 0.25;
     }
+
+    private static string SlugifyTechStack(string raw)
+    {
+        var trimmed = raw.Trim().ToLowerInvariant();
+        var chars = trimmed.Select(c =>
+            char.IsLetterOrDigit(c) ? c :
+            (c == ' ' || c == '-' || c == '_' || c == '.' || c == '/') ? '_' :
+            '\0').Where(c => c != '\0').ToArray();
+        var slug = new string(chars);
+        while (slug.Contains("__")) slug = slug.Replace("__", "_");
+        return slug.Trim('_');
+    }
+
+    private static string TitleCaseLabel(string raw) =>
+        System.Globalization.CultureInfo.InvariantCulture.TextInfo
+            .ToTitleCase(raw.Trim().ToLower());
 }

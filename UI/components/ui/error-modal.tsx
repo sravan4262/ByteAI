@@ -102,7 +102,6 @@ export function resolveErrorModal(errorCode: string, reason?: string): Omit<Erro
         title: 'ALREADY EXISTS',
         message: 'A very similar byte is already in the feed.',
         hint: 'Add your own take, a different angle, or unique code example to make it stand out.',
-        onRetry: undefined,
       }
     case 'AI_QUOTA_EXHAUSTED':
       return {

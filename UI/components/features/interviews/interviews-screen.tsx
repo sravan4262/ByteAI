@@ -16,6 +16,25 @@ import type { InterviewWithQuestions, InterviewQuestion } from '@/lib/api'
 
 const AVATAR_VARIANTS: Array<'cyan' | 'purple' | 'green' | 'orange'> = ['cyan', 'purple', 'green', 'orange']
 
+const DIFFICULTY_OPTIONS = [
+  { value: 'easy', label: 'EASY' },
+  { value: 'medium', label: 'MEDIUM' },
+  { value: 'hard', label: 'HARD' },
+]
+
+function difficultyChipClass(difficulty: string): string {
+  switch (difficulty.toLowerCase()) {
+    case 'hard':
+      return 'text-[var(--red)] border-[rgba(244,63,94,0.35)] bg-[rgba(244,63,94,0.07)]'
+    case 'medium':
+      return 'text-[var(--orange)] border-[rgba(249,115,22,0.35)] bg-[rgba(249,115,22,0.07)]'
+    case 'easy':
+      return 'text-[var(--green)] border-[rgba(16,217,160,0.35)] bg-[rgba(16,217,160,0.07)]'
+    default:
+      return 'text-[var(--t1)] border-[var(--border-h)] bg-[var(--bg-el)]'
+  }
+}
+
 // ── Question Card (fully controlled) ──────────────────────────────────────────
 
 function QuestionCard({
@@ -162,6 +181,11 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
               📍 {interview.location}
             </span>
           )}
+          {interview.difficulty && (
+            <span className={`font-mono text-[10px] px-2.5 py-1 rounded border font-bold ${difficultyChipClass(interview.difficulty)}`}>
+              {interview.difficulty.toUpperCase()}
+            </span>
+          )}
         </div>
 
         {showMiniProfile && !interview.isAnonymous && (
@@ -279,6 +303,7 @@ export function InterviewsScreen() {
   const [companyFilter, setCompanyFilter] = useState<string | null>(null)
   const [roleFilter, setRoleFilter] = useState<string | null>(null)
   const [locationFilter, setLocationFilter] = useState<string | null>(null)
+  const [difficultyFilter, setDifficultyFilter] = useState<string | null>(null)
   const [interviews, setInterviews] = useState<InterviewWithQuestions[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [companies, setCompanies] = useState<{ value: string; label: string }[]>([])
@@ -303,10 +328,11 @@ export function InterviewsScreen() {
       company: companyFilter ?? undefined,
       role: roleFilter ?? undefined,
       location: locationFilter ?? undefined,
+      difficulty: difficultyFilter ?? undefined,
     })
     setInterviews(data)
     setIsLoading(false)
-  }, [companyFilter, roleFilter, locationFilter])
+  }, [companyFilter, roleFilter, locationFilter, difficultyFilter])
 
   useEffect(() => { loadInterviews() }, [loadInterviews])
 
@@ -394,12 +420,28 @@ export function InterviewsScreen() {
             />
           </div>
 
+          {/* Difficulty filter */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-[3px] h-3.5 rounded-full bg-[var(--purple)]" />
+              <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em]">DIFFICULTY</span>
+            </div>
+            <SearchableDropdown
+              options={DIFFICULTY_OPTIONS}
+              value={difficultyFilter}
+              onChange={setDifficultyFilter}
+              placeholder="DIFFICULTY"
+              allLabel="ALL LEVELS"
+              accentColor="purple"
+            />
+          </div>
+
           <div className="flex-1" />
 
           {/* Reset */}
-          {(companyFilter || roleFilter || locationFilter) && (
+          {(companyFilter || roleFilter || locationFilter || difficultyFilter) && (
             <button
-              onClick={() => { setCompanyFilter(null); setRoleFilter(null); setLocationFilter(null) }}
+              onClick={() => { setCompanyFilter(null); setRoleFilter(null); setLocationFilter(null); setDifficultyFilter(null) }}
               className="font-mono text-[10px] tracking-[0.08em] px-3 py-2 rounded-full border border-[var(--border-h)] text-[var(--t2)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               RESET

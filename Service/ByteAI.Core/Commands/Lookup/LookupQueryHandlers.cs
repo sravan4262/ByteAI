@@ -26,7 +26,7 @@ public sealed class GetTechStacksQueryHandler(AppDbContext db)
     {
         var query = db.TechStacks.AsNoTracking().AsQueryable();
         if (request.DomainId.HasValue)
-            query = query.Where(t => t.Subdomain.DomainId == request.DomainId.Value);
+            query = query.Where(t => t.Subdomain != null && t.Subdomain.DomainId == request.DomainId.Value);
         return query.OrderBy(t => t.SortOrder).ToListAsync(CancellationToken.None);
     }
 }

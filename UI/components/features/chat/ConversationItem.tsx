@@ -18,31 +18,31 @@ export function ConversationItem({ conversation, active = false, onClick }: Prop
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-sm bg-[rgba(16,217,160,0.1)] border border-[rgba(16,217,160,0.2)] flex items-center justify-center flex-shrink-0">
-            <span className="font-mono text-[10px] text-[var(--green)] uppercase">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-sm bg-[rgba(16,217,160,0.1)] border border-[rgba(16,217,160,0.25)] flex items-center justify-center flex-shrink-0">
+            <span className="font-mono text-[11px] text-[var(--green)] uppercase font-bold">
               {conversation.otherUsername.charAt(0)}
             </span>
           </div>
 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[11px] text-[var(--t1)] truncate">
+              <span className="font-mono text-xs text-[var(--t1)] truncate font-medium">
                 {conversation.otherUsername}
               </span>
               {conversation.hasUnread && (
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] flex-shrink-0" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] flex-shrink-0 shadow-[0_0_4px_rgba(16,217,160,0.8)]" />
               )}
             </div>
             {conversation.lastMessage && (
-              <p className="text-xs text-[var(--t2)] truncate">
+              <p className="text-xs text-[var(--t2)] truncate mt-0.5">
                 {conversation.lastMessage}
               </p>
             )}
           </div>
         </div>
 
-        <span className="font-mono text-[10px] text-[var(--t3)] flex-shrink-0 tabular-nums">
+        <span className="font-mono text-[10px] text-[var(--t2)] flex-shrink-0 tabular-nums">
           {timeAgoCompact(conversation.lastMessageAt)}
         </span>
       </div>

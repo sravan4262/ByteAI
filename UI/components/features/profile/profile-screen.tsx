@@ -471,8 +471,8 @@ const handleLogout = async () => {
         setAvatarZoom(1)
         setEditMode(false)
         toast.success('Profile updated')
-      } catch {
-        toast.error("Profile couldn't be saved. Please try again.")
+      } catch (err) {
+        toast.error(err instanceof api.ApiError ? err.reason : "Profile couldn't be saved. Please try again.")
       }
     } finally {
       setEditSaving(false)
@@ -768,11 +768,14 @@ const handleLogout = async () => {
                     <div className="relative w-[60px] h-[60px] rounded-full bg-gradient-to-br from-[#131b40] to-[#1e3580] border-2 border-[var(--border-h)] flex items-center justify-center font-mono text-[18px] font-bold text-[var(--cyan)] shadow-[0_0_24px_rgba(34,211,238,0.2)] overflow-hidden">
                       {(() => {
                         if (avatarPreview) return <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" />
-                        const customAvatar = currentUser?.avatarUrl
-                        const isEmoji = customAvatar && !customAvatar.startsWith('http')
-                        if (isEmoji) return <span className="text-[28px] leading-none select-none">{customAvatar}</span>
-                        const imgSrc = customAvatar ?? getMeCache()?.avatarUrl ?? null
-                        if (imgSrc) return <img src={imgSrc} alt="avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        // Source can be either a real URL or an emoji char. MeCache fallback
+                        // is needed during the brief window before currentUser hydrates and
+                        // can carry the emoji shape too — emoji-check whichever source wins.
+                        const source = currentUser?.avatarUrl ?? getMeCache()?.avatarUrl ?? null
+                        if (source) {
+                          if (!source.startsWith('http')) return <span className="text-[28px] leading-none select-none">{source}</span>
+                          return <img src={source} alt="avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        }
                         return (currentUser?.displayName ?? '').split(' ').filter(w => /[a-zA-Z]/.test(w[0])).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?'
                       })()}
                     </div>

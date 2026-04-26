@@ -87,13 +87,14 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         [FromQuery] string? role = null,
         [FromQuery] string? location = null,
         [FromQuery] string? stack = null,
+        [FromQuery] string? difficulty = null,
         [FromQuery] string sort = "recent",
         CancellationToken ct = default)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId();
         var userId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
         var techStacks = string.IsNullOrEmpty(stack) ? null : stack.Split(',').Select(s => s.Trim()).ToList();
-        var result = await interviewsBusiness.GetInterviewsAsync(page, pageSize, authorId, company, role, location, techStacks, sort, ct, supabaseUserId);
+        var result = await interviewsBusiness.GetInterviewsAsync(page, pageSize, authorId, company, role, location, techStacks, difficulty, sort, ct, supabaseUserId);
 
         var response = new PagedResponse<InterviewWithQuestionsResponse>(
             result.Items.Select(i => ToFullResponse(i, userId)).ToList(),
@@ -156,7 +157,7 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
                 .ToList();
 
             var result = await interviewsBusiness.CreateInterviewWithQuestionsAsync(
-                supabaseUserId, request.Title, request.Company, request.Role, request.Location, questionInputs, request.IsAnonymous, ct);
+                supabaseUserId, request.Title, request.Company, request.Role, request.Location, request.Difficulty, questionInputs, request.IsAnonymous, ct);
 
             return CreatedAtAction(nameof(GetById), new { id = result.Id },
                 ApiResponse<InterviewWithQuestionsResponse>.Success(ToFullResponse(result)));

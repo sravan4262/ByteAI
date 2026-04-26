@@ -16,7 +16,7 @@ public sealed class FeedController(IFeedBusiness feedBusiness) : ControllerBase
 {
     /// <summary>
     /// Get the personalised feed.
-    /// filter=for_you: ranked by engagement + user preferences.
+    /// filter=for_you: ranked by interest embedding (cosine) once built; recency before first engagement. Pass `stack` to scope to specific tech stacks.
     /// filter=following: bytes from users this user follows.
     /// filter=trending: ranked by click count in past 24 hours.
     /// </summary>

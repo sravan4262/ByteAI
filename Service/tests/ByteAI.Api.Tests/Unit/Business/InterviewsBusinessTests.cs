@@ -49,10 +49,10 @@ public sealed class InterviewsBusinessTests
         var expected = new PagedResult<Interview>([], 0, 1, 20);
         _interviewService
             .Setup(s => s.GetInterviewsAsync(
-                It.IsAny<PaginationParams>(), null, null, null, null, null, "latest", default, null))
+                It.IsAny<PaginationParams>(), null, null, null, null, null, null, "latest", default, null))
             .ReturnsAsync(expected);
 
-        var result = await _sut.GetInterviewsAsync(1, 20, null, null, null, null, null, "latest", default);
+        var result = await _sut.GetInterviewsAsync(1, 20, null, null, null, null, null, null, "latest", default);
 
         Assert.Equal(expected, result);
         _currentUser.Verify(s => s.GetCurrentUserIdAsync(It.IsAny<string>(), default), Times.Never);
@@ -63,14 +63,14 @@ public sealed class InterviewsBusinessTests
     {
         _interviewService
             .Setup(s => s.GetInterviewsAsync(
-                It.Is<PaginationParams>(p => p.PageSize == 50), null, null, null, null, null, "latest", default, null))
+                It.Is<PaginationParams>(p => p.PageSize == 50), null, null, null, null, null, null, "latest", default, null))
             .ReturnsAsync(new PagedResult<Interview>([], 0, 1, 50));
 
-        await _sut.GetInterviewsAsync(1, 200, null, null, null, null, null, "latest", default);
+        await _sut.GetInterviewsAsync(1, 200, null, null, null, null, null, null, "latest", default);
 
         _interviewService.Verify(s =>
             s.GetInterviewsAsync(
-                It.Is<PaginationParams>(p => p.PageSize == 50), null, null, null, null, null, "latest", default, null),
+                It.Is<PaginationParams>(p => p.PageSize == 50), null, null, null, null, null, null, "latest", default, null),
             Times.Once);
     }
 

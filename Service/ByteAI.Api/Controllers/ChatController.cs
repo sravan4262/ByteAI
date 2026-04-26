@@ -47,7 +47,14 @@ public sealed class ChatController(ChatService chatService, ICurrentUserService 
         return Ok(ApiResponse<List<MessageDto>>.Success(messages));
     }
 
-    /// <summary>Gets or creates a conversation with the specified user. Requires mutual follow.</summary>
+    /// <summary>
+    /// Gets or creates a conversation with the specified user.
+    /// - If a conversation already exists, returns it regardless of follow state (so users can
+    ///   re-open and view history with someone they no longer mutually follow).
+    /// - If no conversation exists, mutual-follow is required to create a new one.
+    /// The response includes <c>canMessage</c>, which reflects current mutual-follow state and
+    /// is enforced server-side by <see cref="Hubs.ChatHub.SendMessage"/>.
+    /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<ConversationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -58,10 +65,15 @@ public sealed class ChatController(ChatService chatService, ICurrentUserService 
         if (userId is null) return Unauthorized();
 
         var canMessage = await chatService.CanMessageAsync(userId.Value, request.RecipientId, ct);
+        var existing = await chatService.GetExistingConversationAsync(userId.Value, request.RecipientId, ct);
+
+        if (existing is not null)
+            return Ok(ApiResponse<object>.Success(new { conversationId = existing.Id, canMessage }));
+
         if (!canMessage) return Forbid();
 
         var conversation = await chatService.GetOrCreateConversationAsync(userId.Value, request.RecipientId, ct);
-        return Ok(ApiResponse<object>.Success(new { conversationId = conversation.Id }));
+        return Ok(ApiResponse<object>.Success(new { conversationId = conversation.Id, canMessage = true }));
     }
 
     /// <summary>Returns mutual follows searchable by username or display name — the set of users you can message.</summary>

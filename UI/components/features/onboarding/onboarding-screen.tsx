@@ -130,7 +130,7 @@ export function OnboardingScreen() {
       <header className="flex items-center justify-between px-5 py-[13px] pb-[11px] border-b border-[var(--border)] flex-shrink-0 bg-[var(--bg-o92)] backdrop-blur-md">
         <ByteAILogo size="sm" showText />
         {getMeCache()?.avatarUrl
-          ? <img src={getMeCache()?.avatarUrl} alt="avatar" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full object-cover ring-1 ring-[var(--border-h)]" />
+          ? <img src={getMeCache()?.avatarUrl ?? undefined} alt="avatar" referrerPolicy="no-referrer" className="w-7 h-7 rounded-full object-cover ring-1 ring-[var(--border-h)]" />
           : <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--purple)] flex items-center justify-center font-mono text-[10px] font-bold text-white">{initials}</div>
         }
       </header>
@@ -172,7 +172,7 @@ export function OnboardingScreen() {
               <div className="relative flex-shrink-0">
                 <div className="absolute -inset-[2px] rounded-full bg-[conic-gradient(from_0deg,var(--accent),var(--cyan),var(--purple),var(--accent))] animate-spin-ring opacity-60 blur-[1px]" />
                 {getMeCache()?.avatarUrl
-                  ? <img src={getMeCache()?.avatarUrl} referrerPolicy="no-referrer" className="relative w-11 h-11 rounded-full object-cover ring-2 ring-[var(--bg)]" />
+                  ? <img src={getMeCache()?.avatarUrl ?? undefined} referrerPolicy="no-referrer" className="relative w-11 h-11 rounded-full object-cover ring-2 ring-[var(--bg)]" />
                   : <div className="relative w-11 h-11 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--purple)] flex items-center justify-center font-mono text-sm font-bold text-white ring-2 ring-[var(--bg)]">{initials}</div>
                 }
               </div>

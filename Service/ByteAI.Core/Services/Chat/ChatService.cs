@@ -17,6 +17,18 @@ public sealed class ChatService(AppDbContext db, IPublisher publisher)
         return count == 2;
     }
 
+    /// <summary>
+    /// Returns the conversation between two users without creating one. Used by the controller
+    /// to allow re-opening past conversations even after a follow was severed (the
+    /// CanMessageAsync gate only applies to *creating* a new thread).
+    /// </summary>
+    public Task<Conversation?> GetExistingConversationAsync(Guid userAId, Guid userBId, CancellationToken ct)
+    {
+        var a = userAId < userBId ? userAId : userBId;
+        var b = userAId < userBId ? userBId : userAId;
+        return db.Conversations.FirstOrDefaultAsync(c => c.ParticipantAId == a && c.ParticipantBId == b, ct);
+    }
+
     public async Task<Conversation> GetOrCreateConversationAsync(Guid userAId, Guid userBId, CancellationToken ct)
     {
         var a = userAId < userBId ? userAId : userBId;
@@ -78,7 +90,16 @@ public sealed class ChatService(AppDbContext db, IPublisher publisher)
                     .Where(m => m.ConversationId == c.Id)
                     .OrderByDescending(m => m.SentAt)
                     .Select(m => m.SenderId)
-                    .FirstOrDefault() != userId
+                    .FirstOrDefault() != userId,
+                // CanMessage: both directions of follow must currently exist. Reflects real-time
+                // mutual-follow state so the UI can grey out the input the moment a follow is severed.
+                db.UserFollowings.Any(f =>
+                        f.UserId == userId &&
+                        f.FollowingId == (c.ParticipantAId == userId ? c.ParticipantBId : c.ParticipantAId))
+                &&
+                db.UserFollowings.Any(f =>
+                        f.UserId == (c.ParticipantAId == userId ? c.ParticipantBId : c.ParticipantAId) &&
+                        f.FollowingId == userId)
             ))
             .ToListAsync(ct);
     }
@@ -132,7 +153,8 @@ public sealed record ConversationDto(
     string? OtherAvatarUrl,
     string? LastMessage,
     DateTime LastMessageAt,
-    bool HasUnread
+    bool HasUnread,
+    bool CanMessage
 );
 
 public sealed record MessageDto(

@@ -34,6 +34,11 @@ type NotificationMeta = {
 
 function notificationMeta(n: NotificationResponse): NotificationMeta {
   const p = n.payload as Record<string, unknown> | null
+  // Prefer the live top-level fields (joined at read time on the backend); fall back to the
+  // payload snapshot only for older / pre-refactor records that still inline these.
+  const actorDisplayName = n.actorDisplayName ?? (p?.actorDisplayName as string | undefined)
+  const actorUsername    = n.actorUsername    ?? (p?.actorUsername    as string | undefined)
+  const actor            = actorDisplayName || actorUsername
 
   switch (n.type) {
     case 'like': {
@@ -42,9 +47,7 @@ function notificationMeta(n: NotificationResponse): NotificationMeta {
         icon: <Heart size={10} className="fill-current" />,
         badgeColor: 'text-rose-400',
         badgeBg: 'bg-[rgba(244,63,94,0.12)] border-[rgba(244,63,94,0.25)]',
-        text: lp
-          ? `${lp.actorDisplayName || lp.actorUsername} liked your byte`
-          : 'Someone liked your byte',
+        text: actor || lp ? `${actor ?? 'Someone'} liked your byte` : 'Someone liked your byte',
       }
     }
     case 'comment': {
@@ -53,9 +56,7 @@ function notificationMeta(n: NotificationResponse): NotificationMeta {
         icon: <MessageCircle size={10} />,
         badgeColor: 'text-[var(--accent)]',
         badgeBg: 'bg-[rgba(59,130,246,0.12)] border-[rgba(59,130,246,0.25)]',
-        text: cp
-          ? `${cp.actorDisplayName || cp.actorUsername} commented on your byte`
-          : 'Someone commented on your byte',
+        text: actor || cp ? `${actor ?? 'Someone'} commented on your byte` : 'Someone commented on your byte',
         preview: cp?.preview,
       }
     }
@@ -64,18 +65,14 @@ function notificationMeta(n: NotificationResponse): NotificationMeta {
         icon: <UserPlus size={10} />,
         badgeColor: 'text-green-400',
         badgeBg: 'bg-[rgba(16,217,160,0.12)] border-[rgba(16,217,160,0.25)]',
-        text: (p?.actorDisplayName as string) || (p?.actorUsername as string)
-          ? `${p?.actorDisplayName || p?.actorUsername} started following you`
-          : 'Someone followed you',
+        text: actor ? `${actor} started following you` : 'Someone followed you',
       }
     case 'unfollow':
       return {
         icon: <UserMinus size={10} />,
         badgeColor: 'text-orange-400',
         badgeBg: 'bg-[rgba(251,146,60,0.12)] border-[rgba(251,146,60,0.25)]',
-        text: (p?.actorDisplayName as string) || (p?.actorUsername as string)
-          ? `${p?.actorDisplayName || p?.actorUsername} unfollowed you`
-          : 'Someone unfollowed you',
+        text: actor ? `${actor} unfollowed you` : 'Someone unfollowed you',
       }
     case 'badge':
       return {
@@ -112,14 +109,34 @@ function ActorAvatar({ url, name }: { url?: string | null; name: string }) {
     .slice(0, 2)
     .toUpperCase()
 
-  return url ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={url}
-      alt={name}
-      className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-card)]"
-    />
-  ) : (
+  // Mirrors the shared <Avatar> component's logic: a non-empty `url` that doesn't look like
+  // a real URL (no http(s):// or leading /) is treated as a custom emoji / short-text avatar
+  // and rendered inside a gradient circle instead of a broken <img>. Some users set their
+  // AvatarUrl to a literal emoji or 1-4 char string from the profile editor.
+  const isUrl = !!url && (url.startsWith('http') || url.startsWith('/'))
+  const isEmoji = !!url && !isUrl
+
+  if (isUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url!}
+        alt={name}
+        referrerPolicy="no-referrer"
+        className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-card)]"
+      />
+    )
+  }
+
+  if (isEmoji) {
+    return (
+      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#131b40] to-[#1e3580] flex items-center justify-center flex-shrink-0 ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-card)]">
+        <span className="text-lg leading-none select-none">{url}</span>
+      </div>
+    )
+  }
+
+  return (
     <div className="w-9 h-9 rounded-full bg-[rgba(59,130,246,0.12)] border border-[rgba(59,130,246,0.25)] flex items-center justify-center flex-shrink-0">
       <span className="font-mono text-[10px] font-bold text-[var(--accent)]">{initials || '?'}</span>
     </div>
@@ -139,8 +156,15 @@ function NotificationItem({
   const p = notification.payload as Record<string, unknown> | null
 
   const isFeedbackUpdate = notification.type === 'feedback_update'
-  const avatarUrl = (p?.actorAvatarUrl as string | null) ?? null
-  const actorName = (p?.actorDisplayName as string) || (p?.actorUsername as string) || '?'
+  // Live actor fields take precedence; fall back to payload only for legacy records.
+  const avatarUrl =
+    notification.actorAvatarUrl ?? (p?.actorAvatarUrl as string | null) ?? null
+  const actorName =
+    notification.actorDisplayName
+    ?? notification.actorUsername
+    ?? (p?.actorDisplayName as string)
+    ?? (p?.actorUsername as string)
+    ?? '?'
 
   return (
     <motion.div

@@ -1,21 +1,14 @@
 /**
  * Form Data Types - inferred from Zod schemas
+ *
+ * Note: LoginEmailData and SignupEmailData are owned by lib/validation/schemas.ts (Zod-derived)
+ * and intentionally not duplicated here. Doing so previously caused TS2308 ambiguous-export
+ * errors at lib/index.ts.
  */
-
-export interface LoginEmailData {
-  email: string
-}
 
 export interface LoginPhoneData {
   countryCode: string
   phone: string
-}
-
-export interface SignupEmailData {
-  firstName: string
-  lastName: string
-  username: string
-  email: string
 }
 
 export interface SignupPhoneData {

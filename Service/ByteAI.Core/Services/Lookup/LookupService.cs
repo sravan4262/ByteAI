@@ -39,7 +39,7 @@ public sealed class LookupService(AppDbContext db) : ILookupService
 
         var techStacks = await db.TechStacks
             .AsNoTracking()
-            .Where(t => subdomainIds.Contains(t.SubdomainId))
+            .Where(t => t.SubdomainId.HasValue && subdomainIds.Contains(t.SubdomainId.Value))
             .OrderBy(t => t.SortOrder)
             .ToListAsync(CancellationToken.None);
 

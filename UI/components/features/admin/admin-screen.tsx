@@ -67,6 +67,7 @@ export function AdminScreen() {
   const [noteText, setNoteText]                 = useState('')
   const [savingNote, setSavingNote]             = useState(false)
   const [feedbackTypeTabs, setFeedbackTypeTabs] = useState<Record<string, 'good' | 'bad' | 'idea'>>({ open: 'bad', reviewed: 'good', closed: 'good' })
+  const [collapsedFeedbackSections, setCollapsedFeedbackSections] = useState<Record<string, boolean>>({})
 
   // ── User override state ────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
@@ -694,17 +695,28 @@ export function AdminScreen() {
                   const activeType = (feedbackTypeTabs[status] && availableTypes.includes(feedbackTypeTabs[status])) ? feedbackTypeTabs[status] : availableTypes[0]
                   const visibleItems = statusItems.filter(f => f.type === activeType)
 
+                  const isCollapsed = collapsedFeedbackSections[status] ?? false
+
                   return (
                     <div key={status} className="border border-[var(--border-h)] rounded-xl overflow-hidden bg-[var(--bg-card)]">
                       {/* Status header */}
-                      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-h)] bg-[var(--bg-el)]">
+                      <button
+                        type="button"
+                        onClick={() => setCollapsedFeedbackSections(prev => ({ ...prev, [status]: !isCollapsed }))}
+                        className={`w-full flex items-center justify-between px-4 py-3 bg-[var(--bg-el)] hover:bg-[var(--bg-card)] transition-colors ${isCollapsed ? '' : 'border-b border-[var(--border-h)]'}`}
+                      >
                         <div className="flex items-center gap-2">
                           <span className={`w-1.5 h-1.5 rounded-full ${dotColor} flex-shrink-0`} />
                           <span className="text-xs font-semibold text-[var(--t1)]">{label}</span>
                           <span className="text-xs text-[var(--t2)]">({statusItems.length})</span>
                         </div>
-                      </div>
+                        {isCollapsed
+                          ? <ChevronDown size={14} className="text-[var(--t2)]" />
+                          : <ChevronUp   size={14} className="text-[var(--t2)]" />}
+                      </button>
 
+                      {!isCollapsed && (
+                      <>
                       {/* Type sub-tabs */}
                       <div className="flex border-b border-[var(--border-h)]">
                         {availableTypes.map(type => {
@@ -763,16 +775,20 @@ export function AdminScreen() {
                                       <CheckCheck size={11} /> Mark reviewed
                                     </button>
                                   )}
-                                  <button onClick={() => { setNoteModal(item); setNoteText('') }}
-                                    className="text-xs text-[var(--t2)] hover:text-[var(--t1)] transition-colors">
-                                    Close
-                                  </button>
+                                  {item.status === 'reviewed' && (
+                                    <button onClick={() => { setNoteModal(item); setNoteText('') }}
+                                      className="text-xs text-[var(--t2)] hover:text-[var(--t1)] transition-colors">
+                                      Close
+                                    </button>
+                                  )}
                                 </div>
                               )}
                             </div>
                           )
                         })}
                       </div>
+                      </>
+                      )}
                     </div>
                   )
                 })}

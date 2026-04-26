@@ -102,6 +102,7 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
             return Ok(ApiResponse<UserResponse>.Success(result.ToResponse()));
         }
         catch (UnauthorizedAccessException) { return Unauthorized(); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     /// <summary>Update the authenticated user's profile. Users may only update their own profile.</summary>

@@ -92,13 +92,30 @@ export function DetailScreen({ post }: DetailScreenProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(post.isBookmarked ?? false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const enterTimeRef = useRef<number>(Date.now())
+  // Dwell timer that only counts time the tab is actually visible.
+  // visibleSinceRef = timestamp of the last "became visible" transition (null while hidden)
+  // accumulatedMsRef = total visible ms accrued in earlier visible spans
+  const visibleSinceRef = useRef<number | null>(null)
+  const accumulatedMsRef = useRef<number>(0)
 
-  // Record view with dwell time on unmount
   useEffect(() => {
-    enterTimeRef.current = Date.now()
+    accumulatedMsRef.current = 0
+    visibleSinceRef.current = document.visibilityState === 'visible' ? Date.now() : null
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        visibleSinceRef.current = Date.now()
+      } else if (visibleSinceRef.current !== null) {
+        accumulatedMsRef.current += Date.now() - visibleSinceRef.current
+        visibleSinceRef.current = null
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
     return () => {
-      const dwellMs = Date.now() - enterTimeRef.current
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      const tail = visibleSinceRef.current !== null ? Date.now() - visibleSinceRef.current : 0
+      const dwellMs = accumulatedMsRef.current + tail
       api.recordView(post.id, dwellMs)
     }
   }, [post.id])

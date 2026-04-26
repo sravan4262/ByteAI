@@ -27,6 +27,11 @@ public sealed class SearchBusiness(ISearchService searchService, IEmbeddingServi
             results.AddRange(bytes.Select(b => new SearchResultDto(
                 Id: b.Id,
                 AuthorId: b.AuthorId,
+                AuthorUsername: b.Author?.Username ?? "",
+                AuthorDisplayName: b.Author?.DisplayName,
+                AuthorAvatarUrl: b.Author?.AvatarUrl,
+                AuthorRoleTitle: b.Author?.RoleTitle,
+                AuthorCompany: b.Author?.Company,
                 Title: b.Title,
                 Body: b.Body,
                 CodeSnippet: b.CodeSnippet,
@@ -46,6 +51,11 @@ public sealed class SearchBusiness(ISearchService searchService, IEmbeddingServi
             results.AddRange(interviews.Select(i => new SearchResultDto(
                 Id: i.Id,
                 AuthorId: i.AuthorId,
+                AuthorUsername: i.Author?.Username ?? "",
+                AuthorDisplayName: i.Author?.DisplayName,
+                AuthorAvatarUrl: i.Author?.AvatarUrl,
+                AuthorRoleTitle: i.Author?.RoleTitle,
+                AuthorCompany: i.Author?.Company,
                 Title: i.Title,
                 Body: i.Body,
                 CodeSnippet: i.CodeSnippet,

@@ -21,6 +21,11 @@ public static class FeedMappers
         new(
             Id: dto.Id,
             AuthorId: dto.AuthorId,
+            AuthorUsername: dto.AuthorUsername,
+            AuthorDisplayName: dto.AuthorDisplayName,
+            AuthorAvatarUrl: dto.AuthorAvatarUrl,
+            AuthorRoleTitle: dto.AuthorRoleTitle,
+            AuthorCompany: dto.AuthorCompany,
             Title: dto.Title,
             Body: dto.Body,
             CodeSnippet: dto.CodeSnippet,

@@ -13,12 +13,12 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
 
     public async Task<PagedResult<Interview>> GetInterviewsAsync(
         int page, int pageSize, Guid? authorId, string? company, string? role, string? location,
-        List<string>? techStacks, string sort, CancellationToken ct, string? supabaseUserId = null)
+        List<string>? techStacks, string? difficulty, string sort, CancellationToken ct, string? supabaseUserId = null)
     {
         var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
         return await interviewService.GetInterviewsAsync(
             new PaginationParams(page, Math.Min(pageSize, 50)),
-            authorId, company, role, location, techStacks, sort, ct, requesterId);
+            authorId, company, role, location, techStacks, difficulty, sort, ct, requesterId);
     }
 
     public async Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? supabaseUserId = null) =>
@@ -45,10 +45,10 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
 
     public async Task<Interview> CreateInterviewWithQuestionsAsync(
         string supabaseUserId, string title, string? company, string? role, string? location,
-        List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct)
+        string difficulty, List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct)
     {
         var userId = await ResolveUserIdAsync(supabaseUserId, ct);
-        return await interviewService.CreateInterviewWithQuestionsAsync(userId, title, company, role, location, questions, isAnonymous, ct);
+        return await interviewService.CreateInterviewWithQuestionsAsync(userId, title, company, role, location, difficulty, questions, isAnonymous, ct);
     }
 
     public async Task<Interview> UpdateInterviewAsync(

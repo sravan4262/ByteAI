@@ -20,6 +20,10 @@ function isProtected(pathname: string) {
   return PROTECTED_PATHS.some(p => pathname.startsWith(p))
 }
 
+function isOnboardingPath(pathname: string) {
+  return pathname === '/onboarding' || pathname.startsWith('/onboarding/')
+}
+
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request })
 
@@ -31,10 +35,10 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
+  const isOnboarded = request.cookies.get('byteai_onboarded')?.value === '1'
 
   // Signed-in user hitting the root → send to feed (or onboarding if not done)
   if (pathname === '/' && user) {
-    const isOnboarded = request.cookies.get('byteai_onboarded')?.value === '1'
     return NextResponse.redirect(
       new URL(isOnboarded ? '/feed' : '/onboarding-check', request.url)
     )
@@ -43,6 +47,18 @@ export async function proxy(request: NextRequest) {
   // Unauthenticated request to protected route → back to sign-in
   if (!user && isProtected(pathname)) {
     return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // Signed-in but not onboarded → keep them in the onboarding flow regardless of
+  // how they arrived (tab restore, bookmark, direct nav). Route via /onboarding-check
+  // so a wrongly-absent cookie (expired/cleared) self-heals via the API check.
+  if (user && !isOnboarded && isProtected(pathname) && !isOnboardingPath(pathname)) {
+    return NextResponse.redirect(new URL('/onboarding-check', request.url))
+  }
+
+  // Already onboarded → don't let them re-enter the onboarding flow
+  if (user && isOnboarded && isOnboardingPath(pathname)) {
+    return NextResponse.redirect(new URL('/feed', request.url))
   }
 
   return response

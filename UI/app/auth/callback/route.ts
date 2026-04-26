@@ -76,10 +76,20 @@ export async function GET(request: NextRequest) {
     response.cookies.set(name, value, options as any)
   )
 
+  // Sync the onboarded cookie with DB truth on every sign-in. Important for the
+  // "switch accounts" flow where a stale `byteai_onboarded=1` from a prior
+  // session would otherwise mislead the proxy into bouncing a new (un-onboarded)
+  // user straight to /feed.
   if (destination.endsWith('/feed')) {
     response.cookies.set('byteai_onboarded', '1', {
       path: '/',
       maxAge: 2592000,
+      sameSite: 'lax',
+    })
+  } else {
+    response.cookies.set('byteai_onboarded', '', {
+      path: '/',
+      maxAge: 0,
       sameSite: 'lax',
     })
   }

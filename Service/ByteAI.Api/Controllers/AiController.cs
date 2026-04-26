@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Pgvector.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ByteAI.Api.Controllers;
 
@@ -59,27 +60,64 @@ public sealed class AiController(
         [FromQuery] int limit = 10,
         CancellationToken ct = default)
     {
+        // Cosine distance > this is treated as "not actually similar" — return empty rather than weak matches.
+        const double DistanceThreshold = 0.45;
+        // Each tech-stack tag shared with the source nudges a candidate's effective distance down by this much,
+        // tie-breaking pure embedding similarity toward the same tech neighborhood.
+        const double OverlapBonusPerStack = 0.05;
+
         var source = await db.Bytes
             .AsNoTracking()
             .Where(b => b.Id == byteId && b.IsActive)
-            .Select(b => new { b.Embedding })
+            .Select(b => new
+            {
+                b.Embedding,
+                StackIds = b.ByteTechStacks.Select(bt => bt.TechStackId).ToList(),
+            })
             .FirstOrDefaultAsync(ct);
 
         if (source is null) return NotFound(new { message = $"Byte {byteId} not found" });
         if (source.Embedding is null) return Ok(ApiResponse<List<SimilarByteResponse>>.Success([]));
 
-        var similar = await db.Bytes
+        // Pull a wider candidate pool via the HNSW index, then re-rank in-memory with overlap bonus + threshold.
+        var candidates = await db.Bytes
             .AsNoTracking()
             .Where(b => b.Id != byteId && b.IsActive && b.Embedding != null)
             .OrderBy(b => b.Embedding!.CosineDistance(source.Embedding))
-            .Take(Math.Min(limit, 20))
-            .Select(b => new SimilarByteResponse(
-                b.Id, b.AuthorId, b.Author.Username, b.Title, b.Body,
+            .Take(50)
+            .Select(b => new
+            {
+                b.Id, b.AuthorId,
+                AuthorUsername = b.Author.Username,
+                AuthorAvatarUrl = b.Author.AvatarUrl,
+                AuthorRoleTitle = b.Author.RoleTitle,
+                AuthorCompany = b.Author.Company,
+                b.Title, b.Body,
                 b.CodeSnippet, b.Language, b.Type, b.CreatedAt,
-                b.ByteTechStacks.Select(bt => bt.TechStack.Name).ToList(),
-                b.UserLikes.Count,
-                b.Comments.Count))
+                Tags = b.ByteTechStacks.Select(bt => bt.TechStack.Name).ToList(),
+                StackIds = b.ByteTechStacks.Select(bt => bt.TechStackId).ToList(),
+                Distance = b.Embedding!.CosineDistance(source.Embedding),
+            })
             .ToListAsync(ct);
+
+        var sourceStackIds = source.StackIds;
+        var similar = candidates
+            .Where(c => c.Distance < DistanceThreshold)
+            .Select(c => new
+            {
+                Candidate = c,
+                Adjusted = c.Distance - OverlapBonusPerStack * c.StackIds.Intersect(sourceStackIds).Count(),
+            })
+            .OrderBy(x => x.Adjusted)
+            .Take(Math.Min(limit, 20))
+            .Select(x => new SimilarByteResponse(
+                x.Candidate.Id, x.Candidate.AuthorId,
+                x.Candidate.AuthorUsername, x.Candidate.AuthorAvatarUrl,
+                x.Candidate.AuthorRoleTitle, x.Candidate.AuthorCompany,
+                x.Candidate.Title, x.Candidate.Body,
+                x.Candidate.CodeSnippet, x.Candidate.Language, x.Candidate.Type, x.Candidate.CreatedAt,
+                x.Candidate.Tags))
+            .ToList();
 
         return Ok(ApiResponse<List<SimilarByteResponse>>.Success(similar));
     }
@@ -134,6 +172,76 @@ public sealed class AiController(
         var answer = await llm.RagAnswerAsync(request.Question, passages, ct);
 
         return Ok(ApiResponse<SearchAskResponse>.Success(new SearchAskResponse(answer, sources)));
+    }
+
+    /// <summary>
+    /// Streaming variant of <see cref="SearchAsk"/>. Returns NDJSON: one JSON object per line.
+    /// Line shapes: { "type": "sources", "sources": [...] } (always first),
+    ///              { "type": "chunk",  "text": "..." }     (zero or more, in order),
+    ///              { "type": "done"  }                     (always last).
+    /// Frontend reads + dispatches each line; first chunk arrives in ~400ms instead of waiting
+    /// for the full Gemini round-trip.
+    /// </summary>
+    [HttpPost("search-ask-stream")]
+    [EnableRateLimiting("ai")]
+    [RequireFeatureFlag("ai-search-ask")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task SearchAskStream(
+        [FromBody] SearchAskRequest request,
+        CancellationToken ct)
+    {
+        var queryVec = await embedding.EmbedQueryAsVectorAsync(request.Question, ct);
+
+        var passages = new List<RagPassage>();
+        var sources = new List<SearchAskSource>();
+        var type = request.Type?.ToLowerInvariant();
+
+        if (type is null or "bytes")
+        {
+            var bytes = await search.SearchBytesAsync(request.Question, queryVec, 5, ct);
+            foreach (var b in bytes)
+            {
+                passages.Add(new RagPassage(b.Title, b.Body, b.Id.ToString()));
+                sources.Add(new SearchAskSource(b.Id.ToString(), b.Title, "byte"));
+            }
+        }
+
+        if (type is null or "interviews")
+        {
+            var interviews = await search.SearchInterviewsAsync(request.Question, queryVec, 5, ct);
+            foreach (var iv in interviews)
+            {
+                passages.Add(new RagPassage(iv.Title, iv.Body, iv.Id.ToString()));
+                sources.Add(new SearchAskSource(iv.Id.ToString(), iv.Title, "interview"));
+            }
+        }
+
+        Response.ContentType = "application/x-ndjson";
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers["X-Accel-Buffering"] = "no"; // disable nginx/proxy buffering
+
+        await WriteLineAsync(new { type = "sources", sources }, ct);
+
+        if (passages.Count == 0)
+        {
+            await WriteLineAsync(new { type = "chunk", text = "No relevant content found in ByteAI for that question. Try posting bytes on this topic first!" }, ct);
+            await WriteLineAsync(new { type = "done" }, ct);
+            return;
+        }
+
+        await foreach (var chunk in llm.RagAnswerStreamAsync(request.Question, passages, ct))
+            await WriteLineAsync(new { type = "chunk", text = chunk }, ct);
+
+        await WriteLineAsync(new { type = "done" }, ct);
+    }
+
+    private async Task WriteLineAsync(object payload, CancellationToken ct)
+    {
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        await Response.WriteAsync(json + "\n", ct);
+        await Response.Body.FlushAsync(ct);
     }
 
     /// <summary>

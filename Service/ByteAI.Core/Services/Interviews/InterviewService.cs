@@ -12,7 +12,7 @@ namespace ByteAI.Core.Services.Interviews;
 
 public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILogger<InterviewService> logger) : IInterviewService
 {
-    public async Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? role, string? location, List<string>? techStacks, string sort, CancellationToken ct, Guid? requesterId = null)
+    public async Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? role, string? location, List<string>? techStacks, string? difficulty, string sort, CancellationToken ct, Guid? requesterId = null)
     {
         // Privacy: block private author's interviews from non-owners
         if (authorId.HasValue && requesterId != authorId.Value)
@@ -56,6 +56,11 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
                 .Where(its => lower.Contains(its.TechStack.Name.ToLower()))
                 .Select(its => its.InterviewId);
             query = query.Where(i => matchIds.Contains(i.Id));
+        }
+        if (!string.IsNullOrEmpty(difficulty))
+        {
+            var diff = difficulty.ToLower();
+            query = query.Where(i => i.Difficulty == diff);
         }
 
         query = sort == "top"
@@ -123,7 +128,7 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
         return entity;
     }
 
-    public async Task<Interview> CreateInterviewWithQuestionsAsync(Guid authorId, string title, string? company, string? role, string? location, List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct)
+    public async Task<Interview> CreateInterviewWithQuestionsAsync(Guid authorId, string title, string? company, string? role, string? location, string difficulty, List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct)
     {
         var interview = new Interview
         {
@@ -133,7 +138,7 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
             Body = string.Join("\n\n", questions.Select((q, i) => $"Q{i + 1}: {q.Question}\nA: {q.Answer}")),
             Company = ToTitleCase(company),
             Role = ToTitleCase(role),
-            Difficulty = "medium",
+            Difficulty = NormalizeDifficulty(difficulty),
             Type = "interview",
             IsAnonymous = isAnonymous,
             CreatedAt = DateTime.UtcNow,
@@ -238,6 +243,12 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
     {
         if (string.IsNullOrWhiteSpace(input)) return input;
         return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(input.Trim().ToLower());
+    }
+
+    private static string NormalizeDifficulty(string? input)
+    {
+        var v = input?.Trim().ToLowerInvariant();
+        return v is "easy" or "medium" or "hard" ? v : "medium";
     }
 
     public async Task<bool> DeleteInterviewAsync(Guid id, Guid requestingUserId, CancellationToken ct)

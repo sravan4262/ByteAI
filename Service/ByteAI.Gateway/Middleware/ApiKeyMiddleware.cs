@@ -9,9 +9,8 @@ namespace ByteAI.Gateway.Middleware;
 /// Allows:
 ///   1. /health/* paths — always unauthenticated
 ///   2. /api/lookup/* — public read-only data, no auth required
-///   3. /api/webhooks/* — webhooks verified by signature inside the API
-///   4. Authorization: Bearer &lt;token&gt; — Supabase JWT; the downstream API validates the token
-///   5. X-Api-Key: &lt;key&gt; — machine-to-machine; key must be in the ApiKeys config value
+///   3. Authorization: Bearer &lt;token&gt; — Supabase JWT; the downstream API validates the token
+///   4. X-Api-Key: &lt;key&gt; — machine-to-machine; key must be in the ApiKeys config value
 ///
 /// Rejects everything else with 401.
 /// Also enforces an IP-based rate limit on POST /api/auth/provision (5 req/hour) to prevent account spam.
@@ -37,12 +36,23 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, IConfiguration config
             });
         })!;
 
-    // Reads the real client IP, accounting for reverse proxies (Azure Container Apps, NGINX, etc.)
-    // that inject X-Forwarded-For. Falls back to the direct connection IP if the header is absent.
-    private static string GetClientIp(HttpContext ctx) =>
-        ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',')[0].Trim()
-        ?? ctx.Connection.RemoteIpAddress?.ToString()
-        ?? "unknown";
+    // Reads the real client IP for rate-limit partitioning. We read the LAST hop in
+    // X-Forwarded-For (the one written by our trusted reverse proxy) — never the first.
+    // The first XFF entry is attacker-controlled: a client can send
+    // `X-Forwarded-For: 1.2.3.4`, the proxy appends the real IP, and we'd partition on
+    // the spoofed value, letting an attacker bypass the per-IP /api/auth/provision
+    // limit by rotating the header. Falls back to the direct connection IP if absent.
+    private static string GetClientIp(HttpContext ctx)
+    {
+        var xff = ctx.Request.Headers["X-Forwarded-For"].ToString();
+        if (!string.IsNullOrWhiteSpace(xff))
+        {
+            var last = xff.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                          .LastOrDefault();
+            if (!string.IsNullOrWhiteSpace(last)) return last;
+        }
+        return ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
 
     public async Task InvokeAsync(HttpContext ctx)
     {
@@ -81,13 +91,6 @@ public sealed class ApiKeyMiddleware(RequestDelegate next, IConfiguration config
 
         // Lookup endpoints are public — no auth required
         if (ctx.Request.Path.StartsWithSegments("/api/lookup"))
-        {
-            await next(ctx);
-            return;
-        }
-
-        // Webhooks — verified by signature inside the API, not by API key
-        if (ctx.Request.Path.StartsWithSegments("/api/webhooks"))
         {
             await next(ctx);
             return;

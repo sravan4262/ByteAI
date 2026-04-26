@@ -25,7 +25,11 @@ function Avatar({ name, imageUrl, size = 'lg' }: { name: string; imageUrl?: stri
 
   const ringClass = 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-card)]'
 
-  if (imageUrl) {
+  // Avatar values come in two shapes: a real URL (Google/uploaded photo) or a
+  // preset emoji string (the in-app picker stores the emoji char itself, not a URL).
+  const isEmoji = !!imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/')
+
+  if (imageUrl && !isEmoji) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -34,6 +38,16 @@ function Avatar({ name, imageUrl, size = 'lg' }: { name: string; imageUrl?: stri
         referrerPolicy="no-referrer"
         className={`${sizeClass} rounded-full object-cover ${ringClass}`}
       />
+    )
+  }
+
+  if (isEmoji) {
+    return (
+      <div
+        className={`${sizeClass} rounded-full ${ringClass} bg-gradient-to-br from-[#131b40] to-[#1e3580] flex items-center justify-center select-none`}
+      >
+        <span className={`${size === 'lg' ? 'text-3xl' : 'text-lg'} leading-none`}>{imageUrl}</span>
+      </div>
     )
   }
 

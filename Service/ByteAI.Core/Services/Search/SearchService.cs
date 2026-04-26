@@ -56,6 +56,7 @@ public sealed class SearchService(AppDbContext db) : ISearchService
         // ── Fetch full entities in ranked order ───────────────────────────────
         var entities = await db.Bytes
             .AsNoTracking()
+            .Include(b => b.Author)
             .Where(b => topIds.Contains(b.Id))
             .ToListAsync(CancellationToken.None);
 
@@ -106,6 +107,7 @@ public sealed class SearchService(AppDbContext db) : ISearchService
 
         var entities = await db.Interviews
             .AsNoTracking()
+            .Include(i => i.Author)
             .Where(i => topIds.Contains(i.Id))
             .ToListAsync(CancellationToken.None);
 

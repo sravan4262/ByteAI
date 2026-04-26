@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Search, Bot, X, Layers, Users } from 'lucide-react'
+import { Search, Bot, X, Layers, Users, ChevronLeft } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
 import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
@@ -31,8 +31,9 @@ function detectIntent(query: string, hasAiFlag: boolean): SearchMode {
 
 // ─── Inline markdown renderer ────────────────────────────────────────────────
 
-function parseInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/)
+function parseInline(text: string, onCite: (n: number) => void): React.ReactNode {
+  // Tokens: **bold**, `code`, [N] citation chips
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[\d+\])/)
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**') && part.length > 4)
       return <strong key={i} className="font-semibold text-[var(--accent)]">{part.slice(2, -2)}</strong>
@@ -42,11 +43,29 @@ function parseInline(text: string): React.ReactNode {
           {part.slice(1, -1)}
         </code>
       )
+    const cite = part.match(/^\[(\d+)\]$/)
+    if (cite) {
+      const n = parseInt(cite[1], 10)
+      return (
+        <button
+          key={i}
+          type="button"
+          onClick={() => onCite(n)}
+          className="inline-flex items-center font-mono text-[10px] font-bold text-[var(--accent)] align-baseline
+                     px-1.5 py-0 mx-0.5 rounded border border-[rgba(59,130,246,0.35)]
+                     bg-[rgba(59,130,246,0.1)] hover:bg-[rgba(59,130,246,0.2)] hover:border-[var(--accent)]
+                     transition-colors leading-none cursor-pointer"
+          aria-label={`Jump to source ${n}`}
+        >
+          [{n}]
+        </button>
+      )
+    }
     return part
   })
 }
 
-function renderAnswer(text: string): React.ReactNode {
+function renderAnswer(text: string, onCite: (n: number) => void): React.ReactNode {
   if (!text) return null
   const lines = text.split('\n')
   const nodes: React.ReactNode[] = []
@@ -65,7 +84,7 @@ function renderAnswer(text: string): React.ReactNode {
       nodes.push(
         <div key={i} className="flex gap-2.5 items-start">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-[5px] flex-shrink-0" />
-          <span className="text-xs leading-[1.75] text-[var(--t1)]">{parseInline(bulletMatch[1])}</span>
+          <span className="text-xs leading-[1.75] text-[var(--t1)]">{parseInline(bulletMatch[1], onCite)}</span>
         </div>
       )
     } else if (numMatch) {
@@ -73,13 +92,13 @@ function renderAnswer(text: string): React.ReactNode {
       nodes.push(
         <div key={i} className="flex gap-2.5 items-start">
           <span className="font-mono text-[10px] font-bold text-[var(--accent)] mt-0.5 flex-shrink-0 w-4 text-right">{numMatch[1]}.</span>
-          <span className="text-xs leading-[1.75] text-[var(--t1)]">{parseInline(numMatch[2])}</span>
+          <span className="text-xs leading-[1.75] text-[var(--t1)]">{parseInline(numMatch[2], onCite)}</span>
         </div>
       )
     } else {
       if (inList) inList = false
       nodes.push(
-        <p key={i} className="text-xs leading-[1.75] text-[var(--t1)]">{parseInline(trimmed)}</p>
+        <p key={i} className="text-xs leading-[1.75] text-[var(--t1)]">{parseInline(trimmed, onCite)}</p>
       )
     }
   }
@@ -144,7 +163,7 @@ export function SearchScreen() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const inputRef = useRef<HTMLInputElement>(null)
-  const typewriterRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const streamAbortRef = useRef<AbortController | null>(null)
   const hasAiSearchAsk = useFeatureFlag('ai-search-ask')
 
   // Query + mode
@@ -167,32 +186,8 @@ export function SearchScreen() {
   const [aiUnavailable, setAiUnavailable] = useState(false)
   const [miniProfilePerson, setMiniProfilePerson] = useState<PersonResult | null>(null)
 
-  // Typewriter state
-  const [displayedAnswer, setDisplayedAnswer] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
-
-  // ── Typewriter effect ─────────────────────────────────────────────────────
-
-  useEffect(() => {
-    if (typewriterRef.current) clearInterval(typewriterRef.current)
-    if (!ragAnswer) { setDisplayedAnswer(''); setIsTyping(false); return }
-
-    setDisplayedAnswer('')
-    setIsTyping(true)
-    let i = 0
-    const charDelay = Math.min(10, 1500 / ragAnswer.length)
-
-    typewriterRef.current = setInterval(() => {
-      i++
-      setDisplayedAnswer(ragAnswer.slice(0, i))
-      if (i >= ragAnswer.length) {
-        clearInterval(typewriterRef.current!)
-        setIsTyping(false)
-      }
-    }, charDelay)
-
-    return () => { if (typewriterRef.current) clearInterval(typewriterRef.current) }
-  }, [ragAnswer])
+  // Streaming state — true while RAG tokens are still arriving from the server.
+  const [isStreaming, setIsStreaming] = useState(false)
 
   // ── Restore search state from URL on back-navigation ─────────────────────
 
@@ -213,7 +208,17 @@ export function SearchScreen() {
 
   useEffect(() => {
     const byteId = searchParams.get('byteId')
-    if (!byteId) return
+    if (!byteId) {
+      // Only reset if we were previously in similar-bytes mode — otherwise this fires on every
+      // ?q= URL update from handleSearch and clobbers the regular search results.
+      if (similarByteId) {
+        setSimilarByteId(null)
+        setSimilarResults([])
+        setHasSearched(false)
+        setIsLoading(false)
+      }
+      return
+    }
     setSimilarByteId(byteId)
     setMode('bytes')
     setIsLoading(true)
@@ -222,6 +227,7 @@ export function SearchScreen() {
       .then(setSimilarResults)
       .catch((err: Error) => { if (err.message === 'AI_QUOTA_EXHAUSTED') setAiUnavailable(true) })
       .finally(() => setIsLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
   // ── Intent detection ─────────────────────────────────────────────────────
@@ -234,6 +240,18 @@ export function SearchScreen() {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  // Scrolls the matching source card into view and flashes its border briefly.
+  // The render block below assigns `id="rag-source-N"` to each source card.
+  const scrollToSource = useCallback((n: number) => {
+    const el = document.getElementById(`rag-source-${n}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('ring-2', 'ring-[var(--accent)]', 'shadow-[0_0_24px_rgba(59,130,246,0.35)]')
+    window.setTimeout(() => {
+      el.classList.remove('ring-2', 'ring-[var(--accent)]', 'shadow-[0_0_24px_rgba(59,130,246,0.35)]')
+    }, 1200)
+  }, [])
+
   const resetResults = useCallback(() => {
     setContentResults([])
     setPeopleResults([])
@@ -243,8 +261,9 @@ export function SearchScreen() {
     setSimilarByteId(null)
     setHasSearched(false)
     setAiUnavailable(false)
-    setDisplayedAnswer('')
-    setIsTyping(false)
+    setIsStreaming(false)
+    streamAbortRef.current?.abort()
+    streamAbortRef.current = null
     router.replace(window.location.pathname, { scroll: false })
   }, [router])
 
@@ -283,11 +302,27 @@ export function SearchScreen() {
 
     try {
       if (activeMode === 'ask') {
-        const result = await api.searchAsk(cleanQuery, 'bytes')
-        setRagAnswer(result.answer)
-        setRagSources(result.sources)
+        // Real streaming: first token paints in ~400ms instead of waiting for the full Gemini reply.
+        streamAbortRef.current?.abort()
+        const ac = new AbortController()
+        streamAbortRef.current = ac
+        setRagAnswer('')
+        setIsStreaming(true)
         setContentResults([])
         setPeopleResults([])
+        // Drop the spinner once the stream has been initiated — chunks start filling the answer card directly.
+        setIsLoading(false)
+        await api.searchAskStream(
+          cleanQuery,
+          'bytes',
+          {
+            onSources: setRagSources,
+            onChunk: (text) => setRagAnswer((prev) => (prev ?? '') + text),
+            onDone: () => setIsStreaming(false),
+          },
+          ac.signal,
+        )
+        setIsStreaming(false)
       } else if (activeMode === 'people') {
         const results = await api.searchPeople(cleanQuery)
         setPeopleResults(results)
@@ -330,42 +365,46 @@ export function SearchScreen() {
       {/* ── Search input + chips ─────────────────────────────────────────── */}
       <div className="flex-shrink-0 px-5 pt-4 pb-3">
 
-        {/* Input row */}
+        {/* Input row — hidden in similar-bytes mode (user came from a byte detail) */}
         <div className="flex items-center gap-3">
-          <div className={`flex-1 flex items-center gap-3 bg-[var(--bg-el)] border rounded-xl px-4 py-3 transition-all ${inputBorderClass}`}>
-            <ModeIcon
-              size={15}
-              className={`flex-shrink-0 transition-colors ${cfg.iconClass} ${cfg.pulse && isFocused ? 'animate-pulse' : ''}`}
-            />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => handleQueryChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              placeholder={cfg.placeholder}
-              autoFocus
-              className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] outline-none placeholder:text-[var(--t2)] min-w-0"
-            />
-            {query && (
-              <button
-                onClick={() => { setQuery(''); setModeSource('intent'); resetResults() }}
-                className="text-[var(--t2)] hover:text-[var(--t1)] transition-colors flex-shrink-0"
-              >
-                <X size={14} />
-              </button>
-            )}
-            <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border flex-shrink-0 transition-all ${cfg.badgeClass}`}>
-              {cfg.label}
-            </span>
-          </div>
+          {!similarByteId && (
+            <div className={`flex-1 flex items-center gap-3 bg-[var(--bg-el)] border rounded-xl px-4 py-3 transition-all ${inputBorderClass}`}>
+              <ModeIcon
+                size={15}
+                className={`flex-shrink-0 transition-colors ${cfg.iconClass} ${cfg.pulse && isFocused ? 'animate-pulse' : ''}`}
+              />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                placeholder={cfg.placeholder}
+                autoFocus
+                className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] outline-none placeholder:text-[var(--t2)] min-w-0"
+              />
+              {query && (
+                <button
+                  onClick={() => { setQuery(''); setModeSource('intent'); resetResults() }}
+                  className="text-[var(--t2)] hover:text-[var(--t1)] transition-colors flex-shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              )}
+              <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border flex-shrink-0 transition-all ${cfg.badgeClass}`}>
+                {cfg.label}
+              </span>
+            </div>
+          )}
           <button
             onClick={() => router.back()}
-            className="font-mono text-[10px] font-bold tracking-[0.08em] text-[var(--accent)] flex-shrink-0"
+            className={similarByteId
+              ? 'flex items-center gap-1.5 font-mono text-[10px] text-[var(--t1)] px-3 py-1.5 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] transition-all hover:border-[rgba(59,130,246,0.45)] hover:text-[var(--accent)] hover:-translate-x-px flex-shrink-0'
+              : 'font-mono text-[10px] font-bold tracking-[0.08em] text-[var(--accent)] flex-shrink-0'}
           >
-            CANCEL
+            {similarByteId ? <><ChevronLeft size={12} /> BACK</> : 'CANCEL'}
           </button>
         </div>
 
@@ -492,17 +531,26 @@ export function SearchScreen() {
               >
                 <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
                 <div className="p-4">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <div className="w-6 h-6 rounded-full border border-[var(--border-h)] flex items-center justify-center
-                                    font-mono text-[10px] bg-[var(--bg-el)] text-[var(--accent)]">
-                      {b.authorUsername?.[0]?.toUpperCase() ?? 'U'}
+                  <div className="flex items-center gap-3 mb-3">
+                    <Avatar
+                      initials={b.authorUsername?.[0]?.toUpperCase() ?? 'U'}
+                      imageUrl={b.authorAvatarUrl}
+                      size="xs"
+                      variant="cyan"
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-mono text-[11px] font-bold text-[var(--t1)] truncate">@{b.authorUsername}</span>
+                      {(b.authorRoleTitle || b.authorCompany) && (
+                        <span className="font-mono text-[10px] text-[var(--t2)] tracking-[0.04em] truncate">
+                          {[b.authorRoleTitle, b.authorCompany].filter(Boolean).join(' @ ')}
+                        </span>
+                      )}
                     </div>
-                    <span className="font-mono text-[11px] text-[var(--t2)]">@{b.authorUsername}</span>
                   </div>
                   <h3 className="font-bold text-sm text-[var(--t1)] mb-1.5">{b.title}</h3>
                   <p className="text-xs text-[var(--t2)] leading-relaxed mb-3 line-clamp-2">{b.body}</p>
                   {b.tags.length > 0 && (
-                    <div className="flex gap-1.5 flex-wrap mb-2.5">
+                    <div className="flex gap-1.5 flex-wrap">
                       {b.tags.slice(0, 4).map((tag) => (
                         <span key={tag} className="font-mono text-[10px] py-0.5 px-2 rounded border
                                                     border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t2)]">
@@ -511,10 +559,6 @@ export function SearchScreen() {
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-4 font-mono text-[10px] text-[var(--t2)]">
-                    <span>❤️ {b.likeCount ?? 0}</span>
-                    <span>💬 {b.commentCount ?? 0}</span>
-                  </div>
                 </div>
               </button>
             ))}
@@ -549,12 +593,12 @@ export function SearchScreen() {
                     <span className="font-mono text-[10px] font-bold text-[var(--t1)] tracking-[0.08em] flex items-center gap-1.5">
                       <Bot size={11} className="text-[var(--accent)]" /> AI ANSWER
                     </span>
-                    {isTyping && (
+                    {isStreaming && (
                       <span className="font-mono text-[10px] text-[var(--accent)] animate-pulse ml-1">●</span>
                     )}
                   </div>
                   <button
-                    onClick={() => { setRagAnswer(null); setHasSearched(false) }}
+                    onClick={() => { streamAbortRef.current?.abort(); setIsStreaming(false); setRagAnswer(null); setHasSearched(false) }}
                     className="text-[var(--t2)] hover:text-[var(--t1)] transition-colors"
                   >
                     <X size={14} />
@@ -563,8 +607,8 @@ export function SearchScreen() {
 
                 {/* Structured answer body */}
                 <div className="flex flex-col gap-2">
-                  {renderAnswer(displayedAnswer)}
-                  {isTyping && (
+                  {renderAnswer(ragAnswer ?? '', scrollToSource)}
+                  {isStreaming && (
                     <span className="inline-block w-0.5 h-3.5 bg-[var(--accent)] animate-pulse rounded-full" />
                   )}
                 </div>
@@ -584,6 +628,7 @@ export function SearchScreen() {
                   {ragSources.map((src, i) => (
                     <button
                       key={src.id}
+                      id={`rag-source-${i + 1}`}
                       onClick={() => router.push(`/post/${src.id}`)}
                       className="text-left rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] overflow-hidden
                                  transition-all hover:border-[var(--accent)] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(0,0,0,0.3)]"

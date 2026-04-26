@@ -9,6 +9,8 @@ export interface ConversationDto {
   lastMessage: string | null
   lastMessageAt: string
   hasUnread: boolean
+  /** False once the relationship is no longer mutual — UI greys out the send input. Server enforces this on SignalR send too. */
+  canMessage: boolean
 }
 
 export interface MessageDto {
@@ -31,12 +33,17 @@ export async function getMessages(conversationId: string, cursor?: string, limit
   return res.data ?? []
 }
 
-export async function getOrCreateConversation(recipientId: string): Promise<string> {
-  const res = await apiFetch<{ data: { conversationId: string } }>('/api/conversations', {
+export interface GetOrCreateConversationResult {
+  conversationId: string
+  canMessage: boolean
+}
+
+export async function getOrCreateConversation(recipientId: string): Promise<GetOrCreateConversationResult> {
+  const res = await apiFetch<{ data: GetOrCreateConversationResult }>('/api/conversations', {
     method: 'POST',
     body: JSON.stringify({ recipientId }),
   })
-  return res.data.conversationId
+  return res.data
 }
 
 export interface MutualFollowDto {

@@ -32,6 +32,12 @@ public interface ILlmService
     /// </summary>
     Task<string> RagAnswerAsync(string question, IReadOnlyList<RagPassage> passages, CancellationToken ct = default);
 
+    /// <summary>
+    /// Streaming variant of <see cref="RagAnswerAsync"/>. Yields content deltas as the LLM produces them,
+    /// so the UI can render tokens with sub-second perceived latency instead of waiting for the full reply.
+    /// </summary>
+    IAsyncEnumerable<string> RagAnswerStreamAsync(string question, IReadOnlyList<RagPassage> passages, CancellationToken ct = default);
+
     /// <summary>Answers a user question given optional context passages.</summary>
     Task<string> AskAsync(string question, string? context, CancellationToken ct = default);
 

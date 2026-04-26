@@ -50,11 +50,17 @@ export function ChatConnectionProvider({ children }: { children: ReactNode }) {
       sentHandlers.current.forEach(h => h(msg))
     })
 
-    connection.start().catch(() => {})
     connectionRef.current = connection
+    // Wait for start() to settle before stop(), even on cleanup. Otherwise
+    // React Strict Mode's double-mount (dev only) aborts the first negotiate
+    // and SignalR's internal logger surfaces "stopped during negotiation"
+    // before our .catch() can swallow it. With this chain, the first
+    // connection completes its handshake, stops cleanly, and the second
+    // mount opens a fresh connection without the noisy error.
+    const startPromise = connection.start().catch(() => {})
 
     return () => {
-      connection.stop().catch(() => {})
+      void startPromise.then(() => connection.stop()).catch(() => {})
     }
   }, [])
 

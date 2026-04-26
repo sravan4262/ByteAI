@@ -1,4 +1,4 @@
-import { apiFetch } from './http'
+import { apiFetch, apiFetchStream } from './http'
 import type { User } from '../types'
 
 export const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001'
@@ -264,6 +264,7 @@ export async function getInterviews(params: {
   role?: string
   location?: string
   stack?: string
+  difficulty?: string
   page?: number
   pageSize?: number
   authorId?: string
@@ -274,6 +275,7 @@ export async function getInterviews(params: {
     if (params.role) qs.set('role', params.role)
     if (params.location) qs.set('location', params.location)
     if (params.stack) qs.set('stack', params.stack)
+    if (params.difficulty) qs.set('difficulty', params.difficulty)
     if (params.page) qs.set('page', String(params.page))
     if (params.pageSize) qs.set('pageSize', String(params.pageSize))
     if (params.authorId) qs.set('authorId', params.authorId)
@@ -826,6 +828,11 @@ export async function updatePrivacy(value: string): Promise<void> {
 interface SearchResponse {
   id: string
   authorId: string
+  authorUsername: string
+  authorDisplayName?: string | null
+  authorAvatarUrl?: string | null
+  authorRoleTitle?: string | null
+  authorCompany?: string | null
   title: string
   body: string
   codeSnippet?: string
@@ -851,11 +858,29 @@ export async function search(params: { query: string; type: 'bytes' | 'interview
   try {
     const qs = new URLSearchParams({ q: params.query, type: params.type, limit: '20' })
     const res = await apiFetch<ApiResponse<SearchResponse[]>>(`/api/search?${qs}`)
-    const results: Post[] = res.data.map((r) => ({
+    const results: Post[] = res.data.map((r) => {
+      const username = r.authorUsername || r.authorId.slice(0, 8)
+      const displayName = r.authorDisplayName || username
+      const initials = displayName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || username.slice(0, 2).toUpperCase()
+      return {
       id: r.id,
       title: r.title,
       body: r.body,
-      author: { id: r.authorId, username: 'user', displayName: 'User', initials: 'U', role: '', company: '', bio: '', level: 1, xp: 0, xpToNextLevel: 1000, followers: 0, following: 0, bytes: 0, reactions: 0, streak: 0, techStack: [], feedPreferences: [], links: [], badges: [], isVerified: false, isOnline: false },
+      author: {
+        id: r.authorId,
+        username,
+        displayName,
+        initials,
+        avatarUrl: r.authorAvatarUrl,
+        role: r.authorRoleTitle ?? '',
+        company: r.authorCompany ?? '',
+        bio: '',
+        level: 1, xp: 0, xpToNextLevel: 1000,
+        followers: 0, following: 0, bytes: 0, reactions: 0, streak: 0,
+        techStack: [], feedPreferences: [], links: [], badges: [],
+        isVerified: false, isOnline: false,
+        isSystem: r.authorId === SYSTEM_USER_ID,
+      },
       code: r.codeSnippet ? { language: r.language ?? 'TEXT', filename: 'snippet', content: r.codeSnippet } : undefined,
       tags: r.tags ?? [],
       reactions: [],
@@ -866,7 +891,8 @@ export async function search(params: { query: string; type: 'bytes' | 'interview
       isBookmarked: false,
       views: 0,
       type: r.contentType === 'interview' ? 'interview' : 'byte',
-    }))
+      }
+    })
     return { results, hasMore: false }
   } catch {
     return { results: [], hasMore: false }
@@ -908,6 +934,7 @@ export async function createInterviewWithQuestions(data: {
   company?: string
   role?: string
   location?: string
+  difficulty?: 'easy' | 'medium' | 'hard'
   questions: Array<{ question: string; answer: string }>
   isAnonymous?: boolean
 }): Promise<{ id: string }> {
@@ -918,7 +945,7 @@ export async function createInterviewWithQuestions(data: {
       company: data.company ?? null,
       role: data.role ?? null,
       location: data.location ?? null,
-      difficulty: 'medium',
+      difficulty: data.difficulty ?? 'medium',
       questions: data.questions,
       isAnonymous: data.isAnonymous ?? false,
     }),
@@ -997,9 +1024,10 @@ export interface SimilarByteResponse {
   title: string
   body: string
   authorUsername: string
+  authorAvatarUrl?: string | null
+  authorRoleTitle?: string | null
+  authorCompany?: string | null
   tags: string[]
-  likeCount: number
-  commentCount: number
 }
 
 /** Show Similar Bytes — semantic similarity using stored byte embedding */
@@ -1024,6 +1052,33 @@ export async function searchAsk(question: string, type?: 'bytes' | 'interviews')
     body: JSON.stringify({ question, type: type ?? null }),
   })
   return res.data
+}
+
+/**
+ * Streaming variant of searchAsk. onSources fires once with the cited items; onChunk fires many
+ * times as the LLM emits tokens. Resolves when the server sends `{type:"done"}`.
+ */
+export async function searchAskStream(
+  question: string,
+  type: 'bytes' | 'interviews' | undefined,
+  callbacks: {
+    onSources: (sources: SearchAskSource[]) => void
+    onChunk: (text: string) => void
+    onDone?: () => void
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  await apiFetchStream(
+    '/api/ai/search-ask-stream',
+    { question, type: type ?? null },
+    (msg) => {
+      const m = msg as { type?: string; sources?: SearchAskSource[]; text?: string }
+      if (m.type === 'sources' && Array.isArray(m.sources)) callbacks.onSources(m.sources)
+      else if (m.type === 'chunk' && typeof m.text === 'string') callbacks.onChunk(m.text)
+      else if (m.type === 'done') callbacks.onDone?.()
+    },
+    signal,
+  )
 }
 
 export async function updatePost(byteId: string, data: { title?: string; body?: string; codeSnippet?: string; language?: string }): Promise<{ error?: string; reason?: string }> {
@@ -1067,8 +1122,12 @@ export interface NotificationPayloadBadge {
 export interface NotificationResponse {
   id: string
   userId: string
-  type: 'like' | 'comment' | 'follow' | 'badge' | 'system' | 'feedback_update'
+  type: 'like' | 'comment' | 'follow' | 'unfollow' | 'badge' | 'system' | 'feedback_update'
   payload: NotificationPayloadLike | NotificationPayloadComment | NotificationPayloadBadge | Record<string, unknown> | null
+  /** Live actor profile (joined at read time on the backend, NOT cached in payload). */
+  actorUsername?: string | null
+  actorDisplayName?: string | null
+  actorAvatarUrl?: string | null
   read: boolean
   createdAt: string
 }

@@ -34,6 +34,7 @@ import { NotificationPanel } from '@/components/features/notifications/notificat
 
 const makeNotification = (overrides: Partial<NotificationResponse> = {}): NotificationResponse => ({
   id: 'n1',
+  userId: 'u1',
   type: 'like',
   read: false,
   createdAt: new Date().toISOString(),

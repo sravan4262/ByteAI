@@ -4,7 +4,8 @@ import { useState, useCallback, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { parseCommand, type FeedbackType } from './commandParser'
 import { submitFeedback, getMyFeedbackHistory } from '@/lib/api/support'
-import { getMeCache } from '@/lib/user-cache'
+import { getCurrentUser, getMyBytes } from '@/lib/api/client'
+import { getMeCache, setMeCache } from '@/lib/user-cache'
 
 export type LineType = 'input' | 'output' | 'error' | 'success' | 'system' | 'record'
 
@@ -96,20 +97,37 @@ export function useTerminal(onClose: () => void) {
         break
 
       case 'whoami': {
-        const me = getMeCache()
-        if (!me) {
+        setLoading(true)
+        const [user, myBytes] = await Promise.all([getCurrentUser(), getMyBytes({ pageSize: 1 })])
+        setLoading(false)
+        if (!user) {
           push('error', '[!] Not signed in.')
           break
         }
+        const cached = getMeCache()
+        setMeCache({
+          userId: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl ?? cached?.avatarUrl ?? null,
+          bio: user.bio,
+          roleTitle: user.roleTitle,
+          company: user.company,
+          level: user.level,
+          bytesCount: myBytes.total,
+          followersCount: user.followersCount ?? 0,
+          followingCount: user.followingCount ?? 0,
+          isVerified: user.isVerified,
+        })
         push('output', '─────────────────────────────')
-        push('output', `  username    ${me.username}`)
-        push('output', `  display     ${me.displayName}`)
-        push('output', `  level       ${me.level}`)
-        push('output', `  bytes       ${me.bytesCount}`)
-        push('output', `  followers   ${me.followersCount}`)
-        push('output', `  following   ${me.followingCount}`)
-        if (me.roleTitle) push('output', `  role        ${me.roleTitle}`)
-        if (me.company)   push('output', `  company     ${me.company}`)
+        push('output', `  username    ${user.username}`)
+        push('output', `  display     ${user.displayName}`)
+        push('output', `  level       ${user.level}`)
+        push('output', `  bytes       ${myBytes.total}`)
+        push('output', `  followers   ${user.followersCount ?? 0}`)
+        push('output', `  following   ${user.followingCount ?? 0}`)
+        if (user.roleTitle) push('output', `  role        ${user.roleTitle}`)
+        if (user.company)   push('output', `  company     ${user.company}`)
         push('output', '─────────────────────────────')
         break
       }

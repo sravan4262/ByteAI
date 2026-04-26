@@ -46,12 +46,14 @@ export interface BytePost {
   embedding?: number[]
 }
 
-export interface Comment {
+// Note: Comment is owned by lib/api/client.ts as the source of truth (it mirrors the
+// backend /api/comments response). The previous duplicate here caused TS2308 at lib/index.ts.
+export interface DomainComment {
   id: string
   content: string
   author: User
   timestamp: string
-  replies: Comment[]
+  replies: DomainComment[]
   likes: number
 }
 

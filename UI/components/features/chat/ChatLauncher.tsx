@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect, KeyboardEvent, type Dispatch, type SetStateAction } from 'react'
+import { useState, useRef, useCallback, useEffect, type Dispatch, type SetStateAction } from 'react'
 import { ConversationItem } from './ConversationItem'
+import { TerminalInput } from '@/components/features/terminal/TerminalInput'
 import { getMutualFollows, getOrCreateConversation, type MutualFollowDto, type ConversationDto } from '@/lib/api/chat'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -9,6 +10,8 @@ interface ActiveThread {
   conversationId: string
   otherUsername: string
   otherUserId: string
+  /** Initial mutual-follow state — kept in sync via the conversations list as it refreshes. */
+  canMessage: boolean
 }
 
 interface Props {
@@ -16,6 +19,7 @@ interface Props {
   setLines: Dispatch<SetStateAction<OutputLine[]>>
   conversations: ConversationDto[]
   conversationsLoading: boolean
+  reloadConversations: () => void
   mutualFollows: MutualFollowDto[]
   onOpenThread: (thread: ActiveThread) => void
   onClose: () => void
@@ -24,31 +28,33 @@ interface Props {
 export type OutputLine =
   | { kind: 'cmd'; text: string }
   | { kind: 'text'; text: string; dim?: boolean }
+  | { kind: 'system'; text: string }
   | { kind: 'divider' }
   | { kind: 'conversation'; conv: ConversationDto }
   | { kind: 'contact'; person: MutualFollowDto; index: number }
   | { kind: 'error'; text: string }
 
-export const HELP_LINES: OutputLine[] = [
-  { kind: 'text', text: '◆  CHAT v1.0' },
-  { kind: 'divider' },
+const HELP_BODY: OutputLine[] = [
   { kind: 'text', text: 'Commands:' },
   { kind: 'text', text: '  inbox                   view your conversations' },
   { kind: 'text', text: '  dm @username            open or start a DM' },
-  { kind: 'text', text: '  search "query"          search mutual follows' },
+  { kind: 'text', text: '  search "user"          search mutual follows' },
   { kind: 'text', text: '  recent                  last 5 people you messaged' },
   { kind: 'text', text: '  clear                   clear terminal' },
   { kind: 'text', text: '  exit / Ctrl+C           close' },
 ]
 
-export function ChatLauncher({ lines, setLines, conversations, conversationsLoading, mutualFollows, onOpenThread, onClose }: Props) {
-  const [input, setInput] = useState('')
-  const [history, setHistory] = useState<string[]>([])
-  const [historyIdx, setHistoryIdx] = useState(-1)
+// Initial view — one-line system intro to match the support terminal pattern.
+export const HELP_LINES: OutputLine[] = [
+  { kind: 'system', text: 'ByteAI Chat v1.0 — type help to get started.' },
+]
+
+const CHAT_LAUNCHER_COMPLETIONS = ['help', 'inbox', 'dm', 'search', 'recent', 'clear', 'exit']
+
+export function ChatLauncher({ lines, setLines, conversations, conversationsLoading, reloadConversations, mutualFollows, onOpenThread, onClose }: Props) {
   const [pendingContacts, setPendingContacts] = useState<MutualFollowDto[]>([])
   const [searching, setSearching] = useState(false)
   const [creatingConv, setCreatingConv] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -57,15 +63,15 @@ export function ChatLauncher({ lines, setLines, conversations, conversationsLoad
 
   const append = useCallback((...newLines: OutputLine[]) => {
     setLines(prev => [...prev, ...newLines])
-  }, [])
+  }, [setLines])
 
   const openContact = useCallback(async (person: MutualFollowDto) => {
     if (creatingConv) return
     setCreatingConv(true)
     append({ kind: 'text', text: `◆ opening @${person.username}...`, dim: true })
     try {
-      const conversationId = await getOrCreateConversation(person.id)
-      onOpenThread({ conversationId, otherUsername: person.username, otherUserId: person.id })
+      const { conversationId, canMessage } = await getOrCreateConversation(person.id)
+      onOpenThread({ conversationId, otherUsername: person.username, otherUserId: person.id, canMessage })
     } catch {
       append({ kind: 'error', text: '✗ failed to open conversation' })
     } finally {
@@ -77,9 +83,6 @@ export function ChatLauncher({ lines, setLines, conversations, conversationsLoad
     const cmd = raw.trim()
     if (!cmd) return
 
-    setHistory(prev => [cmd, ...prev].slice(0, 50))
-    setHistoryIdx(-1)
-    setInput('')
     setPendingContacts([])
     append({ kind: 'cmd', text: cmd })
 
@@ -87,10 +90,13 @@ export function ChatLauncher({ lines, setLines, conversations, conversationsLoad
 
     switch (command.toLowerCase()) {
       case 'help':
-        append(...HELP_LINES)
+        append(...HELP_BODY)
         break
 
       case 'inbox':
+        // Refresh from server so unread state reflects messages that arrived
+        // before the SignalR connection was established.
+        reloadConversations()
         if (conversationsLoading) {
           append({ kind: 'text', text: '◆ loading...', dim: true })
         } else if (conversations.length === 0) {
@@ -189,65 +195,68 @@ export function ChatLauncher({ lines, setLines, conversations, conversationsLoad
         }
       }
     }
-  }, [conversations, conversationsLoading, mutualFollows, pendingContacts, append, openContact, onClose])
+  }, [conversations, conversationsLoading, reloadConversations, mutualFollows, pendingContacts, append, openContact, onClose, setLines])
 
-  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      executeCommand(input)
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setHistoryIdx(prev => {
-        const next = Math.min(prev + 1, history.length - 1)
-        setInput(history[next] ?? '')
-        return next
-      })
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setHistoryIdx(prev => {
-        const next = Math.max(prev - 1, -1)
-        setInput(next === -1 ? '' : history[next] ?? '')
-        return next
-      })
-    } else if (e.ctrlKey && e.key === 'c') {
-      e.preventDefault()
-      if (input) { setInput(''); setHistoryIdx(-1) } else { onClose() }
-    }
-  }, [input, history, executeCommand, onClose])
+  const handleSubmit = useCallback((value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) return
+    if (trimmed.toLowerCase() === 'exit') { onClose(); return }
+    executeCommand(trimmed)
+  }, [executeCommand, onClose])
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden" onClick={() => inputRef.current?.focus()}>
+    <div className="flex flex-col flex-1 overflow-hidden">
       {/* Output */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-0.5 scrollbar-thin scrollbar-thumb-[var(--border-m)] scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1 scrollbar-thin scrollbar-thumb-[var(--border-m)] scrollbar-track-transparent">
         {lines.map((line, i) => {
           if (line.kind === 'divider') {
-            return <div key={i} className="h-px bg-[rgba(16,217,160,0.1)] my-1.5" />
+            return <div key={i} className="h-px bg-[rgba(16,217,160,0.15)] my-1.5" />
           }
           if (line.kind === 'cmd') {
             return (
-              <div key={i} className="flex items-start gap-2 font-mono text-[11px]">
-                <span className="text-[var(--green)] flex-shrink-0 select-none">{'>'}</span>
+              <div key={i} className="flex items-start gap-2 font-mono text-xs leading-relaxed">
+                <span className="text-[var(--green)] flex-shrink-0 select-none w-3 text-center opacity-60">❯</span>
                 <span className="text-[var(--t1)]">{line.text}</span>
+              </div>
+            )
+          }
+          if (line.kind === 'system') {
+            return (
+              <div key={i} className="flex items-start gap-2 font-mono text-xs leading-relaxed text-[var(--green)]">
+                <span className="flex-shrink-0 w-3 text-center opacity-60">◆</span>
+                <span>{line.text}</span>
               </div>
             )
           }
           if (line.kind === 'text') {
             return (
-              <p key={i} className={`font-mono text-[11px] whitespace-pre ${line.dim ? 'text-[var(--t3)]' : 'text-[var(--t2)]'}`}>
+              <p key={i} className={`font-mono text-xs leading-relaxed whitespace-pre ${line.dim ? 'text-[var(--t2)]' : 'text-[var(--t1)]'}`}>
                 {line.text}
               </p>
             )
           }
           if (line.kind === 'error') {
             return (
-              <p key={i} className="font-mono text-[11px] text-red-400">{line.text}</p>
+              <div key={i} className="flex items-start gap-2 font-mono text-xs leading-relaxed text-[var(--red)]">
+                <span className="flex-shrink-0 w-3 text-center opacity-60">✗</span>
+                <span>{line.text}</span>
+              </div>
             )
           }
           if (line.kind === 'conversation') {
+            // Prefer the live conversation from props so hasUnread / lastMessage / canMessage
+            // stay current as new messages arrive — captured snapshots go stale.
+            const live = conversations.find(c => c.id === line.conv.id) ?? line.conv
             return (
               <ConversationItem
-                key={`conv-${line.conv.id}-${i}`}
-                conversation={line.conv}
-                onClick={() => onOpenThread({ conversationId: line.conv.id, otherUsername: line.conv.otherUsername, otherUserId: line.conv.otherUserId })}
+                key={`conv-${live.id}-${i}`}
+                conversation={live}
+                onClick={() => onOpenThread({
+                  conversationId: live.id,
+                  otherUsername: live.otherUsername,
+                  otherUserId: live.otherUserId,
+                  canMessage: live.canMessage,
+                })}
               />
             )
           }
@@ -256,17 +265,17 @@ export function ChatLauncher({ lines, setLines, conversations, conversationsLoad
               <button
                 key={`contact-${line.person.id}-${i}`}
                 onClick={() => openContact(line.person)}
-                className="group w-full flex items-center gap-3 px-2 py-1.5 rounded hover:bg-[rgba(16,217,160,0.05)] transition-colors text-left"
+                className="group w-full flex items-center gap-3 px-2 py-2 rounded hover:bg-[rgba(16,217,160,0.07)] transition-colors text-left"
               >
-                <span className="font-mono text-[10px] text-[var(--t3)] w-4 flex-shrink-0">{line.index}.</span>
-                <div className="w-6 h-6 rounded-sm bg-[rgba(16,217,160,0.1)] border border-[rgba(16,217,160,0.2)] flex items-center justify-center flex-shrink-0">
-                  <span className="font-mono text-[9px] text-[var(--green)] uppercase">{line.person.username.charAt(0)}</span>
+                <span className="font-mono text-[10px] text-[var(--t2)] w-4 flex-shrink-0 font-bold">{line.index}.</span>
+                <div className="w-7 h-7 rounded-sm bg-[rgba(16,217,160,0.1)] border border-[rgba(16,217,160,0.2)] flex items-center justify-center flex-shrink-0">
+                  <span className="font-mono text-[10px] text-[var(--green)] uppercase font-bold">{line.person.username.charAt(0)}</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="font-mono text-[11px] text-[var(--t1)] block truncate">{line.person.displayName || line.person.username}</span>
+                  <span className="font-mono text-xs text-[var(--t1)] block truncate font-medium">{line.person.displayName || line.person.username}</span>
                   <span className="font-mono text-[10px] text-[var(--t2)] block truncate">@{line.person.username}</span>
                 </div>
-                <span className="font-mono text-[10px] text-[var(--green)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">→</span>
+                <span className="font-mono text-xs text-[var(--green)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">→</span>
               </button>
             )
           }
@@ -275,9 +284,9 @@ export function ChatLauncher({ lines, setLines, conversations, conversationsLoad
 
         {(searching || creatingConv) && (
           <div className="flex items-center gap-1 py-0.5 px-2">
-            <span className="w-1 h-1 rounded-full bg-[var(--green)] animate-bounce [animation-delay:0ms]" />
-            <span className="w-1 h-1 rounded-full bg-[var(--green)] animate-bounce [animation-delay:150ms]" />
-            <span className="w-1 h-1 rounded-full bg-[var(--green)] animate-bounce [animation-delay:300ms]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-bounce [animation-delay:0ms]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-bounce [animation-delay:150ms]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-bounce [animation-delay:300ms]" />
           </div>
         )}
         {conversationsLoading && (
@@ -288,21 +297,13 @@ export function ChatLauncher({ lines, setLines, conversations, conversationsLoad
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-t border-[rgba(16,217,160,0.12)] bg-[rgba(16,217,160,0.02)] flex-shrink-0">
-        <span className="font-mono text-[11px] text-[var(--t3)] flex-shrink-0 select-none">byteai @ ~ $</span>
-        <input
-          ref={inputRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="type a command..."
-          autoFocus
-          spellCheck={false}
-          className="flex-1 bg-transparent font-mono text-[11px] text-[var(--t1)] placeholder:text-[var(--t3)] outline-none caret-[var(--green)]"
-        />
-        <span className="w-[2px] h-3.5 bg-[var(--green)] animate-pulse flex-shrink-0" />
-      </div>
+      {/* Input — shared with support terminal (TAB autocomplete, history) */}
+      <TerminalInput
+        onSubmit={handleSubmit}
+        disabled={searching || creatingConv}
+        stage="idle"
+        completions={CHAT_LAUNCHER_COMPLETIONS}
+      />
     </div>
   )
 }

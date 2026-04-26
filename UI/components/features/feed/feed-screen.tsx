@@ -24,7 +24,10 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
   const searchParams = useSearchParams()
 
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') ?? 'for_you')
-  const [activeStackFilter, setActiveStackFilter] = useState<string | null>(() => searchParams.get('stack'))
+  const [activeStackFilter, setActiveStackFilter] = useState<string[]>(() => {
+    const raw = searchParams.get('stack')
+    return raw ? raw.split(',').filter(Boolean) : []
+  })
   const [rawPosts, setRawPosts] = useState<Post[]>([])
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -37,7 +40,14 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
   useEffect(() => {
     const cached = getMeCache()
     if (cached) setCurrentUserId(cached.userId)
-    api.getCurrentUser().then(u => { if (u) setCurrentUserId(u.id) })
+    const hasExplicitStack = searchParams.get('stack') !== null
+    api.getCurrentUser().then(u => {
+      if (!u) return
+      setCurrentUserId(u.id)
+      if (!hasExplicitStack && u.techStack && u.techStack.length > 0) {
+        setActiveStackFilter(u.techStack)
+      }
+    })
   }, [])
 
   const hydrateWithUserCache = useCallback((fetched: Post[]): Post[] => {
@@ -71,7 +81,7 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
     setHasMore(false)
     api.getFeed({
       filter: activeTab as 'for_you' | 'following' | 'trending',
-      stackFilter: activeStackFilter ?? undefined,
+      stackFilter: activeStackFilter.length > 0 ? activeStackFilter.join(',') : undefined,
       page: 1,
       limit: PAGE_SIZE,
     })
@@ -90,7 +100,7 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
     try {
       const { posts: fetched, hasMore: more } = await api.getFeed({
         filter: activeTab as 'for_you' | 'following' | 'trending',
-        stackFilter: activeStackFilter ?? undefined,
+        stackFilter: activeStackFilter.length > 0 ? activeStackFilter.join(',') : undefined,
         page: nextPage,
         limit: PAGE_SIZE,
       })
@@ -164,18 +174,18 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
     }
   }
 
-  const updateUrl = useCallback((tab: string, stack: string | null) => {
+  const updateUrl = useCallback((tab: string, stack: string[]) => {
     const params = new URLSearchParams()
     if (tab !== 'for_you') params.set('tab', tab)
-    if (stack) params.set('stack', stack)
+    if (stack.length > 0) params.set('stack', stack.join(','))
     const qs = params.toString()
     router.replace(qs ? `?${qs}` : '?', { scroll: false })
   }, [router])
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
-    setActiveStackFilter(null)
-    updateUrl(tabId, null)
+    setActiveStackFilter([])
+    updateUrl(tabId, [])
   }
 
   const shouldTruncate = (post: Post) => {
@@ -204,7 +214,11 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
             <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
               <div className="font-mono text-base text-[var(--t1)] mb-2">NO BYTES FOUND</div>
               <div className="font-mono text-xs text-[var(--t2)]">
-                {activeTab === 'following' ? "This user hasn't posted any Bytes yet." : 'Try adjusting your filters.'}
+                {activeTab === 'following'
+                  ? "This user hasn't posted any Bytes yet."
+                  : activeStackFilter.length > 0
+                    ? <>No bytes for <span className="text-[var(--accent)]">{activeStackFilter.join(', ')}</span> yet — <button onClick={() => router.push('/compose')} className="text-[var(--accent)] hover:underline">be the first to post a byte</button>.</>
+                    : 'Try adjusting your filters.'}
               </div>
             </div>
           ) : (

@@ -1,5 +1,4 @@
 using ByteAI.Core.Business.Interfaces;
-using ByteAI.Core.Entities;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Services;
 using ByteAI.Core.Services.Notifications;
@@ -8,7 +7,7 @@ namespace ByteAI.Core.Business;
 
 public sealed class NotificationsBusiness(INotificationService notificationService, ICurrentUserService currentUserService) : INotificationsBusiness
 {
-    public async Task<PagedResult<Notification>> GetNotificationsAsync(string supabaseUserId, int page, int pageSize, bool unreadOnly, CancellationToken ct)
+    public async Task<PagedResult<NotificationWithActor>> GetNotificationsAsync(string supabaseUserId, int page, int pageSize, bool unreadOnly, CancellationToken ct)
     {
         var userId = await ResolveUserIdAsync(supabaseUserId, ct);
         return await notificationService.GetNotificationsAsync(userId, new PaginationParams(page, Math.Min(pageSize, 50)), unreadOnly, ct);

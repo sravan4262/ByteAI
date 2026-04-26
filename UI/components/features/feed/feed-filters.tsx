@@ -6,9 +6,9 @@ import { getTechStacks, type TechStackResponse } from '@/lib/api/client'
 
 interface FeedFiltersProps {
   activeTab: string
-  activeStackFilter: string | null
+  activeStackFilter: string[]
   onTabChange: (tab: string) => void
-  onStackFilter: (stack: string | null) => void
+  onStackFilter: (stack: string[]) => void
 }
 
 const TABS = [
@@ -63,6 +63,7 @@ export function FeedFilters({
               </span>
             </div>
             <SearchableDropdown
+              multiple
               options={techOptions}
               value={activeStackFilter}
               onChange={onStackFilter}
@@ -70,9 +71,9 @@ export function FeedFilters({
               allLabel="ALL STACKS"
               accentColor="accent"
             />
-            {activeStackFilter && (
+            {activeStackFilter.length > 0 && (
               <span className="font-mono text-xs font-bold text-[var(--t1)]">
-                Filtering by <span className="text-[var(--accent)]">{activeStackFilter}</span>
+                Filtering by <span className="text-[var(--accent)]">{activeStackFilter.join(', ')}</span>
               </span>
             )}
           </div>

@@ -15,6 +15,9 @@ interface TabData {
   conversationId: string
   otherUsername: string
   otherUserId: string
+  /** Snapshot at open time. Re-derived from the live conversations list on every render
+   *  so a follow/unfollow during the session updates the input state instantly. */
+  canMessage: boolean
 }
 
 interface MessagesPanelProps {
@@ -22,6 +25,7 @@ interface MessagesPanelProps {
   onClose: () => void
   conversations: ConversationDto[]
   conversationsLoading: boolean
+  reloadConversations: () => void
   markConversationRead: (id: string) => void
   bumpConversation: (conversationId: string, lastMessage: string) => void
 }
@@ -38,7 +42,7 @@ const CHAT_COMPLETIONS = [
 
 // ── Thread view ───────────────────────────────────────────────────────────────
 
-function ThreadView({ thread, currentUserId }: { thread: TabData; currentUserId: string }) {
+function ThreadView({ thread, currentUserId, canMessage }: { thread: TabData; currentUserId: string; canMessage: boolean }) {
   const { messages, loading, hasMore, loadMore, appendMessage } = useMessages(thread.conversationId)
   const [sending, setSending] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -65,6 +69,7 @@ function ThreadView({ thread, currentUserId }: { thread: TabData; currentUserId:
   }, [messages])
 
   const handleSubmit = useCallback(async (value: string) => {
+    if (!canMessage) return
     const trimmed = value.trim()
     if (!trimmed || sending) return
     setSending(true)
@@ -73,7 +78,7 @@ function ThreadView({ thread, currentUserId }: { thread: TabData; currentUserId:
     } catch {
       setSending(false)
     }
-  }, [sending, sendMessage, thread.otherUserId])
+  }, [canMessage, sending, sendMessage, thread.otherUserId])
 
   return (
     <>
@@ -99,14 +104,25 @@ function ThreadView({ thread, currentUserId }: { thread: TabData; currentUserId:
         ))}
         <div ref={bottomRef} />
       </div>
-      <TerminalInput onSubmit={handleSubmit} disabled={sending} stage="awaiting-message" completions={CHAT_COMPLETIONS} />
+      {!canMessage && (
+        <div className="flex items-center gap-2 px-4 py-2 border-t border-[rgba(16,217,160,0.15)] bg-[rgba(16,217,160,0.03)] font-mono text-[10px] text-[var(--t2)]">
+          <span className="text-[var(--green)] opacity-60 flex-shrink-0">◆</span>
+          <span>you must follow each other to send messages</span>
+        </div>
+      )}
+      <TerminalInput
+        onSubmit={handleSubmit}
+        disabled={sending || !canMessage}
+        stage="awaiting-message"
+        completions={CHAT_COMPLETIONS}
+      />
     </>
   )
 }
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
-export function MessagesPanel({ open, onClose, conversations, conversationsLoading, markConversationRead, bumpConversation }: MessagesPanelProps) {
+export function MessagesPanel({ open, onClose, conversations, conversationsLoading, reloadConversations, markConversationRead, bumpConversation }: MessagesPanelProps) {
   const [tabs, setTabs] = useState<TabData[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null) // null = launcher tab
   const [launcherLines, setLauncherLines] = useState<OutputLine[]>(HELP_LINES)
@@ -117,13 +133,25 @@ export function MessagesPanel({ open, onClose, conversations, conversationsLoadi
   tabsRef.current = tabs
   const activeTabIdRef = useRef<string | null>(null)
   activeTabIdRef.current = activeTabId
+  const openRef = useRef(open)
+  openRef.current = open
 
   const onReceiveMessage = useCallback((msg: IncomingMessage) => {
-    if (activeTabIdRef.current === msg.conversationId) return
+    // Skip the bump only when the user is *actively viewing* this thread —
+    // panel must be open AND active tab must match. Otherwise update the
+    // unread state so the chat-button dot and conversation list reflect it.
+    if (openRef.current && activeTabIdRef.current === msg.conversationId) return
     bumpConversation(msg.conversationId, msg.content)
   }, [bumpConversation])
 
   useChatConnection({ onReceiveMessage })
+
+  // Refresh the conversation list every time the panel opens. This catches
+  // unread messages that arrived before the SignalR connection was established
+  // (the connection is lazy and only starts on the first chat-button click).
+  useEffect(() => {
+    if (open) reloadConversations()
+  }, [open, reloadConversations])
 
   useEffect(() => {
     if (!currentUserId || mutualFetched.current) return
@@ -157,28 +185,32 @@ export function MessagesPanel({ open, onClose, conversations, conversationsLoadi
     setActiveTabId(conversationId)
   }, [markConversationRead])
 
-  // Keyboard shortcuts — Ctrl+W closes active tab, Ctrl+Tab cycles
+  // Keyboard shortcuts — Ctrl+W closes active tab, Esc closes the panel
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === 'w') {
         e.preventDefault()
         if (activeTabIdRef.current) closeTab(activeTabIdRef.current)
+        return
       }
-      if (e.ctrlKey && e.key === 'Tab') {
+      if (e.key === 'Escape') {
         e.preventDefault()
-        const allIds: (string | null)[] = [null, ...tabsRef.current.map(t => t.conversationId)]
-        const idx = allIds.indexOf(activeTabIdRef.current)
-        const next = allIds[(idx + 1) % allIds.length]
-        switchTab(next)
+        onClose()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [open, closeTab, switchTab])
+  }, [open, closeTab, onClose])
 
   const activeThread = tabs.find(t => t.conversationId === activeTabId) ?? null
   const totalUnread = conversations.filter(c => c.hasUnread).length
+  // Re-derive live canMessage from the conversations list so a follow/unfollow during the
+  // session updates the input state on the next list refresh — the snapshot in TabData is
+  // only the initial value at open time.
+  const activeCanMessage = activeThread
+    ? conversations.find(c => c.id === activeThread.conversationId)?.canMessage ?? activeThread.canMessage
+    : false
 
   return (
     <AnimatePresence>
@@ -200,7 +232,7 @@ export function MessagesPanel({ open, onClose, conversations, conversationsLoadi
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-20 right-[3.75rem] z-50 w-[500px] h-[520px] max-w-[calc(100vw-2.5rem)]
+            className="fixed bottom-20 right-[3.75rem] z-50 w-[560px] h-[600px] max-w-[calc(100vw-2.5rem)]
                        flex flex-col rounded-xl overflow-hidden
                        border border-[rgba(16,217,160,0.3)] bg-[var(--bg-card)]
                        shadow-[0_24px_80px_rgba(0,0,0,0.85),0_0_0_1px_rgba(16,217,160,0.08),0_0_60px_rgba(16,217,160,0.05)]"
@@ -216,12 +248,12 @@ export function MessagesPanel({ open, onClose, conversations, conversationsLoadi
                 <button
                   onClick={onClose}
                   title="Close"
-                  className="w-3 h-3 rounded-full bg-[#ff5f57] border border-[rgba(0,0,0,0.15)] flex items-center justify-center hover:brightness-90 transition-all"
+                  className="w-3.5 h-3.5 rounded-full bg-[#ff5f57] border border-[rgba(0,0,0,0.15)] flex items-center justify-center hover:brightness-90 transition-all"
                 >
-                  <X size={6} className="text-[rgba(0,0,0,0.65)]" />
+                  <X size={7} className="text-[rgba(0,0,0,0.65)]" />
                 </button>
-                <div className="w-3 h-3 rounded-full bg-[#febc2e] border border-[rgba(0,0,0,0.15)]" />
-                <div className="w-3 h-3 rounded-full bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.08)]" />
+                <div className="w-3.5 h-3.5 rounded-full bg-[#febc2e] border border-[rgba(0,0,0,0.15)]" />
+                <div className="w-3.5 h-3.5 rounded-full bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.08)]" />
               </div>
 
               {/* Tab strip */}
@@ -231,16 +263,16 @@ export function MessagesPanel({ open, onClose, conversations, conversationsLoadi
                 <button
                   onClick={() => switchTab(null)}
                   title="Chat launcher"
-                  className={`flex items-center gap-1.5 px-3 py-2.5 font-mono text-[10px] flex-shrink-0 border-r border-[rgba(16,217,160,0.1)] transition-colors -mb-px ${
+                  className={`flex items-center gap-1.5 px-3.5 py-3 font-mono text-[11px] flex-shrink-0 border-r border-[rgba(16,217,160,0.1)] transition-colors -mb-px ${
                     activeTabId === null
-                      ? 'text-[var(--t1)] border-b-2 border-b-[var(--green)] bg-[rgba(16,217,160,0.06)]'
-                      : 'text-[var(--t3)] hover:text-[var(--t2)] hover:bg-[rgba(16,217,160,0.03)]'
+                      ? 'text-[var(--t1)] border-b-2 border-b-[var(--green)] bg-[rgba(16,217,160,0.06)] font-semibold'
+                      : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[rgba(16,217,160,0.03)]'
                   }`}
                 >
-                  <MessageSquare size={9} className={activeTabId === null ? 'text-[var(--green)]' : ''} />
+                  <MessageSquare size={11} className={activeTabId === null ? 'text-[var(--green)]' : ''} />
                   <span className="tracking-[0.1em]">CHAT</span>
                   {totalUnread > 0 && activeTabId !== null && (
-                    <span className="flex items-center justify-center w-3.5 h-3.5 rounded-full bg-[var(--green)] text-[var(--bg)] font-bold text-[8px]">
+                    <span className="flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[var(--green)] text-[var(--bg)] font-bold text-[9px]">
                       {totalUnread > 9 ? '9+' : totalUnread}
                     </span>
                   )}
@@ -254,10 +286,10 @@ export function MessagesPanel({ open, onClose, conversations, conversationsLoadi
                     <button
                       key={tab.conversationId}
                       onClick={() => switchTab(tab.conversationId)}
-                      className={`group flex items-center gap-1.5 px-3 py-2.5 font-mono text-[10px] flex-shrink-0 border-r border-[rgba(16,217,160,0.1)] max-w-[140px] transition-colors -mb-px ${
+                      className={`group flex items-center gap-1.5 px-3.5 py-3 font-mono text-[11px] flex-shrink-0 border-r border-[rgba(16,217,160,0.1)] max-w-[160px] transition-colors -mb-px ${
                         isActive
-                          ? 'text-[var(--t1)] border-b-2 border-b-[var(--green)] bg-[rgba(16,217,160,0.06)]'
-                          : 'text-[var(--t3)] hover:text-[var(--t2)] hover:bg-[rgba(16,217,160,0.03)]'
+                          ? 'text-[var(--t1)] border-b-2 border-b-[var(--green)] bg-[rgba(16,217,160,0.06)] font-semibold'
+                          : 'text-[var(--t2)] hover:text-[var(--t1)] hover:bg-[rgba(16,217,160,0.03)]'
                       }`}
                     >
                       <span className="truncate">@{tab.otherUsername}</span>
@@ -267,9 +299,9 @@ export function MessagesPanel({ open, onClose, conversations, conversationsLoadi
                       <span
                         role="button"
                         onClick={e => closeTab(tab.conversationId, e)}
-                        className="flex-shrink-0 opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity ml-0.5 flex items-center"
+                        className="flex-shrink-0 opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity ml-0.5 flex items-center"
                       >
-                        <X size={8} />
+                        <X size={10} />
                       </span>
                     </button>
                   )
@@ -277,8 +309,8 @@ export function MessagesPanel({ open, onClose, conversations, conversationsLoadi
 
                 {/* Spacer with keyboard hint */}
                 {tabs.length > 0 && (
-                  <div className="flex items-center px-3 ml-auto flex-shrink-0">
-                    <span className="font-mono text-[9px] text-[var(--t3)] opacity-50 whitespace-nowrap">ctrl+w close · ctrl+tab switch</span>
+                  <div className="hidden md:flex items-center px-3 ml-auto flex-shrink-0">
+                    <span className="font-mono text-[10px] text-[var(--t2)] opacity-70 whitespace-nowrap">ctrl+w close</span>
                   </div>
                 )}
               </div>
@@ -291,12 +323,18 @@ export function MessagesPanel({ open, onClose, conversations, conversationsLoadi
                 setLines={setLauncherLines}
                 conversations={conversations}
                 conversationsLoading={conversationsLoading}
+                reloadConversations={reloadConversations}
                 mutualFollows={mutualFollows}
                 onOpenThread={openThread}
                 onClose={onClose}
               />
             ) : activeThread && currentUserId ? (
-              <ThreadView key={activeThread.conversationId} thread={activeThread} currentUserId={currentUserId} />
+              <ThreadView
+                key={activeThread.conversationId}
+                thread={activeThread}
+                currentUserId={currentUserId}
+                canMessage={activeCanMessage}
+              />
             ) : null}
           </motion.div>
         </>

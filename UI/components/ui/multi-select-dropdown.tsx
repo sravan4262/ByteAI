@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Search, X, Check } from 'lucide-react'
+import { ChevronDown, Search, X, Check, Sparkles } from 'lucide-react'
 
 export interface DropdownOption {
   value: string
@@ -16,6 +16,7 @@ interface MultiSelectDropdownProps {
   className?: string
   accentColor?: 'accent' | 'cyan' | 'green' | 'purple'
   maxDisplay?: number
+  creatable?: boolean
 }
 
 const ACCENT_CLASSES = {
@@ -53,6 +54,7 @@ export function MultiSelectDropdown({
   className = '',
   accentColor = 'accent',
   maxDisplay = 2,
+  creatable = false,
 }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -63,6 +65,13 @@ export function MultiSelectDropdown({
   const filtered = options
     .filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => a.label.localeCompare(b.label))
+
+  const trimmedSearch = search.trim()
+  const exactMatch =
+    trimmedSearch.length > 0 &&
+    (options.some((o) => o.label.toLowerCase() === trimmedSearch.toLowerCase()) ||
+      values.some((v) => v.toLowerCase() === trimmedSearch.toLowerCase()))
+  const showCreate = creatable && trimmedSearch.length > 0 && !exactMatch
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -85,6 +94,14 @@ export function MultiSelectDropdown({
     } else {
       onChange([...values, val])
     }
+  }
+
+  const createAndSelect = () => {
+    if (!trimmedSearch) return
+    if (!values.some((v) => v.toLowerCase() === trimmedSearch.toLowerCase())) {
+      onChange([...values, trimmedSearch])
+    }
+    setSearch('')
   }
 
   const clearAll = (e: React.MouseEvent) => {
@@ -130,7 +147,13 @@ export function MultiSelectDropdown({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${placeholder.toLowerCase()}...`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && showCreate) {
+                  e.preventDefault()
+                  createAndSelect()
+                }
+              }}
+              placeholder={creatable ? 'Search or type to create...' : `Search ${placeholder.toLowerCase()}...`}
               className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] placeholder:text-[var(--t2)] outline-none"
             />
             {search && (
@@ -152,7 +175,23 @@ export function MultiSelectDropdown({
 
           {/* Options */}
           <div className="max-h-52 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
-            {filtered.length === 0 ? (
+            {showCreate && (
+              <button
+                type="button"
+                onClick={createAndSelect}
+                className="w-full flex items-center gap-2 px-3 py-2.5 border-b border-[var(--border-h)] text-left transition-all bg-[rgba(59,130,246,0.04)] hover:bg-[rgba(59,130,246,0.1)]"
+              >
+                <div className="flex items-center justify-center w-5 h-5 rounded-md bg-[rgba(59,130,246,0.15)] border border-[rgba(59,130,246,0.3)] flex-shrink-0">
+                  <Sparkles size={10} className="text-[var(--accent)]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-mono text-[10px] text-[var(--t2)] block leading-none mb-0.5">use custom</span>
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] truncate block">&quot;{trimmedSearch}&quot;</span>
+                </div>
+                <span className="font-mono text-[8px] px-1.5 py-0.5 rounded border border-[rgba(59,130,246,0.4)] text-[var(--accent)] bg-[rgba(59,130,246,0.1)] flex-shrink-0">NEW</span>
+              </button>
+            )}
+            {filtered.length === 0 && !showCreate ? (
               <div className="font-mono text-[10px] text-[var(--t2)] px-3 py-3 text-center">
                 No results for &quot;{search}&quot;
               </div>

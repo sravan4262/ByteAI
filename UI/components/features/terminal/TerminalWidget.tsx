@@ -20,11 +20,16 @@ export function TerminalWidget({ open, onOpenChange }: Props) {
       if (e.ctrlKey && e.key === '`') {
         e.preventDefault()
         onOpenChange(!open)
+        return
+      }
+      if (open && e.key === 'Escape') {
+        e.preventDefault()
+        close()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [open, onOpenChange])
+  }, [open, onOpenChange, close])
 
   return (
     <>
@@ -65,7 +70,7 @@ export function TerminalWidget({ open, onOpenChange }: Props) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-20 right-5 z-50 w-[500px] h-[520px] max-w-[calc(100vw-2.5rem)]"
+            className="fixed bottom-20 right-5 z-50 w-[560px] h-[600px] max-w-[calc(100vw-2.5rem)]"
           >
             <TerminalShell
               lines={lines}

@@ -97,17 +97,17 @@ export function TerminalInput({ onSubmit, disabled, stage, completions: completi
   return (
     <div className="border-t border-[var(--border-h)] bg-[rgba(16,217,160,0.02)]">
       <div className="flex items-center gap-0 px-4 py-3">
-        <div className="flex items-center gap-1.5 flex-shrink-0 select-none mr-1">
+        <div className="flex items-center gap-1.5 flex-shrink-0 select-none mr-1.5">
           {isInput ? (
-            <span className="font-mono text-[11px] text-[#fbbf24]">input</span>
+            <span className="font-mono text-xs text-[#fbbf24]">input</span>
           ) : (
             <>
-              <span className="font-mono text-[11px] text-[rgba(16,217,160,0.5)]">byteai</span>
-              <span className="font-mono text-[11px] text-[var(--t3)]">@</span>
-              <span className="font-mono text-[11px] text-[var(--accent)]">~</span>
+              <span className="font-mono text-xs text-[rgba(16,217,160,0.7)]">byteai</span>
+              <span className="font-mono text-xs text-[var(--t2)]">@</span>
+              <span className="font-mono text-xs text-[var(--accent)]">~</span>
             </>
           )}
-          <span className="font-mono text-[11px] text-[var(--green)] font-bold">
+          <span className="font-mono text-xs text-[var(--green)] font-bold">
             {isInput ? '›' : '$'}
           </span>
         </div>
@@ -122,7 +122,7 @@ export function TerminalInput({ onSubmit, disabled, stage, completions: completi
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
-          className="flex-1 bg-transparent font-mono text-[11px] text-[var(--t1)] outline-none caret-[var(--green)] placeholder:text-[var(--t2)] disabled:opacity-40"
+          className="flex-1 bg-transparent font-mono text-xs text-[var(--t1)] outline-none caret-[var(--green)] placeholder:text-[var(--t2)] disabled:opacity-40"
           placeholder={disabled ? '' : isInput ? 'Type your message...' : 'type a command...'}
         />
 
@@ -132,7 +132,7 @@ export function TerminalInput({ onSubmit, disabled, stage, completions: completi
           </span>
         )}
 
-        <span className="w-1.5 h-3.5 bg-[var(--green)] animate-[pulse_1s_ease-in-out_infinite] rounded-[1px] flex-shrink-0 opacity-80 ml-1" />
+        <span className="w-1.5 h-4 bg-[var(--green)] animate-[pulse_1s_ease-in-out_infinite] rounded-[1px] flex-shrink-0 opacity-80 ml-1" />
       </div>
 
       {value.length > 0 && (() => {
@@ -141,8 +141,8 @@ export function TerminalInput({ onSubmit, disabled, stage, completions: completi
         if (!match) return null
         return (
           <div className="px-4 pb-2 flex items-center gap-1.5">
-            <span className="font-mono text-[9px] text-[var(--t3)] tracking-wide">TAB</span>
-            <span className="font-mono text-[10px] text-[var(--green)] opacity-50">{match}</span>
+            <span className="font-mono text-[10px] text-[var(--t2)] tracking-wide font-bold">TAB</span>
+            <span className="font-mono text-[10px] text-[var(--green)] opacity-70">{match}</span>
           </div>
         )
       })()}

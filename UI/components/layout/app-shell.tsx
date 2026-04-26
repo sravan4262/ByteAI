@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0)
   const { isAdmin, isLoaded } = useIsAdmin()
   const hasChatFlag = useFeatureFlag('chat')
-  const { conversations, loading: conversationsLoading, markConversationRead, bumpConversation } = useConversations(hasChatFlag === true)
+  const { conversations, loading: conversationsLoading, reload: reloadConversations, markConversationRead, bumpConversation } = useConversations(hasChatFlag === true)
   const hasUnreadMessages = hasChatFlag && conversations.some(c => c.hasUnread)
 
   // Poll unread notification count every 60 seconds
@@ -172,6 +172,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClose={() => setMsgOpen(false)}
             conversations={conversations}
             conversationsLoading={conversationsLoading}
+            reloadConversations={reloadConversations}
             markConversationRead={markConversationRead}
             bumpConversation={bumpConversation}
           />

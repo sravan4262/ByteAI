@@ -5,6 +5,9 @@ public sealed record NotificationResponse(
     Guid UserId,
     string Type,
     object? Payload,
+    string? ActorUsername,
+    string? ActorDisplayName,
+    string? ActorAvatarUrl,
     bool Read,
     DateTime CreatedAt
 );

@@ -15,14 +15,14 @@ vi.mock('@/components/ui/searchable-dropdown', () => ({
     onChange,
     options,
   }: {
-    value: string | null
-    onChange: (v: string | null) => void
+    value: string[]
+    onChange: (v: string[]) => void
     options: { value: string; label: string }[]
   }) => (
     <select
       data-testid="stack-filter"
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value || null)}
+      value={value[0] ?? ''}
+      onChange={(e) => onChange(e.target.value ? [e.target.value] : [])}
     >
       <option value="">ALL STACKS</option>
       {options.map((o) => (
@@ -38,7 +38,7 @@ import { FeedFilters } from '@/components/features/feed/feed-filters'
 
 const defaultProps = {
   activeTab: 'for_you',
-  activeStackFilter: null,
+  activeStackFilter: [] as string[],
   onTabChange: vi.fn(),
   onStackFilter: vi.fn(),
 }
@@ -103,6 +103,6 @@ describe('FeedFilters', () => {
 
     const select = screen.getByTestId('stack-filter') as HTMLSelectElement
     await user.selectOptions(select, 'REACT')
-    expect(onStackFilter).toHaveBeenCalledWith('REACT')
+    expect(onStackFilter).toHaveBeenCalledWith(['REACT'])
   })
 })

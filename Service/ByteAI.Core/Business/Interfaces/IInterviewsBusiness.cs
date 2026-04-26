@@ -7,7 +7,7 @@ namespace ByteAI.Core.Business.Interfaces;
 public interface IInterviewsBusiness
 {
     // Reads
-    Task<PagedResult<Interview>> GetInterviewsAsync(int page, int pageSize, Guid? authorId, string? company, string? role, string? location, List<string>? techStacks, string sort, CancellationToken ct, string? supabaseUserId = null);
+    Task<PagedResult<Interview>> GetInterviewsAsync(int page, int pageSize, Guid? authorId, string? company, string? role, string? location, List<string>? techStacks, string? difficulty, string sort, CancellationToken ct, string? supabaseUserId = null);
     Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? supabaseUserId = null);
     Task<List<Company>> GetCompaniesAsync(CancellationToken ct);
     Task<List<InterviewRole>> GetRolesAsync(CancellationToken ct);
@@ -15,7 +15,7 @@ public interface IInterviewsBusiness
 
     // Writes
     Task<Interview> CreateInterviewAsync(string supabaseUserId, string title, string body, string? codeSnippet, string? language, string? company, string? role, string? location, string type, CancellationToken ct);
-    Task<Interview> CreateInterviewWithQuestionsAsync(string supabaseUserId, string title, string? company, string? role, string? location, List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct);
+    Task<Interview> CreateInterviewWithQuestionsAsync(string supabaseUserId, string title, string? company, string? role, string? location, string difficulty, List<InterviewQuestionInput> questions, bool isAnonymous, CancellationToken ct);
     Task<Interview> UpdateInterviewAsync(string supabaseUserId, Guid id, string? title, string? body, string? codeSnippet, string? language, string? company, string? role, string? location, CancellationToken ct);
     Task<bool> DeleteInterviewAsync(string supabaseUserId, Guid id, CancellationToken ct);
 

@@ -1,4 +1,5 @@
 using ByteAI.Gateway.HealthChecks;
+using ByteAI.Gateway.Logging;
 using ByteAI.Gateway.Middleware;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
@@ -17,11 +18,18 @@ try
     // or every log line will be emitted twice (one per sink).
     builder.Host.UseSerilog((ctx, lc) => lc
         .ReadFrom.Configuration(ctx.Configuration)
-        .Enrich.FromLogContext());
+        .Enrich.FromLogContext()
+        // Redacts ?access_token / ?code / ?state values from any string property — protects
+        // SignalR JWT tokens (sent via query for SSE/long-polling) and OAuth codes from log storage.
+        .Enrich.With<RedactSensitiveQueryEnricher>());
 
     // ── CORS — allow the SWA frontend origin ────────────────────────────────
+    // Validated at startup so a misconfigured Cors:AllowedOrigin (e.g. "*",
+    // missing scheme, attacker domain) crashes the process instead of opening
+    // credentialed CORS to the wrong origin.
     var allowedOrigins = (builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000")
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    ValidateCorsOrigins(allowedOrigins);
     builder.Services.AddCors(opt =>
         opt.AddDefaultPolicy(policy =>
             policy.WithOrigins(allowedOrigins)
@@ -113,6 +121,11 @@ try
     });
     app.UseCors();
 
+    // Browser-defense response headers (HSTS, nosniff, X-Frame-Options, Referrer-Policy,
+    // Permissions-Policy, CSP report-only). Registered before the auth gate so 401 responses
+    // also carry the headers.
+    app.UseMiddleware<SecurityHeadersMiddleware>();
+
     // API-key / JWT gate — evaluated before YARP forwards the request
     app.UseMiddleware<ApiKeyMiddleware>();
 
@@ -147,4 +160,39 @@ catch (Exception ex) when (ex is not HostAbortedException)
 finally
 {
     Log.CloseAndFlush();
+}
+
+// Validates each CORS origin is an absolute http(s) URL with no path/query and (for non-localhost
+// hosts) https scheme. Rejects "*" outright — combined with AllowCredentials() it is both
+// browser-rejected and insecure, so failing fast is better than silently shipping a broken policy.
+static void ValidateCorsOrigins(string[] origins)
+{
+    if (origins.Length == 0)
+        throw new InvalidOperationException("Cors:AllowedOrigin must contain at least one origin.");
+
+    foreach (var origin in origins)
+    {
+        if (origin == "*")
+            throw new InvalidOperationException(
+                "Cors:AllowedOrigin cannot contain '*' — wildcard origins are incompatible with AllowCredentials.");
+
+        if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+            throw new InvalidOperationException(
+                $"Cors:AllowedOrigin entry '{origin}' is not an absolute URL (expected scheme://host[:port]).");
+
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            throw new InvalidOperationException(
+                $"Cors:AllowedOrigin entry '{origin}' must use http or https scheme.");
+
+        var isLoopback = uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                         || uri.Host == "127.0.0.1"
+                         || uri.Host == "::1";
+        if (uri.Scheme == Uri.UriSchemeHttp && !isLoopback)
+            throw new InvalidOperationException(
+                $"Cors:AllowedOrigin entry '{origin}' must use https (http is only allowed for localhost).");
+
+        if (uri.AbsolutePath != "/" || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
+            throw new InvalidOperationException(
+                $"Cors:AllowedOrigin entry '{origin}' must not include a path, query, or fragment.");
+    }
 }

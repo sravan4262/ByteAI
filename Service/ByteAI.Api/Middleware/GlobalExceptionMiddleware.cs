@@ -31,7 +31,11 @@ public sealed class GlobalExceptionMiddleware(RequestDelegate next, ILogger<Glob
     {
         var (status, title, detail) = ex switch
         {
-            KeyNotFoundException           => (404, "Not Found",                ex.Message),
+            // NotFoundException is thrown explicitly by app code with a sanitized message — safe to echo.
+            // KeyNotFoundException can come from EF / dictionary lookups and may leak internal IDs or
+            // table names, so respond with a static message instead.
+            NotFoundException              => (404, "Not Found",                ex.Message),
+            KeyNotFoundException           => (404, "Not Found",                "Resource not found."),
             UnauthorizedAccessException    => (403, "Forbidden",                "You are not authorized to perform this action."),
             InvalidContentException ice    => (422, "Invalid Content",          ice.Reason),
             DuplicateContentException      => (409, "Duplicate Content",        ex.Message),
