@@ -54,7 +54,27 @@
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "BYTEAI_API_URL"
-            value = "http://192.168.5.200:5239"
+            value = "http://192.168.5.200:8090"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "SUPABASE_URL"
+            value = "https://unheard-finisher-promotion.ngrok-free.dev"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "SUPABASE_ANON_KEY"
+            value = "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "GOOGLE_IOS_CLIENT_ID"
+            value = "604471779766-m33f269r5ha8lm5pk7b3di50rnnuafhg.apps.googleusercontent.com"
+            isEnabled = "YES">
+         </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "GOOGLE_IOS_REVERSED_CLIENT_ID"
+            value = "com.googleusercontent.apps.604471779766-m33f269r5ha8lm5pk7b3di50rnnuafhg"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>

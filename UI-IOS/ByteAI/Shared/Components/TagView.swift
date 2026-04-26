@@ -39,7 +39,7 @@ struct DifficultyBadge: View {
 
     var body: some View {
         Text(difficulty.label.uppercased())
-            .font(.byteMono(9, weight: .bold))
+            .font(.byteMono(10, weight: .bold))
             .foregroundColor(color)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
@@ -67,7 +67,7 @@ struct TypeBadge: View {
 
     var body: some View {
         Text(label.uppercased())
-            .font(.byteMono(9, weight: .bold))
+            .font(.byteMono(10, weight: .bold))
             .foregroundColor(color)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)

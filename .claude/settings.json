@@ -1,6 +1,9 @@
 {
   "permissions": {
     "allow": [
+      "Read",
+      "Write",
+      "Edit",
       "Bash(git *)",
       "Bash(dotnet *)",
       "Bash(npm *)",
@@ -10,10 +13,13 @@
       "Bash(ls *)",
       "Bash(find *)",
       "Bash(cat *)",
-      "Bash(echo *)"
+      "Bash(echo *)",
+      "Bash(xcodebuild:*)",
+      "Bash(DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild:*)"
     ],
     "deny": [
       "Bash(rm -rf *)",
+      "Bash(git push:*)",
       "Bash(git push --force *)"
     ]
   }

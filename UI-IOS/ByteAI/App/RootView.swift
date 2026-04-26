@@ -1,34 +1,56 @@
 import SwiftUI
+import UserNotifications
 
 // MARK: - Root View
-// Mirrors middleware.ts auth routing:
 //   unauthenticated → AuthView
 //   onboarding      → OnboardingView
 //   authenticated   → MainTabView
 
 struct RootView: View {
     @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var flags: FeatureFlagsManager
+    @EnvironmentObject private var chat: ChatService
+    @EnvironmentObject private var router: DeepLinkRouter
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
             switch auth.state {
             case .unauthenticated:
-                AuthView()
-                    .transition(.opacity)
-
+                AuthView().transition(.opacity)
             case .onboarding:
-                OnboardingView()
-                    .transition(.opacity)
-
+                OnboardingView().transition(.opacity)
             case .authenticated:
-                MainTabView()
-                    .transition(.opacity)
+                MainTabView().transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.3), value: stateKey)
+        .onChange(of: auth.state) { _, newState in
+            if case .authenticated = newState {
+                Task {
+                    flags.start()
+                    await chat.start()
+                    await requestPushPermission()
+                }
+            } else {
+                flags.stop()
+                Task { await chat.stop() }
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active:
+                if case .authenticated = auth.state {
+                    Task { await chat.start() }
+                }
+            case .background:
+                Task { await chat.stop() }
+            default:
+                break
+            }
+        }
     }
 
-    // Stable key for animation — avoids re-animating within the same state
     private var stateKey: String {
         switch auth.state {
         case .unauthenticated: return "auth"
@@ -36,82 +58,98 @@ struct RootView: View {
         case .authenticated:   return "main"
         }
     }
+
+    @MainActor
+    private func requestPushPermission() async {
+        let center = UNUserNotificationCenter.current()
+        let granted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        if granted {
+            UIApplication.shared.registerForRemoteNotifications()
+        }
+    }
 }
 
 // MARK: - Main Tab View
-// iOS equivalent of the AppShell sidebar: bottom tab bar with 5 tabs.
-// Matches: BITS → INTERVIEWS → SEARCH → POST → ALERTS
 
 struct MainTabView: View {
     @State private var selectedTab: Tab = .feed
+    @State private var previousTab: Tab = .feed
     @State private var showCompose = false
     @State private var showNotifications = false
+    @State private var feedScrollToTop = 0
     @StateObject private var notifBadge = NotificationBadgeVM()
+    @EnvironmentObject private var auth: AuthManager
+    @EnvironmentObject private var router: DeepLinkRouter
+    @EnvironmentObject private var chat: ChatService
 
     enum Tab: Int, CaseIterable {
-        case feed, interviews, search, notifications, profile
+        case feed, interviews, compose, search, profile
     }
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            FeedView()
-                .tabItem {
-                    Label("Bits", systemImage: "bolt.fill")
-                }
+            FeedView(scrollToTopTrigger: feedScrollToTop)
+                .tabItem { Label("Bits", systemImage: "bolt.fill") }
                 .tag(Tab.feed)
 
             InterviewsView()
-                .tabItem {
-                    Label("Interviews", systemImage: "briefcase.fill")
-                }
+                .tabItem { Label("Interviews", systemImage: "briefcase.fill") }
                 .tag(Tab.interviews)
 
-            // Compose — center FAB-style tap
+            // Compose — center FAB-style tap (intercepted; never actually selected)
             Color.clear
-                .tabItem {
-                    Label("Post", systemImage: "plus.circle.fill")
-                }
-                .tag(Tab.search) // placeholder
+                .tabItem { Label("Post", systemImage: "plus.circle.fill") }
+                .tag(Tab.compose)
 
             SearchView()
-                .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
-                }
-                .tag(Tab.notifications)
+                .tabItem { Label("Search", systemImage: "magnifyingglass") }
+                .tag(Tab.search)
 
-            ProfileView(username: AuthManager.shared.currentUser?.username ?? "")
-                .tabItem {
-                    Label("Profile", systemImage: "person.fill")
-                }
+            ProfileView(username: auth.currentUser?.username ?? "")
+                .tabItem { Label("Profile", systemImage: "person.fill") }
                 .tag(Tab.profile)
+                .badge(notifBadge.unreadCount > 0 ? notifBadge.unreadCount : 0)
         }
         .tint(.byteAccent)
         .onAppear { applyTabBarAppearance() }
-        // Intercept center tab → show compose sheet
-        .onChange(of: selectedTab) { tab in
-            if tab == .search {
-                selectedTab = .feed
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if newValue == .compose {
+                selectedTab = previousTab
                 showCompose = true
+                Haptics.light()
+            } else {
+                if oldValue == newValue, newValue == .feed {
+                    // Tap the active feed tab → scroll-to-top
+                    feedScrollToTop &+= 1
+                }
+                previousTab = newValue
             }
         }
-        .sheet(isPresented: $showCompose) {
-            ComposeView()
+        .sheet(isPresented: $showCompose) { ComposeView() }
+        .sheet(isPresented: $showNotifications) { NotificationsView() }
+        .onChange(of: router.requestedTab) { _, tab in
+            if let raw = tab, let t = Tab(rawValue: raw) {
+                selectedTab = t
+            }
         }
-        .overlay(alignment: .bottom) {
-            // Notification badge overlay on profile tab item — handled via .badge modifier below
-            EmptyView()
+        .onChange(of: router.showNotifications) { _, show in
+            showNotifications = show
+            if !show { router.showNotifications = false }
         }
         .task { await notifBadge.load() }
+        .task(id: chat.unreadCount) {
+            await MainActor.run {
+                let total = notifBadge.unreadCount + chat.unreadCount
+                UIApplication.shared.applicationIconBadgeNumber = total
+            }
+        }
     }
 
     private func applyTabBarAppearance() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(Color.byteCard)
-
-        // Border line at top
         appearance.shadowColor = UIColor(Color.byteBorderMedium)
-
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
         UITabBar.appearance().unselectedItemTintColor = UIColor(Color.byteText2)
@@ -132,4 +170,8 @@ final class NotificationBadgeVM: ObservableObject {
 #Preview {
     RootView()
         .environmentObject(AuthManager.shared)
+        .environmentObject(FeatureFlagsManager.shared)
+        .environmentObject(ChatService.shared)
+        .environmentObject(DeepLinkRouter.shared)
+        .environmentObject(ToastCenter.shared)
 }

@@ -27,7 +27,7 @@ struct CodeBlockView: View {
 
                 // Language badge
                 Text(snippet.language.uppercased())
-                    .font(.byteMono(9, weight: .medium))
+                    .font(.byteMono(10, weight: .medium))
                     .foregroundColor(.byteCyan)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)

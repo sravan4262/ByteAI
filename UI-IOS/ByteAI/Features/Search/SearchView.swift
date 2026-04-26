@@ -1,343 +1,420 @@
 import SwiftUI
 
 // MARK: - Search View
-// Mirrors /(app)/search/page.tsx — keyword + AI Ask (RAG) modes
+// Mirrors UI/components/features/search/search-screen.tsx
+// Single search field with auto-detected intent:
+//   "@xyz"  → PEOPLE
+//   "?how to..." or "how/what/why/when/explain/is/are/does/can/should/will/where/which" → ASK
+//   else    → BYTES
+// User can override by tapping a mode chip.
 
-struct SearchView: View {
-    @StateObject private var vm = SearchViewModel()
+enum SearchMode: String, CaseIterable, Identifiable {
+    case bytes, people, ask
+    var id: String { rawValue }
 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.byteBackground.ignoresSafeArea()
+    var label: String {
+        switch self {
+        case .bytes:  "BYTES"
+        case .people: "PEOPLE"
+        case .ask:    "ASK"
+        }
+    }
 
-                VStack(spacing: 0) {
-                    // Search bar
-                    SearchBar(vm: vm)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
+    var icon: String {
+        switch self {
+        case .bytes:  "magnifyingglass"
+        case .people: "person.2"
+        case .ask:    "sparkles"
+        }
+    }
 
-                    // Type tabs (Bytes / Interviews / People)
-                    SearchTypeBar(selected: $vm.searchType)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
-
-                    // Mode toggle (Keyword / Ask AI)
-                    SearchModeToggle(mode: $vm.mode)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
-
-                    Divider().background(Color.byteBorderMedium)
-
-                    // Results
-                    ScrollView {
-                        if vm.mode == .ask {
-                            AskResultView(vm: vm)
-                                .padding(16)
-                        } else {
-                            KeywordResultView(vm: vm)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Search")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.byteBackground, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+    var placeholder: String {
+        switch self {
+        case .bytes:  "Find bytes by keyword or concept…"
+        case .people: "Search for people by name or username…"
+        case .ask:    "Ask anything about tech…"
         }
     }
 }
 
-// MARK: - Search Bar
+private let QUESTION_STARTERS = [
+    "how ", "what ", "why ", "when ", "explain ", "is ", "are ",
+    "does ", "can ", "should ", "will ", "where ", "which "
+]
 
-private struct SearchBar: View {
-    @ObservedObject var vm: SearchViewModel
-    @FocusState private var isFocused: Bool
+private func detectIntent(_ q: String, askEnabled: Bool) -> SearchMode {
+    let trimmed = q.trimmingCharacters(in: .whitespaces).lowercased()
+    if trimmed.hasPrefix("@") { return .people }
+    if askEnabled, trimmed.hasPrefix("?") || QUESTION_STARTERS.contains(where: { trimmed.hasPrefix($0) }) {
+        return .ask
+    }
+    return .bytes
+}
+
+struct SearchView: View {
+    @StateObject private var vm = SearchViewModel()
+    @EnvironmentObject private var flags: FeatureFlagsManager
+    @FocusState private var queryFocused: Bool
 
     var body: some View {
+        NavigationStack {
+            ZStack(alignment: .top) {
+                Color.byteBackground.ignoresSafeArea()
+                    .dismissKeyboardOnTap()
+
+                VStack(spacing: 0) {
+                    header
+                    searchBar
+                    modeChips
+                    Divider().background(Color.byteBorderHigh)
+                    resultsList
+                }
+            }
+            .navigationBarHidden(true)
+        }
+        .onAppear { vm.askEnabled = flags.isEnabled("ai-search-ask") }
+        // Re-evaluate when flags refresh — initial flags fetch is async; without this the
+        // ASK chip stays hidden if the flag arrives after first render.
+        .onChange(of: flags.flags) { _, _ in
+            vm.askEnabled = flags.isEnabled("ai-search-ask")
+        }
+    }
+
+    private var header: some View {
+        FloatingHeaderCard(
+            icon: "magnifyingglass",
+            title: "SEARCH",
+            subtitle: vm.mode == .ask ? "AI-POWERED ANSWERS" : "BYTES · PEOPLE · INSIGHTS",
+            identity: .blue
+        ) { EmptyView() }
+    }
+
+    private var searchBar: some View {
         HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 14))
-                .foregroundColor(isFocused ? .byteAccent : .byteText2)
-
-            TextField(
-                vm.mode == .ask ? "Ask anything about tech..." : "Search bytes, people...",
-                text: $vm.query
-            )
-            .font(.byteBody)
-            .foregroundColor(.byteText1)
-            .tint(.byteAccent)
-            .focused($isFocused)
-            .submitLabel(.search)
-            .onSubmit { Task { await vm.search() } }
-
+            Image(systemName: vm.mode.icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(queryFocused ? .byteAccent : .byteText2)
+            TextField(vm.mode.placeholder, text: $vm.query)
+                .font(.byteSans(14))
+                .foregroundColor(.byteText1)
+                .tint(.byteAccent)
+                .focused($queryFocused)
+                .submitLabel(.search)
+                .onSubmit { Task { await vm.search() } }
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .onChange(of: vm.query) { _, q in
+                    vm.mode = detectIntent(q, askEnabled: vm.askEnabled)
+                }
             if !vm.query.isEmpty {
                 Button { vm.query = "" } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.byteText3)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
+                .accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.byteElement)
-        .cornerRadius(10)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(IdentityColor.blue.bgFaint)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(isFocused ? Color.byteAccent.opacity(0.5) : Color.byteBorderMedium, lineWidth: 1)
+                .stroke(queryFocused ? .byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1)
         )
-        .animation(.easeInOut(duration: 0.15), value: isFocused)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .shadow(color: queryFocused ? IdentityColor.blue.tint(0.14) : .clear, radius: 6)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
-}
 
-// MARK: - Type Bar
-
-private struct SearchTypeBar: View {
-    @Binding var selected: SearchType
-
-    var body: some View {
-        HStack(spacing: 6) {
-            ForEach(SearchType.allCases, id: \.self) { type in
+    private var modeChips: some View {
+        HStack(spacing: 8) {
+            ForEach(visibleModes, id: \.self) { mode in
                 Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { selected = type }
+                    withAnimation(.easeInOut(duration: 0.15)) { vm.mode = mode }
                 } label: {
-                    Text(type.rawValue)
-                        .font(.byteMono(10, weight: .semibold))
-                        .foregroundColor(selected == type ? .byteAccent : .byteText2)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(selected == type ? Color.byteAccentDim : Color.clear)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(selected == type ? Color.byteAccent.opacity(0.4) : Color.clear, lineWidth: 1)
-                                )
-                        )
-                }
-            }
-            Spacer()
-        }
-    }
-}
-
-// MARK: - Mode Toggle
-
-enum SearchMode: String { case keyword = "KEYWORD", ask = "ASK AI" }
-
-private struct SearchModeToggle: View {
-    @Binding var mode: SearchMode
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach([SearchMode.keyword, .ask], id: \.rawValue) { m in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { mode = m }
-                } label: {
-                    HStack(spacing: 4) {
-                        if m == .ask {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 10))
-                                .foregroundColor(mode == m ? .byteAccent : .byteText3)
-                        }
-                        Text(m.rawValue)
-                            .font(.byteMono(10, weight: .semibold))
-                            .foregroundColor(mode == m ? .byteText1 : .byteText3)
+                    HStack(spacing: 5) {
+                        Image(systemName: mode.icon).font(.system(size: 11))
+                        Text(mode.label).font(.byteMono(11, weight: vm.mode == mode ? .bold : .regular))
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(mode == m ? Color.byteElement : Color.clear)
+                    .tracking(0.5)
+                    .foregroundColor(vm.mode == mode ? .byteAccent : .byteText1)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(vm.mode == mode ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(vm.mode == mode ? .byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .shadow(color: vm.mode == mode ? IdentityColor.blue.tint(0.20) : .clear, radius: 6)
                 }
+                .buttonStyle(.plain)
+                .frame(minHeight: 36)
             }
+            Spacer(minLength: 0)
         }
-        .background(Color.byteCard)
-        .cornerRadius(8)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.byteBorderMedium, lineWidth: 1))
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
     }
-}
 
-// MARK: - Keyword Result View
+    private var visibleModes: [SearchMode] {
+        vm.askEnabled ? SearchMode.allCases : [.bytes, .people]
+    }
 
-private struct KeywordResultView: View {
-    @ObservedObject var vm: SearchViewModel
-
-    var body: some View {
-        LazyVStack(spacing: 12) {
-            if vm.query.isEmpty {
-                // Recent searches / suggestions
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("TRENDING SEARCHES")
-                        .font(.byteMonoTiny)
-                        .foregroundColor(.byteText3)
-                        .tracking(1)
-
-                    ForEach(["react server components", "go concurrency", "postgresql indexes", "rust ownership"], id: \.self) { term in
-                        HStack {
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 11))
-                                .foregroundColor(.byteText3)
-                            Text(term)
-                                .font(.byteBody)
-                                .foregroundColor(.byteText2)
-                            Spacer()
-                        }
-                        .padding(.vertical, 6)
-                        .onTapGesture {
-                            vm.query = term
-                            Task { await vm.search() }
-                        }
+    @ViewBuilder
+    private var resultsList: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                if vm.query.isEmpty {
+                    suggestions
+                } else if vm.isLoading {
+                    HStack {
+                        ByteSpinner(size: 22)
+                        MonoStatusLine(text: vm.mode == .ask ? "THINKING…" : "SEARCHING…", pulsing: true)
                     }
-                }
-            } else if vm.isLoading {
-                ForEach(0..<3, id: \.self) { _ in PostCardSkeleton() }
-            } else if let err = vm.error {
-                EmptyStateView(icon: "exclamationmark.triangle", title: "Search failed", message: err)
-            } else if vm.searchType == .people {
-                if vm.peopleResults.isEmpty && !vm.query.isEmpty {
-                    EmptyStateView(icon: "person.slash", title: "No people found", message: "Try a different name or username.")
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 40)
+                } else if let err = vm.error {
+                    EmptyStateView(icon: "exclamationmark.triangle", title: "Search failed", message: err)
+                        .padding(.horizontal, 16)
                 } else {
-                    ForEach(vm.peopleResults) { person in
-                        PersonRow(person: person)
+                    switch vm.mode {
+                    case .bytes:  bytesResults
+                    case .people: peopleResults
+                    case .ask:    askResults
                     }
                 }
-            } else if vm.results.isEmpty && !vm.query.isEmpty {
-                EmptyStateView(icon: "magnifyingglass", title: "No results", message: "Try different keywords or switch to Ask AI mode.")
-            } else {
-                ForEach(vm.results) { post in PostCardView(post: post) }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+        }
+    }
+
+    @ViewBuilder
+    private var suggestions: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            AccentBarHeader(label: vm.mode == .ask ? "TRY ASKING" : "TRENDING SEARCHES", size: .compact)
+            ForEach(suggestionItems, id: \.self) { item in
+                Button { vm.query = item; Task { await vm.search() } } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: vm.mode == .ask ? "sparkles" : "arrow.up.right")
+                            .font(.system(size: 12))
+                            .foregroundColor(.byteAccent)
+                        Text(item)
+                            .font(.byteSans(13))
+                            .foregroundColor(.byteText1)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                    }
+                    .padding(12)
+                    .background(IdentityColor.blue.bgFaint)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+            }
+        }
+    }
+
+    private var suggestionItems: [String] {
+        if vm.mode == .ask {
+            return [
+                "What's the difference between useEffect and useLayoutEffect?",
+                "When should I use PostgreSQL over MongoDB?",
+                "How does Rust's borrow checker prevent data races?"
+            ]
+        }
+        return ["react server components", "go concurrency", "postgresql indexes", "rust ownership"]
+    }
+
+    @ViewBuilder
+    private var bytesResults: some View {
+        if vm.posts.isEmpty {
+            EmptyStateView(icon: "magnifyingglass", title: "No results",
+                           message: "Try different keywords or switch to ASK mode.")
+        } else {
+            ForEach(vm.posts) { post in PostCardView(post: post) }
+        }
+    }
+
+    @ViewBuilder
+    private var peopleResults: some View {
+        if vm.people.isEmpty {
+            EmptyStateView(icon: "person.slash", title: "No people found",
+                           message: "Try a different name or username.")
+        } else {
+            ForEach(vm.people) { person in PersonRow(person: person) }
+        }
+    }
+
+    @ViewBuilder
+    private var askResults: some View {
+        if let result = vm.askResult {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles").foregroundColor(.byteAccent)
+                    Text("AI ANSWER")
+                        .font(.byteMono(10, weight: .bold))
+                        .foregroundColor(.byteAccent)
+                        .tracking(1.0)
+                }
+
+                MarkdownAnswerView(text: result.answer)
+                    .padding(14)
+                    .background(Color.byteCard)
+                    .overlay(RoundedRectangle(cornerRadius: 12)
+                        .stroke(IdentityColor.blue.tint(0.3), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                if !result.sources.isEmpty {
+                    AccentBarHeader(label: "SOURCES", size: .compact)
+                    ForEach(result.sources) { post in
+                        HStack(spacing: 10) {
+                            RoundedRectangle(cornerRadius: 2).fill(Color.byteAccent).frame(width: 2, height: 36)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(post.title)
+                                    .font(.byteSans(13, weight: .semibold))
+                                    .foregroundColor(.byteText1)
+                                    .lineLimit(1)
+                                Text("by @\(post.author.username)")
+                                    .font(.byteMono(10))
+                                    .foregroundColor(.byteText3)
+                            }
+                            Spacer()
+                        }
+                        .padding(10)
+                        .background(Color.byteElement)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+            }
+        } else {
+            EmptyStateView(icon: "sparkles", title: "No answer yet",
+                           message: "Ask a question — I'll search across all bytes.")
         }
     }
 }
 
-// MARK: - Ask AI Result View
+// MARK: - Markdown answer renderer
+// Inline markdown: **bold** → accent; `code` → accent inline pill;
+// "- " / "* " / "• " bullets, "1. " numbered lists, paragraphs.
 
-private struct AskResultView: View {
-    @ObservedObject var vm: SearchViewModel
+private struct MarkdownAnswerView: View {
+    let text: String
+
+    private var lines: [String] {
+        text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            if vm.query.isEmpty {
-                // Prompt suggestions
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("TRY ASKING")
-                        .font(.byteMonoTiny)
-                        .foregroundColor(.byteText3)
-                        .tracking(1)
-
-                    ForEach([
-                        "What's the difference between useEffect and useLayoutEffect?",
-                        "When should I use PostgreSQL over MongoDB?",
-                        "How does Rust's borrow checker prevent data races?"
-                    ], id: \.self) { suggestion in
-                        HStack(spacing: 10) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 12))
-                                .foregroundColor(.byteAccent)
-                            Text(suggestion)
-                                .font(.byteBody)
-                                .foregroundColor(.byteText2)
-                                .multilineTextAlignment(.leading)
-                            Spacer()
-                        }
-                        .padding(12)
-                        .background(Color.byteCard)
-                        .cornerRadius(8)
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.byteBorderMedium, lineWidth: 1))
-                        .onTapGesture {
-                            vm.query = suggestion
-                            Task { await vm.search() }
-                        }
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                if line.isEmpty {
+                    EmptyView()
+                } else if let m = bulletMatch(line) {
+                    HStack(alignment: .top, spacing: 10) {
+                        Circle().fill(Color.byteAccent).frame(width: 5, height: 5).padding(.top, 8)
+                        renderInline(m).foregroundColor(.byteText1)
                     }
-                }
-            } else if vm.isLoading {
-                VStack(spacing: 12) {
-                    ByteSpinner(size: 28)
-                    Text("Searching across all bytes...")
-                        .font(.byteMonoSmall)
-                        .foregroundColor(.byteText2)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 40)
-            } else if let result = vm.askResult {
-                // AI Answer
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "sparkles")
-                            .foregroundColor(.byteAccent)
-                        Text("AI ANSWER")
+                } else if let (num, body) = numberMatch(line) {
+                    HStack(alignment: .top, spacing: 10) {
+                        Text("\(num).")
                             .font(.byteMono(10, weight: .bold))
                             .foregroundColor(.byteAccent)
-                            .tracking(1)
+                            .frame(width: 16, alignment: .trailing)
+                            .padding(.top, 2)
+                        renderInline(body).foregroundColor(.byteText1)
                     }
-
-                    Text(result.answer)
-                        .font(.byteBody)
-                        .foregroundColor(.byteText1)
-                        .lineSpacing(4)
-                        .padding(14)
-                        .background(Color.byteCard)
-                        .cornerRadius(10)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color.byteAccent.opacity(0.3), lineWidth: 1)
-                        )
-
-                    if !result.sources.isEmpty {
-                        Text("SOURCES")
-                            .font(.byteMonoTiny)
-                            .foregroundColor(.byteText3)
-                            .tracking(1)
-                            .padding(.top, 4)
-
-                        ForEach(result.sources) { post in
-                            HStack(spacing: 10) {
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.byteAccent)
-                                    .frame(width: 2)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(post.title)
-                                        .font(.byteSans(13, weight: .medium))
-                                        .foregroundColor(.byteText1)
-                                        .lineLimit(1)
-                                    Text("by @\(post.author.username)")
-                                        .font(.byteMonoTiny)
-                                        .foregroundColor(.byteText3)
-                                }
-                            }
-                            .padding(10)
-                            .background(Color.byteElement)
-                            .cornerRadius(8)
-                        }
-                    }
+                } else {
+                    renderInline(line).foregroundColor(.byteText1)
                 }
             }
         }
+        .font(.byteSans(13))
+    }
+
+    private func bulletMatch(_ line: String) -> String? {
+        for prefix in ["- ", "• ", "* "] {
+            if line.hasPrefix(prefix) { return String(line.dropFirst(prefix.count)) }
+        }
+        return nil
+    }
+
+    private func numberMatch(_ line: String) -> (Int, String)? {
+        guard let dot = line.firstIndex(where: { $0 == "." || $0 == ")" }) else { return nil }
+        let head = line[..<dot]
+        guard let num = Int(head) else { return nil }
+        let body = line[line.index(after: dot)...].drop(while: { $0 == " " })
+        return (num, String(body))
+    }
+
+    /// Tokenise on **bold** and `code` runs, return concatenated styled Text.
+    private func renderInline(_ s: String) -> Text {
+        var output = Text("")
+        var i = s.startIndex
+        while i < s.endIndex {
+            if s[i] == "*", let end = nextDoubleStar(in: s, from: s.index(i, offsetBy: 2, limitedBy: s.endIndex) ?? s.endIndex) {
+                let segment = String(s[s.index(i, offsetBy: 2)..<end])
+                output = output + Text(segment).fontWeight(.semibold).foregroundColor(.byteAccent)
+                i = s.index(end, offsetBy: 2, limitedBy: s.endIndex) ?? s.endIndex
+            } else if s[i] == "`", let end = s[s.index(after: i)...].firstIndex(of: "`") {
+                let segment = String(s[s.index(after: i)..<end])
+                output = output + Text(segment).font(.byteMono(11)).foregroundColor(.byteAccent)
+                i = s.index(after: end)
+            } else {
+                let next = s[i...].firstIndex(where: { $0 == "*" || $0 == "`" }) ?? s.endIndex
+                output = output + Text(String(s[i..<next]))
+                i = next
+            }
+        }
+        return output
+    }
+
+    private func nextDoubleStar(in s: String, from start: String.Index) -> String.Index? {
+        var i = start
+        while i < s.endIndex {
+            if s[i] == "*", s.index(after: i) < s.endIndex, s[s.index(after: i)] == "*" { return i }
+            i = s.index(after: i)
+        }
+        return nil
     }
 }
 
-// MARK: - Person Row
+// MARK: - Person row
 
 private struct PersonRow: View {
     let person: PersonResult
+
     var body: some View {
         HStack(spacing: 12) {
             AvatarView(person.initials, variant: AvatarVariant(rawValue: person.avatarVariant) ?? .cyan, size: .md)
             VStack(alignment: .leading, spacing: 2) {
-                Text(person.displayName).font(.byteSans(14, weight: .semibold)).foregroundColor(.byteText1)
-                Text("@\(person.username)").font(.byteMonoTiny).foregroundColor(.byteText3)
+                Text(person.displayName)
+                    .font(.byteSans(14, weight: .semibold))
+                    .foregroundColor(.byteText1)
+                Text("@\(person.username)")
+                    .font(.byteMono(11))
+                    .foregroundColor(.byteText2)
                 if !person.role.isEmpty {
-                    Text(person.role).font(.byteMonoTiny).foregroundColor(.byteText3)
+                    Text(person.role)
+                        .font(.byteMono(11))
+                        .foregroundColor(.byteText2)
                 }
             }
             Spacer()
-            Text("\(person.followers) followers").font(.byteMonoTiny).foregroundColor(.byteText3)
+            Text("\(person.followers) followers")
+                .font(.byteMono(11))
+                .foregroundColor(.byteText2)
         }
         .padding(12)
         .background(Color.byteCard)
-        .cornerRadius(10)
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderMedium, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -346,27 +423,31 @@ private struct PersonRow: View {
 @MainActor
 final class SearchViewModel: ObservableObject {
     @Published var query = ""
-    @Published var mode: SearchMode = .keyword
-    @Published var searchType: SearchType = .bytes
-    @Published var results: [Post] = []
-    @Published var peopleResults: [PersonResult] = []
+    @Published var mode: SearchMode = .bytes
+    @Published var posts: [Post] = []
+    @Published var people: [PersonResult] = []
     @Published var askResult: AskResult?
     @Published var isLoading = false
     @Published var error: String?
+    @Published var askEnabled = false
 
     func search() async {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+
         isLoading = true
         error = nil
         defer { isLoading = false }
 
         do {
-            if mode == .ask {
-                askResult = try await APIClient.shared.searchAsk(question: query)
-            } else if searchType == .people {
-                peopleResults = try await APIClient.shared.searchPeople(query: query)
-            } else {
-                results = try await APIClient.shared.search(query: query, type: searchType.rawValue)
+            switch mode {
+            case .ask:
+                askResult = try await APIClient.shared.searchAsk(question: trimmed)
+            case .people:
+                let q = trimmed.hasPrefix("@") ? String(trimmed.dropFirst()) : trimmed
+                people = try await APIClient.shared.searchPeople(query: q)
+            case .bytes:
+                posts = try await APIClient.shared.search(query: trimmed, type: "Bytes")
             }
         } catch {
             self.error = error.localizedDescription
@@ -376,4 +457,5 @@ final class SearchViewModel: ObservableObject {
 
 #Preview {
     SearchView()
+        .environmentObject(FeatureFlagsManager.shared)
 }

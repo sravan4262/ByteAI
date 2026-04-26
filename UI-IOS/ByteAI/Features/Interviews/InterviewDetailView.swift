@@ -25,7 +25,9 @@ struct InterviewDetailView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             MetaSection(interview: interview, vm: vm)
                             QuestionsSection(interview: interview, vm: vm)
-                            CommentsSection(comments: vm.comments)
+                            CommentsSection(comments: vm.comments) { c in
+                                Task { await vm.deleteComment(c) }
+                            }
                             Color.clear.frame(height: 80)
                         }
                     }
@@ -77,48 +79,86 @@ private struct MetaSection: View {
     let interview: Interview
     @ObservedObject var vm: InterviewDetailViewModel
 
-    var diffColor: Color {
-        switch interview.difficulty {
-        case .easy:   return .byteGreen
-        case .medium: return .byteOrange
-        case .hard:   return .byteRed
-        }
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Difficulty + type badges
-            HStack(spacing: 6) {
-                BadgePill(text: "INTERVIEW", color: .bytePurple)
-                BadgePill(text: interview.difficulty.label.uppercased(), color: diffColor)
-                if let company = interview.company {
-                    BadgePill(text: company.uppercased(), color: .byteText3)
+            // Author row — anonymous: ghost emoji + 👻 anonymous post badge
+            if interview.isAnonymous {
+                HStack(alignment: .top, spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.byteElement)
+                            .frame(width: 38, height: 38)
+                            .overlay(Circle().stroke(Color.byteBorderHigh, lineWidth: 1))
+                        Text("👻").font(.system(size: 22))
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Anonymous")
+                            .font(.byteMono(13, weight: .bold))
+                            .foregroundColor(.byteText2)
+                        Text("👻 anonymous post")
+                            .font(.byteMono(10, weight: .semibold))
+                            .foregroundColor(.bytePurple)
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(IdentityColor.purple.bgFaint)
+                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(IdentityColor.purple.borderFaint, lineWidth: 1))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    Spacer(minLength: 0)
+                    Text(relativeTime(from: interview.createdAt))
+                        .font(.byteMono(11))
+                        .foregroundColor(.byteText2)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    AvatarView(user: interview.author, size: .sm)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("@\(interview.author.username)")
+                            .font(.byteMono(13, weight: .semibold))
+                            .foregroundColor(.byteText1)
+                        if !interview.author.role.isEmpty || !interview.author.company.isEmpty {
+                            let role = interview.author.role
+                            let company = interview.author.company
+                            let separator = (role.isEmpty || company.isEmpty) ? "" : " @ "
+                            Text("\(role)\(separator)\(company)")
+                                .font(.byteMono(11))
+                                .foregroundColor(.byteText2)
+                        }
+                    }
+                    Spacer()
+                    Text(relativeTime(from: interview.createdAt))
+                        .font(.byteMono(11))
+                        .foregroundColor(.byteText2)
+                }
+            }
+
+            // Type + metadata chips — INTERVIEW · company · role · location
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    BadgePill(text: "INTERVIEW", color: .bytePurple)
+                    if let company = interview.company {
+                        BadgePill(text: company.uppercased(), color: .byteText1)
+                    }
+                    if let role = interview.role {
+                        BadgePill(text: role.uppercased(), color: .byteText1)
+                    }
+                    if let location = interview.location {
+                        HStack(spacing: 4) {
+                            Image(systemName: "mappin").font(.system(size: 9))
+                            Text(location.uppercased())
+                                .font(.byteMono(9, weight: .bold))
+                        }
+                        .foregroundColor(.byteText1)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Color.byteText1.opacity(0.08))
+                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.byteBorderHigh, lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                    }
                 }
             }
 
             Text(interview.title)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.byteText1)
-
-            // Author row
-            HStack(spacing: 10) {
-                AvatarView(user: interview.author, size: .sm)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("@\(interview.author.username)")
-                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.byteText1)
-                    if let role = interview.role {
-                        let suffix = interview.company.map { " @ \($0)" } ?? ""
-                        Text("\(role)\(suffix)")
-                            .font(.system(size: 11))
-                            .foregroundColor(.byteText3)
-                    }
-                }
-                Spacer()
-                Text(relativeTime(from: interview.createdAt))
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.byteText3)
-            }
         }
         .padding(20)
         .overlay(alignment: .bottom) {
@@ -136,9 +176,7 @@ private struct QuestionsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("// \(interview.questions.count) QUESTIONS")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                    .foregroundColor(.byteText3)
+                AccentBarHeader(label: "\(interview.questions.count) QUESTIONS", identity: .purple, size: .compact)
                 Spacer()
                 Button {
                     if vm.allExpanded {
@@ -151,9 +189,9 @@ private struct QuestionsSection: View {
                         Image(systemName: vm.allExpanded ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
                             .font(.system(size: 11))
                         Text(vm.allExpanded ? "COLLAPSE ALL" : "EXPAND ALL")
-                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
                     }
-                    .foregroundColor(vm.allExpanded ? .byteAccent : .byteText3)
+                    .foregroundColor(vm.allExpanded ? .bytePurple : .byteText2)
                 }
             }
 
@@ -227,12 +265,13 @@ private struct QuestionCard: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(isLiked ? .byteGreen : .byteText3)
                         }
-                        Label("\(q.commentCount)", systemImage: "bubble.right")
-                            .font(.system(size: 12))
-                            .foregroundColor(.byteText3)
                     }
                 }
                 .padding(.horizontal, 14).padding(.bottom, 14)
+
+                // Per-question comment thread (web parity: inline collapsible thread)
+                Divider().background(Color.byteBorder)
+                QuestionCommentThread(questionId: q.id, initialCount: q.commentCount)
             }
         }
         .background(Color.byteElement)
@@ -241,50 +280,276 @@ private struct QuestionCard: View {
     }
 }
 
+// MARK: - Per-question comment thread
+// Mirrors UI/components/features/interviews/interview-detail-screen.tsx QuestionCommentThread.
+// Lazy-loaded on first open; supports add + delete-own.
+
+private struct QuestionCommentThread: View {
+    let questionId: String
+    let initialCount: Int
+    @State private var isOpen = false
+    @State private var isLoaded = false
+    @State private var comments: [QuestionComment] = []
+    @State private var draft = ""
+    @State private var isSending = false
+    @FocusState private var inputFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { isOpen.toggle() }
+                if isOpen, !isLoaded { Task { await load() } }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "bubble.left").font(.system(size: 11)).foregroundColor(.byteAccent)
+                    Text(displayedCount > 0 ? "COMMENTS (\(displayedCount))" : "COMMENTS")
+                        .font(.byteMono(10, weight: .bold))
+                        .tracking(0.6)
+                        .foregroundColor(.byteText1)
+                    Spacer()
+                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11))
+                        .foregroundColor(.byteAccent)
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+            }
+            .buttonStyle(.plain)
+
+            if isOpen {
+                VStack(alignment: .leading, spacing: 10) {
+                    if isLoaded == false {
+                        HStack(spacing: 6) {
+                            ByteSpinner(size: 12)
+                            Text("Loading…").font(.byteMono(10)).foregroundColor(.byteText2)
+                        }
+                    } else if comments.isEmpty {
+                        Text("No comments yet")
+                            .font(.byteMono(10))
+                            .foregroundColor(.byteText2)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    } else {
+                        ForEach(comments) { c in
+                            QuestionCommentRow(comment: c) {
+                                Task { await delete(c) }
+                            }
+                        }
+                    }
+
+                    // Inline input — pill, gradient send circle
+                    HStack(spacing: 8) {
+                        TextField("Add a comment…", text: $draft, axis: .vertical)
+                            .font(.byteSans(12))
+                            .foregroundColor(.byteText1)
+                            .tint(.byteAccent)
+                            .focused($inputFocused)
+                            .lineLimit(1...3)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(IdentityColor.blue.bgFaint)
+                            .overlay(Capsule().stroke(inputFocused ? .byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1))
+                            .clipShape(Capsule())
+                        Button {
+                            let text = draft
+                            draft = ""
+                            inputFocused = false
+                            Task { await submit(text) }
+                        } label: {
+                            Image(systemName: "paperplane.fill")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white)
+                                .frame(width: 28, height: 28)
+                                .background(LinearGradient(colors: [.byteAccent, Color(hex: "#1d4ed8")],
+                                                           startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .clipShape(Circle())
+                                .opacity(draft.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || isSending)
+                    }
+                }
+                .padding(.horizontal, 14).padding(.bottom, 12)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private var displayedCount: Int { isLoaded ? comments.count : initialCount }
+
+    private func load() async {
+        let result = (try? await APIClient.shared.getQuestionComments(questionId: questionId)) ?? []
+        comments = result
+        isLoaded = true
+    }
+
+    private func submit(_ body: String) async {
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        isSending = true
+        defer { isSending = false }
+        if let created = try? await APIClient.shared.addQuestionComment(questionId: questionId, body: trimmed) {
+            comments.append(created)
+        }
+    }
+
+    private func delete(_ c: QuestionComment) async {
+        do {
+            try await APIClient.shared.deleteQuestionComment(commentId: c.id)
+            comments.removeAll { $0.id == c.id }
+        } catch { /* swallow — ToastCenter feedback could be added later */ }
+    }
+}
+
+private struct QuestionCommentRow: View {
+    let comment: QuestionComment
+    let onDelete: () -> Void
+
+    private var isOwn: Bool {
+        guard let me = AuthManager.shared.currentUser else { return false }
+        return comment.authorId == me.id
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            // Tiny avatar — initial in a circle
+            ZStack {
+                Circle().fill(IdentityColor.purple.bgFaint).frame(width: 24, height: 24)
+                Text(initial).font(.byteMono(10, weight: .bold)).foregroundColor(.bytePurple)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text("@\(comment.authorUsername ?? "user")")
+                        .font(.byteMono(10, weight: .bold))
+                        .foregroundColor(.byteText1)
+                    if let role = comment.authorRoleTitle, !role.isEmpty {
+                        Text(role)
+                            .font(.byteMono(10))
+                            .foregroundColor(.byteAccent)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Text(relativeTime(from: comment.createdAt))
+                        .font(.byteMono(10))
+                        .foregroundColor(.byteText2)
+                    if isOwn {
+                        Button(action: onDelete) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 10))
+                                .foregroundColor(.byteText3)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Text(comment.body)
+                    .font(.byteSans(12))
+                    .foregroundColor(.byteText2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(8)
+        .background(Color.byteBackground)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderHigh, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var initial: String {
+        let source = comment.authorDisplayName?.first ?? comment.authorUsername?.first ?? "U"
+        return String(source).uppercased()
+    }
+}
+
 // MARK: - Comments Section
 
 private struct CommentsSection: View {
     let comments: [InterviewComment]
+    let onDelete: (InterviewComment) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("// \(comments.count) COMMENTS")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundColor(.byteText3)
+            AccentBarHeader(label: "\(comments.count) DISCUSSION", identity: .purple, size: .compact)
 
             if comments.isEmpty {
-                Text("Be the first to comment.")
-                    .font(.system(size: 13))
-                    .foregroundColor(.byteText3)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
+                EmptyStateView(
+                    icon: "bubble.left",
+                    title: "NO DISCUSSION YET",
+                    message: "Be the first to add insight."
+                )
+                .padding(.vertical, 4)
             } else {
                 ForEach(comments) { c in
-                    HStack(alignment: .top, spacing: 10) {
-                        Circle()
-                            .fill(Color.byteAccentDim)
-                            .frame(width: 30, height: 30)
-                            .overlay(
-                                Text(String(c.authorId.prefix(1)).uppercased())
-                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                    .foregroundColor(.byteAccent)
-                            )
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("@\(c.authorId.prefix(8))")
-                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                .foregroundColor(.byteText1)
-                            Text(c.body)
-                                .font(.system(size: 13))
-                                .foregroundColor(.byteText2)
-                            Text(relativeTime(from: c.createdAt))
-                                .font(.system(size: 10))
-                                .foregroundColor(.byteText3)
-                        }
-                    }
+                    InterviewCommentRow(comment: c) { onDelete(c) }
                 }
             }
         }
         .padding(20)
+    }
+}
+
+private struct InterviewCommentRow: View {
+    let comment: InterviewComment
+    let onDelete: () -> Void
+
+    private var isOwn: Bool {
+        guard let me = AuthManager.shared.currentUser else { return false }
+        return comment.authorId == me.id
+    }
+
+    private var initial: String {
+        let source = comment.authorDisplayName?.first ?? comment.authorUsername?.first ?? "U"
+        return String(source).uppercased()
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle().fill(IdentityColor.purple.bgFaint).frame(width: 30, height: 30)
+                if let url = comment.authorAvatarUrl, !url.isEmpty {
+                    AsyncImage(url: URL(string: url)) { phase in
+                        switch phase {
+                        case .success(let image): image.resizable().aspectRatio(contentMode: .fill)
+                        default: Text(initial).font(.byteMono(11, weight: .bold)).foregroundColor(.bytePurple)
+                        }
+                    }
+                    .frame(width: 30, height: 30)
+                    .clipShape(Circle())
+                } else {
+                    Text(initial).font(.byteMono(11, weight: .bold)).foregroundColor(.bytePurple)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text("@\(comment.authorUsername ?? "user")")
+                        .font(.byteMono(11, weight: .bold))
+                        .foregroundColor(.byteText1)
+                    if let role = comment.authorRoleTitle, !role.isEmpty {
+                        Text(role)
+                            .font(.byteMono(10))
+                            .foregroundColor(.byteAccent)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Text(relativeTime(from: comment.createdAt))
+                        .font(.byteMono(10))
+                        .foregroundColor(.byteText2)
+                    if isOwn {
+                        Button(action: onDelete) {
+                            Image(systemName: "trash")
+                                .font(.system(size: 11))
+                                .foregroundColor(.byteText3)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Text(comment.body)
+                    .font(.byteSans(13))
+                    .foregroundColor(.byteText2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12)
+        .background(Color.byteCard)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -388,6 +653,13 @@ class InterviewDetailViewModel: ObservableObject {
             comments = (try? await APIClient.shared.getInterviewComments(interviewId: id)) ?? comments
         } catch { }
         submitting = false
+    }
+
+    func deleteComment(_ c: InterviewComment) async {
+        do {
+            try await APIClient.shared.deleteInterviewComment(interviewId: id, commentId: c.id)
+            comments.removeAll { $0.id == c.id }
+        } catch { /* swallow — could surface a toast */ }
     }
 }
 

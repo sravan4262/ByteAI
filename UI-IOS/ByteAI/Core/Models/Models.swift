@@ -26,7 +26,12 @@ struct User: Identifiable, Codable, Hashable {
     let isOnline: Bool
     let avatarVariant: String // "cyan" | "purple" | "green" | "orange"
     var avatarUrl: String?
+    var isSystem: Bool = false   // AI-curated content account (web parity: SYSTEM_USER_ID)
+    var isOnboarded: Bool = true // Server source of truth from /me; defaults true for embedded uses
 }
+
+// Web parity (UI/lib/api/client.ts): authorId == SYSTEM_USER_ID flags AI-curated posts.
+let BYTEAI_SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 struct SocialLink: Codable, Hashable {
     let platform: String   // "github" | "linkedin" | "twitter" | "website"
@@ -43,7 +48,7 @@ struct Post: Identifiable, Codable, Hashable {
     let author: User
     let tags: [String]
     var likes: Int
-    let comments: Int
+    var comments: Int
     let shares: Int
     let bookmarks: Int
     let timestamp: String
@@ -82,11 +87,15 @@ struct Interview: Identifiable, Codable {
     let title: String
     let company: String?
     let role: String?
+    let location: String?
     let difficulty: Difficulty
     let type: String
     let createdAt: String
     let questions: [InterviewQuestion]
     let author: User
+    let commentCount: Int
+    let isAnonymous: Bool
+    let isBookmarked: Bool
 
     enum Difficulty: String, Codable {
         case easy, medium, hard
@@ -121,6 +130,48 @@ struct Badge: Identifiable, Codable, Hashable {
     let earned: Bool
 }
 
+/// Catalog entry from /api/lookup/badge-types — used to render locked badges
+/// alongside the user's earned set on the profile screen.
+struct BadgeType: Identifiable, Codable, Hashable {
+    let id: String
+    let name: String
+    let label: String
+    let icon: String
+    let description: String?
+}
+
+// MARK: - User preferences
+
+struct UserPreferences: Codable, Equatable {
+    var theme: String
+    var visibility: String
+    var notifReactions: Bool
+    var notifComments: Bool
+    var notifFollowers: Bool
+    var notifUnfollows: Bool
+
+    static let `default` = UserPreferences(
+        theme: "dark",
+        visibility: "public",
+        notifReactions: true,
+        notifComments: true,
+        notifFollowers: true,
+        notifUnfollows: false
+    )
+}
+
+// MARK: - Support feedback (terminal widget)
+
+struct FeedbackEntry: Identifiable, Codable, Hashable {
+    let id: String
+    let type: String        // "good" | "bad" | "idea"
+    let message: String
+    let pageContext: String?
+    let status: String      // "open" | "reviewed" | "closed"
+    let adminNote: String?
+    let createdAt: String
+}
+
 // MARK: - Notification
 
 struct AppNotification: Identifiable, Codable {
@@ -132,7 +183,15 @@ struct AppNotification: Identifiable, Codable {
     let createdAt: String
 
     enum NotificationType: String, Codable {
-        case like, comment, follow, badge, system
+        case like, comment, follow, unfollow, badge
+        case feedbackUpdate = "feedback_update"
+        case system
+
+        // Unknown server-side types fall back to .system rather than failing decode.
+        init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = NotificationType(rawValue: raw) ?? .system
+        }
     }
 }
 
@@ -140,7 +199,43 @@ struct NotificationPayload: Codable {
     let byteId: String?
     let actorId: String?
     let actorUsername: String?
+    let actorDisplayName: String?
+    let actorAvatarUrl: String?
+    let commentId: String?
+    let reactionType: String?
+    let badgeName: String?
+    let badgeLabel: String?
+    let badgeIcon: String?
+    let message: String?
     let preview: String?
+
+    init(
+        byteId: String? = nil,
+        actorId: String? = nil,
+        actorUsername: String? = nil,
+        actorDisplayName: String? = nil,
+        actorAvatarUrl: String? = nil,
+        commentId: String? = nil,
+        reactionType: String? = nil,
+        badgeName: String? = nil,
+        badgeLabel: String? = nil,
+        badgeIcon: String? = nil,
+        message: String? = nil,
+        preview: String? = nil
+    ) {
+        self.byteId = byteId
+        self.actorId = actorId
+        self.actorUsername = actorUsername
+        self.actorDisplayName = actorDisplayName
+        self.actorAvatarUrl = actorAvatarUrl
+        self.commentId = commentId
+        self.reactionType = reactionType
+        self.badgeName = badgeName
+        self.badgeLabel = badgeLabel
+        self.badgeIcon = badgeIcon
+        self.message = message
+        self.preview = preview
+    }
 }
 
 // MARK: - Search
@@ -170,28 +265,38 @@ struct AskResult: Codable {
 
 // MARK: - Lookup
 
-struct SeniorityType: Identifiable, Codable {
+struct SeniorityType: Identifiable, Codable, Hashable {
     let id: String
+    let name: String
     let label: String
+    let icon: String
 }
 
-struct Domain: Identifiable, Codable {
+struct Domain: Identifiable, Codable, Hashable {
     let id: String
     let name: String
+    let label: String
+    let icon: String
 }
 
-struct TechStack: Identifiable, Codable {
+struct TechStack: Identifiable, Codable, Hashable {
     let id: String
     let name: String
-    let domainId: String?
+    let label: String
+    let subdomainId: String?
 }
 
 // MARK: - Interview / Question Comments
+// Mirrors UI/lib/api/client.ts QuestionComment + InterviewComment payloads.
 
 struct InterviewComment: Identifiable, Codable {
     let id: String
     let body: String
     let authorId: String
+    let authorUsername: String?
+    let authorDisplayName: String?
+    let authorAvatarUrl: String?
+    let authorRoleTitle: String?
     var voteCount: Int
     let createdAt: String
     let parentId: String?
@@ -199,10 +304,12 @@ struct InterviewComment: Identifiable, Codable {
 
 struct QuestionComment: Identifiable, Codable {
     let id: String
-    let question: String
-    let answer: String
+    let body: String
     let authorId: String
-    let authorUsername: String
+    let authorUsername: String?
+    let authorDisplayName: String?
+    let authorAvatarUrl: String?
+    let authorRoleTitle: String?
     var voteCount: Int
     let createdAt: String
     let parentId: String?
@@ -215,21 +322,26 @@ struct AskByteResult: Codable {
 }
 
 // MARK: - Feed Filter
+// Web parity: only FOR_YOU and TRENDING are surfaced as tabs (UI/components/features/feed/feed-filters.tsx).
+// `following` and `newest` remain as raw values for routing compatibility.
 
 enum FeedFilter: String, CaseIterable {
-    case bytes     = "for_you"
+    case forYou    = "for_you"
     case trending  = "trending"
     case following = "following"
     case newest    = "newest"
 
     var label: String {
         switch self {
-        case .bytes:     return "BYTES"
+        case .forYou:    return "FOR_YOU"
         case .trending:  return "TRENDING"
         case .following: return "FOLLOWING"
         case .newest:    return "NEWEST"
         }
     }
+
+    /// Tabs surfaced in the feed UI (web parity).
+    static let visibleTabs: [FeedFilter] = [.forYou, .trending]
 }
 
 enum SearchType: String, CaseIterable {

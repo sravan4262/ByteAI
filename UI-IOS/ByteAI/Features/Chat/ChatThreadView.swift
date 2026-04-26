@@ -1,0 +1,221 @@
+import SwiftUI
+
+// MARK: - Chat Thread (terminal-themed)
+// Mirrors UI/components/features/chat/ChatThread.tsx — green-accented terminal shell:
+// title bar with traffic lights, centered @username, SENDING/READY badge, gradient
+// accent line, monospace messages, and a `byteai@~ >` prompt input.
+
+struct ChatThreadView: View {
+    @StateObject private var vm: ChatThreadVM
+    @EnvironmentObject private var chat: ChatService
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var inputFocused: Bool
+    @State private var caretOn = true
+
+    init(conversation: ConversationDto) {
+        _vm = StateObject(wrappedValue: ChatThreadVM(conversation: conversation))
+    }
+
+    private var meId: String? { AuthManager.shared.currentUser?.id }
+
+    var body: some View {
+        ZStack {
+            Color.byteBackground
+                .ignoresSafeArea()
+                .dismissKeyboardOnTap()
+
+            VStack(spacing: 0) {
+                titleBar
+                accentLine
+                messagesScroll
+                terminalInput
+            }
+        }
+        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            // Pulsing caret loop
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                caretOn.toggle()
+            }
+        }
+    }
+
+    // MARK: Title bar — traffic lights + centered @username + SENDING/READY badge
+
+    private var titleBar: some View {
+        ZStack {
+            HStack(spacing: 6) {
+                // Red light — dismisses (back) — matches web's onClose binding
+                Button { dismiss() } label: {
+                    Circle()
+                        .fill(Color(red: 1, green: 0.37, blue: 0.34))
+                        .overlay(Circle().stroke(Color.black.opacity(0.15), lineWidth: 1))
+                        .frame(width: 12, height: 12)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close conversation")
+
+                Circle()
+                    .fill(Color(red: 1, green: 0.74, blue: 0.18))
+                    .overlay(Circle().stroke(Color.black.opacity(0.15), lineWidth: 1))
+                    .frame(width: 12, height: 12)
+
+                Circle()
+                    .fill(Color.white.opacity(0.10))
+                    .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
+                    .frame(width: 12, height: 12)
+
+                Spacer()
+
+                statusBadge
+            }
+            .padding(.horizontal, 14)
+
+            HStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.byteGreen.opacity(0.10))
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.byteGreen.opacity(0.20), lineWidth: 1))
+                        .frame(width: 16, height: 16)
+                    Image(systemName: "terminal.fill")
+                        .font(.system(size: 9))
+                        .foregroundColor(.byteGreen)
+                }
+                Text("@\(vm.conversation.otherUsername)")
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.byteText1)
+                    .tracking(0.6)
+            }
+        }
+        .frame(height: 44)
+        .background(Color.byteGreen.opacity(0.03))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.byteGreen.opacity(0.15))
+                .frame(height: 1)
+        }
+    }
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        let label = vm.isSending ? "SENDING" : "READY"
+        Text(label)
+            .font(.system(size: 9, weight: .regular, design: .monospaced))
+            .foregroundColor(.byteGreen)
+            .tracking(0.5)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(Color.byteGreen.opacity(0.08))
+            .overlay(RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.byteGreen.opacity(0.20), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    private var accentLine: some View {
+        LinearGradient(
+            colors: [Color.byteGreen, Color.byteGreen.opacity(0.25), .clear],
+            startPoint: .leading, endPoint: .trailing
+        )
+        .frame(height: 1)
+    }
+
+    // MARK: Messages
+
+    private var messagesScroll: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 4) {
+                    if vm.isLoadingHistory {
+                        HStack(spacing: 4) {
+                            Text("◆")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundColor(.byteText3)
+                            ForEach(0..<3) { i in
+                                Circle()
+                                    .fill(Color.byteGreen)
+                                    .frame(width: 4, height: 4)
+                                    .opacity(caretOn ? 0.9 : 0.3)
+                                    .animation(.easeInOut(duration: 0.5).repeatForever().delay(Double(i) * 0.15), value: caretOn)
+                            }
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 4)
+                    }
+                    ForEach(vm.messages) { msg in
+                        MessageBubble(
+                            message: msg,
+                            isMine: msg.senderId == meId
+                        )
+                        .id(msg.id)
+                        .padding(.horizontal, 12)
+                    }
+                    Color.clear.frame(height: 4).id("bottom-anchor")
+                }
+                .padding(.vertical, 12)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: vm.messages.count) { _, _ in
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo("bottom-anchor", anchor: .bottom)
+                }
+            }
+            .task {
+                await vm.load()
+                proxy.scrollTo("bottom-anchor", anchor: .bottom)
+            }
+        }
+    }
+
+    // MARK: Terminal input row — `byteai@~ >` prompt + caret
+
+    private var terminalInput: some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(Color.byteBorderHigh).frame(height: 1)
+
+            HStack(spacing: 4) {
+                // Prompt: byteai @ ~ >
+                HStack(spacing: 3) {
+                    Text("byteai")
+                        .foregroundColor(Color.byteGreen.opacity(0.55))
+                    Text("@")
+                        .foregroundColor(.byteText3)
+                    Text("~")
+                        .foregroundColor(.byteAccent)
+                    Text(">")
+                        .foregroundColor(.byteGreen)
+                        .fontWeight(.bold)
+                }
+                .font(.system(size: 12, design: .monospaced))
+
+                TextField("Type your message...", text: $vm.draft, axis: .vertical)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(.byteText1)
+                    .tint(.byteGreen)
+                    .lineLimit(1...5)
+                    .focused($inputFocused)
+                    .submitLabel(.send)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .onSubmit { Task { await vm.send() } }
+
+                Rectangle()
+                    .fill(Color.byteGreen)
+                    .frame(width: 6, height: 14)
+                    .opacity(inputFocused && caretOn ? 0.9 : 0.3)
+                    .cornerRadius(1)
+
+                Button {
+                    Task { await vm.send() }
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(vm.draft.trimmingCharacters(in: .whitespaces).isEmpty ? .byteText3 : .byteGreen)
+                }
+                .buttonStyle(.plain)
+                .disabled(vm.draft.trimmingCharacters(in: .whitespaces).isEmpty || vm.isSending)
+                .accessibilityLabel("Send message")
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(Color.byteGreen.opacity(0.02))
+        }
+    }
+}

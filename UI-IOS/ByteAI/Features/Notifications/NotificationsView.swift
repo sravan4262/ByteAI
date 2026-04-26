@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Notifications View
 // Mirrors the notification panel (modal overlay) from app-shell.tsx
@@ -12,8 +13,16 @@ struct NotificationsView: View {
             ZStack {
                 Color.byteBackground.ignoresSafeArea()
 
-                if vm.isLoading {
-                    ByteSpinner(size: 28)
+                if vm.isLoading && vm.notifications.isEmpty {
+                    VStack(spacing: 8) {
+                        ForEach(0..<6, id: \.self) { _ in
+                            RowSkeleton().padding(.horizontal, 16)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 12)
+                    .redacted(reason: .placeholder)
+                    .accessibilityHidden(true)
                 } else if vm.notifications.isEmpty {
                     EmptyStateView(
                         icon: "bell.slash",
@@ -30,12 +39,20 @@ struct NotificationsView: View {
                                 .listRowBackground(Color.byteCard)
                                 .listRowSeparatorTint(Color.byteBorder)
                                 .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        Task { await vm.delete(id: notif.id) }
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                         .listSectionSeparator(.hidden)
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
+                    .refreshable { await vm.load() }
                 }
             }
             .navigationTitle("Notifications")
@@ -59,7 +76,10 @@ struct NotificationsView: View {
                 }
             }
         }
-        .task { await vm.load() }
+        .task {
+            await vm.load()
+            UIApplication.shared.applicationIconBadgeNumber = 0
+        }
     }
 }
 
@@ -71,80 +91,174 @@ private struct NotificationRow: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 12) {
-                // Icon
-                ZStack {
-                    Circle()
-                        .fill(iconColor.opacity(0.12))
-                        .frame(width: 40, height: 40)
-                    Image(systemName: iconName)
-                        .font(.system(size: 16))
-                        .foregroundColor(iconColor)
-                }
+            HStack(alignment: .top, spacing: 12) {
+                // Actor avatar with accent ring (web parity).
+                avatar
+                    .padding(.top, 2)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(notifTitle)
+                    Text(notifText)
                         .font(.byteSans(13, weight: notification.read ? .regular : .semibold))
                         .foregroundColor(notification.read ? .byteText2 : .byteText1)
                         .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                    if let preview = notification.payload.preview {
-                        Text(preview)
+                    if let preview = notification.payload.preview, !preview.isEmpty {
+                        Text("“\(preview)”")
                             .font(.byteSmall)
-                            .foregroundColor(.byteText3)
+                            .foregroundColor(.byteText2)
+                            .italic()
                             .lineLimit(1)
                     }
 
-                    Text(notification.createdAt)
+                    Text(Self.timeAgo(from: notification.createdAt))
                         .font(.byteMonoTiny)
                         .foregroundColor(.byteText3)
+                        .tracking(0.6)
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
+
+                // Type badge
+                ZStack {
+                    RoundedRectangle(cornerRadius: 5).fill(badgeBg).frame(width: 22, height: 22)
+                    RoundedRectangle(cornerRadius: 5).stroke(badgeStroke, lineWidth: 1).frame(width: 22, height: 22)
+                    Image(systemName: badgeIcon)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(badgeColor)
+                }
 
                 if !notification.read {
                     Circle()
                         .fill(Color.byteAccent)
-                        .frame(width: 8, height: 8)
+                        .frame(width: 7, height: 7)
+                        .shadow(color: IdentityColor.blue.tint(0.5), radius: 3)
+                        .padding(.top, 6)
                 }
             }
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(notification.read ? Color.clear : IdentityColor.blue.bgFaint)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
     }
 
-    private var notifTitle: String {
+    // MARK: - Avatar
+
+    @ViewBuilder
+    private var avatar: some View {
+        if notification.type == .feedbackUpdate {
+            ZStack {
+                Circle()
+                    .fill(IdentityColor.purple.bgFaint)
+                    .frame(width: 36, height: 36)
+                    .overlay(Circle().stroke(Color.bytePurple, lineWidth: 2))
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.bytePurple)
+            }
+        } else if let url = notification.payload.actorAvatarUrl, !url.isEmpty {
+            AvatarView(actorInitials, variant: .cyan, size: .md, imageUrl: url)
+                .overlay(Circle().stroke(Color.byteAccent, lineWidth: 2).padding(-2))
+        } else {
+            ZStack {
+                Circle()
+                    .fill(IdentityColor.blue.bgFaint)
+                    .frame(width: 36, height: 36)
+                    .overlay(Circle().stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                Text(actorInitials)
+                    .font(.byteMono(11, weight: .bold))
+                    .foregroundColor(.byteAccent)
+            }
+        }
+    }
+
+    private var actorInitials: String {
+        let source = notification.payload.actorDisplayName
+            ?? notification.payload.actorUsername
+            ?? "?"
+        return String(source.prefix(1)).uppercased()
+    }
+
+    private var actorName: String {
+        notification.payload.actorDisplayName
+            ?? notification.payload.actorUsername.map { "@\($0)" }
+            ?? "Someone"
+    }
+
+    // MARK: - Copy
+
+    private var notifText: String {
         switch notification.type {
-        case .like:
-            return "@\(notification.payload.actorUsername ?? "Someone") liked your byte"
-        case .comment:
-            return "@\(notification.payload.actorUsername ?? "Someone") commented on your byte"
-        case .follow:
-            return "@\(notification.payload.actorUsername ?? "Someone") followed you"
+        case .like:     return "\(actorName) liked your byte"
+        case .comment:  return "\(actorName) commented on your byte"
+        case .follow:   return "\(actorName) started following you"
+        case .unfollow: return "\(actorName) unfollowed you"
         case .badge:
-            return notification.payload.preview ?? "You earned a badge!"
+            if let label = notification.payload.badgeLabel {
+                return "You earned the \"\(label)\" badge!"
+            }
+            return "You earned a new badge!"
+        case .feedbackUpdate:
+            return notification.payload.message ?? "Your feedback was updated"
         case .system:
-            return notification.payload.preview ?? "System notification"
+            return notification.payload.preview ?? notification.payload.message ?? "New notification"
         }
     }
 
-    private var iconName: String {
+    // MARK: - Type badge styling
+
+    private var badgeIcon: String {
         switch notification.type {
-        case .like:    return "heart.fill"
-        case .comment: return "bubble.left.fill"
-        case .follow:  return "person.fill.badge.plus"
-        case .badge:   return "star.fill"
-        case .system:  return "bell.fill"
+        case .like:           return "heart.fill"
+        case .comment:        return "bubble.left.fill"
+        case .follow:         return "person.fill.badge.plus"
+        case .unfollow:       return "person.fill.badge.minus"
+        case .badge:          return "star.fill"
+        case .feedbackUpdate: return "bell.fill"
+        case .system:         return "bell.fill"
         }
     }
 
-    private var iconColor: Color {
+    private var badgeColor: Color {
         switch notification.type {
-        case .like:    return .byteRed
-        case .comment: return .byteCyan
-        case .follow:  return .byteAccent
-        case .badge:   return .byteOrange
-        case .system:  return .bytePurple
+        case .like:           return .byteRed
+        case .comment:        return .byteAccent
+        case .follow:         return .byteGreen
+        case .unfollow:       return .byteOrange
+        case .badge:          return .byteOrange
+        case .feedbackUpdate: return .bytePurple
+        case .system:         return .byteText2
+        }
+    }
+
+    private var badgeBg: Color { badgeColor.opacity(0.12) }
+    private var badgeStroke: Color { badgeColor.opacity(0.25) }
+
+    // MARK: - Time formatter
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private static let isoFormatterFallback: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    static func timeAgo(from iso: String) -> String {
+        let date = isoFormatter.date(from: iso) ?? isoFormatterFallback.date(from: iso)
+        guard let date else { return iso }
+        let diff = Date().timeIntervalSince(date)
+        switch diff {
+        case ..<60:      return "just now"
+        case ..<3600:    return "\(Int(diff/60))m ago"
+        case ..<86400:   return "\(Int(diff/3600))h ago"
+        default:         return "\(Int(diff/86400))d ago"
         }
     }
 }
@@ -173,6 +287,17 @@ final class NotificationsViewModel: ObservableObject {
     func markAllRead() async {
         notifications = notifications.map { var n = $0; n.read = true; return n }
         try? await APIClient.shared.markAllRead()
+    }
+
+    func delete(id: String) async {
+        let snapshot = notifications
+        notifications.removeAll { $0.id == id }
+        do {
+            try await APIClient.shared.deleteNotification(notificationId: id)
+        } catch {
+            // Restore on failure
+            notifications = snapshot
+        }
     }
 }
 

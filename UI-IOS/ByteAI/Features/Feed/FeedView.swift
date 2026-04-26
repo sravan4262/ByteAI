@@ -1,210 +1,265 @@
 import SwiftUI
 
-// MARK: - Scroll anchor for custom pull-to-refresh
-
-private struct TopAnchorKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
 // MARK: - Feed View
+// Mirrors UI/components/features/feed/feed-screen.tsx for behavior:
+//   - FOR_YOU / TRENDING tab pills
+//   - tech-stack filter on FOR_YOU only
+//   - "🔥 MOST VIEWED IN LAST 24 HOURS" indicator on TRENDING
+//   - infinite-scroll sentinel + "— END —" terminator
+// iOS retains TikTok-style vertical paging for native UX, with web's design language
+// applied to the floating header, filter chrome, and per-page action rail / CTA.
 
 struct FeedView: View {
+    var scrollToTopTrigger: Int = 0
     @StateObject private var vm = FeedViewModel()
+    @EnvironmentObject private var router: DeepLinkRouter
     @State private var selectedPost: Post?
-    @State private var pullProgress: CGFloat = 0
-    @State private var isRefreshing = false
-    @State private var anchorBaseline: CGFloat? = nil
-    private let refreshThreshold: CGFloat = 58
+    @State private var showProfile = false
+    @State private var showNotifications = false
 
     var body: some View {
         NavigationStack {
-            GeometryReader { geo in
-                ZStack(alignment: .top) {
-                    Color.byteBackground.ignoresSafeArea()
-
-                    if vm.isLoading && vm.posts.isEmpty {
-                        VStack { Spacer(); ByteSpinner(); Spacer() }.frame(maxWidth: .infinity)
-                    } else if vm.posts.isEmpty {
-                        VStack {
-                            Spacer()
-                            EmptyStateView(icon: "bolt.slash", title: "No bytes yet", message: "Follow engineers or change your filter.")
-                            Spacer()
-                        }
-                    } else {
-                        ScrollView(.vertical, showsIndicators: false) {
-                            // Pull anchor — reads its global y to detect downward overscroll
-                            Color.clear
-                                .frame(height: 0)
-                                .background(GeometryReader { proxy in
-                                    Color.clear.preference(
-                                        key: TopAnchorKey.self,
-                                        value: proxy.frame(in: .global).minY
-                                    )
-                                })
-
-                            LazyVStack(spacing: 0) {
-                                ForEach(vm.posts) { post in
-                                    BytePageCard(post: post, onViewFull: { selectedPost = post })
-                                        .frame(height: geo.size.height)
-                                        .scrollTransition(axis: .vertical) { content, phase in
-                                            content
-                                                .scaleEffect(1.0 - abs(phase.value) * 0.045)
-                                                .opacity(1.0 - abs(phase.value) * 0.38)
-                                                .rotation3DEffect(
-                                                    .degrees(phase.value * 7),
-                                                    axis: (x: 1, y: 0, z: 0),
-                                                    perspective: 0.6
-                                                )
-                                        }
-                                        .onAppear {
-                                            if post.id == vm.posts.last?.id {
-                                                Task { await vm.loadMore() }
-                                            }
-                                        }
-                                }
+            ZStack {
+                Color.byteBackground.ignoresSafeArea()
+                content
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                // Floating header + filter chrome — moved into a safe-area inset so the
+                // ScrollView's refresh indicator appears below it (was hidden when chrome
+                // was rendered as a ZStack overlay on top of the ScrollView).
+                VStack(spacing: 8) {
+                    FloatingHeaderCard(
+                        icon: "bolt.fill",
+                        title: "BITS",
+                        subtitle: "SHORT · INSIGHTS · LEARN.",
+                        identity: .blue
+                    ) {
+                        HStack(spacing: 10) {
+                            NotificationBellButton(unreadCount: vm.unreadNotifications) {
+                                showNotifications = true
                             }
-                            .scrollTargetLayout()
-                        }
-                        .scrollTargetBehavior(.paging)
-                        .scrollIndicators(.hidden)
-                        .onPreferenceChange(TopAnchorKey.self) { value in
-                            // Capture baseline once when view first renders at rest
-                            if anchorBaseline == nil {
-                                anchorBaseline = value
-                                return
-                            }
-                            guard let baseline = anchorBaseline, !isRefreshing else { return }
-                            let pulled = value - baseline
-                            if pulled > 0 {
-                                withAnimation(.linear(duration: 0.04)) {
-                                    pullProgress = min(1.0, pulled / refreshThreshold)
-                                }
-                                if pulled >= refreshThreshold {
-                                    isRefreshing = true
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                    Task {
-                                        await vm.refresh()
-                                        withAnimation(.spring(response: 0.45, dampingFraction: 0.75)) {
-                                            isRefreshing = false
-                                            pullProgress = 0
-                                        }
-                                    }
-                                }
-                            } else if pullProgress > 0 {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    pullProgress = 0
-                                }
+                            AvatarRingButton(
+                                imageURL: vm.meAvatarUrl,
+                                initials: vm.meInitials,
+                                variant: .cyan
+                            ) {
+                                showProfile = true
                             }
                         }
                     }
 
-                    // Pull-to-refresh indicator
-                    if pullProgress > 0.05 || isRefreshing {
-                        FeedRefreshIndicator(progress: pullProgress, isRefreshing: isRefreshing)
-                            .padding(.top, 12)
-                            .transition(.opacity.combined(with: .scale(scale: 0.85)))
-                            .animation(.spring(response: 0.35, dampingFraction: 0.75), value: isRefreshing)
-                    }
-
-                    // Gradient mask behind filter bar
-                    LinearGradient(
-                        colors: [Color.byteBackground.opacity(0.97), Color.byteBackground.opacity(0.7), .clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 92)
-                    .allowsHitTesting(false)
-
-                    FilterBar(
-                        selectedFilter: $vm.selectedFilter,
+                    FeedFilterRow(
+                        selectedTab: $vm.selectedTab,
                         selectedStack: $vm.selectedStack,
                         stackOptions: vm.stackOptions
                     )
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                }
+                .padding(.bottom, 6)
+                .background(Color.byteBackground)
+            }
+            .navigationBarHidden(true)
+            .navigationDestination(item: $selectedPost) { post in
+                PostDetailView(post: post) { updated in
+                    if let i = vm.posts.firstIndex(where: { $0.id == updated.id }) {
+                        vm.posts[i] = updated
+                    }
                 }
             }
-            .navigationTitle("")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Text("⚡ ByteAI")
-                        .font(.byteSans(18, weight: .bold))
-                        .foregroundColor(.byteText1)
-                }
-            }
-            .navigationDestination(item: $selectedPost) { post in PostDetailView(post: post) }
+            .navigationDestination(isPresented: $showProfile) { ProfileView(username: vm.meUsername) }
+            .navigationDestination(isPresented: $showNotifications) { NotificationsView() }
         }
         .task { await vm.load() }
+        .onChange(of: router.pendingPostId) { _, id in
+            guard let id else { return }
+            Task {
+                if let post = try? await APIClient.shared.getPost(id: id) {
+                    selectedPost = post
+                }
+                router.clearPendingPost()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if vm.isLoading && vm.posts.isEmpty {
+            VStack {
+                Spacer()
+                MonoStatusLine(text: "LOADING BYTES…", pulsing: true)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+        } else if vm.posts.isEmpty {
+            VStack(spacing: 0) {
+                Color.clear.frame(height: 24)
+                EmptyStateView(
+                    icon: "bolt.slash",
+                    title: "No bytes found",
+                    message: vm.selectedTab == .forYou
+                        ? "Try a different tech stack or switch to TRENDING."
+                        : "Nothing trending right now."
+                )
+                .padding(.horizontal, 16)
+                Spacer()
+            }
+        } else {
+            GeometryReader { geo in
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        Color.clear.frame(height: 0).id("feed-top")
+
+                        LazyVStack(spacing: 0) {
+                            ForEach($vm.posts) { $post in
+                                BytePageCard(post: $post, activeTab: vm.selectedTab, onViewFull: { selectedPost = post })
+                                    .frame(height: geo.size.height)
+                                    .scrollTransition(axis: .vertical) { content, phase in
+                                        content
+                                            .scaleEffect(1.0 - abs(phase.value) * 0.045)
+                                            .opacity(1.0 - abs(phase.value) * 0.38)
+                                            .rotation3DEffect(
+                                                .degrees(phase.value * 7),
+                                                axis: (x: 1, y: 0, z: 0),
+                                                perspective: 0.6
+                                            )
+                                    }
+                                    .onAppear {
+                                        if post.id == vm.posts.last?.id { Task { await vm.loadMore() } }
+                                    }
+                            }
+
+                            if !vm.hasMore && vm.posts.count >= 5 {
+                                MonoStatusLine(text: "— END —")
+                                    .frame(height: 80)
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
+                        .scrollTargetLayout()
+                    }
+                    .scrollTargetBehavior(.paging)
+                    .scrollIndicators(.hidden)
+                    .refreshable { await vm.refresh() }
+                    .onChange(of: scrollToTopTrigger) { _, _ in
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                            proxy.scrollTo("feed-top", anchor: .top)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
-// MARK: - Pull-to-Refresh Indicator
+// MARK: - Filter row (tabs + tech-stack dropdown + trending indicator)
 
-private struct FeedRefreshIndicator: View {
-    let progress: CGFloat
-    let isRefreshing: Bool
-    @State private var spinAngle: Double = 0
+private struct FeedFilterRow: View {
+    @Binding var selectedTab: FeedFilter
+    @Binding var selectedStack: String
+    let stackOptions: [String]
 
     var body: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                // Track
-                Circle()
-                    .stroke(Color.byteAccent.opacity(0.18), lineWidth: 2.5)
-                    .frame(width: 22, height: 22)
-                // Fill / spinner
-                if isRefreshing {
-                    Circle()
-                        .trim(from: 0, to: 0.72)
-                        .stroke(Color.byteAccent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                        .frame(width: 22, height: 22)
-                        .rotationEffect(.degrees(spinAngle))
-                        .onAppear {
-                            withAnimation(.linear(duration: 0.72).repeatForever(autoreverses: false)) {
-                                spinAngle = 360
-                            }
-                        }
-                } else {
-                    Circle()
-                        .trim(from: 0, to: progress * 0.78)
-                        .stroke(Color.byteAccent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                        .frame(width: 22, height: 22)
-                        .rotationEffect(.degrees(-90))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                ForEach(FeedFilter.visibleTabs, id: \.self) { tab in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) { selectedTab = tab }
+                    } label: {
+                        Text(tab.label)
+                            .font(.byteMono(11, weight: selectedTab == tab ? .bold : .regular))
+                            .tracking(0.7)
+                            .foregroundColor(selectedTab == tab ? .byteAccent : .byteText1)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(selectedTab == tab ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(selectedTab == tab ? .byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .shadow(color: selectedTab == tab ? IdentityColor.blue.tint(0.20) : .clear, radius: 6)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 36)
                 }
+                Spacer(minLength: 0)
             }
 
-            Text(isRefreshing ? "Refreshing…" : "Release to refresh")
-                .font(.byteMono(11, weight: .medium))
-                .foregroundColor(.byteText3)
-                .contentTransition(.numericText())
+            if selectedTab == .forYou {
+                HStack(spacing: 10) {
+                    AccentBarHeader(label: "TECH_STACK", size: .compact)
+                    StackPicker(value: $selectedStack, options: stackOptions)
+                    Spacer(minLength: 0)
+                }
+            } else if selectedTab == .trending {
+                HStack(spacing: 6) {
+                    Text("🔥")
+                    Text("MOST VIEWED IN LAST 24 HOURS")
+                        .font(.byteMono(11))
+                        .foregroundColor(.byteText1)
+                        .tracking(0.6)
+                }
+            }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 9)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(Color.byteAccent.opacity(0.2), lineWidth: 0.5))
+        .padding(.horizontal, 4)
+        .padding(.bottom, 6)
+        .background(
+            LinearGradient(
+                colors: [Color.byteBackground.opacity(0.92), Color.byteBackground.opacity(0.65), .clear],
+                startPoint: .top, endPoint: .bottom
+            )
+        )
+    }
+}
+
+private struct StackPicker: View {
+    @Binding var value: String
+    let options: [String]
+
+    var body: some View {
+        SearchableDropdown(
+            value: Binding(
+                get: { value.isEmpty ? nil : value },
+                set: { value = $0 ?? "" }
+            ),
+            options: options.map { SearchableDropdown.DropdownOption(value: $0, label: $0) },
+            placeholder: "TECH STACK",
+            allLabel: "ALL STACKS",
+            identity: .blue
+        )
     }
 }
 
 // MARK: - Full-Screen Byte Card (TikTok-rail layout)
 
 struct BytePageCard: View {
-    @State var post: Post
+    @Binding var post: Post
+    var activeTab: FeedFilter = .forYou
     let onViewFull: () -> Void
     @State private var showLikes = false
     @State private var likeScale: CGFloat = 1
     @State private var likeGlow = false
+    @State private var miniProfileTarget: MiniProfileTarget? = nil
 
     var body: some View {
-        ZStack(alignment: .trailing) {
+        ZStack(alignment: .bottom) {
             Color.byteBackground
 
-            // ── Content column (leaves right margin for the action rail) ──────
             VStack(alignment: .leading, spacing: 0) {
-                Color.clear.frame(height: 70) // clears filter bar
+                Color.clear.frame(height: 12) // chrome reserved by safeAreaInset on FeedView
 
                 VStack(alignment: .leading, spacing: 14) {
-                    PostHeader(post: post)
+                    PostHeader(post: post, activeTab: activeTab) {
+                        miniProfileTarget = MiniProfileTarget(
+                            userId: post.author.id,
+                            username: post.author.username,
+                            displayName: post.author.displayName,
+                            initials: post.author.initials,
+                            avatarUrl: post.author.avatarUrl,
+                            role: post.author.role,
+                            company: post.author.company,
+                            tags: post.tags
+                        )
+                    }
 
                     Text(post.title)
                         .font(.byteSans(22, weight: .bold))
@@ -231,13 +286,14 @@ struct BytePageCard: View {
                             }
                         }
                     }
+
+                    actionRow
+                        .padding(.top, 4)
                 }
-                .padding(.leading, 20)
-                .padding(.trailing, 76)   // right clearance for action rail
+                .padding(.horizontal, 20)
 
                 Spacer()
 
-                // Swipe-up hint row
                 HStack {
                     Spacer()
                     Image(systemName: "chevron.compact.up")
@@ -248,115 +304,97 @@ struct BytePageCard: View {
                 .frame(height: 28)
             }
 
-            // Bottom fade over content
             VStack {
                 Spacer()
                 LinearGradient(
                     colors: [.clear, Color.byteBackground.opacity(0.6)],
-                    startPoint: .top,
-                    endPoint: .bottom
+                    startPoint: .top, endPoint: .bottom
                 )
                 .frame(height: 72)
                 .allowsHitTesting(false)
             }
-
-            // ── Right-side action rail ─────────────────────────────────────────
-            VStack(spacing: 26) {
-                Spacer()
-
-                // Like
-                VStack(spacing: 5) {
-                    Button {
-                        withAnimation(.spring(response: 0.22, dampingFraction: 0.38)) {
-                            post.isLiked.toggle()
-                            post.likes += post.isLiked ? 1 : -1
-                            likeScale = 1.55
-                            likeGlow = post.isLiked
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-                            withAnimation(.spring(response: 0.28, dampingFraction: 0.62)) {
-                                likeScale = 1.0
-                            }
-                        }
-                        if post.isLiked {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        }
-                        Task { try? await APIClient.shared.toggleLike(postId: post.id) }
-                    } label: {
-                        Image(systemName: post.isLiked ? "heart.fill" : "heart")
-                            .font(.system(size: 30))
-                            .foregroundStyle(post.isLiked ? Color.byteRed : Color.byteText1)
-                            .scaleEffect(likeScale)
-                            .shadow(color: likeGlow ? Color.byteRed.opacity(0.7) : .clear, radius: 10)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button { showLikes = true } label: {
-                        Text("\(post.likes)")
-                            .font(.byteSans(13, weight: .semibold))
-                            .foregroundColor(.byteText2)
-                            .contentTransition(.numericText())
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                // Comment
-                VStack(spacing: 5) {
-                    Button(action: onViewFull) {
-                        Image(systemName: "bubble.left.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(.byteText1)
-                    }
-                    .buttonStyle(.plain)
-
-                    Text("\(post.comments)")
-                        .font(.byteSans(13, weight: .semibold))
-                        .foregroundColor(.byteText2)
-                }
-
-                // Bookmark
-                Button {
-                    withAnimation(.spring(response: 0.28)) {
-                        post.isBookmarked.toggle()
-                    }
-                    if post.isBookmarked {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    }
-                    Task { try? await APIClient.shared.toggleBookmark(postId: post.id) }
-                } label: {
-                    Image(systemName: post.isBookmarked ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 28))
-                        .foregroundStyle(post.isBookmarked ? Color.byteCyan : Color.byteText1)
-                        .shadow(color: post.isBookmarked ? Color.byteCyan.opacity(0.55) : .clear, radius: 7)
-                }
-                .buttonStyle(.plain)
-
-                // Share
-                ShareLink(item: "Check out this byte on ByteAI: \(post.title)") {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 26))
-                        .foregroundColor(.byteText1)
-                }
-
-                // Full post button
-                Button(action: onViewFull) {
-                    VStack(spacing: 3) {
-                        Image(systemName: "arrow.up.right.square")
-                            .font(.system(size: 22))
-                        Text("FULL")
-                            .font(.byteMono(8, weight: .bold))
-                    }
-                    .foregroundColor(.byteAccent)
-                }
-                .buttonStyle(.plain)
-
-                Spacer().frame(height: 24)
-            }
-            .frame(width: 62)
         }
         .sheet(isPresented: $showLikes) {
             LikesSheet(postId: post.id)
         }
+        .sheet(item: $miniProfileTarget) { target in
+            UserMiniProfileSheet(target: target)
+        }
+    }
+
+    // Compact inline action row — like / comment / save / share, with VIEW_FULL_BYTE on the right.
+    private var actionRow: some View {
+        HStack(spacing: 8) {
+            Button {
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.38)) {
+                    post.isLiked.toggle()
+                    post.likes += post.isLiked ? 1 : -1
+                    likeScale = 1.55
+                    likeGlow = post.isLiked
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.62)) { likeScale = 1.0 }
+                }
+                if post.isLiked { Haptics.light() }
+                Task { try? await APIClient.shared.toggleLike(postId: post.id) }
+            } label: {
+                actionPillLabel(
+                    icon: post.isLiked ? "heart.fill" : "heart",
+                    text: "\(post.likes)",
+                    isActive: post.isLiked,
+                    activeTint: .byteRed
+                )
+                .scaleEffect(likeScale)
+                .shadow(color: likeGlow ? Color.byteRed.opacity(0.55) : .clear, radius: 8)
+            }
+            .buttonStyle(.plain)
+            .simultaneousGesture(LongPressGesture(minimumDuration: 0.3).onEnded { _ in showLikes = true })
+
+            Button(action: onViewFull) {
+                actionPillLabel(icon: "bubble.left", text: "\(post.comments)", isActive: false)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                withAnimation(.spring(response: 0.28)) { post.isBookmarked.toggle() }
+                if post.isBookmarked { Haptics.light() }
+                Task { try? await APIClient.shared.toggleBookmark(postId: post.id) }
+            } label: {
+                actionPillLabel(
+                    icon: post.isBookmarked ? "bookmark.fill" : "bookmark",
+                    text: nil,
+                    isActive: post.isBookmarked,
+                    activeTint: .byteCyan
+                )
+            }
+            .buttonStyle(.plain)
+
+            ShareLink(item: URL(string: "https://byteai.dev/post/\(post.id)")!,
+                      subject: Text(post.title),
+                      message: Text(String(post.body.prefix(140)))) {
+                actionPillLabel(icon: "square.and.arrow.up", text: nil, isActive: false)
+            }
+
+            Spacer(minLength: 8)
+
+            CTAButton(label: "VIEW_FULL_BYTE", action: onViewFull)
+        }
+    }
+
+    @ViewBuilder
+    private func actionPillLabel(icon: String, text: String?, isActive: Bool, activeTint: Color = .byteAccent) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon).font(.system(size: 14))
+            if let text { Text(text).font(.byteMono(11)).tracking(0.5) }
+        }
+        .foregroundColor(isActive ? activeTint : .byteText1)
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(isActive ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isActive ? activeTint : IdentityColor.blue.borderFaint, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -409,57 +447,6 @@ struct LikesSheet: View {
     }
 }
 
-// MARK: - Filter Bar
-
-private struct FilterBar: View {
-    @Binding var selectedFilter: FeedFilter
-    @Binding var selectedStack: String
-    let stackOptions: [String]
-
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(FeedFilter.allCases, id: \.self) { filter in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) { selectedFilter = filter }
-                    } label: {
-                        Text(filter.label)
-                            .font(.byteMono(10, weight: .semibold))
-                            .foregroundColor(selectedFilter == filter ? .byteAccent : .byteText2)
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(selectedFilter == filter ? Color.byteAccentDim : Color.byteElement)
-                                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(
-                                        selectedFilter == filter ? Color.byteAccent.opacity(0.5) : Color.byteBorderMedium,
-                                        lineWidth: 1
-                                    ))
-                            )
-                    }
-                }
-
-                Menu {
-                    Button("All Stacks") { selectedStack = "" }
-                    Divider()
-                    ForEach(stackOptions, id: \.self) { stack in
-                        Button(stack) { selectedStack = stack }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "line.3.horizontal.decrease").font(.system(size: 10))
-                        Text(selectedStack.isEmpty ? "STACK" : selectedStack.uppercased()).font(.byteMono(10, weight: .semibold))
-                        Image(systemName: "chevron.down").font(.system(size: 9))
-                    }
-                    .foregroundColor(.byteText2)
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(Color.byteElement).cornerRadius(6)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.byteBorderMedium, lineWidth: 1))
-                }
-            }
-        }
-    }
-}
-
 // MARK: - ViewModel
 
 @MainActor
@@ -467,34 +454,42 @@ final class FeedViewModel: ObservableObject {
     @Published var posts: [Post] = []
     @Published var isLoading = false
     @Published var isLoadingMore = false
+    @Published var hasMore = true
     @Published var stackOptions: [String] = ["React", "TypeScript", "Go", "Rust", "Python", "PostgreSQL", "Swift", "Kubernetes"]
-    @Published var selectedFilter: FeedFilter = .bytes {
-        didSet { guard oldValue != selectedFilter else { return }; Task { await load() } }
+    @Published var selectedTab: FeedFilter = .forYou {
+        didSet { guard oldValue != selectedTab else { return }; Task { await load() } }
     }
     @Published var selectedStack = "" {
         didSet { guard oldValue != selectedStack else { return }; Task { await load() } }
     }
+    @Published var unreadNotifications = 0
 
     private var page = 1
-    private var hasMore = true
+
+    var meUsername: String { AuthManager.shared.currentUser?.username ?? "" }
+    var meInitials: String { AuthManager.shared.currentUser?.initials ?? "?" }
+    var meAvatarUrl: String? { AuthManager.shared.currentUser?.avatarUrl }
 
     func load() async {
         guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
-        page = 1; hasMore = true
+        page = 1
+        hasMore = true
         do {
+            // Trending tab ignores stack filter; FOR_YOU may apply one.
+            let stack = selectedTab == .forYou && !selectedStack.isEmpty ? selectedStack : nil
             posts = try await APIClient.shared.getFeed(
-                filter: selectedFilter.rawValue,
-                stack: selectedStack.isEmpty ? nil : selectedStack
+                filter: selectedTab.rawValue,
+                stack: stack
             )
-        } catch is CancellationError {
-            // Pull-to-refresh released early — keep existing posts
         } catch {
-            posts = []
+            // Keep existing posts on refresh failure (or cancellation) — clearing them
+            // makes a transient error look like an empty feed.
+            print("[Feed] load failed: \(error)")
         }
         if let stacks = try? await APIClient.shared.getTechStacks() {
-            let names = stacks.map { $0.name }
+            let names = stacks.map { $0.label }
             if !names.isEmpty { stackOptions = names }
         }
     }
@@ -503,17 +498,29 @@ final class FeedViewModel: ObservableObject {
 
     func loadMore() async {
         guard hasMore, !isLoadingMore else { return }
-        isLoadingMore = true; defer { isLoadingMore = false }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
         page += 1
         do {
+            let stack = selectedTab == .forYou && !selectedStack.isEmpty ? selectedStack : nil
             let more = try await APIClient.shared.getFeed(
-                filter: selectedFilter.rawValue,
-                stack: selectedStack.isEmpty ? nil : selectedStack,
+                filter: selectedTab.rawValue,
+                stack: stack,
                 page: page
             )
-            if more.isEmpty { hasMore = false } else { posts.append(contentsOf: more) }
-        } catch { hasMore = false }
+            if more.isEmpty { hasMore = false }
+            else { posts.append(contentsOf: more) }
+        } catch {
+            hasMore = false
+        }
     }
 }
 
-#Preview { FeedView() }
+#Preview {
+    FeedView()
+        .environmentObject(AuthManager.shared)
+        .environmentObject(FeatureFlagsManager.shared)
+        .environmentObject(ChatService.shared)
+        .environmentObject(DeepLinkRouter.shared)
+        .environmentObject(ToastCenter.shared)
+}

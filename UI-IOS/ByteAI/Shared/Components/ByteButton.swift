@@ -131,6 +131,8 @@ struct ActionButton: View {
                             .stroke(isActive ? activeColor.opacity(0.5) : Color.byteBorderMedium, lineWidth: 1)
                     )
             )
+            .frame(minWidth: 44, minHeight: 44, alignment: .center)
+            .contentShape(Rectangle())
         }
     }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import Kingfisher
 
 // MARK: - Avatar
 
@@ -31,18 +32,14 @@ struct AvatarView: View {
         ZStack(alignment: .bottomTrailing) {
             ZStack {
                 if let urlString = imageUrl, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().scaledToFill()
-                                .frame(width: size.dimension, height: size.dimension)
-                                .clipShape(Circle())
-                        case .failure, .empty:
-                            fallbackAvatar
-                        @unknown default:
-                            fallbackAvatar
-                        }
-                    }
+                    KFImage(url)
+                        .placeholder { fallbackAvatar }
+                        .fade(duration: 0.18)
+                        .cancelOnDisappear(true)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: size.dimension, height: size.dimension)
+                        .clipShape(Circle())
                 } else {
                     fallbackAvatar
                 }

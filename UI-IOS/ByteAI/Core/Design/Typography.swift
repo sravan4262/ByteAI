@@ -26,5 +26,5 @@ extension Font {
 
     static let byteMonoBase  = byteMono(13)
     static let byteMonoSmall = byteMono(11)
-    static let byteMonoTiny  = byteMono(9)
+    static let byteMonoTiny  = byteMono(10)
 }

@@ -101,29 +101,36 @@ struct InterviewsView: View {
                     // Pull-to-refresh indicator
                     if pullProgress > 0.05 || isRefreshing {
                         InterviewRefreshIndicator(progress: pullProgress, isRefreshing: isRefreshing)
-                            .padding(.top, 12)
+                            .padding(.top, 90)
                             .transition(.opacity.combined(with: .scale(scale: 0.85)))
                             .animation(.spring(response: 0.35, dampingFraction: 0.75), value: isRefreshing)
                     }
 
-                    // Gradient mask behind filter bar
-                    LinearGradient(
-                        colors: [Color.byteBackground.opacity(0.97), Color.byteBackground.opacity(0.7), .clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 80)
-                    .allowsHitTesting(false)
+                    // Top chrome — purple FloatingHeaderCard + filter bar (matches web)
+                    VStack(spacing: 8) {
+                        FloatingHeaderCard(
+                            icon: "briefcase.fill",
+                            title: "INTERVIEWS",
+                            subtitle: "FIND INTERVIEWS ACROSS TOP COMPANIES · ACE YOUR NEXT ROLE",
+                            identity: .purple
+                        ) { EmptyView() }
 
-                    InterviewFilterBar(vm: vm)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 10)
+                        InterviewFilterBar(vm: vm)
+                            .padding(.horizontal, 16)
+                    }
+                    .padding(.bottom, 6)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.byteBackground.opacity(0.97), Color.byteBackground.opacity(0.7), .clear],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                        .frame(height: 200)
+                        .allowsHitTesting(false),
+                        alignment: .top
+                    )
                 }
             }
-            .navigationTitle("Interviews")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.byteBackground, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .navigationBarHidden(true)
         }
         .task { await vm.load() }
     }
@@ -163,7 +170,7 @@ private struct InterviewRefreshIndicator: View {
             }
             Text(isRefreshing ? "Refreshing…" : "Release to refresh")
                 .font(.byteMono(11, weight: .medium))
-                .foregroundColor(.byteText3)
+                .foregroundColor(.byteText2)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 9)
@@ -177,8 +184,14 @@ private struct InterviewRefreshIndicator: View {
 struct InterviewPageCard: View {
     let interview: Interview
     @State private var expandedId: String? = nil
-    @State private var isBookmarked = false
+    @State private var isBookmarked: Bool
     @State private var bookmarkGlow = false
+    @State private var miniProfileTarget: MiniProfileTarget? = nil
+
+    init(interview: Interview) {
+        self.interview = interview
+        _isBookmarked = State(initialValue: interview.isBookmarked)
+    }
 
     private var visibleQuestions: [InterviewQuestion] {
         Array(interview.questions.prefix(4))
@@ -190,39 +203,54 @@ struct InterviewPageCard: View {
 
             // ── Content column ──────────────────────────────────────────────
             VStack(alignment: .leading, spacing: 0) {
-                Color.clear.frame(height: 64) // clears filter bar
+                Color.clear.frame(height: 140) // clears floating header + filter bar
 
                 VStack(alignment: .leading, spacing: 12) {
-                    // Author row
-                    PostHeader(post: Post(
-                        id: interview.id,
-                        title: interview.title,
-                        body: "",
-                        author: interview.author,
-                        tags: [],
-                        likes: 0, comments: 0, shares: 0, bookmarks: 0,
-                        timestamp: interview.createdAt,
-                        isLiked: false, isBookmarked: false,
-                        code: nil, views: nil,
-                        type: .interview
-                    ))
-
-                    // Meta chips
-                    HStack(spacing: 8) {
-                        TypeBadge("INTERVIEW", color: .bytePurple)
-                        DifficultyBadge(difficulty: interview.difficulty)
-                        if let company = interview.company {
-                            HStack(spacing: 3) {
-                                Image(systemName: "building.2").font(.system(size: 9))
-                                Text(company.uppercased()).font(.byteMonoTiny)
-                            }
-                            .foregroundColor(.byteText3)
+                    // Author row — anonymous users render as ghost emoji + "Anonymous"
+                    if interview.isAnonymous {
+                        AnonymousAuthorRow(timestamp: interview.createdAt)
+                    } else {
+                        PostHeader(post: Post(
+                            id: interview.id,
+                            title: interview.title,
+                            body: "",
+                            author: interview.author,
+                            tags: [],
+                            likes: 0, comments: 0, shares: 0, bookmarks: 0,
+                            timestamp: interview.createdAt,
+                            isLiked: false, isBookmarked: false,
+                            code: nil, views: nil,
+                            type: .interview
+                        )) {
+                            miniProfileTarget = MiniProfileTarget(
+                                userId: interview.author.id,
+                                username: interview.author.username,
+                                displayName: interview.author.displayName,
+                                initials: interview.author.initials,
+                                avatarUrl: interview.author.avatarUrl,
+                                role: interview.author.role,
+                                company: interview.author.company,
+                                tags: []
+                            )
                         }
-                        Spacer()
-                        Text("\(interview.questions.count) Q's")
-                            .font(.byteMonoTiny)
-                            .foregroundColor(.byteText3)
                     }
+
+                    // Meta chips — INTERVIEW + company + role + location
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            TypeBadge("INTERVIEW", color: .bytePurple)
+                            if let company = interview.company {
+                                MetaChip(text: company)
+                            }
+                            if let role = interview.role {
+                                MetaChip(text: role)
+                            }
+                            if let location = interview.location {
+                                MetaChip(text: location, icon: "mappin")
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                     Text(interview.title)
                         .font(.byteSans(18, weight: .bold))
@@ -248,7 +276,7 @@ struct InterviewPageCard: View {
                     if interview.questions.count > 4 {
                         Text("+ \(interview.questions.count - 4) more questions")
                             .font(.byteMono(11))
-                            .foregroundColor(.byteText3)
+                            .foregroundColor(.byteText2)
                             .padding(.top, 2)
                     }
                 }
@@ -294,6 +322,10 @@ struct InterviewPageCard: View {
                         if isBookmarked {
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
+                        // Persist to backend — was previously only a local toggle.
+                        Task {
+                            try? await APIClient.shared.toggleBookmark(postId: interview.id, type: "interview")
+                        }
                     } label: {
                         Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                             .font(.system(size: 30))
@@ -304,7 +336,7 @@ struct InterviewPageCard: View {
 
                     Text(isBookmarked ? "Saved" : "Save")
                         .font(.byteSans(11, weight: .medium))
-                        .foregroundColor(.byteText3)
+                        .foregroundColor(.byteText2)
                 }
 
                 // Share
@@ -316,7 +348,24 @@ struct InterviewPageCard: View {
                     }
                     Text("Share")
                         .font(.byteSans(11, weight: .medium))
-                        .foregroundColor(.byteText3)
+                        .foregroundColor(.byteText2)
+                }
+
+                // Comments — tap opens detail (web parity: comment count chip is a nav link)
+                VStack(spacing: 5) {
+                    NavigationLink(destination: InterviewDetailView(interviewId: interview.id)) {
+                        VStack(spacing: 2) {
+                            Image(systemName: "bubble.left")
+                                .font(.system(size: 26))
+                                .foregroundColor(.byteText1)
+                            Text("\(interview.commentCount)")
+                                .font(.byteMono(11, weight: .bold))
+                                .foregroundColor(.byteText2)
+                        }
+                    }
+                    Text("Comment\(interview.commentCount == 1 ? "" : "s")")
+                        .font(.byteSans(11, weight: .medium))
+                        .foregroundColor(.byteText2)
                 }
 
                 // View Full
@@ -328,27 +377,73 @@ struct InterviewPageCard: View {
                     }
                     Text("View")
                         .font(.byteSans(11, weight: .medium))
-                        .foregroundColor(.byteText3)
-                }
-
-                // Role tag (vertical, compact)
-                if let role = interview.role {
-                    VStack(spacing: 4) {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.byteText3)
-                        Text(role.uppercased())
-                            .font(.byteMono(8, weight: .semibold))
-                            .foregroundColor(.byteText3)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: 52)
-                    }
+                        .foregroundColor(.byteText2)
                 }
 
                 Spacer().frame(height: 24)
             }
             .frame(width: 62)
         }
+        .sheet(item: $miniProfileTarget) { target in
+            UserMiniProfileSheet(target: target)
+        }
+    }
+}
+
+// MARK: - Anonymous author row (web parity: ghost emoji + "Anonymous" + 👻 anonymous post badge)
+
+private struct AnonymousAuthorRow: View {
+    let timestamp: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.byteElement)
+                    .frame(width: 38, height: 38)
+                    .overlay(Circle().stroke(Color.byteBorderHigh, lineWidth: 1))
+                Text("👻").font(.system(size: 22))
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Anonymous")
+                    .font(.byteMono(13, weight: .bold))
+                    .foregroundColor(.byteText2)
+                Text("👻 anonymous post")
+                    .font(.byteMono(10, weight: .semibold))
+                    .foregroundColor(.bytePurple)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(IdentityColor.purple.bgFaint)
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(IdentityColor.purple.borderFaint, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+            Spacer(minLength: 0)
+            Text(timestamp)
+                .font(.byteMono(10))
+                .foregroundColor(.byteText2)
+        }
+    }
+}
+
+// MARK: - Meta chip (small inline metadata pill — company / role / location)
+
+private struct MetaChip: View {
+    let text: String
+    var icon: String? = nil
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let icon {
+                Image(systemName: icon).font(.system(size: 9))
+            }
+            Text(text)
+                .font(.byteMono(10, weight: .semibold))
+                .lineLimit(1)
+        }
+        .foregroundColor(.byteText1)
+        .padding(.horizontal, 8).padding(.vertical, 4)
+        .background(Color.byteElement)
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.byteBorderHigh, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
@@ -364,7 +459,7 @@ private struct QuestionRow: View {
             Button(action: onToggle) {
                 HStack(alignment: .top, spacing: 10) {
                     Text("Q\(question.orderIndex)")
-                        .font(.byteMono(9, weight: .bold))
+                        .font(.byteMono(10, weight: .bold))
                         .foregroundColor(.byteAccent)
                         .padding(.horizontal, 5).padding(.vertical, 2)
                         .background(Color.byteAccentDim)
@@ -422,59 +517,71 @@ private struct QuestionRow: View {
     }
 }
 
-// MARK: - Filter Bar
+// MARK: - Filter Bar — web parity: COMPANY · ROLE · LOCATION + RESET
 
 private struct InterviewFilterBar: View {
     @ObservedObject var vm: InterviewsViewModel
 
-    var body: some View {
-        HStack(spacing: 8) {
-            Menu {
-                Button("All Companies") { vm.selectedCompany = "" }
-                Divider()
-                ForEach(vm.companies, id: \.self) { c in Button(c) { vm.selectedCompany = c } }
-            } label: {
-                FilterChip(
-                    label: vm.selectedCompany.isEmpty ? "COMPANY" : vm.selectedCompany.uppercased(),
-                    icon: "building.2"
-                )
-            }
-
-            Menu {
-                Button("All Levels") { vm.selectedDifficulty = "" }
-                ForEach(["easy", "medium", "hard"], id: \.self) { d in
-                    Button(d.capitalized) { vm.selectedDifficulty = d }
-                }
-            } label: {
-                FilterChip(
-                    label: vm.selectedDifficulty.isEmpty ? "DIFFICULTY" : vm.selectedDifficulty.uppercased(),
-                    icon: "slider.horizontal.3"
-                )
-            }
-
-            Spacer()
-
-            Text("\(vm.interviews.count) results")
-                .font(.byteMonoTiny)
-                .foregroundColor(.byteText3)
-        }
+    private var hasAnyFilter: Bool {
+        !vm.selectedCompany.isEmpty || !vm.selectedRole.isEmpty || !vm.selectedLocation.isEmpty
     }
-}
-
-private struct FilterChip: View {
-    let label: String
-    let icon: String
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon).font(.system(size: 10))
-            Text(label).font(.byteMono(10, weight: .medium))
-            Image(systemName: "chevron.down").font(.system(size: 9))
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                SearchableDropdown(
+                    value: Binding(
+                        get: { vm.selectedCompany.isEmpty ? nil : vm.selectedCompany },
+                        set: { vm.selectedCompany = $0 ?? "" }
+                    ),
+                    options: vm.companies.map { SearchableDropdown.DropdownOption(value: $0, label: $0) },
+                    placeholder: "COMPANY",
+                    allLabel: "ALL COMPANIES",
+                    identity: .purple
+                )
+
+                SearchableDropdown(
+                    value: Binding(
+                        get: { vm.selectedRole.isEmpty ? nil : vm.selectedRole },
+                        set: { vm.selectedRole = $0 ?? "" }
+                    ),
+                    options: vm.roles.map { SearchableDropdown.DropdownOption(value: $0, label: $0) },
+                    placeholder: "ROLE",
+                    allLabel: "ALL ROLES",
+                    identity: .purple
+                )
+
+                SearchableDropdown(
+                    value: Binding(
+                        get: { vm.selectedLocation.isEmpty ? nil : vm.selectedLocation },
+                        set: { vm.selectedLocation = $0 ?? "" }
+                    ),
+                    options: vm.locations.map { SearchableDropdown.DropdownOption(value: $0, label: $0) },
+                    placeholder: "LOCATION",
+                    allLabel: "ALL LOCATIONS",
+                    identity: .purple
+                )
+
+                if hasAnyFilter {
+                    Button {
+                        vm.selectedCompany = ""
+                        vm.selectedRole = ""
+                        vm.selectedLocation = ""
+                    } label: {
+                        Text("RESET")
+                            .font(.byteMono(10, weight: .bold))
+                            .tracking(0.8)
+                            .foregroundColor(.byteText2)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .overlay(
+                                Capsule().stroke(Color.byteBorderHigh, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
-        .foregroundColor(.byteText2)
-        .padding(.horizontal, 10).padding(.vertical, 6)
-        .background(Color.byteElement).cornerRadius(6)
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.byteBorderMedium, lineWidth: 1))
     }
 }
 
@@ -487,14 +594,20 @@ final class InterviewsViewModel: ObservableObject {
     @Published var selectedCompany = "" {
         didSet { guard oldValue != selectedCompany else { return }; Task { await load() } }
     }
-    @Published var selectedDifficulty = "" {
-        didSet { guard oldValue != selectedDifficulty else { return }; Task { await load() } }
+    @Published var selectedRole = "" {
+        didSet { guard oldValue != selectedRole else { return }; Task { await load() } }
     }
+    @Published var selectedLocation = "" {
+        didSet { guard oldValue != selectedLocation else { return }; Task { await load() } }
+    }
+
+    @Published var companies: [String] = []
+    @Published var roles: [String] = []
+    @Published var locations: [String] = []
 
     private var page = 1
     private var hasMore = true
-
-    let companies = ["META", "GOOGLE", "STRIPE", "AMAZON", "APPLE", "MICROSOFT"]
+    private var lookupsLoaded = false
 
     func load() async {
         isLoading = true
@@ -504,12 +617,17 @@ final class InterviewsViewModel: ObservableObject {
         do {
             interviews = try await APIClient.shared.getInterviews(
                 company: selectedCompany.isEmpty ? nil : selectedCompany,
-                difficulty: selectedDifficulty.isEmpty ? nil : selectedDifficulty
+                role: selectedRole.isEmpty ? nil : selectedRole,
+                location: selectedLocation.isEmpty ? nil : selectedLocation
             )
         } catch is CancellationError {
             // Pull-to-refresh released early — keep existing interviews
         } catch {
             interviews = []
+        }
+        if !lookupsLoaded {
+            lookupsLoaded = true
+            await loadFilterOptions()
         }
     }
 
@@ -519,13 +637,25 @@ final class InterviewsViewModel: ObservableObject {
         do {
             let more = try await APIClient.shared.getInterviews(
                 company: selectedCompany.isEmpty ? nil : selectedCompany,
-                difficulty: selectedDifficulty.isEmpty ? nil : selectedDifficulty,
+                role: selectedRole.isEmpty ? nil : selectedRole,
+                location: selectedLocation.isEmpty ? nil : selectedLocation,
                 page: page
             )
             if more.isEmpty { hasMore = false } else { interviews.append(contentsOf: more) }
         } catch {
             hasMore = false
         }
+    }
+
+    /// Populates the Company / Role / Location dropdowns. Mirrors web's
+    /// `getInterviewCompanies/Roles/Locations` calls in `interviews-screen.tsx`.
+    private func loadFilterOptions() async {
+        async let c = APIClient.shared.getInterviewCompanies()
+        async let r = APIClient.shared.getInterviewRoles()
+        async let l = APIClient.shared.getInterviewLocations()
+        if let result = try? await c { companies = result.sorted() }
+        if let result = try? await r { roles = result.sorted() }
+        if let result = try? await l { locations = result.sorted() }
     }
 }
 

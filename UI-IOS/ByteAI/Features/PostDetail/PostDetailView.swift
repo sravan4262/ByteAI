@@ -1,248 +1,285 @@
 import SwiftUI
 
 // MARK: - Post Detail View
-// Mirrors /(app)/post/[id]/page.tsx
+// Mirrors UI/components/features/detail/detail-screen.tsx
+// Card with accent gradient top line, faint-blue interaction buttons, share with toast.
 
 struct PostDetailView: View {
     @State var post: Post
-    @StateObject private var vm: PostDetailViewModel
+    var onPostChanged: ((Post) -> Void)? = nil
+    @State private var viewedAt: Date?
+    @State private var showComments = false
+    @State private var showLikers = false
+    @State private var showSimilar = false
+    @State private var previewComments: [Comment] = []
+    @State private var isLoadingPreview = true
+    @State private var isSendingComment = false
+    @EnvironmentObject private var toasts: ToastCenter
 
-    init(post: Post) {
+    init(post: Post, onPostChanged: ((Post) -> Void)? = nil) {
         self._post = State(initialValue: post)
-        self._vm = StateObject(wrappedValue: PostDetailViewModel(postId: post.id))
+        self.onPostChanged = onPostChanged
     }
 
     var body: some View {
         ZStack {
             Color.byteBackground.ignoresSafeArea()
+                .dismissKeyboardOnTap()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    // Full post header
-                    PostHeader(post: post)
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        CardWithTopGradient {
+                            VStack(alignment: .leading, spacing: 18) {
+                                PostHeader(post: post)
 
-                    // Title
-                    Text(post.title)
-                        .font(.byteH2)
-                        .foregroundColor(.byteText1)
+                                Text(post.title)
+                                    .font(.byteSans(22, weight: .heavy))
+                                    .foregroundColor(.byteText1)
+                                    .fixedSize(horizontal: false, vertical: true)
 
-                    // Full body (no truncation)
-                    Text(post.body)
-                        .font(.byteBody)
-                        .foregroundColor(.byteText2)
-                        .lineSpacing(4)
+                                Text(post.body)
+                                    .font(.byteSans(15))
+                                    .foregroundColor(.byteText2)
+                                    .lineSpacing(5)
 
-                    // Code block
-                    if let code = post.code {
-                        CodeBlockView(snippet: code)
-                    }
+                                if let code = post.code {
+                                    CodeBlockView(snippet: code)
+                                }
 
-                    // Tags
-                    FlowLayout(spacing: 6) {
-                        ForEach(post.tags, id: \.self) { tag in
-                            TagView(label: tag)
-                        }
-                    }
+                                if !post.tags.isEmpty {
+                                    FlowLayout(spacing: 6) {
+                                        ForEach(post.tags, id: \.self) { tag in
+                                            Text(tag)
+                                                .font(.byteMono(11))
+                                                .foregroundColor(.byteText1)
+                                                .padding(.horizontal, 10).padding(.vertical, 4)
+                                                .background(IdentityColor.blue.bgFaint)
+                                                .overlay(RoundedRectangle(cornerRadius: 12)
+                                                    .stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        }
+                                    }
+                                }
 
-                    Divider().background(Color.byteBorderMedium)
+                                Divider().background(Color.byteBorderHigh)
 
-                    // Reaction stats
-                    HStack(spacing: 12) {
-                        StatChip(icon: "heart.fill", value: post.likes, color: .byteRed)
-                        StatChip(icon: "bubble.left.fill", value: post.comments, color: .byteCyan)
-                        StatChip(icon: "bookmark.fill", value: post.bookmarks, color: .bytePurple)
-                        if let views = post.views {
-                            StatChip(icon: "eye.fill", value: views, color: .byteText3)
-                        }
-                    }
-
-                    // Action bar
-                    HStack(spacing: 8) {
-                        ActionButton(
-                            icon: "heart",
-                            count: post.likes,
-                            isActive: post.isLiked,
-                            activeColor: .byteRed
-                        ) {
-                            withAnimation(.spring(response: 0.3)) {
-                                post.isLiked.toggle()
-                                post.likes += post.isLiked ? 1 : -1
+                                actionRow
                             }
+                            .padding(18)
                         }
+                        .padding(.horizontal, 12)
 
-                        ActionButton(icon: "square.and.arrow.up") {}
-
-                        Spacer()
-
-                        ActionButton(
-                            icon: "bookmark",
-                            isActive: post.isBookmarked,
-                            activeColor: .byteCyan
-                        ) {
-                            withAnimation { post.isBookmarked.toggle() }
-                        }
+                        commentsPreview
+                            .padding(.horizontal, 12)
                     }
-
-                    Divider().background(Color.byteBorderMedium)
-
-                    // Comments section
-                    CommentsSection(vm: vm)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
                 }
-                .padding(16)
+                .scrollDismissesKeyboard(.interactively)
+
+                Divider().background(Color.byteBorderHigh)
+                CommentComposeBar(isSending: isSendingComment) { text in
+                    await submitComment(body: text)
+                }
             }
         }
         .navigationTitle("Byte")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await vm.loadComments() }
-    }
-}
-
-// MARK: - Stat Chip
-
-private struct StatChip: View {
-    let icon: String
-    let value: Int
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon).font(.system(size: 11)).foregroundColor(color)
-            Text("\(value)").font(.byteMonoSmall).foregroundColor(.byteText2)
+        .toolbarBackground(Color.byteBackground, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .navigationDestination(isPresented: $showComments) {
+            CommentsView(post: post)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(color.opacity(0.08))
-        .cornerRadius(6)
+        .navigationDestination(isPresented: $showSimilar) {
+            SimilarBytesView(byteId: post.id, sourceTitle: post.title)
+        }
+        .sheet(isPresented: $showLikers) { LikesSheet(postId: post.id) }
+        .task { await loadPreviewComments() }
+        .onAppear { viewedAt = Date() }
+        .onDisappear {
+            if let viewedAt {
+                let dwell = Int(Date().timeIntervalSince(viewedAt) * 1000)
+                if dwell > 2000 {
+                    Task { try? await APIClient.shared.recordView(postId: post.id, dwellMs: dwell) }
+                }
+            }
+        }
     }
-}
 
-// MARK: - Comments Section
-
-private struct CommentsSection: View {
-    @ObservedObject var vm: PostDetailViewModel
-    @State private var newComment = ""
-    @FocusState private var isInputFocused: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+    @ViewBuilder
+    private var commentsPreview: some View {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("COMMENTS")
-                    .font(.byteMono(11, weight: .bold))
-                    .foregroundColor(.byteText3)
-                    .tracking(1)
+                AccentBarHeader(label: "COMMENTS", size: .compact)
                 Spacer()
-                if !vm.comments.isEmpty {
-                    Text("\(vm.comments.count)")
-                        .font(.byteMonoSmall)
-                        .foregroundColor(.byteText2)
-                }
-            }
-
-            // Add comment input
-            HStack(spacing: 10) {
-                AvatarView(MockData.users[0].initials, variant: .cyan, size: .sm)
-
-                TextField("Add a comment...", text: $newComment, axis: .vertical)
-                    .font(.byteBody)
-                    .foregroundColor(.byteText1)
-                    .tint(.byteAccent)
-                    .focused($isInputFocused)
-                    .lineLimit(1...4)
-                    .padding(10)
-                    .background(Color.byteElement)
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isInputFocused ? Color.byteAccent.opacity(0.5) : Color.byteBorderMedium, lineWidth: 1)
-                    )
-
-                if !newComment.isEmpty {
-                    Button {
-                        Task { await vm.addComment(body: newComment) }
-                        newComment = ""
-                        isInputFocused = false
-                    } label: {
-                        Image(systemName: "paperplane.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.byteAccent)
-                    }
-                }
-            }
-
-            if vm.isLoadingComments {
-                HStack { ByteSpinner(size: 20) }.frame(maxWidth: .infinity)
-            } else if vm.comments.isEmpty {
-                EmptyStateView(icon: "bubble.left", title: "No comments yet", message: "Be the first to share your thoughts.")
-            } else {
-                ForEach(vm.comments) { comment in
-                    CommentRow(comment: comment)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Comment Row
-
-struct CommentRow: View {
-    let comment: Comment
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                AvatarView(user: comment.author, size: .sm)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
-                        Text(comment.author.displayName)
-                            .font(.byteSans(12, weight: .semibold))
-                            .foregroundColor(.byteText1)
-                        Text("·")
-                            .foregroundColor(.byteText3)
-                        Text(comment.timestamp)
-                            .font(.byteMonoTiny)
-                            .foregroundColor(.byteText3)
-                    }
-                    Text(comment.author.role)
-                        .font(.byteMonoTiny)
-                        .foregroundColor(.byteText3)
-                }
-            }
-
-            Text(comment.content)
-                .font(.byteBody)
-                .foregroundColor(.byteText2)
-                .padding(.leading, 40)
-
-            // Vote + reply
-            HStack(spacing: 10) {
-                Spacer().frame(width: 32)
-                ActionButton(icon: "arrow.up", count: comment.votes, action: {})
-                Text("Reply")
-                    .font(.byteMonoTiny)
-                    .foregroundColor(.byteText2)
-            }
-
-            // Nested replies
-            if !comment.replies.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(comment.replies) { reply in
-                        HStack(alignment: .top, spacing: 8) {
-                            Rectangle()
-                                .fill(Color.byteBorderMedium)
-                                .frame(width: 1)
-                                .padding(.leading, 20)
-                            CommentRow(comment: reply)
+                if post.comments > 0 {
+                    Button { showComments = true } label: {
+                        HStack(spacing: 4) {
+                            Text("View all \(post.comments)")
+                                .font(.byteMono(11, weight: .bold))
+                                .tracking(0.5)
+                            Image(systemName: "arrow.right").font(.system(size: 11))
                         }
+                        .foregroundColor(.byteAccent)
                     }
+                    .buttonStyle(.plain)
                 }
             }
 
-            Divider().background(Color.byteBorder)
+            if isLoadingPreview {
+                HStack(spacing: 8) {
+                    ByteSpinner(size: 14)
+                    Text("Loading comments…")
+                        .font(.byteMono(11)).foregroundColor(.byteText2)
+                }
+                .padding(.vertical, 4)
+            } else if previewComments.isEmpty {
+                Text("Be the first to add a comment.")
+                    .font(.byteSans(13))
+                    .foregroundColor(.byteText2)
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(previewComments) { c in
+                    HStack(alignment: .top, spacing: 10) {
+                        AvatarView(user: c.author, size: .sm)
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text("@\(c.author.username)")
+                                    .font(.byteMono(11, weight: .bold))
+                                    .foregroundColor(.byteText1)
+                                if c.author.isVerified {
+                                    Image(systemName: "checkmark.seal.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.byteAccent)
+                                }
+                                Text(c.timestamp)
+                                    .font(.byteMono(10))
+                                    .foregroundColor(.byteText2)
+                            }
+                            Text(c.content)
+                                .font(.byteSans(13))
+                                .foregroundColor(.byteText2)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 6)
+                }
+            }
         }
+        .padding(.horizontal, 4)
+    }
+
+    private func loadPreviewComments() async {
+        isLoadingPreview = true
+        defer { isLoadingPreview = false }
+        let all = (try? await APIClient.shared.getComments(postId: post.id)) ?? []
+        previewComments = Array(all.prefix(3))
+    }
+
+    private func submitComment(body: String) async {
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        isSendingComment = true
+        defer { isSendingComment = false }
+        do {
+            try await APIClient.shared.addComment(postId: post.id, body: trimmed)
+            Haptics.success()
+            post.comments += 1
+            onPostChanged?(post)
+            await loadPreviewComments()
+        } catch {
+            toasts.show("Couldn't post comment", kind: .error)
+        }
+    }
+
+    private var actionRow: some View {
+        HStack(spacing: 8) {
+            interactionPill(icon: post.isLiked ? "heart.fill" : "heart",
+                            count: post.likes, isActive: post.isLiked) {
+                Haptics.light()
+                withAnimation(.spring(response: 0.3)) {
+                    post.isLiked.toggle()
+                    post.likes += post.isLiked ? 1 : -1
+                }
+                onPostChanged?(post)
+                Task { try? await APIClient.shared.toggleLike(postId: post.id) }
+            }
+            .simultaneousGesture(LongPressGesture(minimumDuration: 0.3).onEnded { _ in showLikers = true })
+            .accessibilityLabel("Like")
+            .accessibilityValue(post.isLiked ? "liked" : "not liked")
+            .accessibilityHint("Long-press to see who liked")
+
+            interactionPill(icon: "bubble.left", count: post.comments, isActive: false) {
+                showComments = true
+            }
+            .accessibilityLabel("View comments")
+
+            interactionPill(icon: post.isBookmarked ? "bookmark.fill" : "bookmark",
+                            label: "SAVE", isActive: post.isBookmarked) {
+                Haptics.light()
+                withAnimation { post.isBookmarked.toggle() }
+                onPostChanged?(post)
+                Task { try? await APIClient.shared.toggleBookmark(postId: post.id) }
+            }
+            .accessibilityLabel("Bookmark")
+            .accessibilityValue(post.isBookmarked ? "bookmarked" : "not bookmarked")
+
+            ShareLink(
+                item: URL(string: "https://byteai.dev/post/\(post.id)")!,
+                subject: Text(post.title),
+                message: Text(String(post.body.prefix(140)))
+            ) {
+                HStack(spacing: 6) {
+                    Image(systemName: "square.and.arrow.up").font(.system(size: 13))
+                    Text("SHARE").font(.byteMono(11)).tracking(0.5)
+                }
+                .foregroundColor(.byteText1)
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(IdentityColor.blue.bgFaint)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .simultaneousGesture(TapGesture().onEnded {
+                toasts.show("Link copied to clipboard", kind: .success)
+                UIPasteboard.general.string = "https://byteai.dev/post/\(post.id)"
+            })
+            .accessibilityLabel("Share")
+
+            interactionPill(icon: "square.stack.3d.up", label: "SIMILAR", isActive: false) {
+                showSimilar = true
+            }
+            .accessibilityLabel("Show similar bytes")
+
+            Spacer()
+        }
+    }
+
+    private func interactionPill(icon: String, count: Int? = nil, label: String? = nil,
+                                 isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon).font(.system(size: 13))
+                if let count, count > 0 { Text("\(count)").font(.byteMono(11)).tracking(0.5) }
+                if let label { Text(label).font(.byteMono(11)).tracking(0.5) }
+            }
+            .foregroundColor(isActive ? .byteAccent : .byteText1)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(isActive ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isActive ? .byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .frame(minHeight: 44)
     }
 }
 
-// MARK: - Flow Layout (tags)
+// MARK: - Flow Layout (tags) — kept here since other detail views also use it.
 
 struct FlowLayout: Layout {
     var spacing: CGFloat = 8
@@ -254,7 +291,7 @@ struct FlowLayout: Layout {
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var rows = computeRows(proposal: proposal, subviews: subviews)
+        let rows = computeRows(proposal: proposal, subviews: subviews)
         var y = bounds.minY
         for row in rows {
             var x = bounds.minX
@@ -294,31 +331,165 @@ struct FlowLayout: Layout {
     }
 }
 
-// MARK: - ViewModel
-
-@MainActor
-final class PostDetailViewModel: ObservableObject {
-    let postId: String
-    @Published var comments: [Comment] = []
-    @Published var isLoadingComments = false
-
-    init(postId: String) { self.postId = postId }
-
-    func loadComments() async {
-        isLoadingComments = true
-        defer { isLoadingComments = false }
-        comments = (try? await APIClient.shared.getComments(postId: postId)) ?? []
-    }
-
-    func addComment(body: String) async {
-        try? await APIClient.shared.addComment(postId: postId, body: body)
-        await loadComments()
-    }
-}
-
 #Preview {
     NavigationStack {
         PostDetailView(post: MockData.posts[0])
     }
+    .environmentObject(ToastCenter.shared)
     .background(Color.byteBackground)
+}
+
+// MARK: - Similar Bytes View
+// Mirrors web's `?byteId=` flow inside search-screen.tsx — shows semantically similar
+// bytes via /api/bytes/{id}/similar. Inlined here so no new project.pbxproj entry is needed.
+
+struct SimilarBytesView: View {
+    let byteId: String
+    let sourceTitle: String
+    @State private var results: [SimilarByte] = []
+    @State private var isLoading = true
+    @State private var error: String?
+
+    var body: some View {
+        ZStack {
+            Color.byteBackground.ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    AccentBarHeader(label: isLoading ? "FINDING SIMILAR…" : "SIMILAR BYTES (\(results.count))")
+                        .padding(.top, 4)
+
+                    if isLoading {
+                        VStack {
+                            ByteSpinner()
+                                .padding(.top, 40)
+                                .frame(maxWidth: .infinity)
+                        }
+                    } else if let error {
+                        EmptyStateView(icon: "exclamationmark.triangle", title: "Couldn't load", message: error)
+                    } else if results.isEmpty {
+                        EmptyStateView(
+                            icon: "square.stack.3d.up.slash",
+                            title: "NO SIMILAR BYTES",
+                            message: "This byte doesn't have a semantic embedding yet."
+                        )
+                    } else {
+                        ForEach(results) { row in
+                            NavigationLink {
+                                Color.byteBackground.ignoresSafeArea()
+                                    .overlay(LoadingByteThenDetail(byteId: row.id))
+                            } label: {
+                                SimilarByteCard(byte: row)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+            }
+        }
+        .navigationTitle("Similar")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.byteBackground, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .task { await load() }
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            results = try await APIClient.shared.getSimilarBytes(byteId: byteId)
+        } catch {
+            self.error = "Try again in a moment."
+        }
+    }
+}
+
+private struct SimilarByteCard: View {
+    let byte: SimilarByte
+
+    var body: some View {
+        CardWithTopGradient {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .fill(IdentityColor.blue.bgFaint)
+                            .frame(width: 24, height: 24)
+                            .overlay(Circle().stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                        Text(byte.authorUsername.first.map { String($0).uppercased() } ?? "U")
+                            .font(.byteMono(10, weight: .bold))
+                            .foregroundColor(.byteAccent)
+                    }
+                    Text("@\(byte.authorUsername)")
+                        .font(.byteMono(11))
+                        .foregroundColor(.byteText2)
+                    Spacer()
+                }
+
+                Text(byte.title)
+                    .font(.byteSans(15, weight: .bold))
+                    .foregroundColor(.byteText1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                Text(byte.body)
+                    .font(.byteSans(12))
+                    .foregroundColor(.byteText2)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                if !byte.tags.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(byte.tags.prefix(4), id: \.self) { tag in
+                            Text(tag)
+                                .font(.byteMono(10))
+                                .foregroundColor(.byteText2)
+                                .padding(.horizontal, 8).padding(.vertical, 2)
+                                .background(IdentityColor.blue.bgFaint)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                        }
+                    }
+                }
+
+                HStack(spacing: 14) {
+                    Label("\(byte.likeCount)", systemImage: "heart")
+                    Label("\(byte.commentCount)", systemImage: "bubble.left")
+                }
+                .font(.byteMono(10))
+                .foregroundColor(.byteText2)
+            }
+            .padding(14)
+        }
+    }
+}
+
+/// Tiny shim that fetches the full Post by id then renders PostDetailView once loaded.
+/// Used by SimilarBytesView so taps navigate into the canonical detail view.
+private struct LoadingByteThenDetail: View {
+    let byteId: String
+    @State private var post: Post?
+    @State private var error: String?
+
+    var body: some View {
+        Group {
+            if let post {
+                PostDetailView(post: post)
+            } else if let error {
+                EmptyStateView(icon: "exclamationmark.triangle", title: "Couldn't load", message: error)
+            } else {
+                ByteSpinner()
+            }
+        }
+        .task {
+            do {
+                post = try await APIClient.shared.getPost(id: byteId)
+            } catch {
+                self.error = "Try again in a moment."
+            }
+        }
+    }
 }

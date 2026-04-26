@@ -149,6 +149,7 @@ enum MockData {
             title: "Meta Frontend Interview Experience — L5",
             company: "META",
             role: "Frontend Engineer L5",
+            location: "Menlo Park, CA",
             difficulty: .hard,
             type: "Technical",
             createdAt: "3d ago",
@@ -172,13 +173,17 @@ enum MockData {
                     isLiked: true
                 )
             ],
-            author: users[0]
+            author: users[0],
+            commentCount: 4,
+            isAnonymous: false,
+            isBookmarked: false
         ),
         Interview(
             id: "i2",
             title: "Stripe Backend Systems Design — Staff",
             company: "STRIPE",
             role: "Staff Engineer",
+            location: "Remote",
             difficulty: .medium,
             type: "System Design",
             createdAt: "1w ago",
@@ -193,7 +198,10 @@ enum MockData {
                     isLiked: false
                 )
             ],
-            author: users[1]
+            author: users[1],
+            commentCount: 7,
+            isAnonymous: true,
+            isBookmarked: false
         )
     ]
 

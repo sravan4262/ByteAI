@@ -23,16 +23,21 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
-	<!-- Clerk publishable key — matches NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY in web .env -->
-	<key>ClerkPublishableKey</key>
-	<string>pk_test_bXV0dWFsLXBhbnRoZXItNC5jbGVyay5hY2NvdW50cy5kZXYk</string>
-	<!-- Local network access permission (required for iOS 14+ to reach LAN backend) -->
+	<!-- Supabase project URL + anon key, injected from xcconfig / scheme env -->
+	<key>SupabaseURL</key>
+	<string>$(SUPABASE_URL)</string>
+	<key>SupabaseAnonKey</key>
+	<string>$(SUPABASE_ANON_KEY)</string>
+	<!-- Local network access (iOS 14+ to reach LAN backend in dev) -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ByteAI needs local network access to connect to the development backend.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_http._tcp</string>
 	</array>
+	<!-- Photo library access for avatar uploads -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ByteAI needs access to your photo library so you can choose a profile picture.</string>
 	<!-- Allow plain HTTP to localhost for local dev -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
@@ -43,7 +48,14 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
-	<!-- URL scheme for Clerk OAuth redirect after Google auth -->
+	<!-- Google Sign-In iOS client ID. Picked up automatically by GoogleSignIn SDK
+	     when GIDSignIn.configuration is not set programmatically.
+	     Format: <number>-<hash>.apps.googleusercontent.com -->
+	<key>GIDClientID</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
+	<!-- URL schemes:
+	     - "byteai"             — GitHub OAuth callback (still goes through Supabase)
+	     - reversed iOS client  — required by GoogleSignIn SDK fallback path -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -54,6 +66,19 @@
 			<key>CFBundleURLName</key>
 			<string>com.byteai.auth</string>
 		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_IOS_REVERSED_CLIENT_ID)</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>com.byteai.googlesignin</string>
+		</dict>
+	</array>
+	<!-- Background modes for push notifications -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
@@ -65,16 +90,5 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
-	<!-- Custom Fonts: add .ttf files to target then uncomment
-	<key>UIAppFonts</key>
-	<array>
-		<string>BricolageGrotesque-Regular.ttf</string>
-		<string>BricolageGrotesque-SemiBold.ttf</string>
-		<string>BricolageGrotesque-Bold.ttf</string>
-		<string>JetBrainsMono-Regular.ttf</string>
-		<string>JetBrainsMono-Medium.ttf</string>
-		<string>JetBrainsMono-Bold.ttf</string>
-	</array>
-	-->
 </dict>
 </plist>
