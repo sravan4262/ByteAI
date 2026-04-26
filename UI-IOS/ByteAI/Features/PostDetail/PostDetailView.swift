@@ -7,7 +7,12 @@ import SwiftUI
 struct PostDetailView: View {
     @State var post: Post
     var onPostChanged: ((Post) -> Void)? = nil
-    @State private var viewedAt: Date?
+    // Dwell timer that only counts time the screen is actually visible.
+    // visibleSince  = timestamp of the last "became visible" transition (nil while hidden)
+    // accumulatedMs = total visible ms accrued in earlier visible spans.
+    @State private var visibleSince: Date?
+    @State private var accumulatedMs: Int = 0
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showComments = false
     @State private var showLikers = false
     @State private var showSimilar = false
@@ -96,13 +101,23 @@ struct PostDetailView: View {
         }
         .sheet(isPresented: $showLikers) { LikesSheet(postId: post.id) }
         .task { await loadPreviewComments() }
-        .onAppear { viewedAt = Date() }
+        .onAppear {
+            accumulatedMs = 0
+            visibleSince = scenePhase == .active ? Date() : nil
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                visibleSince = Date()
+            } else if let started = visibleSince {
+                accumulatedMs += Int(Date().timeIntervalSince(started) * 1000)
+                visibleSince = nil
+            }
+        }
         .onDisappear {
-            if let viewedAt {
-                let dwell = Int(Date().timeIntervalSince(viewedAt) * 1000)
-                if dwell > 2000 {
-                    Task { try? await APIClient.shared.recordView(postId: post.id, dwellMs: dwell) }
-                }
+            let tail = visibleSince.map { Int(Date().timeIntervalSince($0) * 1000) } ?? 0
+            let dwell = accumulatedMs + tail
+            if dwell > 2000 {
+                Task { try? await APIClient.shared.recordView(postId: post.id, dwellMs: dwell) }
             }
         }
     }

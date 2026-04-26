@@ -28,10 +28,24 @@ struct AvatarView: View {
         self.imageUrl = imageUrl
     }
 
+    // Avatar source can take three shapes:
+    //   • a real URL (Google / uploaded photo) — http(s):// or leading "/"
+    //   • a literal emoji or 1–4 char string from the in-app picker
+    //   • nil / empty → initials over a gradient
+    // `URL(string: "🚀")` returns nil, so emoji avatars previously fell silently to initials.
+    private var isHttpUrl: Bool {
+        guard let s = imageUrl, !s.isEmpty else { return false }
+        return s.hasPrefix("http") || s.hasPrefix("/")
+    }
+    private var isEmojiAvatar: Bool {
+        guard let s = imageUrl, !s.isEmpty else { return false }
+        return !isHttpUrl
+    }
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             ZStack {
-                if let urlString = imageUrl, let url = URL(string: urlString) {
+                if isHttpUrl, let url = URL(string: imageUrl!) {
                     KFImage(url)
                         .placeholder { fallbackAvatar }
                         .fade(duration: 0.18)
@@ -40,6 +54,14 @@ struct AvatarView: View {
                         .scaledToFill()
                         .frame(width: size.dimension, height: size.dimension)
                         .clipShape(Circle())
+                } else if isEmojiAvatar, let emoji = imageUrl {
+                    ZStack {
+                        Circle()
+                            .fill(variant.gradient)
+                            .frame(width: size.dimension, height: size.dimension)
+                        Text(emoji)
+                            .font(.system(size: size.fontSize * 1.5))
+                    }
                 } else {
                     fallbackAvatar
                 }

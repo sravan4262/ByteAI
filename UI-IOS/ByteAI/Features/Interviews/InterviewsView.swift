@@ -248,6 +248,7 @@ struct InterviewPageCard: View {
                             if let location = interview.location {
                                 MetaChip(text: location, icon: "mappin")
                             }
+                            DifficultyChip(difficulty: interview.difficulty)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -424,6 +425,31 @@ private struct AnonymousAuthorRow: View {
     }
 }
 
+// MARK: - Difficulty chip — colored EASY/MEDIUM/HARD pill (web parity)
+
+struct DifficultyChip: View {
+    let difficulty: Interview.Difficulty
+
+    private var color: Color {
+        switch difficulty {
+        case .easy:   return .byteGreen
+        case .medium: return .byteOrange
+        case .hard:   return .byteRed
+        }
+    }
+
+    var body: some View {
+        Text(difficulty.rawValue.uppercased())
+            .font(.byteMono(10, weight: .bold))
+            .tracking(0.6)
+            .foregroundColor(color)
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(color.opacity(0.07))
+            .overlay(RoundedRectangle(cornerRadius: 6).stroke(color.opacity(0.35), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
 // MARK: - Meta chip (small inline metadata pill — company / role / location)
 
 private struct MetaChip: View {
@@ -522,8 +548,15 @@ private struct QuestionRow: View {
 private struct InterviewFilterBar: View {
     @ObservedObject var vm: InterviewsViewModel
 
+    private static let difficultyOptions: [SearchableDropdown.DropdownOption] = [
+        .init(value: "easy",   label: "EASY"),
+        .init(value: "medium", label: "MEDIUM"),
+        .init(value: "hard",   label: "HARD"),
+    ]
+
     private var hasAnyFilter: Bool {
-        !vm.selectedCompany.isEmpty || !vm.selectedRole.isEmpty || !vm.selectedLocation.isEmpty
+        !vm.selectedCompany.isEmpty || !vm.selectedRole.isEmpty
+            || !vm.selectedLocation.isEmpty || !vm.selectedDifficulty.isEmpty
     }
 
     var body: some View {
@@ -562,11 +595,23 @@ private struct InterviewFilterBar: View {
                     identity: .purple
                 )
 
+                SearchableDropdown(
+                    value: Binding(
+                        get: { vm.selectedDifficulty.isEmpty ? nil : vm.selectedDifficulty },
+                        set: { vm.selectedDifficulty = $0 ?? "" }
+                    ),
+                    options: Self.difficultyOptions,
+                    placeholder: "DIFFICULTY",
+                    allLabel: "ALL LEVELS",
+                    identity: .purple
+                )
+
                 if hasAnyFilter {
                     Button {
                         vm.selectedCompany = ""
                         vm.selectedRole = ""
                         vm.selectedLocation = ""
+                        vm.selectedDifficulty = ""
                     } label: {
                         Text("RESET")
                             .font(.byteMono(10, weight: .bold))
@@ -600,6 +645,9 @@ final class InterviewsViewModel: ObservableObject {
     @Published var selectedLocation = "" {
         didSet { guard oldValue != selectedLocation else { return }; Task { await load() } }
     }
+    @Published var selectedDifficulty = "" {
+        didSet { guard oldValue != selectedDifficulty else { return }; Task { await load() } }
+    }
 
     @Published var companies: [String] = []
     @Published var roles: [String] = []
@@ -618,7 +666,8 @@ final class InterviewsViewModel: ObservableObject {
             interviews = try await APIClient.shared.getInterviews(
                 company: selectedCompany.isEmpty ? nil : selectedCompany,
                 role: selectedRole.isEmpty ? nil : selectedRole,
-                location: selectedLocation.isEmpty ? nil : selectedLocation
+                location: selectedLocation.isEmpty ? nil : selectedLocation,
+                difficulty: selectedDifficulty.isEmpty ? nil : selectedDifficulty
             )
         } catch is CancellationError {
             // Pull-to-refresh released early — keep existing interviews
@@ -639,6 +688,7 @@ final class InterviewsViewModel: ObservableObject {
                 company: selectedCompany.isEmpty ? nil : selectedCompany,
                 role: selectedRole.isEmpty ? nil : selectedRole,
                 location: selectedLocation.isEmpty ? nil : selectedLocation,
+                difficulty: selectedDifficulty.isEmpty ? nil : selectedDifficulty,
                 page: page
             )
             if more.isEmpty { hasMore = false } else { interviews.append(contentsOf: more) }

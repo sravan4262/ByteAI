@@ -49,12 +49,33 @@ actor APIClient {
                 throw APIError.unauthorized
             }
             if !(200..<300).contains(http.statusCode) {
-                let msg = String(data: data, encoding: .utf8) ?? ""
-                throw APIError.http(http.statusCode, msg)
+                throw APIError.http(http.statusCode, Self.decodeErrorReason(data: data))
             }
         }
 
         return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    // Probes the three error shapes the backend can emit:
+    //   • { reason, error }            (legacy ApiResponse error envelope)
+    //   • { message }                  (controller-caught domain errors)
+    //   • { detail, title }            (ProblemDetails — middleware fallback)
+    // Falls back to raw body text if none of those decode. Web parity: UI/lib/api/http.ts.
+    private static func decodeErrorReason(data: Data) -> String {
+        let raw = String(data: data, encoding: .utf8) ?? ""
+        struct Shape: Decodable {
+            let reason: String?
+            let message: String?
+            let detail: String?
+            let title: String?
+        }
+        if let s = try? JSONDecoder().decode(Shape.self, from: data) {
+            if let r = s.reason,  !r.isEmpty { return r }
+            if let d = s.detail,  !d.isEmpty { return d }
+            if let m = s.message, !m.isEmpty { return m }
+            if let t = s.title,   !t.isEmpty { return t }
+        }
+        return raw
     }
 
     // Unwraps the { data: T } envelope the backend always returns
@@ -134,14 +155,14 @@ actor APIClient {
 
     // MARK: - Interviews
 
-    /// Web parity (UI/lib/api/client.ts): supports company / role / location / stack / authorId
-    /// filters. Backend (`InterviewsController.GetInterviews`) does NOT accept `difficulty` —
-    /// it was previously sent as an unsupported query and silently ignored.
+    /// Web parity (UI/lib/api/client.ts): supports company / role / location / stack /
+    /// difficulty / authorId filters.
     func getInterviews(
         company: String? = nil,
         role: String? = nil,
         location: String? = nil,
         stack: String? = nil,
+        difficulty: String? = nil,
         authorId: String? = nil,
         page: Int = 1,
         pageSize: Int = 20
@@ -150,11 +171,12 @@ actor APIClient {
             URLQueryItem(name: "page", value: "\(page)"),
             URLQueryItem(name: "pageSize", value: "\(pageSize)"),
         ]
-        if let company  { items.append(.init(name: "company",  value: company)) }
-        if let role     { items.append(.init(name: "role",     value: role)) }
-        if let location { items.append(.init(name: "location", value: location)) }
-        if let stack    { items.append(.init(name: "stack",    value: stack)) }
-        if let authorId { items.append(.init(name: "authorId", value: authorId)) }
+        if let company    { items.append(.init(name: "company",    value: company)) }
+        if let role       { items.append(.init(name: "role",       value: role)) }
+        if let location   { items.append(.init(name: "location",   value: location)) }
+        if let stack      { items.append(.init(name: "stack",      value: stack)) }
+        if let difficulty { items.append(.init(name: "difficulty", value: difficulty)) }
+        if let authorId   { items.append(.init(name: "authorId",   value: authorId)) }
         var comps = URLComponents()
         comps.queryItems = items
         let qs = comps.percentEncodedQuery ?? ""
@@ -192,6 +214,70 @@ actor APIClient {
     func searchAsk(question: String) async throws -> AskResult {
         struct B: Encodable { let question: String }
         return try await fetch("/api/search/ask", method: "POST", body: B(question: question))
+    }
+
+    /// NDJSON streaming variant of searchAsk. First emits `.sources([...])`, then a
+    /// burst of `.chunk(text)` events as Gemini tokens arrive, and finally `.done`.
+    /// Web parity: UI/lib/api/client.ts:searchAskStream + UI/lib/api/http.ts:apiFetchStream.
+    enum AskStreamEvent {
+        case sources([SearchAskSource])
+        case chunk(String)
+        case done
+    }
+
+    func searchAskStream(question: String, type: String? = nil) -> AsyncThrowingStream<AskStreamEvent, Error> {
+        // Capture actor-isolated state up front so the detached Task closure doesn't
+        // need to hop back to the actor on every property read.
+        let url = URL(string: baseURL.absoluteString + "/api/ai/search-ask-stream")
+        let token = authToken
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    guard let url else { throw URLError(.badURL) }
+                    var req = URLRequest(url: url)
+                    req.httpMethod = "POST"
+                    req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    if let token {
+                        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                    }
+                    struct Body: Encodable { let question: String; let type: String? }
+                    req.httpBody = try JSONEncoder().encode(Body(question: question, type: type))
+                    req.timeoutInterval = 60
+
+                    let (bytes, response) = try await URLSession.shared.bytes(for: req)
+                    if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                        throw APIError.http(http.statusCode, "Stream request failed.")
+                    }
+
+                    struct Line: Decodable {
+                        let type: String?
+                        let sources: [SearchAskSource]?
+                        let text: String?
+                    }
+
+                    for try await rawLine in bytes.lines {
+                        let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if line.isEmpty { continue }
+                        guard let data = line.data(using: .utf8),
+                              let parsed = try? JSONDecoder().decode(Line.self, from: data) else { continue }
+                        switch parsed.type {
+                        case "sources":
+                            if let s = parsed.sources { continuation.yield(.sources(s)) }
+                        case "chunk":
+                            if let t = parsed.text { continuation.yield(.chunk(t)) }
+                        case "done":
+                            continuation.yield(.done)
+                        default:
+                            break
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
     }
 
     // MARK: - Profile
@@ -251,7 +337,7 @@ actor APIClient {
         let (data, response) = try await URLSession.shared.data(for: req)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-            throw APIError.http(code, String(data: data, encoding: .utf8) ?? "")
+            throw APIError.http(code, Self.decodeErrorReason(data: data))
         }
         struct R: Decodable { let avatarUrl: String }
         let env = try JSONDecoder().decode(APIEnvelope<R>.self, from: data)
@@ -772,6 +858,9 @@ struct NotificationResponse: Decodable {
     let userId: String
     let type: String
     let payload: NotificationPayload
+    let actorUsername: String?
+    let actorDisplayName: String?
+    let actorAvatarUrl: String?
     let read: Bool
     let createdAt: String
 }
@@ -793,6 +882,11 @@ struct TechStackResponse: Decodable { let id: String; let subdomainId: String?; 
 struct SearchResponse: Decodable {
     let id: String
     let authorId: String
+    let authorUsername: String?
+    let authorDisplayName: String?
+    let authorAvatarUrl: String?
+    let authorRoleTitle: String?
+    let authorCompany: String?
     let title: String
     let body: String
     let codeSnippet: String?
@@ -881,6 +975,28 @@ struct ConversationDto: Decodable, Identifiable, Hashable {
     var lastMessage: String?
     var lastMessageAt: String?
     var hasUnread: Bool
+    /// False once the relationship is no longer mutual. UI greys out the send input;
+    /// server enforces this on SignalR send too. Defaults to true for legacy payloads
+    /// from older servers that don't emit the field.
+    var canMessage: Bool = true
+
+    private enum CodingKeys: String, CodingKey {
+        case id, otherUserId, otherUsername, otherDisplayName, otherAvatarUrl
+        case lastMessage, lastMessageAt, hasUnread, canMessage
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.otherUserId = try c.decode(String.self, forKey: .otherUserId)
+        self.otherUsername = try c.decode(String.self, forKey: .otherUsername)
+        self.otherDisplayName = try c.decode(String.self, forKey: .otherDisplayName)
+        self.otherAvatarUrl = try c.decodeIfPresent(String.self, forKey: .otherAvatarUrl)
+        self.lastMessage = try c.decodeIfPresent(String.self, forKey: .lastMessage)
+        self.lastMessageAt = try c.decodeIfPresent(String.self, forKey: .lastMessageAt)
+        self.hasUnread = try c.decode(Bool.self, forKey: .hasUnread)
+        self.canMessage = try c.decodeIfPresent(Bool.self, forKey: .canMessage) ?? true
+    }
 }
 
 struct MessageDto: Decodable, Identifiable, Hashable {
@@ -1078,6 +1194,9 @@ extension AppNotification {
             userId: r.userId,
             type: NotificationType(rawValue: r.type) ?? .system,
             payload: r.payload,
+            actorUsername: r.actorUsername,
+            actorDisplayName: r.actorDisplayName,
+            actorAvatarUrl: r.actorAvatarUrl,
             read: r.read,
             createdAt: r.createdAt
         )
@@ -1086,11 +1205,29 @@ extension AppNotification {
 
 extension Post {
     init(from r: SearchResponse) {
+        let username = r.authorUsername ?? String(r.authorId.prefix(8))
+        let displayName = r.authorDisplayName ?? username
+        let initials = Self.initials(from: displayName)
+        let author = User(
+            id: r.authorId,
+            username: username,
+            displayName: displayName,
+            initials: initials,
+            role: r.authorRoleTitle ?? "",
+            company: r.authorCompany ?? "",
+            bio: "",
+            level: 1, xp: 0, xpToNextLevel: 1000,
+            followers: 0, following: 0, bytes: 0, reactions: 0, streak: 0,
+            techStack: [], feedPreferences: [], links: [], badges: [],
+            isVerified: false, isOnline: false,
+            avatarVariant: "cyan", avatarUrl: r.authorAvatarUrl,
+            isSystem: r.authorId == BYTEAI_SYSTEM_USER_ID
+        )
         self.init(
             id: r.id,
             title: r.title,
             body: r.body,
-            author: User.placeholder(id: r.authorId),
+            author: author,
             tags: r.tags,
             likes: r.likeCount,
             comments: r.commentCount,

@@ -179,6 +179,13 @@ struct AppNotification: Identifiable, Codable {
     let userId: String
     let type: NotificationType
     let payload: NotificationPayload
+    /// Live actor profile joined at read time on the backend.
+    /// These take precedence over the (possibly stale) snapshot in `payload` —
+    /// fall back to `payload.actor*` for legacy / pre-refactor records that still inline them.
+    /// Default `nil` so existing call-sites (e.g. mock fixtures) continue to compile.
+    var actorUsername: String? = nil
+    var actorDisplayName: String? = nil
+    var actorAvatarUrl: String? = nil
     var read: Bool
     let createdAt: String
 
@@ -261,6 +268,14 @@ struct PersonResult: Identifiable, Codable {
 struct AskResult: Codable {
     let answer: String
     let sources: [Post]
+}
+
+/// Compact source row emitted by `/api/ai/search-ask-stream`. Mirrors the server's
+/// `SearchAskSource(Id, Title, ContentType)` record.
+struct SearchAskSource: Identifiable, Codable, Hashable {
+    let id: String
+    let title: String
+    let contentType: String  // "byte" | "interview"
 }
 
 // MARK: - Lookup

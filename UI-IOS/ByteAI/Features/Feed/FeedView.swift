@@ -50,7 +50,7 @@ struct FeedView: View {
 
                     FeedFilterRow(
                         selectedTab: $vm.selectedTab,
-                        selectedStack: $vm.selectedStack,
+                        selectedStacks: $vm.selectedStacks,
                         stackOptions: vm.stackOptions
                     )
                     .padding(.horizontal, 16)
@@ -154,7 +154,7 @@ struct FeedView: View {
 
 private struct FeedFilterRow: View {
     @Binding var selectedTab: FeedFilter
-    @Binding var selectedStack: String
+    @Binding var selectedStacks: [String]
     let stackOptions: [String]
 
     var body: some View {
@@ -187,7 +187,7 @@ private struct FeedFilterRow: View {
             if selectedTab == .forYou {
                 HStack(spacing: 10) {
                     AccentBarHeader(label: "TECH_STACK", size: .compact)
-                    StackPicker(value: $selectedStack, options: stackOptions)
+                    StackPicker(values: $selectedStacks, options: stackOptions)
                     Spacer(minLength: 0)
                 }
             } else if selectedTab == .trending {
@@ -212,20 +212,17 @@ private struct FeedFilterRow: View {
 }
 
 private struct StackPicker: View {
-    @Binding var value: String
+    @Binding var values: [String]
     let options: [String]
 
     var body: some View {
-        SearchableDropdown(
-            value: Binding(
-                get: { value.isEmpty ? nil : value },
-                set: { value = $0 ?? "" }
-            ),
+        MultiSelectDropdown(
+            values: $values,
             options: options.map { SearchableDropdown.DropdownOption(value: $0, label: $0) },
             placeholder: "TECH STACK",
-            allLabel: "ALL STACKS",
             identity: .blue
         )
+        .frame(maxWidth: 200)
     }
 }
 
@@ -459,10 +456,17 @@ final class FeedViewModel: ObservableObject {
     @Published var selectedTab: FeedFilter = .forYou {
         didSet { guard oldValue != selectedTab else { return }; Task { await load() } }
     }
-    @Published var selectedStack = "" {
-        didSet { guard oldValue != selectedStack else { return }; Task { await load() } }
+    /// Multi-select. CSV-joined when sent to /api/feed?stack=. Web parity:
+    /// UI/components/features/feed/feed-screen.tsx state shape `string[]`.
+    @Published var selectedStacks: [String] = [] {
+        didSet { guard oldValue != selectedStacks else { return }; Task { await load() } }
     }
     @Published var unreadNotifications = 0
+
+    /// True once the user has explicitly toggled the stack filter (or once we've
+    /// auto-seeded from their profile). Prevents re-seeding from techStack on
+    /// subsequent loads after they've chosen "no filter" themselves.
+    private var hasSeededStacks = false
 
     private var page = 1
 
@@ -470,18 +474,35 @@ final class FeedViewModel: ObservableObject {
     var meInitials: String { AuthManager.shared.currentUser?.initials ?? "?" }
     var meAvatarUrl: String? { AuthManager.shared.currentUser?.avatarUrl }
 
+    /// Trending tab ignores stack filter; FOR_YOU joins selections as CSV (backend accepts it).
+    private var stackQueryValue: String? {
+        guard selectedTab == .forYou, !selectedStacks.isEmpty else { return nil }
+        return selectedStacks.joined(separator: ",")
+    }
+
     func load() async {
         guard !isLoading else { return }
+        // Auto-seed from current user's techStack on first load (web parity:
+        // feed-screen.tsx seeds activeStackFilter from `me.techStack` when no
+        // explicit `?stack=` was set). Triggers a re-load on change → load() runs again.
+        if !hasSeededStacks {
+            hasSeededStacks = true
+            if selectedStacks.isEmpty,
+               let me = AuthManager.shared.currentUser,
+               !me.techStack.isEmpty {
+                selectedStacks = me.techStack
+                return // didSet on selectedStacks will re-enter load()
+            }
+        }
+
         isLoading = true
         defer { isLoading = false }
         page = 1
         hasMore = true
         do {
-            // Trending tab ignores stack filter; FOR_YOU may apply one.
-            let stack = selectedTab == .forYou && !selectedStack.isEmpty ? selectedStack : nil
             posts = try await APIClient.shared.getFeed(
                 filter: selectedTab.rawValue,
-                stack: stack
+                stack: stackQueryValue
             )
         } catch {
             // Keep existing posts on refresh failure (or cancellation) — clearing them
@@ -502,10 +523,9 @@ final class FeedViewModel: ObservableObject {
         defer { isLoadingMore = false }
         page += 1
         do {
-            let stack = selectedTab == .forYou && !selectedStack.isEmpty ? selectedStack : nil
             let more = try await APIClient.shared.getFeed(
                 filter: selectedTab.rawValue,
-                stack: stack,
+                stack: stackQueryValue,
                 page: page
             )
             if more.isEmpty { hasMore = false }

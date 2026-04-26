@@ -158,7 +158,7 @@ private struct NotificationRow: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.bytePurple)
             }
-        } else if let url = notification.payload.actorAvatarUrl, !url.isEmpty {
+        } else if let url = liveActorAvatarUrl, !url.isEmpty {
             AvatarView(actorInitials, variant: .cyan, size: .md, imageUrl: url)
                 .overlay(Circle().stroke(Color.byteAccent, lineWidth: 2).padding(-2))
         } else {
@@ -174,16 +174,26 @@ private struct NotificationRow: View {
         }
     }
 
+    // Prefer the live joined fields from the backend; fall back to the payload snapshot
+    // only for legacy / pre-refactor records.
+    private var liveActorDisplayName: String? {
+        notification.actorDisplayName ?? notification.payload.actorDisplayName
+    }
+    private var liveActorUsername: String? {
+        notification.actorUsername ?? notification.payload.actorUsername
+    }
+    private var liveActorAvatarUrl: String? {
+        notification.actorAvatarUrl ?? notification.payload.actorAvatarUrl
+    }
+
     private var actorInitials: String {
-        let source = notification.payload.actorDisplayName
-            ?? notification.payload.actorUsername
-            ?? "?"
+        let source = liveActorDisplayName ?? liveActorUsername ?? "?"
         return String(source.prefix(1)).uppercased()
     }
 
     private var actorName: String {
-        notification.payload.actorDisplayName
-            ?? notification.payload.actorUsername.map { "@\($0)" }
+        liveActorDisplayName
+            ?? liveActorUsername.map { "@\($0)" }
             ?? "Someone"
     }
 

@@ -18,6 +18,14 @@ struct ChatThreadView: View {
 
     private var meId: String? { AuthManager.shared.currentUser?.id }
 
+    /// Re-derive live canMessage from the conversations list each render so a follow/unfollow
+    /// during the session updates the input state instantly. The snapshot in `vm.conversation`
+    /// is only the initial value at open time.
+    private var canMessage: Bool {
+        chat.conversations.first(where: { $0.id == vm.conversation.id })?.canMessage
+            ?? vm.conversation.canMessage
+    }
+
     var body: some View {
         ZStack {
             Color.byteBackground
@@ -28,6 +36,9 @@ struct ChatThreadView: View {
                 titleBar
                 accentLine
                 messagesScroll
+                if !canMessage {
+                    cannotMessageBanner
+                }
                 terminalInput
             }
         }
@@ -211,11 +222,32 @@ struct ChatThreadView: View {
                         .foregroundColor(vm.draft.trimmingCharacters(in: .whitespaces).isEmpty ? .byteText3 : .byteGreen)
                 }
                 .buttonStyle(.plain)
-                .disabled(vm.draft.trimmingCharacters(in: .whitespaces).isEmpty || vm.isSending)
+                .disabled(!canMessage || vm.draft.trimmingCharacters(in: .whitespaces).isEmpty || vm.isSending)
                 .accessibilityLabel("Send message")
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
             .background(Color.byteGreen.opacity(0.02))
+            .opacity(canMessage ? 1 : 0.5)
+            .allowsHitTesting(canMessage)
+        }
+    }
+
+    // Mutual-follow banner — shown when the relationship is no longer mutual.
+    // Server enforces this on send too; UI just signals why the input is disabled.
+    private var cannotMessageBanner: some View {
+        HStack(spacing: 8) {
+            Text("◆")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.byteGreen.opacity(0.6))
+            Text("you must follow each other to send messages")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.byteText2)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 8)
+        .background(Color.byteGreen.opacity(0.03))
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.byteGreen.opacity(0.15)).frame(height: 1)
         }
     }
 }

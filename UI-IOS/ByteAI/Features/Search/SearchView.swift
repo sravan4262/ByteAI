@@ -254,48 +254,71 @@ struct SearchView: View {
 
     @ViewBuilder
     private var askResults: some View {
-        if let result = vm.askResult {
-            VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles").foregroundColor(.byteAccent)
-                    Text("AI ANSWER")
-                        .font(.byteMono(10, weight: .bold))
-                        .foregroundColor(.byteAccent)
-                        .tracking(1.0)
-                }
+        if vm.askAnswer.isEmpty && vm.askSources.isEmpty && !vm.isStreamingAsk {
+            EmptyStateView(icon: "sparkles", title: "No answer yet",
+                           message: "Ask a question — I'll search across all bytes.")
+        } else {
+            ScrollViewReader { proxy in
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "sparkles").foregroundColor(.byteAccent)
+                        Text("AI ANSWER")
+                            .font(.byteMono(10, weight: .bold))
+                            .foregroundColor(.byteAccent)
+                            .tracking(1.0)
+                        if vm.isStreamingAsk {
+                            Circle()
+                                .fill(Color.byteAccent)
+                                .frame(width: 6, height: 6)
+                                .opacity(0.8)
+                                .scaleEffect(vm.isStreamingAsk ? 1.0 : 0.6)
+                                .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: vm.isStreamingAsk)
+                        }
+                    }
 
-                MarkdownAnswerView(text: result.answer)
+                    MarkdownAnswerView(
+                        text: vm.askAnswer,
+                        onCite: { n in
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                                proxy.scrollTo("rag-source-\(n)", anchor: .center)
+                            }
+                        }
+                    )
                     .padding(14)
                     .background(Color.byteCard)
                     .overlay(RoundedRectangle(cornerRadius: 12)
                         .stroke(IdentityColor.blue.tint(0.3), lineWidth: 1))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                if !result.sources.isEmpty {
-                    AccentBarHeader(label: "SOURCES", size: .compact)
-                    ForEach(result.sources) { post in
-                        HStack(spacing: 10) {
-                            RoundedRectangle(cornerRadius: 2).fill(Color.byteAccent).frame(width: 2, height: 36)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(post.title)
-                                    .font(.byteSans(13, weight: .semibold))
-                                    .foregroundColor(.byteText1)
-                                    .lineLimit(1)
-                                Text("by @\(post.author.username)")
-                                    .font(.byteMono(10))
-                                    .foregroundColor(.byteText3)
+                    if !vm.askSources.isEmpty {
+                        AccentBarHeader(label: "SOURCES", size: .compact)
+                        ForEach(Array(vm.askSources.enumerated()), id: \.element.id) { idx, src in
+                            HStack(spacing: 10) {
+                                Text("[\(idx + 1)]")
+                                    .font(.byteMono(10, weight: .bold))
+                                    .foregroundColor(.byteAccent)
+                                    .frame(width: 24, alignment: .leading)
+                                RoundedRectangle(cornerRadius: 2).fill(Color.byteAccent).frame(width: 2, height: 36)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(src.title)
+                                        .font(.byteSans(13, weight: .semibold))
+                                        .foregroundColor(.byteText1)
+                                        .lineLimit(2)
+                                    Text(src.contentType.uppercased())
+                                        .font(.byteMono(10))
+                                        .foregroundColor(.byteText3)
+                                        .tracking(0.5)
+                                }
+                                Spacer()
                             }
-                            Spacer()
+                            .padding(10)
+                            .background(Color.byteElement)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .id("rag-source-\(idx + 1)")
                         }
-                        .padding(10)
-                        .background(Color.byteElement)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                 }
             }
-        } else {
-            EmptyStateView(icon: "sparkles", title: "No answer yet",
-                           message: "Ask a question — I'll search across all bytes.")
         }
     }
 }
@@ -306,6 +329,7 @@ struct SearchView: View {
 
 private struct MarkdownAnswerView: View {
     let text: String
+    var onCite: ((Int) -> Void)? = nil
 
     private var lines: [String] {
         text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -319,7 +343,7 @@ private struct MarkdownAnswerView: View {
                 } else if let m = bulletMatch(line) {
                     HStack(alignment: .top, spacing: 10) {
                         Circle().fill(Color.byteAccent).frame(width: 5, height: 5).padding(.top, 8)
-                        renderInline(m).foregroundColor(.byteText1)
+                        renderInlineRow(m)
                     }
                 } else if let (num, body) = numberMatch(line) {
                     HStack(alignment: .top, spacing: 10) {
@@ -328,14 +352,73 @@ private struct MarkdownAnswerView: View {
                             .foregroundColor(.byteAccent)
                             .frame(width: 16, alignment: .trailing)
                             .padding(.top, 2)
-                        renderInline(body).foregroundColor(.byteText1)
+                        renderInlineRow(body)
                     }
                 } else {
-                    renderInline(line).foregroundColor(.byteText1)
+                    renderInlineRow(line)
                 }
             }
         }
         .font(.byteSans(13))
+    }
+
+    /// Splits a line on `[N]` citation markers; renders each non-citation chunk via
+    /// the existing styled-Text path, and each `[N]` as a tappable chip. We can't put
+    /// a Button inside a `Text` concatenation, so we drop into HStack at the line level.
+    @ViewBuilder
+    private func renderInlineRow(_ s: String) -> some View {
+        let segments = splitCitations(s)
+        // If the whole line has no citations, fall back to the more compact single-Text
+        // path so wrap behavior matches the previous version.
+        if segments.allSatisfy({ if case .text = $0 { return true } else { return false } }) {
+            renderInline(s).foregroundColor(.byteText1)
+        } else {
+            // FlowLayout-ish horizontal wrap; SwiftUI doesn't ship one so use HStack with
+            // wrap-via-fixedSize. For long answers a wrapping flow is preferable, but
+            // citations land at end-of-clauses so this stays readable.
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
+                    switch seg {
+                    case .text(let t):
+                        renderInline(t).foregroundColor(.byteText1)
+                    case .cite(let n):
+                        Button { onCite?(n) } label: {
+                            Text("[\(n)]")
+                                .font(.byteMono(10, weight: .bold))
+                                .foregroundColor(.byteAccent)
+                                .padding(.horizontal, 5).padding(.vertical, 1)
+                                .background(IdentityColor.blue.bgFaint)
+                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(IdentityColor.blue.tint(0.35), lineWidth: 1))
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Jump to source \(n)")
+                    }
+                }
+            }
+        }
+    }
+
+    private enum InlineSegment { case text(String); case cite(Int) }
+
+    private func splitCitations(_ s: String) -> [InlineSegment] {
+        var out: [InlineSegment] = []
+        var buffer = ""
+        var i = s.startIndex
+        while i < s.endIndex {
+            if s[i] == "[",
+               let close = s[s.index(after: i)...].firstIndex(of: "]"),
+               let num = Int(s[s.index(after: i)..<close]) {
+                if !buffer.isEmpty { out.append(.text(buffer)); buffer = "" }
+                out.append(.cite(num))
+                i = s.index(after: close)
+            } else {
+                buffer.append(s[i])
+                i = s.index(after: i)
+            }
+        }
+        if !buffer.isEmpty { out.append(.text(buffer)) }
+        return out
     }
 
     private func bulletMatch(_ line: String) -> String? {
@@ -426,10 +509,21 @@ final class SearchViewModel: ObservableObject {
     @Published var mode: SearchMode = .bytes
     @Published var posts: [Post] = []
     @Published var people: [PersonResult] = []
-    @Published var askResult: AskResult?
+    /// Streaming RAG answer accumulated as `chunk` events arrive.
+    @Published var askAnswer: String = ""
+    @Published var askSources: [SearchAskSource] = []
+    @Published var isStreamingAsk = false
     @Published var isLoading = false
     @Published var error: String?
     @Published var askEnabled = false
+
+    private var askStreamTask: Task<Void, Never>?
+
+    func cancelAskStream() {
+        askStreamTask?.cancel()
+        askStreamTask = nil
+        isStreamingAsk = false
+    }
 
     func search() async {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
@@ -442,7 +536,33 @@ final class SearchViewModel: ObservableObject {
         do {
             switch mode {
             case .ask:
-                askResult = try await APIClient.shared.searchAsk(question: trimmed)
+                // First token paints in ~400ms instead of waiting for the full Gemini round-trip.
+                cancelAskStream()
+                askAnswer = ""
+                askSources = []
+                isStreamingAsk = true
+                // Drop the spinner once the stream has been initiated — chunks fill the answer card directly.
+                isLoading = false
+                let stream = await APIClient.shared.searchAskStream(question: trimmed, type: "bytes")
+                askStreamTask = Task { [weak self] in
+                    do {
+                        for try await event in stream {
+                            guard let self else { return }
+                            await MainActor.run {
+                                switch event {
+                                case .sources(let s): self.askSources = s
+                                case .chunk(let t):   self.askAnswer.append(t)
+                                case .done:           self.isStreamingAsk = false
+                                }
+                            }
+                        }
+                    } catch {
+                        await MainActor.run {
+                            self?.error = error.localizedDescription
+                            self?.isStreamingAsk = false
+                        }
+                    }
+                }
             case .people:
                 let q = trimmed.hasPrefix("@") ? String(trimmed.dropFirst()) : trimmed
                 people = try await APIClient.shared.searchPeople(query: q)

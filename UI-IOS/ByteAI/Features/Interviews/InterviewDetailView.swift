@@ -153,6 +153,7 @@ private struct MetaSection: View {
                         .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.byteBorderHigh, lineWidth: 1))
                         .clipShape(RoundedRectangle(cornerRadius: 5))
                     }
+                    DifficultyChip(difficulty: interview.difficulty)
                 }
             }
 
