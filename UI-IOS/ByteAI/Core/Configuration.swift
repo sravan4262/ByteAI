@@ -25,11 +25,9 @@ enum AppConfig {
 
     static let signalRHubURL: URL = apiBaseURL.appendingPathComponent("hubs/chat")
 
-    /// Google Sign-In iOS client ID. Read from Info.plist's `GIDClientID` key
-    /// (which the GoogleSignIn SDK also reads automatically). Required by the
-    /// native Google Sign-In flow used in AuthManager.signIn(with: .google).
+    /// Google Sign-In iOS client ID. Checked in order: scheme env var → Info.plist GIDClientID.
     static let googleIOSClientID: String = {
-        let raw = (Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String) ?? ""
+        let raw = value(for: "GOOGLE_IOS_CLIENT_ID", plistKey: "GIDClientID")
         precondition(!raw.isEmpty && !raw.hasPrefix("$("),
                      "GIDClientID not set — add GOOGLE_IOS_CLIENT_ID to Scheme → Run → Environment Variables")
         return raw

@@ -1,6 +1,8 @@
 using ByteAI.Api.Common.Auth;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
+using ByteAI.Core.Services.Avatar;
+using ByteAI.Core.Services.Supabase;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -13,6 +15,8 @@ namespace ByteAI.Api.Controllers;
 [Tags("Auth")]
 public sealed class AuthController(
     IUsersBusiness usersBusiness,
+    ISupabaseAdminService supabaseAdmin,
+    IAvatarService avatarService,
     ILogger<AuthController> logger) : ControllerBase
 {
     /// <summary>
@@ -46,8 +50,9 @@ public sealed class AuthController(
     }
 
     /// <summary>
-    /// Delete the current user's app profile. The Supabase auth.users record is
-    /// deleted separately via the Supabase admin SDK or dashboard.
+    /// Permanently delete the current user's account: removes the app profile (with all
+    /// cascaded data) then removes the Supabase auth.users record so the identity
+    /// cannot be reused to provision a fresh profile.
     /// </summary>
     [HttpDelete("account")]
     [Authorize]
@@ -61,10 +66,32 @@ public sealed class AuthController(
         var supabaseUserId = HttpContext.GetSupabaseUserId();
         if (supabaseUserId is null) return Unauthorized();
 
-        var deleted = await usersBusiness.DeleteUserAsync(supabaseUserId, ct);
-        if (!deleted) return NotFound();
+        // 1. Invalidate all active sessions immediately
+        await supabaseAdmin.SignOutAllSessionsAsync(supabaseUserId, ct);
+
+        // 2. Delete app profile — anonymizes feedback/logs, cascades all child data
+        var user = await usersBusiness.DeleteUserAsync(supabaseUserId, ct);
+        if (user is null) return NotFound();
 
         logger.LogInformation("Deleted app profile for supabase user {SupabaseUserId}", supabaseUserId);
+
+        // 3. Delete avatar from Supabase Storage (non-fatal if missing)
+        if (user.AvatarUrl is not null)
+            await avatarService.DeleteAsync(user.Id, ct);
+
+        // 4. Delete Supabase auth identity — if this fails the app profile is already
+        //    gone so the user cannot re-provision; log for manual cleanup
+        try
+        {
+            await supabaseAdmin.DeleteAuthUserAsync(supabaseUserId, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "App profile deleted but Supabase auth deletion failed for {SupabaseUserId}. Manual cleanup required.",
+                supabaseUserId);
+        }
+
         return NoContent();
     }
 }

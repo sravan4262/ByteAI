@@ -191,19 +191,20 @@ public sealed class UserServiceTests : IDisposable
     // ── DeleteBySupabaseUserIdAsync ───────────────────────────────────────────
 
     [Fact]
-    public async Task DeleteBySupabaseUserId_Existing_RemovesAndReturnsTrue()
+    public async Task DeleteBySupabaseUserId_Existing_RemovesAndReturnsUser()
     {
         var result = await _sut.DeleteBySupabaseUserIdAsync("u1", default);
 
-        Assert.True(result);
+        Assert.NotNull(result);
+        Assert.Equal(_userId, result.Id);
         Assert.Null(await _db.Users.FindAsync([_userId]));
     }
 
     [Fact]
-    public async Task DeleteBySupabaseUserId_NotFound_ReturnsFalse()
+    public async Task DeleteBySupabaseUserId_NotFound_ReturnsNull()
     {
         var result = await _sut.DeleteBySupabaseUserIdAsync("nobody", default);
-        Assert.False(result);
+        Assert.Null(result);
     }
 
     // ── UpdateMyProfileAsync ──────────────────────────────────────────────────

@@ -203,6 +203,10 @@ export async function getCurrentUser(): Promise<UserResponse | null> {
 //   }
 // }
 
+export async function deleteAccount(): Promise<void> {
+  await apiFetch<void>('/api/auth/account', { method: 'DELETE' })
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // INTERVIEWS API — full Q&A format
 // ═══════════════════════════════════════════════════════════════════════════

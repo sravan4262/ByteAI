@@ -58,4 +58,22 @@ public sealed class AvatarService(
         // ── 3. Return public URL (browser-accessible) ─────────────────────────
         return $"{_publicUrl.TrimEnd('/')}/storage/v1/object/public/{_bucket}/{path}";
     }
+
+    public async Task DeleteAsync(Guid userId, CancellationToken ct = default)
+    {
+        var path = $"{userId}/avatar.webp";
+        var url  = $"{_supabaseUrl}/storage/v1/object/{_bucket}/{path}";
+
+        using var request = new HttpRequestMessage(HttpMethod.Delete, url);
+        request.Headers.Add("Authorization", $"Bearer {_serviceRoleKey}");
+        request.Headers.Add("apikey", _serviceRoleKey);
+
+        var response = await http.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NotFound)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            logger.LogWarning("Avatar deletion failed for {UserId}: {Status} {Body}", userId, response.StatusCode, body);
+        }
+    }
 }

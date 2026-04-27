@@ -179,14 +179,14 @@ public sealed class UserService(AppDbContext db, ILogger<UserService> logger) : 
         return (user, true);
     }
 
-    public async Task<bool> DeleteBySupabaseUserIdAsync(string supabaseUserId, CancellationToken ct)
+    public async Task<User?> DeleteBySupabaseUserIdAsync(string supabaseUserId, CancellationToken ct)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.SupabaseUserId == supabaseUserId, ct);
-        if (user is null) return false;
+        if (user is null) return null;
 
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);
-        return true;
+        return user;
     }
 
     public Task<List<Social>> GetUserSocialsAsync(Guid userId, CancellationToken ct) =>

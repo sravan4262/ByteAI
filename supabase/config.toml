@@ -353,9 +353,6 @@ client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 redirect_uri = "https://unheard-finisher-promotion.ngrok-free.dev/auth/v1/callback"
 skip_nonce_check = true
-# Accept ID tokens from the iOS GoogleSignIn SDK (bundle id com.byteai.app) in
-# addition to the web client. Used by AuthManager.signInWithGoogle on iOS.
-additional_client_ids = ["604471779766-m33f269r5ha8lm5pk7b3di50rnnuafhg.apps.googleusercontent.com"]
 
 [auth.external.github]
 enabled = true

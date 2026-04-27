@@ -19,6 +19,7 @@ struct ProfileView: View {
     @State private var showConversations = false
     @State private var showSupport = false
     @State private var showPreferences = false
+    @State private var showDeleteAccount = false
     @EnvironmentObject private var flags: FeatureFlagsManager
     @EnvironmentObject private var chat: ChatService
 
@@ -120,6 +121,11 @@ struct ProfileView: View {
                             } label: {
                                 Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
                             }
+                            Button(role: .destructive) {
+                                showDeleteAccount = true
+                            } label: {
+                                Label("Delete Account", systemImage: "trash")
+                            }
                         } label: {
                             Image(systemName: "ellipsis.circle")
                                 .font(.system(size: 16))
@@ -141,6 +147,7 @@ struct ProfileView: View {
             .sheet(isPresented: $showConversations) { ConversationsView() }
             .sheet(isPresented: $showSupport) { SupportTerminalView() }
             .sheet(isPresented: $showPreferences) { PreferencesView() }
+            .sheet(isPresented: $showDeleteAccount) { DeleteAccountSheet() }
             .sheet(item: $vm.followersListMode) { mode in
                 if let userId = vm.user?.id {
                     FollowersListSheet(userId: userId, mode: mode)
@@ -1901,6 +1908,120 @@ final class PreferencesViewModel: ObservableObject {
             ToastCenter.shared.show("Preferences saved", kind: .success)
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - Delete Account Sheet
+
+struct DeleteAccountSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmText = ""
+    @State private var isDeleting = false
+
+    private var canConfirm: Bool { confirmText == "DELETE" && !isDeleting }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.byteBackground.ignoresSafeArea()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Warning card
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.byteRed)
+                                Text("This cannot be undone")
+                                    .font(.byteSmall.bold())
+                                    .foregroundColor(.byteRed)
+                            }
+                            Text("Permanently deletes your account and all associated data: bytes, interviews, comments, follows, chat history, and badges.")
+                                .font(.byteSmall)
+                                .foregroundColor(.byteText2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.byteRed.opacity(0.08))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteRed.opacity(0.3), lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                        // Confirmation input
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Type DELETE to confirm")
+                                .font(.byteSmall)
+                                .foregroundColor(.byteText2)
+                            TextField("", text: $confirmText)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundColor(.byteText1)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                                .background(Color.byteElement)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(
+                                    confirmText == "DELETE" ? Color.byteRed.opacity(0.6) : Color.byteBorderMedium,
+                                    lineWidth: 1))
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .disabled(isDeleting)
+                        }
+
+                        // Confirm button
+                        Button {
+                            Task { await confirmDelete() }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if isDeleting {
+                                    ProgressView()
+                                        .tint(.white)
+                                        .scaleEffect(0.85)
+                                } else {
+                                    Image(systemName: "trash")
+                                }
+                                Text(isDeleting ? "Deleting..." : "Delete My Account")
+                                    .font(.byteSmall.bold())
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(canConfirm ? Color.byteRed : Color.byteRed.opacity(0.3))
+                            .foregroundColor(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .disabled(!canConfirm)
+                        .animation(.easeInOut(duration: 0.15), value: canConfirm)
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Delete Account")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.byteBackground, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .font(.byteSmall)
+                        .foregroundColor(.byteText2)
+                        .disabled(isDeleting)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func confirmDelete() async {
+        guard canConfirm else { return }
+        isDeleting = true
+        do {
+            try await APIClient.shared.deleteAccount()
+            ToastCenter.shared.show("Account deleted", kind: .success)
+            await AuthManager.shared.signOut()
+        } catch {
+            ToastCenter.shared.show("Failed to delete account. Please try again.", kind: .error)
+            isDeleting = false
         }
     }
 }

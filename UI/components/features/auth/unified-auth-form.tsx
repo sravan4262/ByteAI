@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
 import { GithubIcon } from './github-icon'
 import { GoogleSignInButton } from './google-gis-button'
 
@@ -48,6 +49,16 @@ export function UnifiedAuthForm() {
         {githubLoading ? 'Redirecting...' : 'Continue with GitHub'}
       </button>
 
+      <p className="text-center text-[10px] text-[var(--t3)] leading-relaxed px-2">
+        By continuing, you agree to our{' '}
+        <Link href="/privacy" className="underline underline-offset-2 hover:text-[var(--t2)]">
+          Privacy Policy
+        </Link>
+        {' '}and{' '}
+        <Link href="/cookies" className="underline underline-offset-2 hover:text-[var(--t2)]">
+          Cookie Policy
+        </Link>
+      </p>
     </div>
   )
 }

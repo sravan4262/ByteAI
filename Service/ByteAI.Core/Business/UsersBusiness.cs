@@ -49,7 +49,7 @@ public sealed class UsersBusiness(
         return user;
     }
 
-    public Task<bool> DeleteUserAsync(string supabaseUserId, CancellationToken ct) =>
+    public Task<User?> DeleteUserAsync(string supabaseUserId, CancellationToken ct) =>
         userService.DeleteBySupabaseUserIdAsync(supabaseUserId, ct);
 
     public async Task<User> UpdateMyProfileAsync(

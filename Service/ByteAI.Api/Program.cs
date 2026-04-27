@@ -23,6 +23,7 @@ using ByteAI.Core.Services.Drafts;
 using ByteAI.Core.Services.Avatar;
 using ByteAI.Core.Services.Users;
 using ByteAI.Core.Services.Support;
+using ByteAI.Core.Services.Supabase;
 using ByteAI.Core.Validators;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -121,6 +122,23 @@ try
     builder.Services.AddScoped<IUserPreferencesService, UserPreferencesService>();
     builder.Services.AddScoped<IDraftService, DraftService>();
     builder.Services.AddScoped<ByteAI.Core.Services.FeatureFlags.IFeatureFlagService, ByteAI.Core.Services.FeatureFlags.FeatureFlagService>();
+    builder.Services.AddHttpClient<ISupabaseAdminService, SupabaseAdminService>()
+        .AddStandardResilienceHandler()
+        .Configure(options =>
+        {
+            options.AttemptTimeout.Timeout          = TimeSpan.FromSeconds(10);
+            options.TotalRequestTimeout.Timeout     = TimeSpan.FromSeconds(20);
+            options.Retry.MaxRetryAttempts          = 2;
+            options.Retry.BackoffType               = DelayBackoffType.Exponential;
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+            options.Retry.ShouldHandle = args => args.Outcome switch
+            {
+                { Exception: HttpRequestException }              => PredicateResult.True(),
+                { Result: { } r } when (int)r.StatusCode >= 500 => PredicateResult.True(),
+                _                                                => PredicateResult.False(),
+            };
+        });
+
     builder.Services.AddHttpClient<IAvatarService, AvatarService>()
         .AddStandardResilienceHandler()
         .Configure(options =>

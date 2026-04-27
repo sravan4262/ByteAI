@@ -15,8 +15,8 @@ public interface IUsersBusiness
     /// <summary>Provision a user after Supabase OAuth — creates on first call, idempotent on subsequent calls.</summary>
     Task<User> ProvisionUserAsync(string supabaseUserId, string displayName, string? avatarUrl, string? email, CancellationToken ct);
 
-    /// <summary>Hard-delete the user's app profile. Returns false if not found.</summary>
-    Task<bool> DeleteUserAsync(string supabaseUserId, CancellationToken ct);
+    /// <summary>Hard-delete the user's app profile. Returns the deleted user, or null if not found.</summary>
+    Task<User?> DeleteUserAsync(string supabaseUserId, CancellationToken ct);
 
     /// <summary>Update the current authenticated user's profile fields.</summary>
     Task<User> UpdateMyProfileAsync(

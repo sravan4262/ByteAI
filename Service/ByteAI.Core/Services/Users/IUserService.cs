@@ -30,8 +30,8 @@ public interface IUserService
     /// <summary>Provision a user after Supabase OAuth — creates if not found, returns existing if already provisioned. Returns the user and whether it was newly created.</summary>
     Task<(User user, bool wasCreated)> ProvisionAsync(string supabaseUserId, string displayName, string? avatarUrl, string? email, CancellationToken ct);
 
-    /// <summary>Hard-delete a user by Supabase user ID. Returns false if no matching record was found.</summary>
-    Task<bool> DeleteBySupabaseUserIdAsync(string supabaseUserId, CancellationToken ct);
+    /// <summary>Hard-delete a user by Supabase user ID. Returns the deleted user, or null if not found.</summary>
+    Task<User?> DeleteBySupabaseUserIdAsync(string supabaseUserId, CancellationToken ct);
 
     Task<List<Social>> GetUserSocialsAsync(Guid userId, CancellationToken ct);
     Task UpsertUserSocialsAsync(Guid userId, List<(string Platform, string Url, string? Label)> socials, CancellationToken ct);

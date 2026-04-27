@@ -230,6 +230,11 @@ export function ProfileScreen() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [confirmDeleteDraft, setConfirmDeleteDraft] = useState<string | null>(null)
 
+  // Delete account
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false)
+  const [deleteAccountInput, setDeleteAccountInput] = useState('')
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+
   // Edit profile
   const [editMode, setEditMode] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
@@ -380,6 +385,20 @@ export function ProfileScreen() {
 
 const handleLogout = async () => {
     await logout(); toast.success('Signed out')
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteAccountInput !== 'DELETE') return
+    setIsDeletingAccount(true)
+    try {
+      await api.deleteAccount()
+      toast.success('Account deleted')
+      await logout()
+      router.replace('/')
+    } catch {
+      toast.error('Failed to delete account. Please try again.')
+      setIsDeletingAccount(false)
+    }
   }
 
   useEffect(() => {
@@ -1242,6 +1261,24 @@ const handleLogout = async () => {
                   ))}
                 </div>
               </div>
+
+              {/* Danger Zone */}
+              <div className="border border-[rgba(244,63,94,0.25)] rounded-xl overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 bg-[rgba(244,63,94,0.05)] border-b border-[rgba(244,63,94,0.15)]">
+                  <Trash2 size={12} className="text-[var(--red)]" />
+                  <span className="font-mono text-xs font-bold text-[var(--red)] tracking-[0.08em]">DANGER_ZONE</span>
+                </div>
+                <div className="px-4 py-4 flex flex-col gap-3">
+                  <p className="font-mono text-[11px] text-[var(--t2)] leading-relaxed">
+                    Permanently delete your account, all bytes, interviews, comments, follows, and chat history. This cannot be undone.
+                  </p>
+                  <button
+                    onClick={() => { setShowDeleteAccountDialog(true); setDeleteAccountInput('') }}
+                    className="self-start flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[rgba(244,63,94,0.4)] text-[var(--red)] bg-[rgba(244,63,94,0.07)] font-mono text-xs font-bold tracking-[0.05em] transition-all hover:bg-[rgba(244,63,94,0.14)] hover:border-[rgba(244,63,94,0.6)]">
+                    <Trash2 size={11} /> DELETE ACCOUNT
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1386,6 +1423,58 @@ const handleLogout = async () => {
           </div>
         </div>
       )}
+
+      {/* ── Delete account confirmation dialog ─────────────────────────────── */}
+      <AnimatePresence>
+        {showDeleteAccountDialog && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm px-6"
+            onClick={(e) => { if (e.target === e.currentTarget && !isDeletingAccount) { setShowDeleteAccountDialog(false) } }}>
+            <motion.div
+              initial={{ scale: 0.93, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.93, opacity: 0 }}
+              className="w-full max-w-[340px] bg-[var(--bg-card)] border border-[rgba(244,63,94,0.35)] rounded-2xl overflow-hidden shadow-2xl">
+              <div className="flex items-center gap-2 px-5 py-4 bg-[rgba(244,63,94,0.07)] border-b border-[rgba(244,63,94,0.2)]">
+                <Trash2 size={14} className="text-[var(--red)]" />
+                <span className="font-mono text-sm font-bold text-[var(--red)] tracking-[0.06em]">DELETE ACCOUNT</span>
+              </div>
+              <div className="px-5 py-5 flex flex-col gap-4">
+                <p className="font-mono text-xs text-[var(--t2)] leading-relaxed">
+                  This will permanently delete your account and all associated data including bytes, interviews, comments, follows, and chat history.
+                </p>
+                <p className="font-mono text-xs text-[var(--t1)]">
+                  Type <span className="text-[var(--red)] font-bold">DELETE</span> to confirm.
+                </p>
+                <input
+                  type="text"
+                  value={deleteAccountInput}
+                  onChange={(e) => setDeleteAccountInput(e.target.value)}
+                  placeholder="DELETE"
+                  disabled={isDeletingAccount}
+                  className="w-full px-3 py-2.5 rounded-xl bg-[var(--bg)] border border-[var(--border-m)] font-mono text-sm text-[var(--t1)] placeholder:text-[var(--t3)] focus:outline-none focus:border-[rgba(244,63,94,0.5)] disabled:opacity-50 transition-colors"
+                />
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => { setShowDeleteAccountDialog(false); setDeleteAccountInput('') }}
+                    disabled={isDeletingAccount}
+                    className="flex-1 py-2.5 font-mono text-xs font-bold rounded-xl border border-[var(--border-m)] text-[var(--t2)] hover:border-[var(--border-h)] hover:text-[var(--t1)] disabled:opacity-40 transition-all">
+                    CANCEL
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleteAccountInput !== 'DELETE' || isDeletingAccount}
+                    className="flex-1 py-2.5 font-mono text-xs font-bold rounded-xl bg-[var(--red)] text-white disabled:opacity-30 hover:opacity-90 transition-all flex items-center justify-center gap-2">
+                    {isDeletingAccount
+                      ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> DELETING</>
+                      : <><Trash2 size={12} /> CONFIRM DELETE</>
+                    }
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PhoneFrame>
   )
 }
