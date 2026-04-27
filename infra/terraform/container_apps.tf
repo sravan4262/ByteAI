@@ -6,12 +6,19 @@ resource "azurerm_container_app" "api" {
   revision_mode                = "Multiple" # Required for blue-green labeled revisions
   tags                         = var.tags
 
-  # CD pipeline owns image, env vars, secrets, revision suffix, and traffic weights.
-  # ingress is included so Terraform never resets traffic splits back to latest_revision=true
-  # after the CD pipeline has taken ownership. Re-enable ingress temporarily if you need
-  # to change external_enabled / target_port / transport via Terraform.
+  # CD pipeline owns: image, env vars, secrets, revision suffix, and traffic weights.
+  # Terraform owns:   min/max replicas, CPU, memory, health probes, ingress structure.
+  #
+  # image + env are ignored so a plain `terraform apply` never resets the live image
+  # to the placeholder default or clears CD-managed env vars.
+  # ingress is ignored so Terraform never resets label-based traffic splits.
   lifecycle {
-    ignore_changes = [template, secret, ingress]
+    ignore_changes = [
+      template[0].container[0].image,
+      template[0].container[0].env,
+      secret,
+      ingress,
+    ]
   }
 
   ingress {
@@ -26,7 +33,7 @@ resource "azurerm_container_app" "api" {
   }
 
   template {
-    min_replicas = 0
+    min_replicas = 1
     max_replicas = 1
 
     container {
@@ -63,12 +70,15 @@ resource "azurerm_container_app" "gateway" {
   revision_mode                = "Multiple"
   tags                         = var.tags
 
-  # CD pipeline owns image, env vars, secrets, revision suffix, and traffic weights.
-  # ingress is included so Terraform never resets traffic splits back to latest_revision=true
-  # after the CD pipeline has taken ownership. Re-enable ingress temporarily if you need
-  # to change external_enabled / target_port / transport via Terraform.
+  # CD pipeline owns: image, env vars, secrets, revision suffix, and traffic weights.
+  # Terraform owns:   min/max replicas, CPU, memory, health probes, ingress structure.
   lifecycle {
-    ignore_changes = [template, secret, ingress]
+    ignore_changes = [
+      template[0].container[0].image,
+      template[0].container[0].env,
+      secret,
+      ingress,
+    ]
   }
 
   ingress {
@@ -83,7 +93,7 @@ resource "azurerm_container_app" "gateway" {
   }
 
   template {
-    min_replicas = 0
+    min_replicas = 1
     max_replicas = 1
 
     container {
