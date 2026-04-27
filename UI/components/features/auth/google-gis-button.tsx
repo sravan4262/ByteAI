@@ -102,11 +102,18 @@ export function GoogleSignInButton({ disabled, onLoadingChange }: Props) {
     return () => { active = false }
   }, [scriptLoaded, generateNonce, router, setBusy])
 
+  const handleClick = useCallback(() => {
+    if (disabled || loading) return
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.prompt()
+    }
+  }, [disabled, loading])
+
   return (
     <>
       <Script src={GIS_SRC} strategy="afterInteractive" onLoad={() => setScriptLoaded(true)} />
       <div className={containerCls}>
-        <button type="button" disabled={disabled || loading} className={visibleBtnCls}>
+        <button type="button" disabled={disabled || loading} onClick={handleClick} className={visibleBtnCls}>
           <GoogleIcon />
           {loading ? 'Signing in…' : 'Continue with Google'}
         </button>
