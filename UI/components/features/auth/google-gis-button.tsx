@@ -83,7 +83,7 @@ export function GoogleSignInButton({ disabled, onLoadingChange }: Props) {
           router.replace('/onboarding-check')
         },
         nonce: nonce.hashed,
-        use_fedcm_for_prompt: true,
+        use_fedcm_for_prompt: false,
         ux_mode: 'popup',
         auto_select: false,
         itp_support: true,
