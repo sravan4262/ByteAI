@@ -235,7 +235,8 @@ final class AuthManager: ObservableObject {
         // explicitly here makes the dependency obvious and lets us fail fast
         // with a clear error if it's missing.
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(
-            clientID: AppConfig.googleIOSClientID
+            clientID: AppConfig.googleIOSClientID,
+            serverClientID: AppConfig.googleWebClientID
         )
 
         do {

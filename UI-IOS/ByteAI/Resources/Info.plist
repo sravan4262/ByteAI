@@ -53,6 +53,8 @@
 	     Format: <number>-<hash>.apps.googleusercontent.com -->
 	<key>GIDClientID</key>
 	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
+	<key>GIDServerClientID</key>
+	<string>$(GOOGLE_WEB_CLIENT_ID)</string>
 	<!-- URL schemes:
 	     - "byteai"             — GitHub OAuth callback (still goes through Supabase)
 	     - reversed iOS client  — required by GoogleSignIn SDK fallback path -->

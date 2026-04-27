@@ -77,6 +77,11 @@
             value = "com.googleusercontent.apps.604471779766-m33f269r5ha8lm5pk7b3di50rnnuafhg"
             isEnabled = "YES">
          </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "GOOGLE_WEB_CLIENT_ID"
+            value = "604471779766-hs9d30i8m1n7qp3g8vjvju6d1kkkvtb5.apps.googleusercontent.com"
+            isEnabled = "YES">
+         </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction

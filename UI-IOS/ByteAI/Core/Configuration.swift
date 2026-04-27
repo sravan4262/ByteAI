@@ -33,6 +33,16 @@ enum AppConfig {
         return raw
     }()
 
+    /// Google web/server client ID — same one registered in Supabase.
+    /// Setting this as serverClientID makes the issued ID token's `aud` match
+    /// what Supabase expects, instead of the iOS client ID.
+    static let googleWebClientID: String = {
+        let raw = value(for: "GOOGLE_WEB_CLIENT_ID", plistKey: "GIDServerClientID")
+        precondition(!raw.isEmpty && !raw.hasPrefix("$("),
+                     "GIDServerClientID not set — add GOOGLE_WEB_CLIENT_ID to Scheme → Run → Environment Variables")
+        return raw
+    }()
+
     /// Read from scheme env first (dev workflow), then Info.plist (production xcconfig builds).
     private static func value(for envKey: String, plistKey: String) -> String {
         if let env = ProcessInfo.processInfo.environment[envKey], !env.isEmpty {
