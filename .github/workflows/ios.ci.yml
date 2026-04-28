@@ -1,0 +1,43 @@
+name: iOS CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'UI-IOS/**'
+
+jobs:
+  build:
+    name: Build (Simulator)
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Generate Secrets.xcconfig
+        run: |
+          mkdir -p UI-IOS/Config
+          cat > UI-IOS/Config/Secrets.xcconfig <<EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          BYTEAI_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+          GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_WEB_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          EOF
+
+      - name: Build for Simulator
+        working-directory: UI-IOS
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ByteAI.xcodeproj \
+            -scheme ByteAI \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -xcconfig Config/Secrets.xcconfig \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcpretty

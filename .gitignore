@@ -111,3 +111,6 @@ infra/terraform/.terraform.lock.hcl
 infra/terraform/*.tfstate
 infra/terraform/*.tfstate.backup
 infra/terraform/crash.log
+
+# iOS CI — generated at build time from GitHub Secrets, never committed
+UI-IOS/Config/Secrets.xcconfig

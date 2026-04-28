@@ -28,6 +28,9 @@
 	<string>$(SUPABASE_URL)</string>
 	<key>SupabaseAnonKey</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
+	<!-- Backend API base URL, injected from xcconfig / scheme env -->
+	<key>ByteAIApiURL</key>
+	<string>$(BYTEAI_API_URL)</string>
 	<!-- Local network access (iOS 14+ to reach LAN backend in dev) -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ByteAI needs local network access to connect to the development backend.</string>
@@ -42,10 +45,6 @@
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
-		<true/>
-		<key>NSAllowsArbitraryLoadsInWebContent</key>
-		<false/>
-		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
 	<!-- Google Sign-In iOS client ID. Picked up automatically by GoogleSignIn SDK

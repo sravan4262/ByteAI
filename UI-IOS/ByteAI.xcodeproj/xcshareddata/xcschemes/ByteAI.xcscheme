@@ -82,6 +82,11 @@
             value = "604471779766-hs9d30i8m1n7qp3g8vjvju6d1kkkvtb5.apps.googleusercontent.com"
             isEnabled = "YES">
          </EnvironmentVariable>
+         <EnvironmentVariable
+            key = "604471779766-hs9d30i8m1n7qp3g8vjvju6d1kkkvtb5.apps.googleusercontent.com"
+            value = ""
+            isEnabled = "NO">
+         </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
