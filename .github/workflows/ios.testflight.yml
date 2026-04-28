@@ -59,6 +59,9 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" \
             UI-IOS/ByteAI/Resources/Info.plist
 
+      - name: Download iOS platform
+        run: xcodebuild -downloadPlatform iOS
+
       - name: Build archive
         working-directory: UI-IOS
         run: |
@@ -67,6 +70,7 @@ jobs:
             -project ByteAI.xcodeproj \
             -scheme ByteAI \
             -configuration Release \
+            -destination 'generic/platform=iOS' \
             -sdk iphoneos \
             -archivePath $RUNNER_TEMP/ByteAI.xcarchive \
             -xcconfig Config/Secrets.xcconfig \
