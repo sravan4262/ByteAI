@@ -20,12 +20,12 @@ jobs:
         run: |
           mkdir -p UI-IOS/Config
           cat > UI-IOS/Config/Secrets.xcconfig <<EOF
-SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-BYTEAI_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
-GOOGLE_WEB_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          BYTEAI_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+          GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_WEB_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          EOF
 
       - name: Import distribution certificate
         env:
@@ -118,14 +118,14 @@ EOF
           printf '%s' "$ASC_KEY_P8" > "$ASC_KEY_PATH"
 
           cat > "$ASC_JSON_PATH" <<EOF
-{
-  "key_id": "${ASC_KEY_ID}",
-  "issuer_id": "${ASC_ISSUER_ID}",
-  "key_filepath": "${ASC_KEY_PATH}",
-  "duration": 1200,
-  "in_house": false
-}
-EOF
+          {
+            "key_id": "${ASC_KEY_ID}",
+            "issuer_id": "${ASC_ISSUER_ID}",
+            "key_filepath": "${ASC_KEY_PATH}",
+            "duration": 1200,
+            "in_house": false
+          }
+          EOF
 
           fastlane pilot upload \
             --ipa "$RUNNER_TEMP/export/ByteAI.ipa" \
