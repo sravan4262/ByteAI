@@ -4,28 +4,42 @@ import PhotosUI
 // MARK: - Profile View
 
 enum ProfileTab: String, CaseIterable {
-    case bytes = "BYTES"
+    case profile    = "PROFILE"
+    case bytes      = "BYTES"
     case interviews = "INTERVIEWS"
-    case bookmarks = "BOOKMARKS"
+    case prefs      = "PREFS"
+    case alerts     = "ALERTS"
+}
+
+enum BytesSubTab: String, CaseIterable {
+    case posted = "POSTED"
+    case saved  = "SAVED"
+    case drafts = "DRAFTS"
+}
+
+enum InterviewsSubTab: String, CaseIterable {
+    case posted = "POSTED"
+    case saved  = "SAVED"
 }
 
 struct ProfileView: View {
     let username: String
     @StateObject private var vm: ProfileViewModel
-    @State private var selectedTab: ProfileTab = .bytes
+    @State private var selectedTab: ProfileTab = .profile
+    @State private var showSupportFloat = false
+    @State private var showChatFloat = false
     @State private var showEditProfile = false
-    @State private var showBookmarks = false
-    @State private var showDrafts = false
-    @State private var showConversations = false
-    @State private var showSupport = false
-    @State private var showPreferences = false
-    @State private var showDeleteAccount = false
+    @State private var chatTerminalConversation: ConversationDto?
     @EnvironmentObject private var flags: FeatureFlagsManager
     @EnvironmentObject private var chat: ChatService
 
     init(username: String = "") {
         self.username = username
         self._vm = StateObject(wrappedValue: ProfileViewModel(username: username))
+    }
+
+    private var visibleTabs: [ProfileTab] {
+        vm.isOwnProfile ? ProfileTab.allCases : [.bytes, .interviews]
     }
 
     var body: some View {
@@ -36,14 +50,12 @@ struct ProfileView: View {
                 if vm.isLoading {
                     ScrollView {
                         VStack(spacing: 16) {
-                            // Header skeleton
                             VStack(spacing: 12) {
                                 Circle().fill(Color.byteElement).frame(width: 80, height: 80)
                                 SkeletonView().frame(width: 160, height: 18)
                                 SkeletonView().frame(width: 100, height: 12)
                             }
                             .padding(.top, 24)
-
                             ForEach(0..<3, id: \.self) { _ in
                                 PostCardSkeleton().padding(.horizontal, 16)
                             }
@@ -53,101 +65,89 @@ struct ProfileView: View {
                     .redacted(reason: .placeholder)
                     .accessibilityHidden(true)
                 } else if let user = vm.user {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            ProfileHeader(user: user, vm: vm, onEditTap: { showEditProfile = true })
-                            // Public profiles only see BYTES + INTERVIEWS; BOOKMARKS is private.
-                            ProfileTabs(selected: $selectedTab, includeBookmarks: vm.isOwnProfile)
-                            ProfileTabContent(tab: selectedTab, vm: vm)
+                    VStack(spacing: 0) {
+                        ProfileTabs(selected: $selectedTab, tabs: visibleTabs)
+                        ScrollView {
+                            ProfileTabContent(tab: selectedTab, user: user, vm: vm)
+                                .padding(.vertical, 12)
                         }
+                        .refreshable { await vm.load() }
+                        .scrollDismissesKeyboard(.interactively)
                     }
-                    .refreshable { await vm.load() }
-                    .scrollDismissesKeyboard(.interactively)
                     .onAppear {
-                        // Defensive: if the user navigated to a public profile while
-                        // .bookmarks was selected, snap back to .bytes.
-                        if !vm.isOwnProfile && selectedTab == .bookmarks {
+                        if !vm.isOwnProfile && (selectedTab == .prefs || selectedTab == .alerts) {
                             selectedTab = .bytes
                         }
                     }
                 } else {
                     EmptyStateView(icon: "person", title: "Profile not found", message: "")
                 }
+
+                // Floating action buttons — own profile only
+                if vm.isOwnProfile {
+                    VStack(spacing: 10) {
+                        ProfileFAB(icon: "terminal", badge: 0) { showSupportFloat = true }
+                        if flags.isEnabled("chat") {
+                            ProfileFAB(icon: "bubble.left.and.bubble.right", badge: chat.unreadCount) { showChatFloat = true }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 20)
+                    .allowsHitTesting(true)
+                }
             }
-            .navigationTitle("")
+            .navigationTitle(vm.user.map { "\($0.displayName)" } ?? "Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.byteBackground, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    if vm.isOwnProfile && flags.isEnabled("chat") {
-                        Button { showConversations = true } label: {
-                            ZStack(alignment: .topTrailing) {
-                                Image(systemName: "bubble.left.and.bubble.right")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.byteText2)
-                                if chat.unreadCount > 0 {
-                                    Circle()
-                                        .fill(Color.byteRed)
-                                        .frame(width: 8, height: 8)
-                                        .offset(x: 4, y: -2)
-                                }
-                            }
-                        }
-                        .accessibilityLabel("Messages")
-                    }
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if vm.isOwnProfile {
-                        Menu {
-                            Button { showEditProfile = true } label: {
-                                Label("Edit Profile", systemImage: "pencil")
+                        HStack(spacing: 14) {
+                            Button {
+                                showEditProfile = true
+                            } label: {
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundColor(.byteAccent)
                             }
-                            Button { showDrafts = true } label: {
-                                Label("Drafts", systemImage: "tray.full")
-                            }
-                            Button { showBookmarks = true } label: {
-                                Label("Saved Bytes", systemImage: "bookmark")
-                            }
-                            Button { showPreferences = true } label: {
-                                Label("Preferences", systemImage: "gearshape")
-                            }
-                            Button { showSupport = true } label: {
-                                Label("Send feedback", systemImage: "lifepreserver")
-                            }
-                            Divider()
-                            Button(role: .destructive) {
+                            .accessibilityLabel("Edit profile")
+
+                            Button {
                                 Task { await AuthManager.shared.signOut() }
                             } label: {
-                                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.byteText2)
                             }
-                            Button(role: .destructive) {
-                                showDeleteAccount = true
-                            } label: {
-                                Label("Delete Account", systemImage: "trash")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .font(.system(size: 16))
-                                .foregroundColor(.byteText2)
+                            .accessibilityLabel("Sign out")
                         }
-                        .accessibilityLabel("More options")
                     }
                 }
             }
             .sheet(isPresented: $showEditProfile) {
                 if let user = vm.user {
-                    EditProfileSheet(user: user) { updated in
-                        vm.user = updated
-                    }
+                    EditProfileSheet(user: user) { updated in vm.user = updated }
                 }
             }
-            .sheet(isPresented: $showBookmarks) { BookmarksView() }
-            .sheet(isPresented: $showDrafts) { DraftsListView() }
-            .sheet(isPresented: $showConversations) { ConversationsView() }
-            .sheet(isPresented: $showSupport) { SupportTerminalView() }
-            .sheet(isPresented: $showPreferences) { PreferencesView() }
-            .sheet(isPresented: $showDeleteAccount) { DeleteAccountSheet() }
+            .sheet(isPresented: $showSupportFloat) {
+                SupportTerminalView()
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showChatFloat) {
+                ChatTerminalSheet { convo in
+                    showChatFloat = false
+                    chatTerminalConversation = convo
+                }
+                .environmentObject(chat)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
+            .navigationDestination(item: $chatTerminalConversation) { convo in
+                ChatThreadView(conversation: convo)
+            }
             .sheet(item: $vm.followersListMode) { mode in
                 if let userId = vm.user?.id {
                     FollowersListSheet(userId: userId, mode: mode)
@@ -159,12 +159,66 @@ struct ProfileView: View {
     }
 }
 
-// MARK: - Profile Header
+private struct ChatToolbarButton: View {
+    let unreadCount: Int
+    @State private var showConversations = false
 
-private struct ProfileHeader: View {
+    var body: some View {
+        Button { showConversations = true } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "bubble.left.and.bubble.right")
+                    .font(.system(size: 16))
+                    .foregroundColor(.byteText2)
+                if unreadCount > 0 {
+                    Circle()
+                        .fill(Color.byteRed)
+                        .frame(width: 8, height: 8)
+                        .offset(x: 4, y: -2)
+                }
+            }
+        }
+        .accessibilityLabel("Messages")
+        .sheet(isPresented: $showConversations) { ConversationsView() }
+    }
+}
+
+// MARK: - Profile Floating Action Button
+// Matches web app-shell fixed bottom-right circular buttons (chat + terminal/support).
+
+private struct ProfileFAB: View {
+    let icon: String
+    let badge: Int
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.byteText2)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(Color.byteCard))
+                    .overlay(Circle().stroke(Color.byteGreen.opacity(0.25), lineWidth: 1))
+                    .shadow(color: Color.byteGreen.opacity(0.15), radius: 6)
+
+                if badge > 0 {
+                    Circle()
+                        .fill(Color.byteGreen)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: Color.byteGreen.opacity(0.8), radius: 4)
+                        .offset(x: 2, y: -2)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Profile Info Tab (PROFILE tab content for own and public profiles)
+
+private struct ProfileInfoTab: View {
     let user: User
     @ObservedObject var vm: ProfileViewModel
-    let onEditTap: () -> Void
     @State private var pickedItem: PhotosPickerItem?
     @State private var isUploadingAvatar = false
 
@@ -204,28 +258,35 @@ private struct ProfileHeader: View {
                 }
             }
 
+            if !user.bio.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("/*").font(.byteMono(10)).foregroundColor(.byteText3)
+                    Text(user.bio)
+                        .font(.byteBody)
+                        .foregroundColor(.byteText2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("*/").font(.byteMono(10)).foregroundColor(.byteText3)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.byteCard)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderHigh, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+
             XPBar(user: user)
 
             HStack(spacing: 0) {
-                StatItem(label: "FOLLOWERS", value: user.followers) { vm.followersListMode = .followers }
-                Divider().frame(height: 30).background(Color.byteBorderMedium)
                 StatItem(label: "FOLLOWING", value: user.following) { vm.followersListMode = .following }
                 Divider().frame(height: 30).background(Color.byteBorderMedium)
-                StatItem(label: "BYTES", value: user.bytes)
+                StatItem(label: "FOLLOWERS", value: user.followers) { vm.followersListMode = .followers }
                 Divider().frame(height: 30).background(Color.byteBorderMedium)
-                StatItem(label: "REACTIONS", value: user.reactions)
+                StreakStatItem(streak: user.streak)
             }
             .padding(.vertical, 12)
             .background(Color.byteCard)
             .cornerRadius(10)
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderMedium, lineWidth: 1))
-
-            if !user.bio.isEmpty {
-                Text(user.bio)
-                    .font(.byteBody)
-                    .foregroundColor(.byteText2)
-                    .multilineTextAlignment(.center)
-            }
 
             if !user.techStack.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -244,20 +305,7 @@ private struct ProfileHeader: View {
                 SocialLinksRow(links: user.links)
             }
 
-            if user.streak > 0 {
-                HStack(spacing: 6) {
-                    Text("🔥")
-                    Text("\(user.streak)-day streak")
-                        .font(.byteMonoSmall)
-                        .foregroundColor(.byteOrange)
-                }
-            }
-
-            if vm.isOwnProfile {
-                ByteButton("Sign Out", icon: "rectangle.portrait.and.arrow.right", style: .outline) {
-                    Task { await AuthManager.shared.signOut() }
-                }
-            } else {
+            if !vm.isOwnProfile {
                 ByteButton(
                     vm.isFollowing ? "Following" : "Follow",
                     icon: vm.isFollowing ? "checkmark" : "person.badge.plus",
@@ -304,6 +352,278 @@ private struct ProfileHeader: View {
     }
 }
 
+// MARK: - Profile Prefs Tab (PREFS tab — tech stack, theme, danger zone)
+
+private struct ProfilePrefsTab: View {
+    @ObservedObject var vm: ProfileViewModel
+    @StateObject private var prefsVm = PreferencesViewModel()
+    @ObservedObject private var themeManager = ThemeManager.shared
+    @State private var showDeleteAccount = false
+    @State private var availableTechStacks: [TechStack] = []
+
+    var body: some View {
+        Group {
+            if prefsVm.isLoading {
+                ByteSpinner().padding(.top, 40)
+            } else {
+                VStack(alignment: .leading, spacing: 22) {
+                    techStackSection
+                    themeSection
+                    dangerZoneSection
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+        .task {
+            await prefsVm.load()
+            if availableTechStacks.isEmpty {
+                availableTechStacks = (try? await APIClient.shared.getTechStacks()) ?? []
+            }
+        }
+        .sheet(isPresented: $showDeleteAccount) { DeleteAccountSheet() }
+    }
+
+    // MARK: Tech Stack Section
+
+    private var techStackSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            AccentBarHeader(label: "TECH_STACK", size: .compact)
+            StackPicker(
+                values: Binding(
+                    get: { vm.user?.techStack ?? [] },
+                    set: { newStack in
+                        vm.user?.techStack = newStack
+                        Task { _ = try? await APIClient.shared.updateProfile(techStack: newStack) }
+                    }
+                ),
+                options: availableTechStacks.map { $0.label }
+            )
+        }
+    }
+
+    // MARK: Theme Section
+
+    private var themeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            AccentBarHeader(label: "THEME", size: .compact)
+            HStack(spacing: 8) {
+                ForEach(AppTheme.allCases, id: \.rawValue) { theme in
+                    let isActive = themeManager.current == theme
+                    Button { Task { await selectTheme(theme) } } label: {
+                        VStack(spacing: 5) {
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(Color(hex: theme.swatchHex))
+                                .frame(width: 32, height: 24)
+                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.byteBorderHigh, lineWidth: 1))
+                            Text(theme.displayName)
+                                .font(.byteMono(10, weight: isActive ? .bold : .regular))
+                                .foregroundColor(isActive ? .byteAccent : .byteText2)
+                        }
+                        .padding(10)
+                        .background(Color.byteCard)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(
+                            isActive ? Color.byteAccent : Color.byteBorderMedium,
+                            lineWidth: isActive ? 1.5 : 1
+                        ))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    // MARK: Danger Zone Section
+
+    private var dangerZoneSection: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "trash").font(.system(size: 11, weight: .semibold)).foregroundColor(.byteRed)
+                Text("DANGER_ZONE")
+                    .font(.byteMono(11, weight: .bold))
+                    .foregroundColor(.byteRed)
+                    .tracking(0.8)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.byteRed.opacity(0.05))
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.byteRed.opacity(0.15)).frame(height: 1)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Permanently delete your account, all bytes, interviews, comments, follows, and chat history. This cannot be undone.")
+                    .font(.byteMono(11))
+                    .foregroundColor(.byteText2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button { showDeleteAccount = true } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trash").font(.system(size: 11))
+                        Text("DELETE ACCOUNT").font(.byteMono(11, weight: .bold)).tracking(0.5)
+                    }
+                    .foregroundColor(.byteRed)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(Color.byteRed.opacity(0.07))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.byteRed.opacity(0.4), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(16)
+        }
+        .background(Color.byteCard)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteRed.opacity(0.25), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func selectTheme(_ theme: AppTheme) async {
+        ThemeManager.shared.set(theme)
+        prefsVm.prefs.theme = theme.rawValue
+        _ = await prefsVm.save()
+    }
+}
+
+// MARK: - Tech Stack Picker Sheet
+
+private struct TechPickerSheet: View {
+    let selected: [String]
+    let options: [TechStack]
+    let onSelect: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    private var filtered: [TechStack] {
+        let q = query.lowercased()
+        let available = options.filter { !selected.contains($0.name) }
+        return q.isEmpty ? available : available.filter {
+            $0.name.lowercased().contains(q) || $0.label.lowercased().contains(q)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.byteBackground.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    ByteTextField(placeholder: "SEARCH TECH STACK", text: $query, icon: "magnifyingglass")
+                        .padding(16)
+                    if filtered.isEmpty {
+                        Spacer()
+                        Text(query.isEmpty ? "All tech stacks already added" : "No results")
+                            .font(.byteMono(12))
+                            .foregroundColor(.byteText3)
+                        Spacer()
+                    } else {
+                        List(filtered) { stack in
+                            Button {
+                                onSelect(stack.name)
+                                dismiss()
+                            } label: {
+                                HStack {
+                                    Text(stack.label)
+                                        .font(.byteSans(14))
+                                        .foregroundColor(.byteText1)
+                                    Spacer()
+                                    Text(stack.name)
+                                        .font(.byteMono(11))
+                                        .foregroundColor(.byteText3)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .listRowBackground(Color.byteCard)
+                            .listRowSeparatorTint(Color.byteBorder)
+                        }
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                    }
+                }
+            }
+            .navigationTitle("Add Tech Stack")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.byteBackground, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { dismiss() }.foregroundColor(.byteText2)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Profile Alerts Tab (ALERTS tab — notification preference toggles)
+
+private struct ProfileAlertsTab: View {
+    @StateObject private var prefsVm = PreferencesViewModel()
+
+    private struct AlertItem {
+        let icon: String
+        let label: String
+        let subtitle: String
+        let keyPath: WritableKeyPath<UserPreferences, Bool>
+    }
+
+    private let items: [AlertItem] = [
+        AlertItem(icon: "💡", label: "Reactions",    subtitle: "When someone reacts to your bytes",  keyPath: \.notifReactions),
+        AlertItem(icon: "💬", label: "Comments",     subtitle: "When someone replies to your byte",  keyPath: \.notifComments),
+        AlertItem(icon: "👤", label: "New Followers", subtitle: "When someone follows you",           keyPath: \.notifFollowers),
+        AlertItem(icon: "👻", label: "Unfollows",    subtitle: "When someone unfollows you",         keyPath: \.notifUnfollows),
+    ]
+
+    var body: some View {
+        Group {
+            if prefsVm.isLoading {
+                ByteSpinner().padding(.top, 40)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    AccentBarHeader(label: "NOTIFICATIONS", size: .compact)
+                    VStack(spacing: 0) {
+                        ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
+                            HStack(spacing: 12) {
+                                Text(item.icon)
+                                    .font(.system(size: 18))
+                                    .frame(width: 24, alignment: .center)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.label)
+                                        .font(.byteMono(12))
+                                        .foregroundColor(.byteText1)
+                                    Text(item.subtitle)
+                                        .font(.byteMono(10))
+                                        .foregroundColor(.byteText2)
+                                }
+                                Spacer()
+                                Toggle("", isOn: Binding(
+                                    get: { prefsVm.prefs[keyPath: item.keyPath] },
+                                    set: { newVal in
+                                        prefsVm.prefs[keyPath: item.keyPath] = newVal
+                                        Task { _ = await prefsVm.save() }
+                                    }
+                                ))
+                                .labelsHidden()
+                                .tint(.byteAccent)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            if idx < items.count - 1 {
+                                Divider()
+                                    .background(Color.byteBorderHigh.opacity(0.5))
+                            }
+                        }
+                    }
+                    .background(Color.byteCard)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+        .task { await prefsVm.load() }
+    }
+}
+
 // MARK: - XP Bar
 // Mirrors the level-meta XP card in UI/components/features/profile/profile-screen.tsx.
 // Shows tier icon + name, "NEXT UP" preview, and a cyan-shimmer progress bar.
@@ -340,6 +660,8 @@ private struct LevelMeta {
 
 private struct XPBar: View {
     let user: User
+    @State private var glowPulse = false
+    @State private var barPulse = false
 
     private var current: LevelMeta { LevelMeta.current(for: user.level) }
     private var next: LevelMeta? { LevelMeta.next(after: user.level) }
@@ -363,9 +685,9 @@ private struct XPBar: View {
                     .font(.system(size: 22))
                     .frame(width: 36, height: 36)
                     .background(Color.byteCyan.opacity(0.12))
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.byteCyan.opacity(0.25), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.byteCyan.opacity(glowPulse ? 0.55 : 0.25), lineWidth: 1))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .shadow(color: Color.byteCyan.opacity(0.20), radius: 8)
+                    .shadow(color: Color.byteCyan.opacity(glowPulse ? 0.55 : 0.20), radius: glowPulse ? 14 : 8)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("LVL \(user.level) · \(current.name)")
@@ -408,7 +730,7 @@ private struct XPBar: View {
                             startPoint: .leading, endPoint: .trailing
                         ))
                         .frame(width: geo.size.width * CGFloat(pct), height: 8)
-                        .shadow(color: Color.byteCyan.opacity(0.5), radius: 6)
+                        .shadow(color: Color.byteCyan.opacity(barPulse ? 0.85 : 0.45), radius: barPulse ? 12 : 6)
                 }
                 .frame(height: 8)
             }
@@ -432,8 +754,13 @@ private struct XPBar: View {
         }
         .padding(14)
         .background(Color.byteCard)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteCyan.opacity(glowPulse ? 0.45 : 0.12), lineWidth: 1))
+        .shadow(color: Color.byteCyan.opacity(glowPulse ? 0.25 : 0.08), radius: glowPulse ? 18 : 8)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) { glowPulse = true }
+            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true).delay(0.3)) { barPulse = true }
+        }
     }
 
     private func numberFormatted(_ n: Int) -> String {
@@ -473,6 +800,32 @@ private struct StatItem: View {
     }
 }
 
+// MARK: - Streak Stat Item
+
+private struct StreakStatItem: View {
+    let streak: Int
+
+    var body: some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 3) {
+                Text("🔥").font(.system(size: 14))
+                Text("\(streak)")
+                    .font(.byteSans(16, weight: .bold))
+                    .foregroundColor(.byteGreen)
+            }
+            Text("STREAK").font(.byteMonoTiny).foregroundColor(.byteText2).tracking(0.5)
+        }
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [Color.byteGreen.opacity(0.06), .clear],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+    }
+}
+
 // MARK: - Badges Section (earned + locked-readable)
 
 private struct BadgesSection: View {
@@ -480,24 +833,43 @@ private struct BadgesSection: View {
     let catalog: [BadgeType]
     @State private var selected: BadgeDetail?
 
+    private var earnedCount: Int { catalog.filter { earnedNames.contains($0.name.lowercased()) }.count }
+    private var firstLockedIdx: Int? { catalog.firstIndex(where: { !earnedNames.contains($0.name.lowercased()) }) }
+
     var body: some View {
         if catalog.isEmpty && earnedNames.isEmpty {
             EmptyView()
         } else {
             VStack(alignment: .leading, spacing: 10) {
-                AccentBarHeader(label: "BADGES", size: .compact)
+                HStack {
+                    HStack(spacing: 6) {
+                        Capsule().fill(IdentityColor.blue.solid).frame(width: 3, height: 14)
+                        Text("BADGES")
+                            .font(.byteMono(11, weight: .bold))
+                            .foregroundColor(.byteText1)
+                            .tracking(0.8)
+                    }
+                    Spacer()
+                    Text("\(earnedCount)/\(catalog.count) UNLOCKED")
+                        .font(.byteMono(10))
+                        .foregroundColor(.byteText2)
+                }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
-                        ForEach(catalog) { type in
+                        ForEach(Array(catalog.enumerated()), id: \.element.id) { idx, type in
                             let earned = earnedNames.contains(type.name.lowercased())
-                            Button {
+                            let isNext = firstLockedIdx == idx
+                            BadgeCard(
+                                type: type,
+                                earned: earned,
+                                isNext: isNext,
+                                index: idx
+                            ) {
                                 selected = BadgeDetail(type: type, earned: earned)
-                            } label: {
-                                BadgePill(icon: type.icon, label: type.label, earned: earned)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
+                    .padding(.vertical, 4)
                 }
             }
             .sheet(item: $selected) { detail in
@@ -514,26 +886,147 @@ private struct BadgesSection: View {
     }
 }
 
-private struct BadgePill: View {
-    let icon: String
-    let label: String
+// MARK: - Badge Card (mirrors web BadgeCard with spring-in, float, shine animations)
+
+private struct BadgeCard: View {
+    let type: BadgeType
     let earned: Bool
+    let isNext: Bool
+    let index: Int
+    let onTap: () -> Void
+
+    @State private var appeared = false
+    @State private var floatY: CGFloat = 0
+    @State private var shineX: CGFloat = -80
+    @State private var glowPulse = false
+
+    private static let gold = Color(red: 251/255, green: 191/255, blue: 36/255)
 
     var body: some View {
-        HStack(spacing: 5) {
-            Text(icon).font(.system(size: 14))
-                .opacity(earned ? 1 : 0.45)
-            Text(label).font(.byteMonoTiny)
-                .foregroundColor(earned ? .byteText1 : .byteText2)
+        Button(action: onTap) {
+            ZStack(alignment: .leading) {
+                VStack(spacing: 6) {
+                    // Icon
+                    ZStack {
+                        if earned {
+                            Text(type.icon).font(.system(size: 26)).frame(height: 30)
+                        } else {
+                            ZStack {
+                                Text(type.icon)
+                                    .font(.system(size: 26))
+                                    .opacity(0.20)
+                                    .blur(radius: 1)
+                                Circle()
+                                    .fill(Color.byteElement)
+                                    .overlay(Circle().stroke(Color.byteBorderMedium, lineWidth: 1))
+                                    .frame(width: 20, height: 20)
+                                    .overlay(
+                                        Image(systemName: "lock.fill")
+                                            .font(.system(size: 9))
+                                            .foregroundColor(.byteText3)
+                                    )
+                            }
+                            .frame(height: 30)
+                        }
+                    }
+
+                    Text(earned ? type.name : isNext ? type.label : "???")
+                        .font(.byteMono(10, weight: .semibold))
+                        .foregroundColor(earned ? Self.gold.opacity(0.85) : isNext ? .byteCyan : .byteText2)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .frame(minWidth: 60)
+
+                    Text(earned ? "✓ EARNED" : isNext ? "▶ NEXT" : "LOCKED")
+                        .font(.byteMono(9))
+                        .foregroundColor(earned ? Self.gold.opacity(0.55) : isNext ? .byteCyan : .byteText3)
+                        .tracking(0.5)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 12)
+
+                // Diagonal shine sweep (earned only)
+                if earned {
+                    LinearGradient(
+                        colors: [.clear, Color.white.opacity(0.15), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(width: 40)
+                    .rotationEffect(.degrees(20))
+                    .offset(x: shineX)
+                    .allowsHitTesting(false)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .padding(.horizontal, 10).padding(.vertical, 6)
+        .buttonStyle(.plain)
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(earned ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
-                .overlay(RoundedRectangle(cornerRadius: 20)
-                    .stroke(earned ? Color.byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1))
+            earned ? Self.gold.opacity(0.07) :
+            isNext ? Color.byteCyan.opacity(0.04) :
+            Color.white.opacity(0.015)
         )
-        .shadow(color: earned ? IdentityColor.blue.tint(0.18) : .clear, radius: 6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    earned ? Self.gold.opacity(0.35) :
+                    isNext ? Color.byteCyan.opacity(0.30) :
+                    Color.byteBorderMedium,
+                    lineWidth: 1
+                )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(
+            color: earned ? Self.gold.opacity(glowPulse ? 0.50 : 0.22) :
+                   isNext ? Color.byteCyan.opacity(glowPulse ? 0.25 : 0.10) : .clear,
+            radius: earned ? (glowPulse ? 20 : 10) : (glowPulse ? 10 : 5)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    earned ? Self.gold.opacity(glowPulse ? 0.65 : 0.35) :
+                    isNext ? Color.byteCyan.opacity(glowPulse ? 0.55 : 0.30) :
+                    Color.clear,
+                    lineWidth: 1
+                )
+        )
+        .offset(y: floatY)
+        .scaleEffect(appeared ? 1 : 0.75)
+        .opacity(appeared ? 1 : 0)
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6).delay(Double(index) * 0.06)) {
+                appeared = true
+            }
+            if earned {
+                withAnimation(
+                    .easeInOut(duration: 2.5 + Double(index) * 0.1)
+                    .repeatForever(autoreverses: true)
+                    .delay(Double(index) * 0.45)
+                ) {
+                    floatY = -3
+                }
+                withAnimation(
+                    .easeInOut(duration: 1.8 + Double(index) * 0.12)
+                    .repeatForever(autoreverses: true)
+                    .delay(Double(index) * 0.3 + 0.4)
+                ) {
+                    glowPulse = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.06 + 0.6) {
+                    withAnimation(.easeInOut(duration: 1.4)) {
+                        shineX = 120
+                    }
+                }
+            } else if isNext {
+                withAnimation(
+                    .easeInOut(duration: 2.0)
+                    .repeatForever(autoreverses: true)
+                    .delay(Double(index) * 0.2)
+                ) {
+                    glowPulse = true
+                }
+            }
+        }
     }
 }
 
@@ -640,38 +1133,36 @@ private struct SocialLinksRow: View {
 
 private struct ProfileTabs: View {
     @Binding var selected: ProfileTab
-    var includeBookmarks: Bool = true
-
-    private var visibleTabs: [ProfileTab] {
-        includeBookmarks ? ProfileTab.allCases : ProfileTab.allCases.filter { $0 != .bookmarks }
-    }
+    let tabs: [ProfileTab]
 
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(visibleTabs, id: \.self) { tab in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { selected = tab }
-                } label: {
-                    Text(tab.rawValue)
-                        .font(.byteMono(11, weight: selected == tab ? .bold : .regular))
-                        .tracking(0.7)
-                        .foregroundColor(selected == tab ? .byteAccent : .byteText1)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 7)
-                        .background(selected == tab ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(selected == tab ? .byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                        .shadow(color: selected == tab ? IdentityColor.blue.tint(0.20) : .clear, radius: 6)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(tabs, id: \.self) { tab in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) { selected = tab }
+                    } label: {
+                        Text(tab.rawValue)
+                            .font(.byteMono(11, weight: selected == tab ? .bold : .regular))
+                            .tracking(0.7)
+                            .foregroundColor(selected == tab ? .byteAccent : .byteText1)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(selected == tab ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(selected == tab ? .byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1)
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .shadow(color: selected == tab ? IdentityColor.blue.tint(0.20) : .clear, radius: 6)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 36)
                 }
-                .buttonStyle(.plain)
-                .frame(minHeight: 36)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
     }
 }
 
@@ -679,53 +1170,321 @@ private struct ProfileTabs: View {
 
 private struct ProfileTabContent: View {
     let tab: ProfileTab
+    let user: User
     @ObservedObject var vm: ProfileViewModel
+    @State private var bytesSubTab: BytesSubTab = .posted
+    @State private var interviewsSubTab: InterviewsSubTab = .posted
+    @State private var showCompose = false
 
     var body: some View {
-        LazyVStack(spacing: 12) {
-            switch tab {
-            case .bytes:
-                if vm.bytes.isEmpty {
-                    EmptyStateView(icon: "bolt", title: "No bytes yet", message: "Start sharing your tech insights.")
-                } else {
-                    ForEach(vm.bytes) { post in
-                        NavigationLink(destination: PostDetailView(post: post)) {
-                            CollapsiblePostCard(post: post, isOwn: vm.isOwnProfile) {
-                                vm.bytes.removeAll { $0.id == post.id }
-                                Task { try? await APIClient.shared.deletePost(postId: post.id) }
+        switch tab {
+        case .profile:
+            ProfileInfoTab(user: user, vm: vm)
+
+        case .bytes:
+            LazyVStack(spacing: 0) {
+                BytesSubTabBar(selected: $bytesSubTab)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+
+                switch bytesSubTab {
+                case .posted:
+                    if vm.bytes.isEmpty {
+                        bytesEmptyState
+                    } else {
+                        LazyVStack(spacing: 12) {
+                            ForEach(vm.bytes) { post in
+                                NavigationLink(destination: PostDetailView(post: post)) {
+                                    CollapsiblePostCard(post: post, isOwn: vm.isOwnProfile) {
+                                        vm.bytes.removeAll { $0.id == post.id }
+                                        Task { try? await APIClient.shared.deletePost(postId: post.id) }
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 16)
                             }
                         }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
                     }
-                }
-            case .interviews:
-                if vm.interviews.isEmpty {
-                    EmptyStateView(icon: "briefcase", title: "No interviews", message: "Share your interview experiences.")
-                } else {
-                    ForEach(vm.interviews) { iv in
-                        NavigationLink(destination: InterviewDetailView(interviewId: iv.id)) {
-                            InterviewSummaryRow(interview: iv)
+
+                case .saved:
+                    if vm.bookmarks.isEmpty {
+                        EmptyStateView(
+                            icon: "bookmark",
+                            title: "No saved bytes",
+                            message: "Save bytes to revisit them later."
+                        )
+                        .padding(.top, 40)
+                    } else {
+                        LazyVStack(spacing: 12) {
+                            ForEach(vm.bookmarks) { post in
+                                NavigationLink(destination: PostDetailView(post: post)) {
+                                    CollapsiblePostCard(post: post, isOwn: false) {}
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 16)
+                            }
                         }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
                     }
-                }
-            case .bookmarks:
-                if vm.bookmarks.isEmpty {
-                    EmptyStateView(icon: "bookmark", title: "No bookmarks", message: "Save bytes to revisit them later.")
-                } else {
-                    ForEach(vm.bookmarks) { post in
-                        NavigationLink(destination: PostDetailView(post: post)) {
-                            PostCardView(post: post)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 16)
-                    }
+
+                case .drafts:
+                    InlineDraftsTab()
                 }
             }
+            .sheet(isPresented: $showCompose) { ComposeView() }
+
+        case .interviews:
+            LazyVStack(spacing: 0) {
+                InterviewsSubTabBar(selected: $interviewsSubTab)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+
+                switch interviewsSubTab {
+                case .posted:
+                    if vm.interviews.isEmpty {
+                        interviewsEmptyState
+                    } else {
+                        LazyVStack(spacing: 12) {
+                            ForEach(vm.interviews) { iv in
+                                NavigationLink(destination: InterviewDetailView(interviewId: iv.id)) {
+                                    InterviewSummaryRow(interview: iv)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 16)
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+
+                case .saved:
+                    VStack(spacing: 14) {
+                        Image(systemName: "bookmark")
+                            .font(.system(size: 44, weight: .thin))
+                            .foregroundColor(.byteText3)
+                        Text("NO SAVED INTERVIEWS")
+                            .font(.byteMono(13, weight: .bold))
+                            .tracking(1.0)
+                            .foregroundColor(.byteText1)
+                        Text("Save interviews to revisit them later.")
+                            .font(.byteBody)
+                            .foregroundColor(.byteText2)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 60)
+                    .padding(.horizontal, 24)
+                }
+            }
+            .sheet(isPresented: $showCompose) { ComposeView(initialType: .interview) }
+
+        case .prefs:
+            ProfilePrefsTab(vm: vm)
+
+        case .alerts:
+            ProfileAlertsTab()
         }
-        .padding(.vertical, 12)
+    }
+
+    private var bytesEmptyState: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "hexagon")
+                .font(.system(size: 44, weight: .thin))
+                .foregroundColor(.byteText3)
+            Text("NO BYTES YET")
+                .font(.byteMono(13, weight: .bold))
+                .tracking(1.0)
+                .foregroundColor(.byteText1)
+            Text("Share a technique, pattern, or lesson")
+                .font(.byteBody)
+                .foregroundColor(.byteText2)
+                .multilineTextAlignment(.center)
+            Button { showCompose = true } label: {
+                Text("→ POST A BYTE")
+                    .font(.byteMono(11, weight: .bold))
+                    .tracking(0.5)
+                    .foregroundColor(.byteAccent)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(IdentityColor.blue.bgActive)
+                    .overlay(Capsule().stroke(Color.byteAccent, lineWidth: 1))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.top, 60)
+        .padding(.horizontal, 24)
+    }
+
+    private var interviewsEmptyState: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "diamond")
+                .font(.system(size: 44, weight: .thin))
+                .foregroundColor(.byteText3)
+            Text("NO INTERVIEWS YET")
+                .font(.byteMono(13, weight: .bold))
+                .tracking(1.0)
+                .foregroundColor(.byteText1)
+            Text("Document your interview experience")
+                .font(.byteBody)
+                .foregroundColor(.byteText2)
+                .multilineTextAlignment(.center)
+            Button { showCompose = true } label: {
+                Text("→ SHARE ONE")
+                    .font(.byteMono(11, weight: .bold))
+                    .tracking(0.5)
+                    .foregroundColor(.bytePurple)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(IdentityColor.purple.bgActive)
+                    .overlay(Capsule().stroke(Color.bytePurple, lineWidth: 1))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.top, 60)
+        .padding(.horizontal, 24)
+    }
+}
+
+// MARK: - Bytes Sub-Tab Bar
+
+private struct BytesSubTabBar: View {
+    @Binding var selected: BytesSubTab
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(BytesSubTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) { selected = tab }
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.byteMono(11, weight: selected == tab ? .bold : .regular))
+                        .tracking(0.7)
+                        .foregroundColor(selected == tab ? .byteAccent : .byteText1)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 7)
+                        .background(selected == tab ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(selected == tab ? Color.byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .shadow(color: selected == tab ? IdentityColor.blue.tint(0.20) : .clear, radius: 6)
+                }
+                .buttonStyle(.plain)
+                .frame(minHeight: 36)
+            }
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Interviews Sub-Tab Bar
+
+private struct InterviewsSubTabBar: View {
+    @Binding var selected: InterviewsSubTab
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(InterviewsSubTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) { selected = tab }
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.byteMono(11, weight: selected == tab ? .bold : .regular))
+                        .tracking(0.7)
+                        .foregroundColor(selected == tab ? .bytePurple : .byteText1)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 7)
+                        .background(selected == tab ? IdentityColor.purple.bgActive : IdentityColor.purple.bgFaint)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(selected == tab ? Color.bytePurple : IdentityColor.purple.borderFaint, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .shadow(color: selected == tab ? Color.bytePurple.opacity(0.20) : .clear, radius: 6)
+                }
+                .buttonStyle(.plain)
+                .frame(minHeight: 36)
+            }
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Inline Drafts Tab
+
+private struct InlineDraftsTab: View {
+    @StateObject private var vm = DraftsVM()
+    @State private var showCompose = false
+
+    var body: some View {
+        Group {
+            if vm.isLoading && vm.drafts.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        RowSkeleton(hasSubtitle: true, titleWidth: 180, subtitleWidth: 240)
+                            .padding(.horizontal, 16)
+                    }
+                }
+                .padding(.top, 12)
+                .redacted(reason: .placeholder)
+                .accessibilityHidden(true)
+            } else if vm.drafts.isEmpty {
+                VStack(spacing: 14) {
+                    Image(systemName: "tray")
+                        .font(.system(size: 44, weight: .thin))
+                        .foregroundColor(.byteText3)
+                    Text("NO DRAFTS")
+                        .font(.byteMono(13, weight: .bold))
+                        .tracking(1.0)
+                        .foregroundColor(.byteText1)
+                    Text("Drafts you save while composing will appear here.")
+                        .font(.byteBody)
+                        .foregroundColor(.byteText2)
+                        .multilineTextAlignment(.center)
+                    Button { showCompose = true } label: {
+                        Text("→ START WRITING")
+                            .font(.byteMono(11, weight: .bold))
+                            .tracking(0.5)
+                            .foregroundColor(.byteAccent)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(IdentityColor.blue.bgActive)
+                            .overlay(Capsule().stroke(Color.byteAccent, lineWidth: 1))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 60)
+                .padding(.horizontal, 24)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(vm.drafts) { draft in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(draft.title?.isEmpty == false ? draft.title! : "Untitled draft")
+                                .font(.byteSans(14, weight: .semibold))
+                                .foregroundColor(.byteText1)
+                                .lineLimit(1)
+                            if let body = draft.body, !body.isEmpty {
+                                Text(body)
+                                    .font(.byteSmall)
+                                    .foregroundColor(.byteText2)
+                                    .lineLimit(2)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.byteCard)
+                        .overlay(Rectangle().fill(Color.byteBorder).frame(height: 1), alignment: .bottom)
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .task { await vm.load() }
+        .sheet(isPresented: $showCompose) { ComposeView() }
     }
 }
 
@@ -885,7 +1644,6 @@ struct EditProfileSheet: View {
     @State private var techStack: [String]
     @State private var techStackOptions: [SearchableDropdown.DropdownOption] = []
     @State private var isLoading = false
-    @State private var error: String?
     let onSave: (User) -> Void
 
     init(user: User, onSave: @escaping (User) -> Void) {
@@ -954,7 +1712,6 @@ struct EditProfileSheet: View {
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
 
-                        if let error { Text(error).font(.byteSmall).foregroundColor(.byteRed) }
                         ByteButton("Save Changes", icon: "checkmark", isLoading: isLoading) {
                             Task {
                                 isLoading = true
@@ -981,8 +1738,8 @@ struct EditProfileSheet: View {
                                     )
                                     onSave(updated)
                                     dismiss()
-                                } catch {
-                                    self.error = error.localizedDescription
+                                } catch let err {
+                                    ToastCenter.shared.show(error: err, context: "Couldn't save profile")
                                 }
                             }
                         }
@@ -1057,8 +1814,11 @@ final class ProfileViewModel: ObservableObject {
 
         do {
             user = try await APIClient.shared.getProfile(username: targetUsername)
-        } catch {
+        } catch let err {
             user = try? await APIClient.shared.getMe()
+            if user == nil {
+                ToastCenter.shared.show(error: err, context: "Couldn't load profile")
+            }
         }
 
         if isOwnProfile {
@@ -1293,6 +2053,12 @@ struct SupportTerminalView: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                     .onSubmit { Task { await vm.submitDraft(onClose: { dismiss() }) } }
+                    .onChange(of: vm.draft) { _, newValue in
+                        if newValue.last == "\n" {
+                            vm.draft = String(newValue.dropLast())
+                            Task { await vm.submitDraft(onClose: { dismiss() }) }
+                        }
+                    }
 
                 Rectangle()
                     .fill(Color.byteGreen)
@@ -1388,15 +2154,14 @@ final class SupportTerminalVM: ObservableObject {
     private var pendingType: String?
 
     private let helpText = [
-        "  help                              show this menu",
-        "  whoami                            show your profile info",
-        "  feedback --type good              submit positive feedback",
-        "  feedback --type bad               report a bug or issue",
-        "  feedback --type idea              suggest a feature",
-        "  feedback --type idea \"message\"    one-shot submission",
-        "  history                           view your last 5 submissions",
-        "  clear                             clear terminal",
-        "  exit                              close terminal"
+        "  help                           show this menu",
+        "  whoami                         show your profile info",
+        "  feedback -type good            submit positive feedback",
+        "  feedback -type bad             report a bug or issue",
+        "  feedback -type idea            suggest a feature",
+        "  history                        view your last 5 submissions",
+        "  clear                          clear terminal",
+        "  exit                           close terminal"
     ]
 
     func clear() {
@@ -1553,7 +2318,9 @@ final class SupportTerminalVM: ObservableObject {
 
         if lower.hasPrefix("feedback") {
             let rest = trimmed.dropFirst("feedback".count).trimmingCharacters(in: .whitespaces)
-            let scrubbed = rest.replacingOccurrences(of: "--type", with: "")
+            let scrubbed = rest
+                .replacingOccurrences(of: "--type", with: "")
+                .replacingOccurrences(of: "-type", with: "")
                 .trimmingCharacters(in: .whitespaces)
             let parts = scrubbed.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
             guard let typeTok = parts.first?.lowercased(),
@@ -1674,8 +2441,9 @@ struct FollowersListSheet: View {
                 people = mode == .followers
                     ? try await APIClient.shared.getFollowers(userId: userId)
                     : try await APIClient.shared.getFollowing(userId: userId)
-            } catch {
+            } catch let err {
                 people = []
+                ToastCenter.shared.show(error: err, context: "Couldn't load \(mode == .followers ? "followers" : "following")")
             }
             isLoading = false
         }
@@ -1800,10 +2568,6 @@ struct PreferencesView: View {
 
                             AccentBarHeader(label: "VISIBILITY", size: .compact)
                             VisibilityPicker(value: $vm.prefs.visibility)
-
-                            if let err = vm.error {
-                                Text(err).font(.byteSmall).foregroundColor(.byteRed)
-                            }
                         }
                         .padding(20)
                     }
@@ -1819,7 +2583,7 @@ struct PreferencesView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        Task { await vm.save(); if vm.error == nil { dismiss() } }
+                        Task { if await vm.save() { dismiss() } }
                     } label: {
                         Text(vm.isSaving ? "Saving…" : "Save")
                             .font(.byteMono(11, weight: .bold))
@@ -1889,25 +2653,28 @@ final class PreferencesViewModel: ObservableObject {
     @Published var prefs: UserPreferences = .default
     @Published var isLoading = true
     @Published var isSaving = false
-    @Published var error: String?
 
     func load() async {
         isLoading = true
         defer { isLoading = false }
         if let p = try? await APIClient.shared.getMyPreferences() {
             prefs = p
+            if let theme = AppTheme(rawValue: p.theme) {
+                ThemeManager.shared.set(theme)
+            }
         }
     }
 
-    func save() async {
+    func save() async -> Bool {
         isSaving = true
         defer { isSaving = false }
-        error = nil
         do {
             prefs = try await APIClient.shared.updatePreferences(prefs)
             ToastCenter.shared.show("Preferences saved", kind: .success)
-        } catch {
-            self.error = error.localizedDescription
+            return true
+        } catch let err {
+            ToastCenter.shared.show(error: err, context: "Couldn't save preferences")
+            return false
         }
     }
 }

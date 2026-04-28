@@ -8,6 +8,7 @@ struct ByteAIApp: App {
     @StateObject private var chat = ChatService.shared
     @StateObject private var router = DeepLinkRouter.shared
     @StateObject private var toasts = ToastCenter.shared
+    @StateObject private var themeManager = ThemeManager.shared
 
     init() {
         configureNavigationAppearance()
@@ -23,7 +24,7 @@ struct ByteAIApp: App {
                 .environmentObject(chat)
                 .environmentObject(router)
                 .environmentObject(toasts)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(themeManager.current.preferredColorScheme)
                 // Cap Dynamic Type at xxxLarge so the layout doesn't explode at the
                 // accessibility scales. Users can still scale up to the cap.
                 .dynamicTypeSize(.xSmall ... .xxxLarge)

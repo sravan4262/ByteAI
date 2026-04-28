@@ -63,7 +63,6 @@ struct SearchView: View {
                     .dismissKeyboardOnTap()
 
                 VStack(spacing: 0) {
-                    header
                     searchBar
                     modeChips
                     Divider().background(Color.byteBorderHigh)
@@ -78,15 +77,6 @@ struct SearchView: View {
         .onChange(of: flags.flags) { _, _ in
             vm.askEnabled = flags.isEnabled("ai-search-ask")
         }
-    }
-
-    private var header: some View {
-        FloatingHeaderCard(
-            icon: "magnifyingglass",
-            title: "SEARCH",
-            subtitle: vm.mode == .ask ? "AI-POWERED ANSWERS" : "BYTES · PEOPLE · INSIGHTS",
-            identity: .blue
-        ) { EmptyView() }
     }
 
     private var searchBar: some View {
@@ -104,10 +94,18 @@ struct SearchView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .onChange(of: vm.query) { _, q in
-                    vm.mode = detectIntent(q, askEnabled: vm.askEnabled)
+                    if q.isEmpty {
+                        vm.userPinnedMode = false
+                        vm.mode = .bytes
+                    } else if !vm.userPinnedMode {
+                        vm.mode = detectIntent(q, askEnabled: vm.askEnabled)
+                    }
                 }
             if !vm.query.isEmpty {
-                Button { vm.query = "" } label: {
+                Button {
+                    vm.query = ""
+                    vm.userPinnedMode = false
+                } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.byteText3)
                         .frame(width: 44, height: 44)
@@ -126,14 +124,17 @@ struct SearchView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .shadow(color: queryFocused ? IdentityColor.blue.tint(0.14) : .clear, radius: 6)
         .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .padding(.top, 12)
     }
 
     private var modeChips: some View {
         HStack(spacing: 8) {
             ForEach(visibleModes, id: \.self) { mode in
                 Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { vm.mode = mode }
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        vm.userPinnedMode = true
+                        vm.mode = mode
+                    }
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: mode.icon).font(.system(size: 11))
@@ -248,7 +249,12 @@ struct SearchView: View {
             EmptyStateView(icon: "person.slash", title: "No people found",
                            message: "Try a different name or username.")
         } else {
-            ForEach(vm.people) { person in PersonRow(person: person) }
+            ForEach(vm.people) { person in
+                NavigationLink(destination: ProfileView(username: person.username)) {
+                    PersonRow(person: person)
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
@@ -507,6 +513,9 @@ private struct PersonRow: View {
 final class SearchViewModel: ObservableObject {
     @Published var query = ""
     @Published var mode: SearchMode = .bytes
+    /// True once the user explicitly taps a mode chip — prevents detectIntent() from
+    /// overriding their choice on subsequent keystrokes. Reset when query is cleared.
+    var userPinnedMode = false
     @Published var posts: [Post] = []
     @Published var people: [PersonResult] = []
     /// Streaming RAG answer accumulated as `chunk` events arrive.
@@ -556,10 +565,10 @@ final class SearchViewModel: ObservableObject {
                                 }
                             }
                         }
-                    } catch {
+                    } catch let err {
                         await MainActor.run {
-                            self?.error = error.localizedDescription
                             self?.isStreamingAsk = false
+                            ToastCenter.shared.show(error: err, context: "Search failed")
                         }
                     }
                 }
@@ -570,7 +579,7 @@ final class SearchViewModel: ObservableObject {
                 posts = try await APIClient.shared.search(query: trimmed, type: "Bytes")
             }
         } catch {
-            self.error = error.localizedDescription
+            self.error = APIError.userMessage(from: error)
         }
     }
 }

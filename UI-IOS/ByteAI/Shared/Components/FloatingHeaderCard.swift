@@ -5,20 +5,56 @@ import SwiftUI
 //   Bytes:      border .35 alpha + bg .07 alpha (blue)
 //   Interviews: border .35 alpha + bg .07 alpha (purple)
 
+// MARK: - ByteAI Logo Mark
+// Renders the </> brand icon matching the web ByteAILogo component and the app icon asset.
+
+struct ByteAILogoMark: View {
+    var size: CGFloat = 20
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.22)
+                .fill(
+                    LinearGradient(
+                        colors: [Color(hex: "#1e2a6b"), Color(hex: "#0d1540")],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: size * 0.22)
+                        .stroke(Color(hex: "#3b82f6").opacity(0.45), lineWidth: 1)
+                )
+                .frame(width: size, height: size)
+
+            Text("</>")
+                .font(.system(size: size * 0.38, weight: .bold, design: .monospaced))
+                .foregroundColor(Color(hex: "#06b6d4"))
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 struct FloatingHeaderCard<Trailing: View>: View {
-    let icon: String       // SF Symbol
+    let icon: String       // SF Symbol — ignored when useLogoMark is true
     let title: String
     let subtitle: String
     var identity: IdentityColor = .blue
+    /// When true, renders ByteAILogoMark instead of the SF Symbol icon.
+    var useLogoMark: Bool = false
     @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
-                    Image(systemName: icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(identity.solid)
+                    if useLogoMark {
+                        ByteAILogoMark(size: 20)
+                    } else {
+                        Image(systemName: icon)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(identity.solid)
+                    }
                     Text(title)
                         .font(.byteMono(15, weight: .bold))
                         .foregroundColor(.byteText1)
@@ -36,10 +72,11 @@ struct FloatingHeaderCard<Trailing: View>: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        // Web parity: `bg-[rgba(...,0.07)] backdrop-blur-md` — tint sits on top of the
-        // frosted blur, not the other way around. Reversing the order kept the material
-        // from washing out the identity tint.
+        // Web: `bg-[rgba(...,0.07)]` + `backdrop-blur-md` over --bg-card.
+        // ultraThinMaterial provides the blur; 0.75-opacity card base prevents washout;
+        // bgHover (0.07 tint) supplies the identity colour, matching the web exactly.
         .background(identity.bgHover)
+        .background(Color.byteCard.opacity(0.75))
         .background(.ultraThinMaterial)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
@@ -62,8 +99,12 @@ struct SearchableDropdown: View {
     var allLabel: String = "ALL"
     var showAllOption: Bool = true
     var identity: IdentityColor = .blue
+    /// Optional external trigger — when provided the built-in button is hidden and the
+    /// caller controls when the picker sheet opens (e.g. FilterPanelRow).
+    var externalOpen: Binding<Bool>? = nil
 
-    @State private var isOpen = false
+    @State private var internalOpen = false
+    private var isOpen: Binding<Bool> { externalOpen ?? $internalOpen }
 
     struct DropdownOption: Hashable {
         let value: String
@@ -79,29 +120,33 @@ struct SearchableDropdown: View {
     }
 
     var body: some View {
-        Button {
-            isOpen = true
-        } label: {
-            HStack(spacing: 6) {
-                Text(selectedLabel.uppercased())
-                    .font(.byteMono(11, weight: .bold))
-                    .tracking(0.5)
-                Image(systemName: value == nil ? "chevron.down" : "xmark")
-                    .font(.system(size: 9, weight: .semibold))
-                    .opacity(0.7)
+        Group {
+            if externalOpen == nil {
+                Button {
+                    isOpen.wrappedValue = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(selectedLabel.uppercased())
+                            .font(.byteMono(11, weight: .bold))
+                            .tracking(0.5)
+                        Image(systemName: value == nil ? "chevron.down" : "xmark")
+                            .font(.system(size: 9, weight: .semibold))
+                            .opacity(0.7)
+                    }
+                    .foregroundColor(value != nil ? identity.solid : .byteText1)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(value != nil ? identity.bgActive : identity.bgFaint)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(value != nil ? identity.solid : identity.borderFaint, lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+                .frame(minHeight: 32)
             }
-            .foregroundColor(value != nil ? identity.solid : .byteText1)
-            .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(value != nil ? identity.bgActive : identity.bgFaint)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(value != nil ? identity.solid : identity.borderFaint, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
         }
-        .buttonStyle(.plain)
-        .frame(minHeight: 32)
-        .sheet(isPresented: $isOpen) {
+        .sheet(isPresented: isOpen) {
             SearchableDropdownSheet(
                 value: $value,
                 options: options,
@@ -116,7 +161,7 @@ struct SearchableDropdown: View {
     }
 }
 
-private struct SearchableDropdownSheet: View {
+struct SearchableDropdownSheet: View {
     @Binding var value: String?
     let options: [SearchableDropdown.DropdownOption]
     let placeholder: String

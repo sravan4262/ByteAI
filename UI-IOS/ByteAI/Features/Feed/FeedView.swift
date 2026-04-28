@@ -32,7 +32,8 @@ struct FeedView: View {
                         icon: "bolt.fill",
                         title: "BITS",
                         subtitle: "SHORT · INSIGHTS · LEARN.",
-                        identity: .blue
+                        identity: .blue,
+                        useLogoMark: true
                     ) {
                         HStack(spacing: 10) {
                             NotificationBellButton(unreadCount: vm.unreadNotifications) {
@@ -67,7 +68,11 @@ struct FeedView: View {
                 }
             }
             .navigationDestination(isPresented: $showProfile) { ProfileView(username: vm.meUsername) }
-            .navigationDestination(isPresented: $showNotifications) { NotificationsView() }
+            .sheet(isPresented: $showNotifications) {
+                NotificationsView()
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
         }
         .task { await vm.load() }
         .onChange(of: router.pendingPostId) { _, id in
@@ -185,11 +190,7 @@ private struct FeedFilterRow: View {
             }
 
             if selectedTab == .forYou {
-                HStack(spacing: 10) {
-                    AccentBarHeader(label: "TECH_STACK", size: .compact)
-                    StackPicker(values: $selectedStacks, options: stackOptions)
-                    Spacer(minLength: 0)
-                }
+                StackPicker(values: $selectedStacks, options: stackOptions)
             } else if selectedTab == .trending {
                 HStack(spacing: 6) {
                     Text("🔥")
@@ -211,18 +212,143 @@ private struct FeedFilterRow: View {
     }
 }
 
-private struct StackPicker: View {
+// MARK: - Inline Stack Picker
+// Chip-input: selected stacks as dismissible pills + typeable filter field.
+// Suggestions appear as a horizontal scroll row — no sheet.
+
+struct StackPicker: View {
     @Binding var values: [String]
     let options: [String]
+    @State private var query = ""
+    @FocusState private var focused: Bool
+
+    private var suggestions: [String] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !q.isEmpty else { return [] }
+        return options.filter { !values.contains($0) && $0.lowercased().contains(q) }
+    }
 
     var body: some View {
-        MultiSelectDropdown(
-            values: $values,
-            options: options.map { SearchableDropdown.DropdownOption(value: $0, label: $0) },
-            placeholder: "TECH STACK",
-            identity: .blue
-        )
-        .frame(maxWidth: 200)
+        VStack(alignment: .leading, spacing: 6) {
+            chipRow
+            if !suggestions.isEmpty && focused {
+                suggestionsRow
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: suggestions.isEmpty || !focused)
+    }
+
+    // Selected chips + inline text field
+    private var chipRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(values, id: \.self) { stack in
+                    HStack(spacing: 4) {
+                        Text(stack)
+                            .font(.byteMono(11, weight: .semibold))
+                            .foregroundColor(.byteAccent)
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.12)) {
+                                values.removeAll { $0 == stack }
+                            }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.byteAccent.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(IdentityColor.blue.bgActive)
+                    .overlay(RoundedRectangle(cornerRadius: 6)
+                        .stroke(IdentityColor.blue.solid, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+
+                HStack(spacing: 5) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 10))
+                        .foregroundColor(focused ? .byteAccent : .byteText3)
+                    TextField(values.isEmpty ? "filter by stack…" : "add more…", text: $query)
+                        .font(.byteMono(11))
+                        .foregroundColor(.byteText1)
+                        .tint(.byteAccent)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .focused($focused)
+                        .frame(minWidth: 90)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            if let first = suggestions.first { add(first) }
+                        }
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.byteText3)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 9).padding(.vertical, 5)
+                .background(focused ? IdentityColor.blue.bgFaint : IdentityColor.blue.bgFaint.opacity(0.6))
+                .overlay(RoundedRectangle(cornerRadius: 7)
+                    .stroke(focused ? IdentityColor.blue.solid.opacity(0.5) : IdentityColor.blue.borderFaint, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+
+                if !values.isEmpty {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.12)) { values.removeAll() }
+                        query = ""
+                    } label: {
+                        Text("CLEAR")
+                            .font(.byteMono(9, weight: .bold))
+                            .tracking(0.4)
+                            .foregroundColor(.byteText3)
+                            .padding(.horizontal, 7).padding(.vertical, 5)
+                            .background(Color.byteCard)
+                            .overlay(RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.byteBorderHigh, lineWidth: 1))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    // Suggestions strip — shown below while typing
+    private var suggestionsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(suggestions.prefix(10), id: \.self) { s in
+                    Button { add(s) } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 8, weight: .bold))
+                            Text(s)
+                                .font(.byteMono(11))
+                        }
+                        .foregroundColor(.byteText1)
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(IdentityColor.blue.bgFaint)
+                        .overlay(RoundedRectangle(cornerRadius: 7)
+                            .stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private func add(_ s: String) {
+        guard !values.contains(s) else { return }
+        withAnimation(.easeInOut(duration: 0.12)) { values.append(s) }
+        query = ""
     }
 }
 
@@ -244,50 +370,54 @@ struct BytePageCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 Color.clear.frame(height: 12) // chrome reserved by safeAreaInset on FeedView
 
-                VStack(alignment: .leading, spacing: 14) {
-                    PostHeader(post: post, activeTab: activeTab) {
-                        miniProfileTarget = MiniProfileTarget(
-                            userId: post.author.id,
-                            username: post.author.username,
-                            displayName: post.author.displayName,
-                            initials: post.author.initials,
-                            avatarUrl: post.author.avatarUrl,
-                            role: post.author.role,
-                            company: post.author.company,
-                            tags: post.tags
-                        )
-                    }
+                CardWithTopGradient {
+                    VStack(alignment: .leading, spacing: 14) {
+                        PostHeader(post: post, activeTab: activeTab) {
+                            miniProfileTarget = MiniProfileTarget(
+                                userId: post.author.id,
+                                username: post.author.username,
+                                displayName: post.author.displayName,
+                                initials: post.author.initials,
+                                avatarUrl: post.author.avatarUrl,
+                                role: post.author.role,
+                                company: post.author.company,
+                                tags: post.tags
+                            )
+                        }
 
-                    Text(post.title)
-                        .font(.byteSans(22, weight: .bold))
-                        .foregroundColor(.byteText1)
-                        .lineLimit(3)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text(post.title)
+                            .font(.byteSans(22, weight: .bold))
+                            .foregroundColor(.byteText1)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                    Text(post.body)
-                        .font(.byteSans(15))
-                        .foregroundColor(.byteText2)
-                        .lineSpacing(5)
-                        .lineLimit(8)
+                        Text(post.body)
+                            .font(.byteSans(15))
+                            .foregroundColor(.byteText2)
+                            .lineSpacing(5)
+                            .lineLimit(8)
 
-                    if let code = post.code {
-                        CodeBlockView(snippet: code)
-                            .frame(maxHeight: 170)
-                            .clipped()
-                    }
+                        if let code = post.code {
+                            CodeBlockView(snippet: code)
+                                .frame(maxHeight: 170)
+                                .clipped()
+                        }
 
-                    if !post.tags.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(post.tags, id: \.self) { TagView(label: $0) }
+                        if !post.tags.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    ForEach(post.tags, id: \.self) { TagView(label: $0) }
+                                }
                             }
                         }
-                    }
 
-                    actionRow
-                        .padding(.top, 4)
+                        Divider().background(Color.byteBorderHigh)
+
+                        actionRow
+                    }
+                    .padding(16)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 12)
 
                 Spacer()
 
@@ -299,16 +429,6 @@ struct BytePageCard: View {
                     Spacer()
                 }
                 .frame(height: 28)
-            }
-
-            VStack {
-                Spacer()
-                LinearGradient(
-                    colors: [.clear, Color.byteBackground.opacity(0.6)],
-                    startPoint: .top, endPoint: .bottom
-                )
-                .frame(height: 72)
-                .allowsHitTesting(false)
             }
         }
         .sheet(isPresented: $showLikes) {
@@ -485,14 +605,13 @@ final class FeedViewModel: ObservableObject {
         // Auto-seed from current user's techStack on first load (web parity:
         // feed-screen.tsx seeds activeStackFilter from `me.techStack` when no
         // explicit `?stack=` was set). Triggers a re-load on change → load() runs again.
-        if !hasSeededStacks {
+        if !hasSeededStacks,
+           selectedStacks.isEmpty,
+           let me = AuthManager.shared.currentUser,
+           !me.techStack.isEmpty {
             hasSeededStacks = true
-            if selectedStacks.isEmpty,
-               let me = AuthManager.shared.currentUser,
-               !me.techStack.isEmpty {
-                selectedStacks = me.techStack
-                return // didSet on selectedStacks will re-enter load()
-            }
+            selectedStacks = me.techStack
+            return // didSet on selectedStacks will re-enter load()
         }
 
         isLoading = true

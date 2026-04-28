@@ -23,15 +23,16 @@ enum IdentityColor {
         }
     }
 
-    /// rgba base (0..1 components) for opacity-tinted surfaces.
+    /// rgba base (0..1 components) for opacity-tinted surfaces — resolves from active theme.
     var rgb: (r: Double, g: Double, b: Double) {
+        let t = ThemeManager.shared.tokens
         switch self {
-        case .blue:   return (59/255,  130/255, 246/255)   // #3b82f6
-        case .purple: return (167/255, 139/255, 250/255)   // #a78bfa
-        case .green:  return (16/255,  217/255, 160/255)   // #10d9a0
-        case .cyan:   return (34/255,  211/255, 238/255)   // #22d3ee
-        case .orange: return (251/255, 146/255, 60/255)    // #fb923c
-        case .red:    return (244/255, 63/255,  94/255)    // #f43f5e
+        case .blue:   return t.accentRGB
+        case .purple: return t.purpleRGB
+        case .green:  return t.greenRGB
+        case .cyan:   return t.cyanRGB
+        case .orange: return t.orangeRGB
+        case .red:    return t.redRGB
         }
     }
 

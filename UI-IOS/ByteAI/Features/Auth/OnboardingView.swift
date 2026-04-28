@@ -51,9 +51,6 @@ struct OnboardingView: View {
         }
         .dismissKeyboardOnTap()
         .task { await vm.loadLookups() }
-        .alert("Error", isPresented: .constant(vm.error != nil)) {
-            Button("OK") { vm.error = nil }
-        } message: { Text(vm.error ?? "") }
     }
 }
 
@@ -472,7 +469,6 @@ final class OnboardingViewModel: ObservableObject {
     @Published var company = ""
     @Published var bio = ""
     @Published var isLoading = false
-    @Published var error: String?
 
     var currentStepIndex: Int { activeStep.rawValue }
 
@@ -495,9 +491,9 @@ final class OnboardingViewModel: ObservableObject {
             async let d = APIClient.shared.getDomains()
             seniorityOptions = try await s
             domainOptions = try await d
-        } catch {
-            print("[Onboarding] loadLookups failed: \(error)")
-            self.error = "Couldn't load options. Check your connection and try again."
+        } catch let err {
+            print("[Onboarding] loadLookups failed: \(err)")
+            ToastCenter.shared.show(error: err, context: "Couldn't load options")
         }
     }
 
@@ -545,11 +541,11 @@ final class OnboardingViewModel: ObservableObject {
     func complete(auth: AuthManager) async {
         guard let seniority = selectedSeniority,
               let domain = selectedDomains.first else {
-            error = "Please complete all steps."
+            ToastCenter.shared.show("Please complete all steps.", kind: .warning)
             return
         }
         guard !selectedTech.isEmpty else {
-            error = "Please select at least one technology."
+            ToastCenter.shared.show("Please select at least one technology.", kind: .warning)
             withAnimation { activeStep = .tech }
             return
         }
@@ -567,8 +563,8 @@ final class OnboardingViewModel: ObservableObject {
                 roleTitle: role.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : role
             )
             await auth.completeOnboarding()
-        } catch {
-            self.error = "Couldn't save your profile. Please try again."
+        } catch let err {
+            ToastCenter.shared.show(error: err, context: "Couldn't save your profile")
         }
     }
 }

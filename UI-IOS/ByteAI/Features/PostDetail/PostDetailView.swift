@@ -211,83 +211,79 @@ struct PostDetailView: View {
     }
 
     private var actionRow: some View {
-        HStack(spacing: 8) {
-            interactionPill(icon: post.isLiked ? "heart.fill" : "heart",
-                            count: post.likes, isActive: post.isLiked) {
-                Haptics.light()
-                withAnimation(.spring(response: 0.3)) {
-                    post.isLiked.toggle()
-                    post.likes += post.isLiked ? 1 : -1
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                interactionPill(icon: post.isLiked ? "heart.fill" : "heart",
+                                count: post.likes, isActive: post.isLiked) {
+                    Haptics.light()
+                    withAnimation(.spring(response: 0.3)) {
+                        post.isLiked.toggle()
+                        post.likes += post.isLiked ? 1 : -1
+                    }
+                    onPostChanged?(post)
+                    Task { try? await APIClient.shared.toggleLike(postId: post.id) }
                 }
-                onPostChanged?(post)
-                Task { try? await APIClient.shared.toggleLike(postId: post.id) }
-            }
-            .simultaneousGesture(LongPressGesture(minimumDuration: 0.3).onEnded { _ in showLikers = true })
-            .accessibilityLabel("Like")
-            .accessibilityValue(post.isLiked ? "liked" : "not liked")
-            .accessibilityHint("Long-press to see who liked")
+                .simultaneousGesture(LongPressGesture(minimumDuration: 0.3).onEnded { _ in showLikers = true })
+                .accessibilityLabel("Like")
+                .accessibilityValue(post.isLiked ? "liked" : "not liked")
+                .accessibilityHint("Long-press to see who liked")
 
-            interactionPill(icon: "bubble.left", count: post.comments, isActive: false) {
-                showComments = true
-            }
-            .accessibilityLabel("View comments")
-
-            interactionPill(icon: post.isBookmarked ? "bookmark.fill" : "bookmark",
-                            label: "SAVE", isActive: post.isBookmarked) {
-                Haptics.light()
-                withAnimation { post.isBookmarked.toggle() }
-                onPostChanged?(post)
-                Task { try? await APIClient.shared.toggleBookmark(postId: post.id) }
-            }
-            .accessibilityLabel("Bookmark")
-            .accessibilityValue(post.isBookmarked ? "bookmarked" : "not bookmarked")
-
-            ShareLink(
-                item: URL(string: "https://byteai.dev/post/\(post.id)")!,
-                subject: Text(post.title),
-                message: Text(String(post.body.prefix(140)))
-            ) {
-                HStack(spacing: 6) {
-                    Image(systemName: "square.and.arrow.up").font(.system(size: 13))
-                    Text("SHARE").font(.byteMono(11)).tracking(0.5)
+                interactionPill(icon: "bubble.left", count: post.comments, isActive: false) {
+                    showComments = true
                 }
-                .foregroundColor(.byteText1)
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(IdentityColor.blue.bgFaint)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .simultaneousGesture(TapGesture().onEnded {
-                toasts.show("Link copied to clipboard", kind: .success)
-                UIPasteboard.general.string = "https://byteai.dev/post/\(post.id)"
-            })
-            .accessibilityLabel("Share")
+                .accessibilityLabel("View comments")
 
-            interactionPill(icon: "square.stack.3d.up", label: "SIMILAR", isActive: false) {
-                showSimilar = true
-            }
-            .accessibilityLabel("Show similar bytes")
+                interactionPill(icon: post.isBookmarked ? "bookmark.fill" : "bookmark",
+                                label: "SAVE", isActive: post.isBookmarked) {
+                    Haptics.light()
+                    withAnimation { post.isBookmarked.toggle() }
+                    onPostChanged?(post)
+                    Task { try? await APIClient.shared.toggleBookmark(postId: post.id) }
+                }
+                .accessibilityLabel("Bookmark")
+                .accessibilityValue(post.isBookmarked ? "bookmarked" : "not bookmarked")
 
-            Spacer()
+                ShareLink(
+                    item: URL(string: "https://byteai.dev/post/\(post.id)")!,
+                    subject: Text(post.title),
+                    message: Text(String(post.body.prefix(140)))
+                ) {
+                    pillContent(icon: "square.and.arrow.up", label: "SHARE", isActive: false)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Share")
+
+                interactionPill(icon: "square.stack.3d.up", label: "SIMILAR", isActive: false) {
+                    showSimilar = true
+                }
+                .accessibilityLabel("Show similar bytes")
+            }
         }
+    }
+
+    /// Shared label content for pill-style action buttons — used by both Button and ShareLink wrappers
+    /// so both get identical single-layer styling with no double-border.
+    private func pillContent(icon: String, count: Int? = nil, label: String? = nil, isActive: Bool) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon).font(.system(size: 13))
+            if let count, count > 0 { Text("\(count)").font(.byteMono(11)).tracking(0.5).lineLimit(1) }
+            if let label { Text(label).font(.byteMono(11)).tracking(0.5).lineLimit(1) }
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .foregroundColor(isActive ? .byteAccent : .byteText1)
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(isActive ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isActive ? .byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func interactionPill(icon: String, count: Int? = nil, label: String? = nil,
                                  isActive: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: icon).font(.system(size: 13))
-                if let count, count > 0 { Text("\(count)").font(.byteMono(11)).tracking(0.5) }
-                if let label { Text(label).font(.byteMono(11)).tracking(0.5) }
-            }
-            .foregroundColor(isActive ? .byteAccent : .byteText1)
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(isActive ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isActive ? .byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            pillContent(icon: icon, count: count, label: label, isActive: isActive)
         }
         .buttonStyle(.plain)
         .frame(minHeight: 44)
@@ -380,8 +376,29 @@ struct SimilarBytesView: View {
                                 .padding(.top, 40)
                                 .frame(maxWidth: .infinity)
                         }
-                    } else if let error {
-                        EmptyStateView(icon: "exclamationmark.triangle", title: "Couldn't load", message: error)
+                    } else if error != nil {
+                        VStack(spacing: 16) {
+                            EmptyStateView(
+                                icon: "exclamationmark.triangle",
+                                title: "COULDN'T LOAD",
+                                message: "Try again in a moment."
+                            )
+                            Button {
+                                Task { await load() }
+                            } label: {
+                                Text("RETRY")
+                                    .font(.byteMono(11, weight: .bold))
+                                    .tracking(0.7)
+                                    .foregroundColor(.byteAccent)
+                                    .padding(.horizontal, 20).padding(.vertical, 8)
+                                    .background(IdentityColor.blue.bgFaint)
+                                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 20)
                     } else if results.isEmpty {
                         EmptyStateView(
                             icon: "square.stack.3d.up.slash",

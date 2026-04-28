@@ -85,7 +85,7 @@ struct NotificationsView: View {
 
 // MARK: - Notification Row
 
-private struct NotificationRow: View {
+struct NotificationRow: View {
     let notification: AppNotification
     let onTap: () -> Void
 

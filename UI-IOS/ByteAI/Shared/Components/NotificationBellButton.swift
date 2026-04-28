@@ -20,11 +20,19 @@ struct NotificationBellButton: View {
                     .foregroundColor(.byteAccent)
 
                 if unreadCount > 0 {
-                    Circle()
-                        .fill(Color.byteAccent)
-                        .frame(width: 7, height: 7)
-                        .overlay(Circle().stroke(Color.byteBackground, lineWidth: 1.5))
-                        .offset(x: 11, y: -11)
+                    ZStack {
+                        Capsule()
+                            .fill(Color.byteAccent)
+                            .frame(
+                                width: unreadCount > 9 ? 20 : 16,
+                                height: 16
+                            )
+                            .overlay(Capsule().stroke(Color.byteBackground, lineWidth: 1.5))
+                        Text(unreadCount > 9 ? "9+" : "\(unreadCount)")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white)
+                    }
+                    .offset(x: unreadCount > 9 ? 13 : 10, y: -11)
                 }
             }
             .padding(4)

@@ -409,7 +409,6 @@ actor APIClient {
     }
 
     func createInterview(
-        title: String,
         company: String?,
         role: String?,
         location: String?,
@@ -417,11 +416,8 @@ actor APIClient {
         questions: [InterviewQuestion],
         isAnonymous: Bool
     ) async throws -> String {
-        // Web parity: POST /api/interviews/with-questions (the with-questions variant accepts
-        // location + isAnonymous; the bare /api/interviews endpoint does not).
         struct Q: Encodable { let question: String; let answer: String }
         struct B: Encodable {
-            let title: String
             let company: String?
             let role: String?
             let location: String?
@@ -431,7 +427,7 @@ actor APIClient {
         }
         struct R: Decodable { let id: String }
         let r: R = try await fetch("/api/interviews/with-questions", method: "POST", body: B(
-            title: title, company: company, role: role, location: location,
+            company: company, role: role, location: location,
             difficulty: difficulty,
             questions: questions.map { Q(question: $0.question, answer: $0.answer) },
             isAnonymous: isAnonymous
@@ -734,11 +730,36 @@ actor APIClient {
 enum APIError: LocalizedError {
     case http(Int, String)
     case unauthorized
-    var errorDescription: String? {
-        switch self {
-        case .http(let code, let msg): return "HTTP \(code): \(msg)"
-        case .unauthorized: return "Session expired"
+
+    var errorDescription: String? { APIError.userMessage(from: self) }
+
+    static func userMessage(from error: Error) -> String {
+        if let api = error as? APIError {
+            switch api {
+            case .unauthorized:
+                return "Session expired — please sign in again"
+            case .http(422, let msg) where !msg.isEmpty && msg != "Stream request failed.":
+                return msg
+            case .http(400, _): return "Bad request — check your input"
+            case .http(401, _): return "Session expired — please sign in again"
+            case .http(403, _): return "You don't have permission to do that"
+            case .http(404, _): return "That content no longer exists"
+            case .http(409, _): return "Conflict — someone else made a change"
+            case .http(429, _): return "Too many requests — slow down a moment"
+            case .http(let code, _) where code >= 500:
+                return "Server error — please try again"
+            case .http(_, let msg): return msg.isEmpty ? "Something went wrong" : msg
+            }
         }
+        if let url = error as? URLError {
+            switch url.code {
+            case .timedOut:              return "Request timed out — check your connection"
+            case .notConnectedToInternet: return "No internet connection"
+            case .networkConnectionLost: return "Connection lost — check your network"
+            default:                     return "Network error — check your connection"
+            }
+        }
+        return error.localizedDescription
     }
 }
 

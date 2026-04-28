@@ -81,6 +81,7 @@ struct MainTabView: View {
     @EnvironmentObject private var auth: AuthManager
     @EnvironmentObject private var router: DeepLinkRouter
     @EnvironmentObject private var chat: ChatService
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     enum Tab: Int, CaseIterable {
         case feed, interviews, compose, search, profile
@@ -110,8 +111,10 @@ struct MainTabView: View {
                 .tag(Tab.profile)
                 .badge(notifBadge.unreadCount > 0 ? notifBadge.unreadCount : 0)
         }
+        .id(themeManager.current.rawValue)
         .tint(.byteAccent)
         .onAppear { applyTabBarAppearance() }
+        .onChange(of: themeManager.current) { _, _ in applyTabBarAppearance() }
         .onChange(of: selectedTab) { oldValue, newValue in
             if newValue == .compose {
                 selectedTab = previousTab
@@ -146,13 +149,25 @@ struct MainTabView: View {
     }
 
     private func applyTabBarAppearance() {
-        let appearance = UITabBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(Color.byteCard)
-        appearance.shadowColor = UIColor(Color.byteBorderMedium)
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
+        let tab = UITabBarAppearance()
+        tab.configureWithOpaqueBackground()
+        tab.backgroundColor = UIColor(Color.byteCard)
+        tab.shadowColor = UIColor(Color.byteBorderMedium)
+        UITabBar.appearance().standardAppearance = tab
+        UITabBar.appearance().scrollEdgeAppearance = tab
         UITabBar.appearance().unselectedItemTintColor = UIColor(Color.byteText2)
+
+        let nav = UINavigationBarAppearance()
+        nav.configureWithOpaqueBackground()
+        nav.backgroundColor = UIColor(Color.byteBackground)
+        nav.shadowColor = UIColor(Color.byteBorderMedium)
+        nav.titleTextAttributes = [
+            .foregroundColor: UIColor(Color.byteText1),
+            .font: UIFont.systemFont(ofSize: 16, weight: .semibold)
+        ]
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
+        UINavigationBar.appearance().compactAppearance = nav
     }
 }
 

@@ -1,39 +1,39 @@
 import SwiftUI
 
 // MARK: - ByteAI Design Tokens
-// Matches CSS variables in UI/app/globals.css exactly
+// All tokens resolve from ThemeManager.shared so they update when the theme changes.
 
 extension Color {
     // Backgrounds
-    static let byteBackground     = Color(hex: "#05050e") // --bg
-    static let byteCard           = Color(hex: "#08081a") // --bg-card
-    static let byteElement        = Color(hex: "#0d0d22") // --bg-el
+    static var byteBackground:   Color { ThemeManager.shared.tokens.background }
+    static var byteCard:         Color { ThemeManager.shared.tokens.card }
+    static var byteElement:      Color { ThemeManager.shared.tokens.element }
 
     // Borders
-    static let byteBorder         = Color(hex: "#141430") // --border
-    static let byteBorderMedium   = Color(hex: "#1c1c42") // --border-m
-    static let byteBorderHigh     = Color(hex: "#28286a") // --border-h
+    static var byteBorder:       Color { ThemeManager.shared.tokens.border }
+    static var byteBorderMedium: Color { ThemeManager.shared.tokens.borderMedium }
+    static var byteBorderHigh:   Color { ThemeManager.shared.tokens.borderHigh }
 
     // Text
-    static let byteText1          = Color(hex: "#f0f0ff") // --t1 primary
-    static let byteText2          = Color(hex: "#7878aa") // --t2 secondary/muted
-    static let byteText3          = Color(hex: "#38385a") // --t3 tertiary
+    static var byteText1:        Color { ThemeManager.shared.tokens.text1 }
+    static var byteText2:        Color { ThemeManager.shared.tokens.text2 }
+    static var byteText3:        Color { ThemeManager.shared.tokens.text3 }
 
-    // Accent - Blue (primary)
-    static let byteAccent         = Color(hex: "#3b82f6") // --accent
-    static let byteAccentDim      = Color(hex: "#3b82f6").opacity(0.12) // --accent-d
-    static let byteAccentGlow     = Color(hex: "#3b82f6").opacity(0.35) // --accent-glow
+    // Accent — blue (primary)
+    static var byteAccent:       Color { ThemeManager.shared.tokens.accent }
+    static var byteAccentDim:    Color { ThemeManager.shared.tokens.accent.opacity(0.12) }
+    static var byteAccentGlow:   Color { ThemeManager.shared.tokens.accent.opacity(0.35) }
 
-    // Semantic Colors
-    static let byteCyan           = Color(hex: "#22d3ee") // --cyan
-    static let byteCyanDim        = Color(hex: "#22d3ee").opacity(0.1) // --cyan-d
-    static let byteGreen          = Color(hex: "#10d9a0") // --green
-    static let byteGreenDim       = Color(hex: "#10d9a0").opacity(0.1) // --green-d
-    static let bytePurple         = Color(hex: "#a78bfa") // --purple
-    static let bytePurpleDim      = Color(hex: "#a78bfa").opacity(0.1) // --purple-d
-    static let byteOrange         = Color(hex: "#fb923c") // --orange
-    static let byteRed            = Color(hex: "#f43f5e") // --red
-    static let byteCodeBg         = Color(hex: "#030310") // --code-bg
+    // Semantic colors
+    static var byteCyan:         Color { ThemeManager.shared.tokens.cyan }
+    static var byteCyanDim:      Color { ThemeManager.shared.tokens.cyan.opacity(0.1) }
+    static var byteGreen:        Color { ThemeManager.shared.tokens.green }
+    static var byteGreenDim:     Color { ThemeManager.shared.tokens.green.opacity(0.1) }
+    static var bytePurple:       Color { ThemeManager.shared.tokens.purple }
+    static var bytePurpleDim:    Color { ThemeManager.shared.tokens.purple.opacity(0.1) }
+    static var byteOrange:       Color { ThemeManager.shared.tokens.orange }
+    static var byteRed:          Color { ThemeManager.shared.tokens.red }
+    static var byteCodeBg:       Color { ThemeManager.shared.tokens.codeBg }
 }
 
 extension Color {

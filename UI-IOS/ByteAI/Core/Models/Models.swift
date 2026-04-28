@@ -18,7 +18,7 @@ struct User: Identifiable, Codable, Hashable {
     let bytes: Int
     let reactions: Int
     let streak: Int
-    let techStack: [String]
+    var techStack: [String]
     let feedPreferences: [String]
     let links: [SocialLink]
     let badges: [Badge]

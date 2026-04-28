@@ -40,6 +40,12 @@ final class ToastCenter: ObservableObject {
     private var dismissTask: Task<Void, Never>?
     private init() {}
 
+    func show(error: Error, context: String? = nil, duration: TimeInterval = 3.5) {
+        let reason = APIError.userMessage(from: error)
+        let message = context.map { "\($0) — \(reason)" } ?? reason
+        show(message, kind: .error, duration: duration)
+    }
+
     func show(_ message: String, kind: Toast.Kind = .info, duration: TimeInterval = 3.0) {
         let toast = Toast(message: message, kind: kind)
         current = toast

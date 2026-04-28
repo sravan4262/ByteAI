@@ -26,9 +26,12 @@ enum ComposeType: String, CaseIterable {
 }
 
 struct ComposeView: View {
-    @StateObject private var vm = ComposeViewModel()
+    @StateObject private var vm: ComposeViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var showDrafts = false
+
+    init(initialType: ComposeType = .byte) {
+        _vm = StateObject(wrappedValue: ComposeViewModel(initialType: initialType))
+    }
 
     var body: some View {
         NavigationStack {
@@ -58,6 +61,32 @@ struct ComposeView: View {
                             }
                         }
                         .padding(.top, 4)
+
+                        // Inline draft save — bytes only; interviews do not support drafts.
+                        if vm.composeType == .byte {
+                            Button {
+                                Task { await vm.saveDraft() }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "square.and.arrow.down")
+                                        .font(.system(size: 13))
+                                    Text(vm.draftId == nil ? "SAVE AS DRAFT" : "UPDATE DRAFT")
+                                        .font(.byteMono(11, weight: .semibold))
+                                        .tracking(0.6)
+                                }
+                                .foregroundColor(.byteText2)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(vm.composeType.identity.bgFaint)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(vm.composeType.identity.borderFaint, lineWidth: 1)
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(vm.isPosting)
+                        }
                     }
                     .padding(16)
                 }
@@ -73,26 +102,6 @@ struct ComposeView: View {
                         .tracking(0.5)
                         .foregroundColor(.byteText2)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button {
-                            Task { await vm.saveDraft() }
-                        } label: {
-                            Label(vm.draftId == nil ? "Save as Draft" : "Update Draft", systemImage: "square.and.arrow.down")
-                        }
-                        Button { showDrafts = true } label: {
-                            Label("Open Drafts…", systemImage: "tray.full")
-                        }
-                    } label: {
-                        Image(systemName: "tray.full")
-                            .font(.system(size: 15))
-                            .foregroundColor(.byteAccent)
-                    }
-                    .accessibilityLabel("Drafts")
-                }
-            }
-            .sheet(isPresented: $showDrafts) {
-                DraftsListView { draft in vm.load(from: draft) }
             }
         }
     }
@@ -274,10 +283,6 @@ private struct InterviewComposer: View {
         VStack(alignment: .leading, spacing: 22) {
             // Anonymous toggle (web parity with compose-screen.tsx)
             AnonymousToggle(isAnonymous: $vm.isAnonymous)
-
-            ComposeField(label: "INTERVIEW TITLE", required: true, identity: .purple) {
-                ComposeInput(text: $vm.title, placeholder: "e.g. Meta Frontend — L5", identity: .purple)
-            }
 
             HStack(alignment: .top, spacing: 12) {
                 ComposeField(label: "COMPANY", required: true, identity: .purple) {
@@ -497,29 +502,70 @@ private struct ComposeTextEditor: View {
 
 private struct LanguagePicker: View {
     @Binding var language: String
-    private let langs = ["typescript", "javascript", "python", "go", "rust", "sql", "swift", "csharp", "java"]
+
+    // Mirrors LANGUAGES in UI/components/ui/code-editor.tsx exactly.
+    private static let options: [SearchableDropdown.DropdownOption] = [
+        // Web frontend
+        .init(value: "JS",     label: "JavaScript"),
+        .init(value: "TS",     label: "TypeScript"),
+        .init(value: "JSX",    label: "React JSX"),
+        .init(value: "TSX",    label: "React TSX"),
+        .init(value: "HTML",   label: "HTML"),
+        .init(value: "CSS",    label: "CSS"),
+        .init(value: "SCSS",   label: "SCSS"),
+        // Backend
+        .init(value: "PY",     label: "Python"),
+        .init(value: "JAVA",   label: "Java"),
+        .init(value: "CS",     label: "C#"),
+        .init(value: "GO",     label: "Go"),
+        .init(value: "RS",     label: "Rust"),
+        .init(value: "RB",     label: "Ruby"),
+        .init(value: "PHP",    label: "PHP"),
+        .init(value: "SWIFT",  label: "Swift"),
+        .init(value: "KT",     label: "Kotlin"),
+        .init(value: "SCALA",  label: "Scala"),
+        .init(value: "ELIXIR", label: "Elixir"),
+        // Systems
+        .init(value: "C",      label: "C"),
+        .init(value: "CPP",    label: "C++"),
+        .init(value: "RS_ASM", label: "Assembly"),
+        // Mobile
+        .init(value: "DART",   label: "Dart"),
+        .init(value: "OBJC",   label: "Objective-C"),
+        // Data / ML
+        .init(value: "R",      label: "R"),
+        .init(value: "SQL",    label: "SQL"),
+        .init(value: "MATLAB", label: "MATLAB"),
+        // Config / Markup
+        .init(value: "JSON",   label: "JSON"),
+        .init(value: "YAML",   label: "YAML"),
+        .init(value: "TOML",   label: "TOML"),
+        .init(value: "XML",    label: "XML"),
+        .init(value: "MD",     label: "Markdown"),
+        .init(value: "GQL",    label: "GraphQL"),
+        // Scripting / DevOps
+        .init(value: "BASH",   label: "Bash"),
+        .init(value: "PS1",    label: "PowerShell"),
+        .init(value: "LUA",    label: "Lua"),
+        .init(value: "DOCKER", label: "Dockerfile"),
+    ]
+
+    private var optBinding: Binding<String?> {
+        Binding(
+            get: { language.isEmpty ? nil : language },
+            set: { language = $0 ?? "TS" }
+        )
+    }
 
     var body: some View {
-        Menu {
-            ForEach(langs, id: \.self) { lang in
-                Button(lang.uppercased()) { language = lang }
-            }
-        } label: {
-            HStack(spacing: 8) {
-                Text(language.uppercased())
-                    .font(.byteMono(10, weight: .bold))
-                    .foregroundColor(.byteAccent)
-                    .tracking(0.7)
-                Spacer()
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 9))
-                    .foregroundColor(.byteText2)
-            }
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(IdentityColor.blue.bgFaint)
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
+        SearchableDropdown(
+            value: optBinding,
+            options: Self.options,
+            placeholder: "LANGUAGE",
+            allLabel: "SELECT LANGUAGE",
+            showAllOption: false,
+            identity: .blue
+        )
     }
 }
 
@@ -650,11 +696,11 @@ private struct TagSelector: View {
 
 @MainActor
 final class ComposeViewModel: ObservableObject {
-    @Published var composeType: ComposeType = .byte
+    @Published var composeType: ComposeType
     @Published var title = ""
     @Published var content = ""
     @Published var showCode = false
-    @Published var codeLanguage = "typescript"
+    @Published var codeLanguage = "TS"
     @Published var codeContent = ""
     @Published var selectedTechStacks: [String] = []
     @Published var techStackOptions: [SearchableDropdown.DropdownOption] = []
@@ -677,7 +723,8 @@ final class ComposeViewModel: ObservableObject {
     @Published var reachEstimate: Int = 1200
     private var reachTask: Task<Void, Never>?
 
-    init() {
+    init(initialType: ComposeType = .byte) {
+        composeType = initialType
         Task { await loadOptions() }
     }
 
@@ -719,8 +766,7 @@ final class ComposeViewModel: ObservableObject {
                 && !content.trimmingCharacters(in: .whitespaces).isEmpty
                 && !selectedTechStacks.isEmpty
         case .interview:
-            return !title.trimmingCharacters(in: .whitespaces).isEmpty
-                && !company.trimmingCharacters(in: .whitespaces).isEmpty
+            return !company.trimmingCharacters(in: .whitespaces).isEmpty
                 && !interviewRole.trimmingCharacters(in: .whitespaces).isEmpty
                 && !location.trimmingCharacters(in: .whitespaces).isEmpty
                 && validQuestions.count > 0
@@ -735,13 +781,12 @@ final class ComposeViewModel: ObservableObject {
     }
 
     func post() async {
-        // Sequential validation with per-field toasts (web parity)
-        let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
-        guard !trimmedTitle.isEmpty else {
-            ToastCenter.shared.show("Title is required", kind: .warning)
-            return
-        }
         if composeType == .byte {
+            let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
+            guard !trimmedTitle.isEmpty else {
+                ToastCenter.shared.show("Title is required", kind: .warning)
+                return
+            }
             let trimmedContent = content.trimmingCharacters(in: .whitespaces)
             guard !trimmedContent.isEmpty else {
                 ToastCenter.shared.show("Content is required", kind: .warning)
@@ -797,7 +842,6 @@ final class ComposeViewModel: ObservableObject {
                     )
                 }
                 _ = try await APIClient.shared.createInterview(
-                    title: title,
                     company: company.isEmpty ? nil : company,
                     role: interviewRole.isEmpty ? nil : interviewRole,
                     location: location.isEmpty ? nil : location,

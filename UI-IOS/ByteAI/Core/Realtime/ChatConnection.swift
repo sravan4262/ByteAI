@@ -13,6 +13,9 @@ final class ChatConnection: ObservableObject {
     private let url: URL
     private let tokenProvider: () async -> String?
 
+    /// Latest JWT fetched from the async tokenProvider. Refreshed at start() and on each reconnect.
+    private(set) var cachedToken: String = ""
+
     private var receiveMessageHandler: ((MessagePayload) -> Void)?
     private var messageSentHandler:    ((MessagePayload) -> Void)?
     private var conversationReadHandler: ((String) -> Void)?
@@ -26,11 +29,17 @@ final class ChatConnection: ObservableObject {
 
     func start() async {
         guard hub == nil else { return }
-        let token = (await tokenProvider()) ?? ""
+
+        // Keep a strong reference to self so the token provider closure can call
+        // tokenProvider() fresh on each reconnect — avoids using a stale JWT after
+        // token rotation. The closure must be synchronous per the SDK contract, so
+        // we cache the latest token in `cachedToken` and refresh it whenever the
+        // connection (re)opens via the delegate.
+        await refreshCachedToken()
 
         let connection = HubConnectionBuilder(url: url)
-            .withHttpConnectionOptions { options in
-                options.accessTokenProvider = { token }
+            .withHttpConnectionOptions { [weak self] options in
+                options.accessTokenProvider = { self?.cachedToken ?? "" }
             }
             .withAutoReconnect()
             .withLogging(minLogLevel: .warning)
@@ -62,10 +71,15 @@ final class ChatConnection: ObservableObject {
         isConnected = false
     }
 
-    /// Stop and start. Use when the auth token rotates.
+    /// Stop and start with a fresh token. Called by ChatService when auth state changes.
     func reconnect() async {
         await stop()
         await start()
+    }
+
+    /// Fetch the latest JWT and cache it synchronously accessible by the SDK's token provider closure.
+    func refreshCachedToken() async {
+        cachedToken = (await tokenProvider()) ?? ""
     }
 
     // MARK: - Hub method invocations
@@ -124,7 +138,12 @@ private final class ConnectionDelegate: HubConnectionDelegate {
         Task { @MainActor in owner?.setConnected(false) }
     }
     func connectionDidReconnect() {
-        Task { @MainActor in owner?.setConnected(true) }
+        Task { @MainActor in
+            // Refresh the cached token before the reconnected session makes any calls,
+            // so the SDK's synchronous token provider closure returns a fresh JWT.
+            await owner?.refreshCachedToken()
+            owner?.setConnected(true)
+        }
     }
 }
 
