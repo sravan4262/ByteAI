@@ -67,7 +67,6 @@ jobs:
             -project ByteAI.xcodeproj \
             -scheme ByteAI \
             -configuration Release \
-            -destination 'generic/platform=iOS' \
             -sdk iphoneos \
             -archivePath $RUNNER_TEMP/ByteAI.xcarchive \
             -xcconfig Config/Secrets.xcconfig \
