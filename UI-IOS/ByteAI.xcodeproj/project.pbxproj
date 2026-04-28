@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		5F1E00C02F9E6F6600210D6B /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 5F1E00BF2F9E6F6600210D6B /* GoogleSignIn */; };
 		5F1E00C22F9E6F6600210D6B /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 5F1E00C12F9E6F6600210D6B /* GoogleSignInSwift */; };
+		5F1E00C62FA175A800210D6B /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1E00C52FA175A800210D6B /* ThemeManager.swift */; };
 		5F3946242F8B087200F4A2D8 /* ClerkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5F3946232F8B087200F4A2D8 /* ClerkKit */; };
 		5F3946262F8B087200F4A2D8 /* ClerkKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5F3946252F8B087200F4A2D8 /* ClerkKitUI */; };
 		5F93A1D12F9D04AD009E36CA /* SignalRClient in Frameworks */ = {isa = PBXBuildFile; productRef = 5F93A1D02F9D04AD009E36CA /* SignalRClient */; };
@@ -75,6 +76,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		5F1E00C52FA175A800210D6B /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		5F93A2B52F9D1119009E36CA /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		5F93A2B62F9D1119009E36CA /* ByteAIApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByteAIApp.swift; sourceTree = "<group>"; };
 		5F93A2B72F9D1119009E36CA /* DeepLinkRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkRouter.swift; sourceTree = "<group>"; };
@@ -177,6 +179,7 @@
 		5F93A2BE2F9D1119009E36CA /* Design */ = {
 			isa = PBXGroup;
 			children = (
+				5F1E00C52FA175A800210D6B /* ThemeManager.swift */,
 				5F93A3362F9D27AB009E36CA /* Tints.swift */,
 				5F93A2BC2F9D1119009E36CA /* Colors.swift */,
 				5F93A2BD2F9D1119009E36CA /* Typography.swift */,
@@ -517,6 +520,7 @@
 				5F93A30F2F9D1119009E36CA /* BookmarksView.swift in Sources */,
 				5F93A3102F9D1119009E36CA /* InterviewDetailView.swift in Sources */,
 				5F93A3112F9D1119009E36CA /* ByteTextField.swift in Sources */,
+				5F1E00C62FA175A800210D6B /* ThemeManager.swift in Sources */,
 				5F93A3122F9D1119009E36CA /* AvatarView.swift in Sources */,
 				5F93A3132F9D1119009E36CA /* ByteAIApp.swift in Sources */,
 				5F93A3142F9D1119009E36CA /* MessageBubble.swift in Sources */,
