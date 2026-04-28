@@ -68,6 +68,7 @@ jobs:
             -scheme ByteAI \
             -configuration Release \
             -destination 'generic/platform=iOS' \
+            -sdk iphoneos \
             -archivePath $RUNNER_TEMP/ByteAI.xcarchive \
             -xcconfig Config/Secrets.xcconfig \
             CODE_SIGN_STYLE=Manual \
