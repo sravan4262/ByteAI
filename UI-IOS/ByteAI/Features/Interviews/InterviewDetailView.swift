@@ -453,8 +453,8 @@ private struct QuestionCommentRow: View {
     }
 
     private var initial: String {
-        let source = comment.authorDisplayName?.first ?? comment.authorUsername?.first ?? "U"
-        return String(source).uppercased()
+        let name = comment.authorDisplayName ?? comment.authorUsername ?? ""
+        return String(name.first ?? "U").uppercased()
     }
 }
 
@@ -495,8 +495,8 @@ private struct InterviewCommentRow: View {
     }
 
     private var initial: String {
-        let source = comment.authorDisplayName?.first ?? comment.authorUsername?.first ?? "U"
-        return String(source).uppercased()
+        let name = comment.authorDisplayName ?? comment.authorUsername ?? ""
+        return String(name.first ?? "U").uppercased()
     }
 
     var body: some View {
