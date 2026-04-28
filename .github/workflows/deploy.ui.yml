@@ -41,6 +41,10 @@ jobs:
     needs: check
 
     steps:
+      # ── Clean root-owned .next artifacts from prior SWA build ───────────────
+      - name: Clean .next artifacts
+        run: sudo rm -rf UI/.next || true
+
       # ── Resolve deploy SHA ───────────────────────────────────────────────────
       - name: Resolve deploy SHA
         id: sha
