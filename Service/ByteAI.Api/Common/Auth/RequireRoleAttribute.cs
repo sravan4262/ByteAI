@@ -27,15 +27,25 @@ public sealed class RequireRoleAttribute : TypeFilterAttribute
                 return;
             }
 
-            var hasRole = await db.Users
-                .AsNoTracking()
-                .Where(u => u.SupabaseUserId == supabaseUserId)
-                .SelectMany(u => u.UserRoles)
-                .AnyAsync(ur => ur.RoleType.Name.ToLower() == role.ToLower(), context.HttpContext.RequestAborted);
-
-            if (!hasRole)
+            try
             {
-                context.Result = new ForbidResult();
+                var hasRole = await db.Users
+                    .AsNoTracking()
+                    .Where(u => u.SupabaseUserId == supabaseUserId)
+                    .SelectMany(u => u.UserRoles)
+                    .AnyAsync(ur => ur.RoleType.Name.ToLower() == role.ToLower(), context.HttpContext.RequestAborted);
+
+                if (!hasRole)
+                {
+                    context.Result = new ForbidResult();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Client disconnected before the DB query completed — treat as a no-op.
+                // GlobalExceptionMiddleware returns 499 for cancelled requests; we just
+                // need to avoid propagating an unhandled exception that logs as 500.
+                context.Result = new StatusCodeResult(499);
             }
         }
     }
