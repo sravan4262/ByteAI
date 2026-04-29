@@ -25,15 +25,46 @@ jobs:
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
           python3 - <<'PYEOF'
-          import plistlib, os
+          import plistlib, os, sys
+
+          required = [
+              "SUPABASE_URL", "SUPABASE_ANON_KEY", "BYTEAI_API_URL",
+              "GOOGLE_IOS_CLIENT_ID", "GOOGLE_WEB_CLIENT_ID",
+          ]
+          missing = [k for k in required if not os.environ.get(k)]
+          if missing:
+              sys.exit(f"::error::Missing required secrets: {', '.join(missing)}")
+
+          ios_id = os.environ["GOOGLE_IOS_CLIENT_ID"]
+          web_id = os.environ["GOOGLE_WEB_CLIENT_ID"]
+          for name, val in (("GOOGLE_IOS_CLIENT_ID", ios_id), ("GOOGLE_WEB_CLIENT_ID", web_id)):
+              if not val.endswith(".apps.googleusercontent.com"):
+                  sys.exit(f"::error::{name} must end in .apps.googleusercontent.com (got: {val!r})")
+
           path = "UI-IOS/ByteAI/Resources/Info.plist"
           with open(path, "rb") as f:
               plist = plistlib.load(f)
+
+          # Verify the iOS client ID's reversed scheme is registered in Info.plist.
+          # GoogleSignIn crashes at runtime if it can't find a matching URL scheme.
+          reversed_scheme = ".".join(reversed(ios_id.split(".")))
+          schemes = {
+              s.lower()
+              for entry in plist.get("CFBundleURLTypes", [])
+              for s in entry.get("CFBundleURLSchemes", [])
+          }
+          if reversed_scheme.lower() not in schemes:
+              sys.exit(
+                  f"::error::Reversed iOS client ID {reversed_scheme!r} is not in "
+                  f"Info.plist CFBundleURLSchemes ({sorted(schemes)}). "
+                  "Update the hardcoded URL scheme to match GOOGLE_IOS_CLIENT_ID."
+              )
+
           plist["SupabaseURL"]     = os.environ["SUPABASE_URL"]
           plist["SupabaseAnonKey"] = os.environ["SUPABASE_ANON_KEY"]
           plist["ByteAIApiURL"]    = os.environ["BYTEAI_API_URL"]
-          plist["GIDClientID"]     = os.environ["GOOGLE_IOS_CLIENT_ID"]
-          plist["GIDServerClientID"] = os.environ["GOOGLE_WEB_CLIENT_ID"]
+          plist["GIDClientID"]     = ios_id
+          plist["GIDServerClientID"] = web_id
           with open(path, "wb") as f:
               plistlib.dump(plist, f)
           PYEOF

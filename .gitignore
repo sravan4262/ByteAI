@@ -114,3 +114,6 @@ infra/terraform/crash.log
 
 # iOS CI — generated at build time from GitHub Secrets, never committed
 UI-IOS/Config/Secrets.xcconfig
+
+# iOS local release build test — contains real secrets, never commit
+UI-IOS/test-release-build.sh
