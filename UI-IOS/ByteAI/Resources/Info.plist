@@ -57,8 +57,10 @@
 	<key>GIDServerClientID</key>
 	<string>$(GOOGLE_WEB_CLIENT_ID)</string>
 	<!-- URL schemes:
-	     - "byteai"             — GitHub OAuth callback (still goes through Supabase)
-	     - reversed iOS client  — required by GoogleSignIn SDK fallback path -->
+	     - "byteai" — GitHub OAuth callback (still goes through Supabase)
+	     - The reversed Google iOS client ID scheme is injected at build time by
+	       the TestFlight workflow from the GOOGLE_IOS_CLIENT_ID secret, so it
+	       can never drift from GIDClientID. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -68,14 +70,6 @@
 			</array>
 			<key>CFBundleURLName</key>
 			<string>com.byteai.auth</string>
-		</dict>
-		<dict>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.googleusercontent.apps.604471779766-m33f269r5ha8lm5pk7b3di50rnnuafhg</string>
-			</array>
-			<key>CFBundleURLName</key>
-			<string>com.byteai.googlesignin</string>
 		</dict>
 	</array>
 	<!-- Background modes for push notifications -->

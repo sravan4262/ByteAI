@@ -45,26 +45,28 @@ jobs:
           with open(path, "rb") as f:
               plist = plistlib.load(f)
 
-          # Verify the iOS client ID's reversed scheme is registered in Info.plist.
-          # GoogleSignIn crashes at runtime if it can't find a matching URL scheme.
-          reversed_scheme = ".".join(reversed(ios_id.split(".")))
-          schemes = {
-              s.lower()
-              for entry in plist.get("CFBundleURLTypes", [])
-              for s in entry.get("CFBundleURLSchemes", [])
-          }
-          if reversed_scheme.lower() not in schemes:
-              sys.exit(
-                  f"::error::Reversed iOS client ID {reversed_scheme!r} is not in "
-                  f"Info.plist CFBundleURLSchemes ({sorted(schemes)}). "
-                  "Update the hardcoded URL scheme to match GOOGLE_IOS_CLIENT_ID."
-              )
-
           plist["SupabaseURL"]     = os.environ["SUPABASE_URL"]
           plist["SupabaseAnonKey"] = os.environ["SUPABASE_ANON_KEY"]
           plist["ByteAIApiURL"]    = os.environ["BYTEAI_API_URL"]
           plist["GIDClientID"]     = ios_id
           plist["GIDServerClientID"] = web_id
+
+          # Inject the reversed iOS client ID as a CFBundleURLSchemes entry.
+          # GoogleSignIn matches its clientID's reversed form against this list at
+          # runtime — deriving it from the same secret as GIDClientID guarantees
+          # they can't drift apart.
+          reversed_scheme = ".".join(reversed(ios_id.split(".")))
+          url_types = plist.setdefault("CFBundleURLTypes", [])
+          url_types = [
+              e for e in url_types
+              if e.get("CFBundleURLName") != "com.byteai.googlesignin"
+          ]
+          url_types.append({
+              "CFBundleURLName": "com.byteai.googlesignin",
+              "CFBundleURLSchemes": [reversed_scheme],
+          })
+          plist["CFBundleURLTypes"] = url_types
+
           with open(path, "wb") as f:
               plistlib.dump(plist, f)
           PYEOF
