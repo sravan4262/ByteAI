@@ -16,16 +16,27 @@ jobs:
         with:
           xcode-version: 'latest-stable'
 
-      - name: Generate Secrets.xcconfig
+      - name: Inject secrets into Info.plist
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          BYTEAI_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
-          mkdir -p UI-IOS/Config
-          cat > UI-IOS/Config/Secrets.xcconfig <<EOF
-          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          BYTEAI_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-          GOOGLE_IOS_CLIENT_ID=${{ secrets.GOOGLE_IOS_CLIENT_ID }}
-          GOOGLE_WEB_CLIENT_ID=${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-          EOF
+          python3 - <<'PYEOF'
+          import plistlib, os
+          path = "UI-IOS/ByteAI/Resources/Info.plist"
+          with open(path, "rb") as f:
+              plist = plistlib.load(f)
+          plist["SupabaseURL"]     = os.environ["SUPABASE_URL"]
+          plist["SupabaseAnonKey"] = os.environ["SUPABASE_ANON_KEY"]
+          plist["ByteAIApiURL"]    = os.environ["BYTEAI_API_URL"]
+          plist["GIDClientID"]     = os.environ["GOOGLE_IOS_CLIENT_ID"]
+          plist["GIDServerClientID"] = os.environ["GOOGLE_WEB_CLIENT_ID"]
+          with open(path, "wb") as f:
+              plistlib.dump(plist, f)
+          PYEOF
 
       - name: Import distribution certificate
         env:
@@ -72,7 +83,6 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath $RUNNER_TEMP/ByteAI.xcarchive \
-            -xcconfig Config/Secrets.xcconfig \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM=T6GYVDW7V2
