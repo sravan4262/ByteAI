@@ -118,15 +118,12 @@ jobs:
 
           printf '%s' "$ASC_KEY_P8" > "$ASC_KEY_PATH"
 
-          cat > "$ASC_JSON_PATH" <<EOF
-          {
-            "key_id": "${ASC_KEY_ID}",
-            "issuer_id": "${ASC_ISSUER_ID}",
-            "key_filepath": "${ASC_KEY_PATH}",
-            "duration": 1200,
-            "in_house": false
-          }
-          EOF
+          jq -n \
+            --arg key_id "$ASC_KEY_ID" \
+            --arg issuer_id "$ASC_ISSUER_ID" \
+            --rawfile key "$ASC_KEY_PATH" \
+            '{key_id: $key_id, issuer_id: $issuer_id, key: $key, duration: 1200, in_house: false}' \
+            > "$ASC_JSON_PATH"
 
           fastlane pilot upload \
             --ipa "$RUNNER_TEMP/export/ByteAI.ipa" \
