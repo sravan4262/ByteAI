@@ -14,7 +14,7 @@ jobs:
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '26'
+          xcode-version: 'latest-stable'
 
       - name: Generate Secrets.xcconfig
         run: |
@@ -43,7 +43,10 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security import $CERT_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
+
+          # Preserve existing keychains (login.keychain) alongside the new one
+          EXISTING=$(security list-keychains -d user | sed 's/[[:space:]]*"//g' | sed 's/"//g' | tr '\n' ' ')
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $EXISTING
 
       - name: Install provisioning profile
         env:
@@ -59,22 +62,20 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" \
             UI-IOS/ByteAI/Resources/Info.plist
 
-      - name: Download iOS platform
-        run: xcodebuild -downloadPlatform iOS
-
       - name: Build archive
         working-directory: UI-IOS
         run: |
+          set -o pipefail
           xcodebuild archive \
             -project ByteAI.xcodeproj \
             -scheme ByteAI \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -sdk iphoneos \
             -archivePath $RUNNER_TEMP/ByteAI.xcarchive \
             -xcconfig Config/Secrets.xcconfig \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="ByteAI AppStore" \
             DEVELOPMENT_TEAM=T6GYVDW7V2
 
       - name: Export IPA
