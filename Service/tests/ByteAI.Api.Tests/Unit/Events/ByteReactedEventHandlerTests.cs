@@ -3,6 +3,7 @@ using ByteAI.Core.Entities;
 using ByteAI.Core.Events;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Notifications;
+using ByteAI.Core.Services.Push;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ByteAI.Api.Tests.Unit.Events;
@@ -18,6 +19,7 @@ public sealed class ByteReactedEventHandlerTests : IDisposable
     private readonly ByteAI.Core.Infrastructure.Persistence.AppDbContext _db;
     private readonly Mock<IBadgeService> _badgeService = new();
     private readonly Mock<INotificationService> _notifications = new();
+    private readonly Mock<IPushDispatcher> _pushDispatcher = new();
     private readonly ByteReactedEventHandler _sut;
 
     private readonly Guid _authorId = Guid.NewGuid();
@@ -54,7 +56,7 @@ public sealed class ByteReactedEventHandlerTests : IDisposable
                       .Returns(Task.CompletedTask);
 
         _sut = new ByteReactedEventHandler(
-            _db, _badgeService.Object, _notifications.Object,
+            _db, _badgeService.Object, _notifications.Object, _pushDispatcher.Object,
             NullLogger<ByteReactedEventHandler>.Instance);
     }
 

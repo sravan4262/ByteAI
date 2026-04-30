@@ -3,6 +3,7 @@ using ByteAI.Core.Entities;
 using ByteAI.Core.Events;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Notifications;
+using ByteAI.Core.Services.Push;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ByteAI.Api.Tests.Unit.Events;
@@ -18,6 +19,7 @@ public sealed class UserFollowedEventHandlerTests : IDisposable
     private readonly ByteAI.Core.Infrastructure.Persistence.AppDbContext _db;
     private readonly Mock<INotificationService> _notifications = new();
     private readonly Mock<IBadgeService> _badgeService = new();
+    private readonly Mock<IPushDispatcher> _pushDispatcher = new();
     private readonly UserFollowedEventHandler _sut;
 
     private readonly Guid _followerId = Guid.NewGuid();
@@ -39,7 +41,7 @@ public sealed class UserFollowedEventHandlerTests : IDisposable
                      .ReturnsAsync([]);
 
         _sut = new UserFollowedEventHandler(
-            _db, _notifications.Object, _badgeService.Object,
+            _db, _notifications.Object, _badgeService.Object, _pushDispatcher.Object,
             NullLogger<UserFollowedEventHandler>.Instance);
     }
 

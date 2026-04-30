@@ -5,6 +5,7 @@ using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Comments;
 using ByteAI.Core.Services.Notifications;
+using ByteAI.Core.Services.Push;
 using MediatR;
 using ByteEntity = ByteAI.Core.Entities.Byte;
 
@@ -15,6 +16,7 @@ public sealed class CommentServiceTests : IDisposable
     private readonly ByteAI.Core.Infrastructure.Persistence.AppDbContext _db;
     private readonly Mock<IBadgeService> _badges = new();
     private readonly Mock<INotificationService> _notifications = new();
+    private readonly Mock<IPushDispatcher> _pushDispatcher = new();
     private readonly Mock<IPublisher> _publisher = new();
     private readonly CommentService _sut;
 
@@ -24,7 +26,7 @@ public sealed class CommentServiceTests : IDisposable
     public CommentServiceTests()
     {
         _db = DbContextFactory.Create();
-        _sut = new CommentService(_db, _badges.Object, _notifications.Object, _publisher.Object);
+        _sut = new CommentService(_db, _badges.Object, _notifications.Object, _pushDispatcher.Object, _publisher.Object);
 
         _badges.Setup(b => b.CheckAndAwardAsync(It.IsAny<Guid>(), It.IsAny<BadgeTrigger>(), It.IsAny<CancellationToken>()))
                .ReturnsAsync([]);

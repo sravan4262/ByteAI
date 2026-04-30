@@ -2,6 +2,7 @@ using ByteAI.Api.Tests.Helpers;
 using ByteAI.Core.Entities;
 using ByteAI.Core.Events;
 using ByteAI.Core.Services.Notifications;
+using ByteAI.Core.Services.Push;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ByteAI.Api.Tests.Unit.Events;
@@ -10,6 +11,7 @@ public sealed class UserUnfollowedEventHandlerTests : IDisposable
 {
     private readonly ByteAI.Core.Infrastructure.Persistence.AppDbContext _db;
     private readonly Mock<INotificationService> _notifications = new();
+    private readonly Mock<IPushDispatcher> _pushDispatcher = new();
     private readonly UserUnfollowedEventHandler _sut;
 
     private readonly Guid _followerId  = Guid.NewGuid();
@@ -18,7 +20,7 @@ public sealed class UserUnfollowedEventHandlerTests : IDisposable
     public UserUnfollowedEventHandlerTests()
     {
         _db = DbContextFactory.Create();
-        _sut = new UserUnfollowedEventHandler(_db, _notifications.Object, NullLogger<UserUnfollowedEventHandler>.Instance);
+        _sut = new UserUnfollowedEventHandler(_db, _notifications.Object, _pushDispatcher.Object, NullLogger<UserUnfollowedEventHandler>.Instance);
 
         _notifications.Setup(n => n.CreateAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CancellationToken>()))
                       .Returns(Task.CompletedTask);
