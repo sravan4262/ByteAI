@@ -165,6 +165,15 @@ jobs:
           echo "$API_APP revision mode: $MODE ✓"
 
       - name: Create new API revision (0% traffic, min-replicas=1)
+        env:
+          # APNs secrets — paste contents of AuthKey_<KEYID>.p8 verbatim into
+          # APNS_KEY_P8 (including BEGIN/END lines). Empty values are tolerated:
+          # ApnsOptions.IsConfigured returns false and the dispatcher no-ops.
+          APNS_KEY_P8: ${{ secrets.APNS_KEY_P8 }}
+          APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
+          APNS_TEAM_ID: ${{ secrets.APNS_TEAM_ID }}
+          APNS_BUNDLE_ID: ${{ secrets.APNS_BUNDLE_ID }}
+          APNS_ENVIRONMENT: ${{ secrets.APNS_ENVIRONMENT }}
         run: |
           az containerapp update \
             -n "$API_APP" -g "$RESOURCE_GROUP" \
@@ -178,6 +187,11 @@ jobs:
               "Supabase__Url=${{ secrets.SUPABASE_URL }}" \
               "Supabase__JwtSecret=${{ secrets.SUPABASE_JWT_SECRET }}" \
               "Supabase__ServiceRoleKey=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+              "Apns__KeyP8=${APNS_KEY_P8}" \
+              "Apns__KeyId=${APNS_KEY_ID}" \
+              "Apns__TeamId=${APNS_TEAM_ID}" \
+              "Apns__BundleId=${APNS_BUNDLE_ID:-com.byteai.app}" \
+              "Apns__Environment=${APNS_ENVIRONMENT:-production}" \
             --no-wait
           echo "Submitted revision: ${API_APP}--${SUFFIX}"
 

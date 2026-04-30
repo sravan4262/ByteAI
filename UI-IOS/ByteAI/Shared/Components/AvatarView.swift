@@ -19,13 +19,26 @@ struct AvatarView: View {
     let size: AvatarSize
     let isOnline: Bool
     let imageUrl: String?
+    /// Owning user id. When set, the view listens for `.avatarChanged`
+    /// notifications matching this id and swaps in the updated URL without a
+    /// list refresh — so post cards, comment rows, mini profiles all repaint
+    /// the moment the user uploads a new photo.
+    let ownerUserId: String?
 
-    init(_ initials: String, variant: AvatarVariant = .cyan, size: AvatarSize = .md, isOnline: Bool = false, imageUrl: String? = nil) {
+    @State private var liveUrl: String?
+
+    init(_ initials: String,
+         variant: AvatarVariant = .cyan,
+         size: AvatarSize = .md,
+         isOnline: Bool = false,
+         imageUrl: String? = nil,
+         ownerUserId: String? = nil) {
         self.initials = initials
         self.variant = variant
         self.size = size
         self.isOnline = isOnline
         self.imageUrl = imageUrl
+        self.ownerUserId = ownerUserId
     }
 
     // Avatar source can take three shapes:
@@ -33,19 +46,21 @@ struct AvatarView: View {
     //   • a literal emoji or 1–4 char string from the in-app picker
     //   • nil / empty → initials over a gradient
     // `URL(string: "🚀")` returns nil, so emoji avatars previously fell silently to initials.
+    private var resolvedUrl: String? { liveUrl ?? imageUrl }
+
     private var isHttpUrl: Bool {
-        guard let s = imageUrl, !s.isEmpty else { return false }
+        guard let s = resolvedUrl, !s.isEmpty else { return false }
         return s.hasPrefix("http") || s.hasPrefix("/")
     }
     private var isEmojiAvatar: Bool {
-        guard let s = imageUrl, !s.isEmpty else { return false }
+        guard let s = resolvedUrl, !s.isEmpty else { return false }
         return !isHttpUrl
     }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             ZStack {
-                if isHttpUrl, let url = URL(string: imageUrl!) {
+                if isHttpUrl, let s = resolvedUrl, let url = URL(string: s) {
                     KFImage(url)
                         .placeholder { fallbackAvatar }
                         .fade(duration: 0.18)
@@ -54,7 +69,7 @@ struct AvatarView: View {
                         .scaledToFill()
                         .frame(width: size.dimension, height: size.dimension)
                         .clipShape(Circle())
-                } else if isEmojiAvatar, let emoji = imageUrl {
+                } else if isEmojiAvatar, let emoji = resolvedUrl {
                     ZStack {
                         Circle()
                             .fill(variant.gradient)
@@ -73,6 +88,14 @@ struct AvatarView: View {
                     .frame(width: size.dimension * 0.25, height: size.dimension * 0.25)
                     .overlay(Circle().stroke(Color.byteBackground, lineWidth: 1.5))
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .avatarChanged)) { note in
+            guard let owner = ownerUserId,
+                  let info = note.userInfo,
+                  let changedId = info["userId"] as? String,
+                  changedId == owner else { return }
+            let newUrl = info["avatarUrl"] as? String
+            liveUrl = (newUrl?.isEmpty ?? true) ? nil : newUrl
         }
     }
 
@@ -93,7 +116,14 @@ struct AvatarView: View {
 extension AvatarView {
     init(user: User, size: AvatarSize = .md) {
         let variant = AvatarVariant(rawValue: user.avatarVariant) ?? .cyan
-        self.init(user.initials, variant: variant, size: size, isOnline: user.isOnline, imageUrl: user.avatarUrl)
+        self.init(
+            user.initials,
+            variant: variant,
+            size: size,
+            isOnline: user.isOnline,
+            imageUrl: user.avatarUrl,
+            ownerUserId: user.id
+        )
     }
 }
 

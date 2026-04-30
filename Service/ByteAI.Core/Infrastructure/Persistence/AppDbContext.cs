@@ -57,6 +57,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<UserBadge> UserBadges => Set<UserBadge>();
     public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
+    public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();
     public DbSet<Draft> Drafts => Set<Draft>();
     public DbSet<Social> Socials => Set<Social>();
     public DbSet<UserXpLog> UserXpLogs => Set<UserXpLog>();

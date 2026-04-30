@@ -7,6 +7,7 @@ import UIKit
 struct NotificationsView: View {
     @StateObject private var vm = NotificationsViewModel()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -80,6 +81,19 @@ struct NotificationsView: View {
             await vm.load()
             UIApplication.shared.applicationIconBadgeNumber = 0
         }
+        // APNs push delivered while the app is in foreground → reload list so
+        // the new row appears at the top instantly, without waiting for the
+        // user to pull-to-refresh.
+        .onReceive(NotificationCenter.default.publisher(for: .pushReceived)) { _ in
+            Task { await vm.load() }
+        }
+        // Foreground reconciliation — covers any pushes APNs dropped while
+        // the app was backgrounded. One fetch per transition; not polling.
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await vm.load() }
+            }
+        }
     }
 }
 
@@ -96,14 +110,41 @@ struct NotificationRow: View {
                 avatar
                     .padding(.top, 2)
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(notifText)
                         .font(.byteSans(13, weight: notification.read ? .regular : .semibold))
                         .foregroundColor(notification.read ? .byteText2 : .byteText1)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    if let preview = notification.payload.preview, !preview.isEmpty {
+                    // Byte context block — shows the byte title (snapshotted at
+                    // write time) for like/comment notifications so the user can
+                    // tell which post got engaged with at a glance. Web parity:
+                    // notification panel shows the same snippet.
+                    if showsByteContext, let title = notification.payload.byteTitle, !title.isEmpty {
+                        HStack(alignment: .top, spacing: 6) {
+                            Rectangle()
+                                .fill(Color.byteAccent)
+                                .frame(width: 2)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(title)
+                                    .font(.byteMono(11, weight: .semibold))
+                                    .foregroundColor(.byteText1)
+                                    .lineLimit(2)
+                                if let preview = notification.payload.preview, !preview.isEmpty {
+                                    Text("“\(preview)”")
+                                        .font(.byteSmall)
+                                        .foregroundColor(.byteText2)
+                                        .italic()
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 6)
+                        .background(IdentityColor.blue.bgFaint)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    } else if let preview = notification.payload.preview, !preview.isEmpty {
                         Text("“\(preview)”")
                             .font(.byteSmall)
                             .foregroundColor(.byteText2)
@@ -195,6 +236,15 @@ struct NotificationRow: View {
         liveActorDisplayName
             ?? liveActorUsername.map { "@\($0)" }
             ?? "Someone"
+    }
+
+    /// Like/comment rows show the byte context block. Follow / system / badge
+    /// rows don't carry a byte and skip it.
+    private var showsByteContext: Bool {
+        switch notification.type {
+        case .like, .comment: return true
+        default: return false
+        }
     }
 
     // MARK: - Copy
@@ -290,12 +340,17 @@ final class NotificationsViewModel: ObservableObject {
 
     func markRead(id: String) async {
         guard let i = notifications.firstIndex(where: { $0.id == id }) else { return }
+        guard !notifications[i].read else { return }
         notifications[i].read = true
+        NotificationCenter.default.post(name: .notificationsMarkedRead, object: nil, userInfo: ["delta": -1])
         try? await APIClient.shared.markRead(notificationId: id)
     }
 
     func markAllRead() async {
+        let unread = notifications.filter { !$0.read }.count
+        guard unread > 0 else { return }
         notifications = notifications.map { var n = $0; n.read = true; return n }
+        NotificationCenter.default.post(name: .notificationsMarkedRead, object: nil, userInfo: ["delta": -unread])
         try? await APIClient.shared.markAllRead()
     }
 

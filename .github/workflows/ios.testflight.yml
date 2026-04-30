@@ -21,6 +21,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           BYTEAI_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          BYTEAI_SHARE_BASE_URL: ${{ secrets.BYTEAI_SHARE_BASE_URL }}
           GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: |
@@ -48,6 +49,11 @@ jobs:
           plist["SupabaseURL"]     = os.environ["SUPABASE_URL"]
           plist["SupabaseAnonKey"] = os.environ["SUPABASE_ANON_KEY"]
           plist["ByteAIApiURL"]    = os.environ["BYTEAI_API_URL"]
+          # Optional override; falls back to the production web URL hardcoded in
+          # AppConfig.shareBaseURL when this secret is not set.
+          share_base = os.environ.get("BYTEAI_SHARE_BASE_URL", "").strip()
+          if share_base:
+              plist["ByteAIShareBaseURL"] = share_base
           plist["GIDClientID"]     = ios_id
           plist["GIDServerClientID"] = web_id
 

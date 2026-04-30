@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Launch-screen glyph — JUST the cyan </> on transparent background.
+  iOS composites this over the LaunchBackground color asset, so the launch
+  flash looks like the icon body warming up before the AuthView lands.
+  Sized 280×280 (1×) — exports to 280, 560, 840 PNGs for 1x/2x/3x slots.
+-->
+<svg width="280" height="280" viewBox="0 0 280 280"
+     xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="glyphFill" x1="0.50" y1="0" x2="0.50" y2="1">
+      <stop offset="0"   stop-color="#a8f0ff"/>
+      <stop offset="0.45" stop-color="#22d3ee"/>
+      <stop offset="1"   stop-color="#0fb6cf"/>
+    </linearGradient>
+    <filter id="glyphGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feFlood flood-color="#22d3ee" flood-opacity="0.85"/>
+      <feComposite in2="blur" operator="in" result="cyanGlow"/>
+      <feMerge>
+        <feMergeNode in="cyanGlow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <g id="glyph">
+      <path d="M 96 88 L 56 140 L 96 192"
+            stroke="url(#glyphFill)" stroke-width="22"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 156 88 L 124 192"
+            stroke="url(#glyphFill)" stroke-width="22"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 152 88 L 192 140 L 152 192"
+            stroke="url(#glyphFill)" stroke-width="22"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+  </defs>
+  <use href="#glyph" filter="url(#glyphGlow)"/>
+</svg>

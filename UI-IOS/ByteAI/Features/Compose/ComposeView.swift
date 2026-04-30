@@ -95,6 +95,15 @@ struct ComposeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.byteBackground, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .sheet(isPresented: $vm.showInvalidContentModal) {
+                InvalidContentModal(reason: vm.invalidContentReason) {
+                    vm.showInvalidContentModal = false
+                }
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.byteCard)
+                .presentationCornerRadius(20)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("CANCEL") { dismiss() }
@@ -130,6 +139,80 @@ struct ComposeView: View {
                 .frame(minHeight: 44)
             }
         }
+    }
+}
+
+// MARK: - Invalid Content Modal
+// Mirrors the web's INVALID_CONTENT error modal in compose-screen.tsx.
+// Shown when the backend rejects a byte (400 INVALID_CONTENT) — no tech relevance detected.
+
+private struct InvalidContentModal: View {
+    let reason: String
+    let onDismiss: () -> Void
+
+    private let tip = "// TIP  Try writing about a language, framework, pattern, bug\n// you fixed, or a tool you use — even a one-liner insight counts."
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header
+            HStack(spacing: 10) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.byteRed)
+                Text("INVALID_CONTENT")
+                    .font(.byteMono(11, weight: .bold))
+                    .tracking(0.8)
+                    .foregroundColor(.byteRed)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(Color.byteRed.opacity(0.12))
+                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.byteRed.opacity(0.4), lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("NO TECH CONTENT FOUND")
+                    .font(.byteSans(20, weight: .heavy))
+                    .foregroundColor(.byteText1)
+
+                Text(reason.isEmpty
+                    ? "We couldn't find any recognisable tech content in this byte. It may be too short, too vague, or not related to software, tools, or engineering."
+                    : reason)
+                    .font(.byteBody)
+                    .foregroundColor(.byteText2)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            // Tip code block
+            VStack(spacing: 0) {
+                Text(tip)
+                    .font(.byteMono(12))
+                    .foregroundColor(Color(hex: "#94a3b8"))
+                    .lineSpacing(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+            }
+            .background(Color(hex: "#0f0f1a"))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.byteBorderMedium, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            // Dismiss button
+            Button(action: onDismiss) {
+                Text("DISMISS")
+                    .font(.byteMono(12, weight: .bold))
+                    .tracking(1.0)
+                    .foregroundColor(.byteText1)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.byteElement)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderHigh, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -283,6 +366,10 @@ private struct InterviewComposer: View {
         VStack(alignment: .leading, spacing: 22) {
             // Anonymous toggle (web parity with compose-screen.tsx)
             AnonymousToggle(isAnonymous: $vm.isAnonymous)
+
+            ComposeField(label: "TITLE", required: true, identity: .purple) {
+                ComposeInput(text: $vm.title, placeholder: "e.g. Meta SWE L5 onsite experience", identity: .purple)
+            }
 
             HStack(alignment: .top, spacing: 12) {
                 ComposeField(label: "COMPANY", required: true, identity: .purple) {
@@ -707,6 +794,8 @@ final class ComposeViewModel: ObservableObject {
     @Published var isPosting = false
     @Published var draftId: String?
     @Published var lastError: String?
+    @Published var showInvalidContentModal = false
+    @Published var invalidContentReason = ""
 
     // Interview-specific
     @Published var company = ""
@@ -766,7 +855,8 @@ final class ComposeViewModel: ObservableObject {
                 && !content.trimmingCharacters(in: .whitespaces).isEmpty
                 && !selectedTechStacks.isEmpty
         case .interview:
-            return !company.trimmingCharacters(in: .whitespaces).isEmpty
+            return !title.trimmingCharacters(in: .whitespaces).isEmpty
+                && !company.trimmingCharacters(in: .whitespaces).isEmpty
                 && !interviewRole.trimmingCharacters(in: .whitespaces).isEmpty
                 && !location.trimmingCharacters(in: .whitespaces).isEmpty
                 && validQuestions.count > 0
@@ -797,6 +887,10 @@ final class ComposeViewModel: ObservableObject {
                 return
             }
         } else {
+            guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
+                ToastCenter.shared.show("Title is required", kind: .warning)
+                return
+            }
             guard !company.trimmingCharacters(in: .whitespaces).isEmpty else {
                 ToastCenter.shared.show("Company is required", kind: .warning)
                 return
@@ -842,6 +936,7 @@ final class ComposeViewModel: ObservableObject {
                     )
                 }
                 _ = try await APIClient.shared.createInterview(
+                    title: title,
                     company: company.isEmpty ? nil : company,
                     role: interviewRole.isEmpty ? nil : interviewRole,
                     location: location.isEmpty ? nil : location,
@@ -855,9 +950,13 @@ final class ComposeViewModel: ObservableObject {
             }
             Haptics.success()
             ToastCenter.shared.show(composeType == .byte ? "Byte posted" : "Interview posted", kind: .success)
+        } catch APIError.invalidContent(let reason) {
+            invalidContentReason = reason
+            showInvalidContentModal = true
         } catch {
-            lastError = error.localizedDescription
-            ToastCenter.shared.show("Couldn't post — try again", kind: .error)
+            let msg = APIError.userMessage(from: error)
+            lastError = msg
+            ToastCenter.shared.show(msg, kind: .error)
         }
     }
 

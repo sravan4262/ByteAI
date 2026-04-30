@@ -176,3 +176,20 @@ CREATE INDEX IF NOT EXISTS ix_logs_level      ON users.logs (level);
 CREATE INDEX IF NOT EXISTS ix_logs_created_at ON users.logs (created_at DESC);
 CREATE INDEX IF NOT EXISTS ix_logs_user_id    ON users.logs (user_id) WHERE user_id IS NOT NULL;
 COMMENT ON TABLE users.logs IS 'Application error log — structured events from the backend. user_id has no FK — log survives user deletion.';
+
+
+CREATE TABLE IF NOT EXISTS users.device_tokens (
+    id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id       uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
+    platform      text        NOT NULL CHECK (platform IN ('ios', 'android', 'web')),
+    token         text        NOT NULL,
+    created_at    timestamptz NOT NULL DEFAULT now(),
+    last_seen_at  timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT uq_device_tokens_token UNIQUE (token)
+);
+
+CREATE INDEX IF NOT EXISTS ix_device_tokens_user_id ON users.device_tokens (user_id);
+
+COMMENT ON TABLE  users.device_tokens IS 'Push notification tokens per (user, device). Unique on token; ownership transfers via UPSERT on sign-in.';
+COMMENT ON COLUMN users.device_tokens.token IS 'APNs hex token (iOS) or FCM token (Android/web).';
+COMMENT ON COLUMN users.device_tokens.last_seen_at IS 'Bumped on every register call. Used to prune stale tokens.';

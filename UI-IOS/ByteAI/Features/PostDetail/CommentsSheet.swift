@@ -31,6 +31,15 @@ struct CommentsView: View {
                     }
                     .redacted(reason: .placeholder)
                     .accessibilityHidden(true)
+                } else if vm.loadError {
+                    Spacer()
+                    EmptyStateView(
+                        icon: "exclamationmark.triangle",
+                        title: "Couldn't load comments",
+                        message: "Pull down to try again."
+                    )
+                    .padding(.horizontal, 16)
+                    Spacer()
                 } else if vm.comments.isEmpty {
                     Spacer()
                     EmptyStateView(
@@ -130,12 +139,14 @@ struct CommentComposeBar: View {
     @State private var text = ""
     @FocusState private var focused: Bool
 
-    private var meAvatarUrl: String? { AuthManager.shared.currentUser?.avatarUrl }
-    private var meInitials: String { AuthManager.shared.currentUser?.initials ?? "?" }
+    @ObservedObject private var auth = AuthManager.shared
+    private var meAvatarUrl: String? { auth.currentUser?.avatarUrl }
+    private var meInitials: String { auth.currentUser?.initials ?? "?" }
+    private var meId: String? { auth.currentUser?.id }
 
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            AvatarView(meInitials, variant: .cyan, size: .xs, imageUrl: meAvatarUrl)
+            AvatarView(meInitials, variant: .cyan, size: .xs, imageUrl: meAvatarUrl, ownerUserId: meId)
 
             HStack(spacing: 8) {
                 TextField("Add a comment…", text: $text, axis: .vertical)
@@ -189,13 +200,18 @@ final class CommentsVM: ObservableObject {
     @Published var comments: [Comment] = []
     @Published var isLoading = false
     @Published var isSending = false
+    @Published var loadError = false
     private let postId: String
 
     init(postId: String) { self.postId = postId }
 
     func load() async {
-        isLoading = true; defer { isLoading = false }
-        comments = (try? await APIClient.shared.getComments(postId: postId)) ?? []
+        isLoading = true; loadError = false; defer { isLoading = false }
+        do {
+            comments = try await APIClient.shared.getComments(postId: postId)
+        } catch {
+            loadError = true
+        }
     }
 
     func reload() async { await load() }
@@ -208,6 +224,7 @@ final class CommentsVM: ObservableObject {
             try await APIClient.shared.addComment(postId: postId, body: trimmed)
             Haptics.success()
             await load()
+            broadcastCount()
         } catch {
             ToastCenter.shared.show("Couldn't post comment", kind: .error)
         }
@@ -218,9 +235,19 @@ final class CommentsVM: ObservableObject {
             try await APIClient.shared.deleteComment(commentId: comment.id)
             comments.removeAll { $0.id == comment.id }
             ToastCenter.shared.show("Comment deleted", kind: .success)
+            broadcastCount()
         } catch {
             ToastCenter.shared.show("Couldn't delete comment", kind: .error)
         }
+    }
+
+    // Broadcasts the authoritative count so cards always sync to reality.
+    private func broadcastCount() {
+        NotificationCenter.default.post(
+            name: .postCommentsChanged,
+            object: nil,
+            userInfo: ["postId": postId, "count": comments.count]
+        )
     }
 
     func isOwn(comment: Comment) -> Bool {

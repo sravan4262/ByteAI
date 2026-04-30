@@ -31,14 +31,16 @@ export function ByteAILogo({ showText = true, size = 'sm' }: ByteAILogoProps) {
   return (
     <div className="flex items-center gap-2">
       <div
-        className={`${box} bg-gradient-to-br from-[#0a1530] to-[#152060] border border-[var(--border-h)] flex items-center justify-center shadow-[0_0_24px_rgba(59,130,246,0.22),0_0_48px_rgba(59,130,246,0.08),inset_0_1px_0_rgba(255,255,255,0.07)] relative overflow-hidden flex-shrink-0`}
+        className={`${box} bg-gradient-to-br from-[#0a1530] to-[#152060] border border-[var(--border-h)] flex items-center justify-center shadow-[0_0_24px_rgba(59,130,246,0.22),0_0_48px_rgba(59,130,246,0.08),inset_0_1px_0_rgba(255,255,255,0.07)] relative overflow-hidden flex-shrink-0 group`}
       >
-        {/* Shimmer sweep */}
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/[0.07] to-transparent animate-shimmer" />
-        {/* Glow orb */}
+        {/* Shimmer sweep — brighter than before so the motion actually reads. */}
+        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/[0.13] to-transparent animate-shimmer" />
+        {/* Static glow orb */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(59,130,246,0.18),transparent_70%)]" />
+        {/* Breathing cyan halo behind the glyph — slow ease-in-out pulse. */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_55%,rgba(34,211,238,0.18),transparent_60%)] animate-logo-breath" />
         <span
-          className={`font-mono font-bold text-[var(--cyan)] relative z-10 drop-shadow-[0_0_12px_var(--cyan)] ${icon}`}
+          className={`font-mono font-bold text-[var(--cyan)] relative z-10 drop-shadow-[0_0_12px_var(--cyan)] animate-logo-glyph-pulse ${icon}`}
         >
           {'</>'}
         </span>

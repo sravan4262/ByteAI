@@ -10,6 +10,7 @@ struct PostCardView: View {
     var onTap: (() -> Void)? = nil
     var onComment: (() -> Void)? = nil
     var activeTab: FeedFilter = .forYou
+    var hideInteractions: Bool = false
     @State private var showLikers = false
     @State private var miniProfileUser: MiniProfileTarget? = nil
 
@@ -51,9 +52,10 @@ struct PostCardView: View {
                     FlowTagRow(tags: post.tags)
                 }
 
-                Divider().background(Color.byteBorderHigh).padding(.vertical, 2)
-
-                actionRow
+                if !hideInteractions {
+                    Divider().background(Color.byteBorderHigh).padding(.vertical, 2)
+                    actionRow
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 18)
@@ -61,6 +63,15 @@ struct PostCardView: View {
         .sheet(isPresented: $showLikers) { LikesSheet(postId: post.id) }
         .sheet(item: $miniProfileUser) { target in
             UserMiniProfileSheet(target: target)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .postCommentsChanged)) { note in
+            guard let info = note.userInfo,
+                  let id = info["postId"] as? String, id == post.id else { return }
+            if let count = info["count"] as? Int {
+                post.comments = count
+            } else if let delta = info["delta"] as? Int {
+                post.comments = max(0, post.comments + delta)
+            }
         }
     }
 
@@ -105,13 +116,13 @@ struct PostCardView: View {
             }
 
             interactionPill(icon: post.isBookmarked ? "bookmark.fill" : "bookmark",
-                            label: "SAVE", isActive: post.isBookmarked) {
+                            label: post.isBookmarked ? "SAVED" : "SAVE", isActive: post.isBookmarked) {
                 withAnimation { post.isBookmarked.toggle() }
                 if post.isBookmarked { Haptics.light() }
                 Task { try? await APIClient.shared.toggleBookmark(postId: post.id) }
             }
 
-            ShareLink(item: URL(string: "https://byteai.dev/post/\(post.id)")!,
+            ShareLink(item: ShareURL.post(id: post.id),
                       subject: Text(post.title),
                       message: Text(String(post.body.prefix(140)))) {
                 HStack(spacing: 6) {
@@ -306,9 +317,11 @@ struct UserMiniProfileSheet: View {
     private var resolvedAvatar: String? { profile?.avatarUrl ?? target.avatarUrl }
     private var resolvedRole: String { profile?.role ?? target.role }
     private var resolvedCompany: String { profile?.company ?? target.company }
-    private var resolvedFollowers: Int { profile?.followers ?? 0 }
-    private var resolvedBytes: Int { profile?.bytes ?? 0 }
-    private var resolvedLevel: Int { profile?.level ?? 1 }
+    // Counts come from the full profile fetch; while it's loading we render an
+    // em-dash placeholder so the user doesn't see an authoritative-looking 0.
+    private var resolvedBytes: String { profile.map { "\($0.bytes)" } ?? "—" }
+    private var resolvedFollowers: String { profile.map { "\($0.followers)" } ?? "—" }
+    private var resolvedLevel: String { profile.map { "\($0.level)" } ?? "—" }
     private var isOwnProfile: Bool { AuthManager.shared.currentUser?.id == target.userId }
     private var isSystemAccount: Bool { profile?.isSystem == true || target.username.lowercased() == "byteai" }
 
@@ -317,42 +330,33 @@ struct UserMiniProfileSheet: View {
             ZStack {
                 Color.byteCard.ignoresSafeArea()
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        gradientBanner
-                        Color.clear.frame(height: 0)
-                            .overlay(
-                                LinearGradient(
-                                    colors: [.byteAccent, IdentityColor.blue.tint(0.3), .clear],
-                                    startPoint: .leading, endPoint: .trailing
+                    // Tight stack — no gradient banner, no negative-padding avatar overlap.
+                    // Top-aligned content reads cleanly inside a medium detent.
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack(alignment: .top, spacing: 14) {
+                            AvatarView(target.initials,
+                                       variant: .cyan,
+                                       size: .xl,
+                                       imageUrl: resolvedAvatar,
+                                       ownerUserId: target.userId)
+                                .overlay(
+                                    Circle().stroke(Color.byteAccent, lineWidth: 2)
+                                        .padding(-2)
                                 )
-                                .frame(height: 1),
-                                alignment: .top
-                            )
-
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack(alignment: .bottom, spacing: 14) {
-                                AvatarView(target.initials, variant: .cyan, size: .xl, imageUrl: resolvedAvatar)
-                                    .overlay(
-                                        Circle().stroke(Color.byteAccent, lineWidth: 2)
-                                            .padding(-2)
-                                    )
-                                    .padding(.top, -36)
-
-                                statRow
-                                    .padding(.bottom, 4)
-                            }
-
-                            identitySection
-
-                            if !target.tags.isEmpty {
-                                tagsRow
-                            }
-
-                            actionsRow
+                            statRow
                         }
-                        .padding(.horizontal, 18)
-                        .padding(.bottom, 22)
+
+                        identitySection
+
+                        if !target.tags.isEmpty {
+                            tagsRow
+                        }
+
+                        actionsRow
                     }
+                    .padding(.horizontal, 18)
+                    .padding(.top, 16)
+                    .padding(.bottom, 20)
                 }
             }
             .toolbar {
@@ -369,13 +373,17 @@ struct UserMiniProfileSheet: View {
                 ProfileView(username: resolvedUsername)
             }
         }
-        .presentationDetents([.medium, .large])
+        // Compact medium-only detent so the sheet hugs its content. Tall enough
+        // for the iPhone 16 Pro Max layout, low enough that it feels "mini".
+        .presentationDetents([.height(360), .large])
         .presentationDragIndicator(.visible)
         .task {
             do {
                 let p = try await APIClient.shared.getProfileById(userId: target.userId)
                 profile = p
-                isFollowing = p.id != AuthManager.shared.currentUser?.id // server-side `isFollowedByMe` not yet on the User model
+                // Server-derived; nil → unknown (treat as not-following so the
+                // CTA encourages action rather than silently mis-claiming follow).
+                isFollowing = p.isFollowedByMe ?? false
             } catch {
                 // Keep target fallbacks
             }
@@ -384,21 +392,14 @@ struct UserMiniProfileSheet: View {
 
     // MARK: - Subviews
 
-    private var gradientBanner: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color.byteAccent.opacity(0.22), Color.bytePurple.opacity(0.18), Color.byteCyan.opacity(0.18)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-        }
-        .frame(height: 80)
-    }
-
     private var statRow: some View {
+        // Web parity: 3 stats (BYTES · FOLLOWERS · LEVEL). The mini profile
+        // is a glanceable summary, not a full follow graph view; the FOLLOWING
+        // count was iOS-only and dropped to match.
         HStack(spacing: 6) {
-            stat("BYTES", "\(resolvedBytes)")
-            stat("FOLLOWERS", "\(resolvedFollowers)")
-            stat("LEVEL", "\(resolvedLevel)")
+            stat("BYTES", resolvedBytes)
+            stat("FOLLOWERS", resolvedFollowers)
+            stat("LEVEL", resolvedLevel)
         }
     }
 

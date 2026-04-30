@@ -57,11 +57,17 @@ struct AvatarRingButton: View {
     let imageURL: String?
     let initials: String
     var variant: AvatarVariant = .cyan
+    /// Propagated to AvatarView so the header avatar repaints on `.avatarChanged`.
+    var ownerUserId: String? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            AvatarView(initials, variant: variant, size: .sm, imageUrl: imageURL)
+            AvatarView(initials,
+                       variant: variant,
+                       size: .sm,
+                       imageUrl: imageURL,
+                       ownerUserId: ownerUserId)
                 .padding(4)
                 .background(
                     Circle().fill(Color.byteCard)

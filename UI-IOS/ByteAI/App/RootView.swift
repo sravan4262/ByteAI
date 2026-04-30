@@ -20,6 +20,8 @@ struct RootView: View {
                 AuthView().transition(.opacity)
             case .onboarding:
                 OnboardingView().transition(.opacity)
+            case .locked:
+                BiometricLockView().transition(.opacity)
             case .authenticated:
                 MainTabView().transition(.opacity)
             }
@@ -44,6 +46,13 @@ struct RootView: View {
                     Task { await chat.start() }
                 }
             case .background:
+                // FaceID enabled? Re-lock so the next foreground starts at
+                // the lock screen. Doing this here (not on .inactive) avoids
+                // flashing the lock view while a system sheet is briefly up.
+                if BiometricLock.shared.isEnabled,
+                   case .authenticated = auth.state {
+                    auth.lock()
+                }
                 Task { await chat.stop() }
             default:
                 break
@@ -55,6 +64,7 @@ struct RootView: View {
         switch auth.state {
         case .unauthenticated: return "auth"
         case .onboarding:      return "onboarding"
+        case .locked:          return "locked"
         case .authenticated:   return "main"
         }
     }
@@ -76,6 +86,7 @@ struct MainTabView: View {
     @State private var previousTab: Tab = .feed
     @State private var showCompose = false
     @State private var showNotifications = false
+    @State private var showBiometricOptIn = false
     @State private var feedScrollToTop = 0
     @StateObject private var notifBadge = NotificationBadgeVM()
     @EnvironmentObject private var auth: AuthManager
@@ -130,6 +141,11 @@ struct MainTabView: View {
         }
         .sheet(isPresented: $showCompose) { ComposeView() }
         .sheet(isPresented: $showNotifications) { NotificationsView() }
+        .sheet(isPresented: $showBiometricOptIn) {
+            BiometricOptInSheet()
+                .presentationDetents([.height(360)])
+                .presentationDragIndicator(.visible)
+        }
         .onChange(of: router.requestedTab) { _, tab in
             if let raw = tab, let t = Tab(rawValue: raw) {
                 selectedTab = t
@@ -140,6 +156,19 @@ struct MainTabView: View {
             if !show { router.showNotifications = false }
         }
         .task { await notifBadge.load() }
+        .task {
+            // Surface the FaceID opt-in sheet exactly once per device, and
+            // only when biometrics are actually enrolled. Mark hasPrompted
+            // up-front so a force-quit before the user answers doesn't
+            // re-prompt next launch.
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            if BiometricLock.shared.isAvailable,
+               !BiometricLock.shared.hasPrompted,
+               !BiometricLock.shared.isEnabled {
+                BiometricLock.shared.hasPrompted = true
+                showBiometricOptIn = true
+            }
+        }
         .task(id: chat.unreadCount) {
             await MainActor.run {
                 let total = notifBadge.unreadCount + chat.unreadCount
@@ -176,6 +205,17 @@ struct MainTabView: View {
 @MainActor
 final class NotificationBadgeVM: ObservableObject {
     @Published var unreadCount = 0
+    private var observer: NSObjectProtocol?
+
+    init() {
+        observer = NotificationCenter.default.addObserver(
+            forName: .notificationsMarkedRead, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let self else { return }
+            let delta = (note.userInfo?["delta"] as? Int) ?? 0
+            self.unreadCount = max(0, self.unreadCount + delta)
+        }
+    }
 
     func load() async {
         unreadCount = (try? await APIClient.shared.getUnreadCount()) ?? 0

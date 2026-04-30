@@ -59,10 +59,32 @@ struct BookmarksView: View {
                                     ScrollView {
                                         LazyVStack(spacing: 12) {
                                             ForEach(vm.posts) { post in
-                                                Button { selectedPost = post } label: {
-                                                    PostCardView(post: post)
+                                                ZStack(alignment: .topTrailing) {
+                                                    Button { selectedPost = post } label: {
+                                                        PostCardView(post: post, hideInteractions: true)
+                                                    }
+                                                    .buttonStyle(.plain)
+
+                                                    // Inline unsave — overlays the card so the
+                                                    // user can drop a saved byte without diving
+                                                    // into the detail view's bookmark toggle.
+                                                    Button {
+                                                        Task { await vm.unsave(post) }
+                                                    } label: {
+                                                        Image(systemName: "bookmark.slash.fill")
+                                                            .font(.system(size: 12, weight: .semibold))
+                                                            .foregroundColor(.byteText1)
+                                                            .frame(width: 28, height: 28)
+                                                            .background(IdentityColor.blue.bgActive)
+                                                            .overlay(
+                                                                Circle().stroke(IdentityColor.blue.solid, lineWidth: 1)
+                                                            )
+                                                            .clipShape(Circle())
+                                                    }
+                                                    .buttonStyle(.plain)
+                                                    .padding(10)
+                                                    .accessibilityLabel("Unsave byte")
                                                 }
-                                                .buttonStyle(.plain)
                                                 .padding(.horizontal, 16)
                                             }
                                         }
@@ -205,5 +227,22 @@ final class BookmarksVM: ObservableObject {
         async let iv = APIClient.shared.getMyInterviewBookmarks()
         posts = (try? await p) ?? []
         interviews = (try? await iv) ?? []
+    }
+
+    /// Optimistically removes the post from the list and toggles the bookmark
+    /// off on the server. If the server call fails the row is restored.
+    func unsave(_ post: Post) async {
+        let snapshot = posts
+        withAnimation(.easeInOut(duration: 0.18)) {
+            posts.removeAll { $0.id == post.id }
+        }
+        Haptics.light()
+        do {
+            _ = try await APIClient.shared.toggleBookmark(postId: post.id)
+            ToastCenter.shared.show("Removed from saved", kind: .success)
+        } catch {
+            posts = snapshot
+            ToastCenter.shared.show("Couldn't unsave", kind: .error)
+        }
     }
 }

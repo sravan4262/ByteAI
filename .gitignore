@@ -112,8 +112,13 @@ infra/terraform/*.tfstate
 infra/terraform/*.tfstate.backup
 infra/terraform/crash.log
 
-# iOS CI — generated at build time from GitHub Secrets, never committed
-UI-IOS/Config/Secrets.xcconfig
+# iOS local dev config — contains real ngrok URLs and API keys, never commit
+UI-IOS/Configs/Debug.xcconfig
 
 # iOS local release build test — contains real secrets, never commit
 UI-IOS/test-release-build.sh
+
+# Branding — rasterized PNG outputs of build-icons.sh. Regenerable from the
+# source SVGs in assets/branding/, so they don't belong in git.
+assets/branding/ios/
+assets/branding/web/

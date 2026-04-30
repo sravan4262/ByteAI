@@ -30,6 +30,11 @@ services:
       Supabase__JwtSecret:           ${SUPABASE_JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
       Supabase__JwtIssuer:           http://127.0.0.1:54321
       Supabase__ServiceRoleKey:      ${SUPABASE_SERVICE_ROLE_KEY:-}
+      Apns__KeyId:                   ${APNS_KEY_ID:-}
+      Apns__TeamId:                  ${APNS_TEAM_ID:-}
+      Apns__KeyP8:                   ${APNS_KEY_P8:-}
+      Apns__BundleId:                ${APNS_BUNDLE_ID:-com.byteai.app}
+      Apns__Environment:             ${APNS_ENVIRONMENT:-development}
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/live || exit 1"]
       interval: 10s

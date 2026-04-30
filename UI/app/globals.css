@@ -243,6 +243,30 @@ nextjs-portal { display: none !important; }
   animation: shimmer 3s ease-in-out infinite;
 }
 
+@keyframes logo-breath {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1.00; transform: scale(1.08); }
+}
+
+@keyframes logo-glyph-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px var(--cyan));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 14px var(--cyan)) drop-shadow(0 0 28px var(--cyan));
+    transform: scale(1.04);
+  }
+}
+
+.animate-logo-breath {
+  animation: logo-breath 3.4s ease-in-out infinite;
+}
+
+.animate-logo-glyph-pulse {
+  animation: logo-glyph-pulse 2.6s ease-in-out infinite;
+}
+
 .animate-fab-pulse {
   animation: fab-pulse 3s ease-in-out infinite;
 }

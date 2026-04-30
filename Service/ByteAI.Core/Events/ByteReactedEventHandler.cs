@@ -1,6 +1,7 @@
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Notifications;
+using ByteAI.Core.Services.Push;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -11,6 +12,7 @@ public sealed class ByteReactedEventHandler(
     AppDbContext db,
     IBadgeService badgeService,
     INotificationService notifications,
+    IPushDispatcher pushDispatcher,
     ILogger<ByteReactedEventHandler> logger)
     : INotificationHandler<ByteReactedEvent>
 {
@@ -32,12 +34,22 @@ public sealed class ByteReactedEventHandler(
                     .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
                     .FirstOrDefaultAsync(cancellationToken);
 
+                // Snapshot the byte title at notification time. This lets the
+                // notification row show "@alice liked 'Postgres indexing tips'"
+                // without an extra fetch when the recipient opens the bell.
+                var byteTitle = await db.Bytes
+                    .AsNoTracking()
+                    .Where(b => b.Id == notification.ByteId)
+                    .Select(b => b.Title)
+                    .FirstOrDefaultAsync(cancellationToken);
+
                 await notifications.CreateAsync(
                     userId: notification.AuthorUserId,
                     type: "like",
                     payload: new
                     {
                         byteId = notification.ByteId,
+                        byteTitle,
                         actorId = notification.ReactorUserId,
                         actorUsername = actor?.Username ?? string.Empty,
                         actorDisplayName = actor?.DisplayName ?? string.Empty,
@@ -45,6 +57,16 @@ public sealed class ByteReactedEventHandler(
                         reactionType = notification.ReactionType
                     },
                     ct: cancellationToken);
+
+                // Fire-and-forget APNs push so the recipient sees the like on
+                // their lock screen even if the app is closed. Same prefs gate
+                // already passed above; the dispatcher fans out to all of the
+                // recipient's device tokens.
+                pushDispatcher.Enqueue(PushPayloads.Like(
+                    recipientId: notification.AuthorUserId,
+                    actorDisplay: actor?.DisplayName ?? actor?.Username ?? "Someone",
+                    byteTitle: byteTitle,
+                    byteId: notification.ByteId));
             }
         }
         catch (Exception ex)

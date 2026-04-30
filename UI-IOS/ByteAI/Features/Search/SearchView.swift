@@ -9,7 +9,8 @@ import SwiftUI
 // User can override by tapping a mode chip.
 
 enum SearchMode: String, CaseIterable, Identifiable {
-    case bytes, people, ask
+    // Order is the visible mode-pill order: BYTES first, then ASK, then PEOPLE.
+    case bytes, ask, people
     var id: String { rawValue }
 
     var label: String {
@@ -94,17 +95,26 @@ struct SearchView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .onChange(of: vm.query) { _, q in
+                    // Empty input → reset to a fresh "pre-search" state, drop any
+                    // pinned mode override so detectIntent runs again next time.
                     if q.isEmpty {
                         vm.userPinnedMode = false
                         vm.mode = .bytes
-                    } else if !vm.userPinnedMode {
-                        vm.mode = detectIntent(q, askEnabled: vm.askEnabled)
+                        vm.resetResults()
+                    } else {
+                        if !vm.userPinnedMode {
+                            vm.mode = detectIntent(q, askEnabled: vm.askEnabled)
+                        }
+                        // Web parity: typing AFTER a search clears stale results
+                        // so the user isn't comparing new input against old hits.
+                        if vm.hasSearched { vm.resetResults() }
                     }
                 }
             if !vm.query.isEmpty {
                 Button {
                     vm.query = ""
                     vm.userPinnedMode = false
+                    vm.resetResults()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.byteText3)
@@ -113,6 +123,19 @@ struct SearchView: View {
                 }
                 .accessibilityLabel("Clear search")
             }
+            // Mode badge — mirrors the web `cfg.badgeClass` pill that signals
+            // which surface is being searched (BYTES / PEOPLE / ASK AI).
+            Text(vm.mode == .ask ? "ASK AI" : vm.mode.label)
+                .font(.byteMono(9, weight: .bold))
+                .tracking(0.6)
+                .foregroundColor(.byteAccent)
+                .padding(.horizontal, 7).padding(.vertical, 2)
+                .background(IdentityColor.blue.bgActive)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(Color.byteAccent, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 5))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -134,6 +157,11 @@ struct SearchView: View {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         vm.userPinnedMode = true
                         vm.mode = mode
+                        // Web parity: switching mode wipes the previous mode's
+                        // results so the user isn't looking at byte rows after
+                        // toggling to PEOPLE.
+                        vm.resetResults()
+                        queryFocused = true
                     }
                 } label: {
                     HStack(spacing: 5) {
@@ -170,7 +198,9 @@ struct SearchView: View {
     private var resultsList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                if vm.query.isEmpty {
+                // Web parity: pre-search state (empty query OR not-yet-searched)
+                // shows trending suggestions instead of an empty results list.
+                if vm.query.isEmpty || !vm.hasSearched {
                     suggestions
                 } else if vm.isLoading {
                     HStack {
@@ -197,40 +227,52 @@ struct SearchView: View {
 
     @ViewBuilder
     private var suggestions: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            AccentBarHeader(label: vm.mode == .ask ? "TRY ASKING" : "TRENDING SEARCHES", size: .compact)
-            ForEach(suggestionItems, id: \.self) { item in
-                Button { vm.query = item; Task { await vm.search() } } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: vm.mode == .ask ? "sparkles" : "arrow.up.right")
-                            .font(.system(size: 12))
-                            .foregroundColor(.byteAccent)
-                        Text(item)
-                            .font(.byteSans(13))
-                            .foregroundColor(.byteText1)
-                            .multilineTextAlignment(.leading)
-                        Spacer()
+        // Pre-search hints are scoped per mode:
+        //   • BYTES → "TRENDING SEARCHES" with topic chips.
+        //   • ASK   → "TRY ASKING" with example questions.
+        //   • PEOPLE → nothing (clean empty canvas — user types `@handle`).
+        if vm.mode == .people {
+            EmptyView()
+        } else {
+            VStack(alignment: .leading, spacing: 14) {
+                AccentBarHeader(label: vm.mode == .ask ? "TRY ASKING" : "TRENDING SEARCHES", size: .compact)
+                ForEach(suggestionItems, id: \.self) { item in
+                    Button { vm.query = item; Task { await vm.search() } } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: vm.mode == .ask ? "sparkles" : "arrow.up.right")
+                                .font(.system(size: 12))
+                                .foregroundColor(.byteAccent)
+                            Text(item)
+                                .font(.byteSans(13))
+                                .foregroundColor(.byteText1)
+                                .multilineTextAlignment(.leading)
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(IdentityColor.blue.bgFaint)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
-                    .padding(12)
-                    .background(IdentityColor.blue.bgFaint)
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 44)
                 }
-                .buttonStyle(.plain)
-                .frame(minHeight: 44)
             }
         }
     }
 
     private var suggestionItems: [String] {
-        if vm.mode == .ask {
+        switch vm.mode {
+        case .ask:
             return [
                 "What's the difference between useEffect and useLayoutEffect?",
                 "When should I use PostgreSQL over MongoDB?",
                 "How does Rust's borrow checker prevent data races?"
             ]
+        case .bytes:
+            return ["react server components", "go concurrency", "postgresql indexes", "rust ownership"]
+        case .people:
+            return []
         }
-        return ["react server components", "go concurrency", "postgresql indexes", "rust ownership"]
     }
 
     @ViewBuilder
@@ -525,6 +567,10 @@ final class SearchViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     @Published var askEnabled = false
+    /// Mirrors the web `hasSearched` flag — flips true after a query is run.
+    /// Drives the empty-state vs results-list switch and lets `resetResults()`
+    /// clear stale hits when the query or mode changes mid-flight.
+    @Published var hasSearched = false
 
     private var askStreamTask: Task<Void, Never>?
 
@@ -534,13 +580,41 @@ final class SearchViewModel: ObservableObject {
         isStreamingAsk = false
     }
 
+    /// Drops every result list back to its empty state. Used on:
+    ///  • query cleared via the X button
+    ///  • query changed AFTER a search has already run
+    ///  • mode chip switched
+    func resetResults() {
+        cancelAskStream()
+        posts = []
+        people = []
+        askAnswer = ""
+        askSources = []
+        hasSearched = false
+        error = nil
+    }
+
     func search() async {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
         isLoading = true
         error = nil
+        hasSearched = true
         defer { isLoading = false }
+
+        // Strip the magic prefixes that toggle modes; backend expects plain text.
+        let cleanQuery: String = {
+            switch mode {
+            case .people:
+                return trimmed.hasPrefix("@") ? String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces) : trimmed
+            case .ask:
+                return trimmed.hasPrefix("?") ? String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces) : trimmed
+            case .bytes:
+                return trimmed
+            }
+        }()
+        guard !cleanQuery.isEmpty else { return }
 
         do {
             switch mode {
@@ -552,7 +626,7 @@ final class SearchViewModel: ObservableObject {
                 isStreamingAsk = true
                 // Drop the spinner once the stream has been initiated — chunks fill the answer card directly.
                 isLoading = false
-                let stream = await APIClient.shared.searchAskStream(question: trimmed, type: "bytes")
+                let stream = await APIClient.shared.searchAskStream(question: cleanQuery, type: "bytes")
                 askStreamTask = Task { [weak self] in
                     do {
                         for try await event in stream {
@@ -573,10 +647,9 @@ final class SearchViewModel: ObservableObject {
                     }
                 }
             case .people:
-                let q = trimmed.hasPrefix("@") ? String(trimmed.dropFirst()) : trimmed
-                people = try await APIClient.shared.searchPeople(query: q)
+                people = try await APIClient.shared.searchPeople(query: cleanQuery)
             case .bytes:
-                posts = try await APIClient.shared.search(query: trimmed, type: "Bytes")
+                posts = try await APIClient.shared.search(query: cleanQuery, type: "Bytes")
             }
         } catch {
             self.error = APIError.userMessage(from: error)

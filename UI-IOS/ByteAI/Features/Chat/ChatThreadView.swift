@@ -110,16 +110,28 @@ struct ChatThreadView: View {
 
     @ViewBuilder
     private var statusBadge: some View {
-        let label = vm.isSending ? "SENDING" : "READY"
-        Text(label)
-            .font(.system(size: 9, weight: .regular, design: .monospaced))
-            .foregroundColor(.byteGreen)
-            .tracking(0.5)
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(Color.byteGreen.opacity(0.08))
-            .overlay(RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.byteGreen.opacity(0.20), lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+        if !chat.isConnected {
+            Text("OFFLINE")
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundColor(.byteRed)
+                .tracking(0.5)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(Color.byteRed.opacity(0.08))
+                .overlay(RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.byteRed.opacity(0.25), lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+        } else {
+            let label = vm.isSending ? "SENDING" : "READY"
+            Text(label)
+                .font(.system(size: 9, weight: .regular, design: .monospaced))
+                .foregroundColor(.byteGreen)
+                .tracking(0.5)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(Color.byteGreen.opacity(0.08))
+                .overlay(RoundedRectangle(cornerRadius: 4)
+                    .stroke(Color.byteGreen.opacity(0.20), lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
     }
 
     private var accentLine: some View {
@@ -236,18 +248,18 @@ struct ChatThreadView: View {
     // Server enforces this on send too; UI just signals why the input is disabled.
     private var cannotMessageBanner: some View {
         HStack(spacing: 8) {
-            Text("◆")
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.byteGreen.opacity(0.6))
-            Text("you must follow each other to send messages")
+            Text("✗")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundColor(.byteRed.opacity(0.7))
+            Text("permission denied — mutual follow required")
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundColor(.byteText2)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14).padding(.vertical, 8)
-        .background(Color.byteGreen.opacity(0.03))
+        .background(Color.byteRed.opacity(0.03))
         .overlay(alignment: .top) {
-            Rectangle().fill(Color.byteGreen.opacity(0.15)).frame(height: 1)
+            Rectangle().fill(Color.byteRed.opacity(0.15)).frame(height: 1)
         }
     }
 }

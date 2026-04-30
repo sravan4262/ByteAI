@@ -1,5 +1,6 @@
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.Notifications;
+using ByteAI.Core.Services.Push;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,7 @@ namespace ByteAI.Core.Events;
 public sealed class UserUnfollowedEventHandler(
     AppDbContext db,
     INotificationService notifications,
+    IPushDispatcher pushDispatcher,
     ILogger<UserUnfollowedEventHandler> logger)
     : INotificationHandler<UserUnfollowedEvent>
 {
@@ -38,6 +40,13 @@ public sealed class UserUnfollowedEventHandler(
                     actorAvatarUrl = actor?.AvatarUrl,
                 },
                 ct: cancellationToken);
+
+            // Same prefs gate already passed above (early-return at line 22).
+            // Recipients who keep "Unfollows" off in their preferences won't
+            // see the in-app row OR the lock-screen push.
+            pushDispatcher.Enqueue(PushPayloads.Unfollow(
+                recipientId: notification.FollowingId,
+                actorDisplay: actor?.DisplayName ?? actor?.Username ?? "Someone"));
         }
         catch (Exception ex)
         {

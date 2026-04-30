@@ -215,14 +215,6 @@ private struct QuestionCard: View {
     let index: Int
     let expanded: Bool
     let onToggle: () -> Void
-    @State private var isLiked: Bool
-    @State private var likeCount: Int
-
-    init(q: InterviewQuestion, index: Int, expanded: Bool, onToggle: @escaping () -> Void) {
-        self.q = q; self.index = index; self.expanded = expanded; self.onToggle = onToggle
-        _isLiked = State(initialValue: q.isLiked)
-        _likeCount = State(initialValue: q.likeCount)
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -240,7 +232,7 @@ private struct QuestionCard: View {
                         .foregroundColor(.byteText1)
                         .lineLimit(expanded ? nil : 2)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                    Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 12))
                         .foregroundColor(.byteText3)
                 }
@@ -250,27 +242,14 @@ private struct QuestionCard: View {
 
             if expanded {
                 Divider().background(Color.byteBorder)
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(q.answer)
-                        .font(.system(size: 13))
-                        .foregroundColor(.byteText2)
-                        .lineSpacing(3)
-                    HStack(spacing: 16) {
-                        Button {
-                            let next = !isLiked
-                            isLiked = next; likeCount += next ? 1 : -1
-                            if next { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
-                            Task { try? await (next ? APIClient.shared.likeQuestion(questionId: q.id) : APIClient.shared.unlikeQuestion(questionId: q.id)) }
-                        } label: {
-                            Label("\(likeCount)", systemImage: isLiked ? "hand.thumbsup.fill" : "hand.thumbsup")
-                                .font(.system(size: 12))
-                                .foregroundColor(isLiked ? .byteGreen : .byteText3)
-                        }
-                    }
-                }
-                .padding(.horizontal, 14).padding(.bottom, 14)
+                Text(q.answer)
+                    .font(.system(size: 13))
+                    .foregroundColor(.byteText2)
+                    .lineSpacing(3)
+                    .padding(.horizontal, 14).padding(.bottom, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Per-question comment thread (web parity: inline collapsible thread)
+                // Per-question comment thread (web parity: inline collapsible thread).
                 Divider().background(Color.byteBorder)
                 QuestionCommentThread(questionId: q.id, initialCount: q.commentCount)
             }
@@ -628,7 +607,9 @@ class InterviewDetailViewModel: ObservableObject {
         async let iv = APIClient.shared.getInterview(id: id)
         async let cs = APIClient.shared.getInterviewComments(interviewId: id)
         do {
-            interview = try await iv
+            let loadedInterview = try await iv
+            interview = loadedInterview
+            isBookmarked = loadedInterview.isBookmarked
             comments = (try? await cs) ?? []
         } catch { }
         isLoading = false

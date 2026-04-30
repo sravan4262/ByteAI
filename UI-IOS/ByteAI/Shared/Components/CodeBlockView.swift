@@ -54,11 +54,11 @@ struct CodeBlockView: View {
 
             Divider().background(Color.byteBorderMedium)
 
-            // Code content
+            // Code content — always light text: byteCodeBg is dark in all themes
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(snippet.content)
                     .font(.byteMono(12))
-                    .foregroundColor(.byteText1)
+                    .foregroundColor(Color(hex: "#e2e8f0"))
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

@@ -2,33 +2,34 @@ import Foundation
 import Combine
 import CryptoKit
 import UIKit
+import AuthenticationServices
 import Supabase
 import GoogleSignIn
 
 // MARK: - Auth Provider
 
 enum AuthProvider: String, CaseIterable, Identifiable {
-    case google, github
+    case apple, google
     var id: String { rawValue }
 
     var label: String {
         switch self {
+        case .apple:  return "Continue with Apple"
         case .google: return "Continue with Google"
-        case .github: return "Continue with GitHub"
         }
     }
 
     var iconAsset: String {
         switch self {
-        case .google: return "globe"        // Plain SF Symbol fallback; replace with brand asset later
-        case .github: return "chevron.left.forwardslash.chevron.right"
+        case .apple:  return "applelogo"
+        case .google: return "globe"
         }
     }
 
     var supabaseProvider: Supabase.Provider {
         switch self {
+        case .apple:  return .apple
         case .google: return .google
-        case .github: return .github
         }
     }
 }
@@ -38,12 +39,18 @@ enum AuthProvider: String, CaseIterable, Identifiable {
 enum AuthState: Equatable {
     case unauthenticated
     case onboarding
+    /// Supabase session is valid AND the user has FaceID lock enabled.
+    /// `BiometricLockView` is shown until they unlock; transitions to
+    /// `.authenticated` on success. Holds the user so views bound to
+    /// `currentUser` (e.g. tab badge) keep working through the lock.
+    case locked(user: User)
     case authenticated(user: User)
 
     static func == (lhs: AuthState, rhs: AuthState) -> Bool {
         switch (lhs, rhs) {
         case (.unauthenticated, .unauthenticated): return true
         case (.onboarding, .onboarding):           return true
+        case (.locked(let a), .locked(let b)):     return a.id == b.id
         case (.authenticated(let a), .authenticated(let b)): return a.id == b.id
         default: return false
         }
@@ -111,8 +118,14 @@ final class AuthManager: ObservableObject {
         case .initialSession, .userUpdated:
             if let session {
                 await APIClient.shared.setToken(session.accessToken)
-                await loadCurrentUser()
+                // Cold launch with a Keychain-restored session is the one path
+                // where we honor the biometric lock. .userUpdated mid-session
+                // (e.g. email change) shouldn't re-lock the user.
+                let lockOnLaunch = (event == .initialSession) && isColdLaunch
+                isColdLaunch = false
+                await loadCurrentUser(applyBiometricLock: lockOnLaunch)
             } else {
+                isColdLaunch = false
                 state = .unauthenticated
             }
         case .tokenRefreshed:
@@ -129,12 +142,24 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    private func loadCurrentUser() async {
+    /// `true` only on the very first event delivered after process launch.
+    /// Used to gate the FaceID lock — a user who *just* completed OAuth in
+    /// this session should not be re-locked, only a returning user with a
+    /// pre-existing Keychain session should be.
+    private var isColdLaunch = true
+
+    private func loadCurrentUser(applyBiometricLock: Bool = false) async {
         do {
             let user = try await APIClient.shared.getMe()
             if user.isOnboarded {
                 UserDefaults.standard.set(true, forKey: "byteai_onboarded")
-                state = .authenticated(user: user)
+                if applyBiometricLock,
+                   BiometricLock.shared.isEnabled,
+                   BiometricLock.shared.isAvailable {
+                    state = .locked(user: user)
+                } else {
+                    state = .authenticated(user: user)
+                }
             } else {
                 UserDefaults.standard.removeObject(forKey: "byteai_onboarded")
                 state = .onboarding
@@ -199,11 +224,6 @@ final class AuthManager: ObservableObject {
     // Google: native GoogleSignIn SDK → ID token → signInWithIdToken. The Google
     // sheet talks to accounts.google.com directly, so the consent screen shows
     // "Sign in to ByteAI" (no Supabase URL ever appears).
-    //
-    // GitHub: still uses Supabase OAuth via ASWebAuthenticationSession. GitHub
-    // has no first-party iOS SDK that returns an ID token, so the only way to
-    // hide supabase.co there would be a server-side OAuth proxy — out of scope.
-
     func signIn(with provider: AuthProvider) async {
         loadingProvider = provider
         isLoading = true
@@ -213,8 +233,31 @@ final class AuthManager: ObservableObject {
             isLoading = false
         }
         switch provider {
+        case .apple:  await signInWithApple()
         case .google: await signInWithGoogle()
-        case .github: await signInWithGithub()
+        }
+    }
+
+    /// Apple sign-in: native AuthenticationServices sheet → ID token + raw
+    /// nonce → `signInWithIdToken`. Mirrors the Google flow exactly so the
+    /// rest of the auth state machine doesn't care how we got here.
+    /// Required by App Review Guideline 4.8 once any 3rd-party login is offered.
+    private func signInWithApple() async {
+        let coordinator = AppleSignInCoordinator()
+        do {
+            let result = try await coordinator.signIn()
+            try await client.auth.signInWithIdToken(
+                credentials: OpenIDConnectCredentials(
+                    provider: .apple,
+                    idToken: result.idToken,
+                    nonce: result.rawNonce
+                )
+            )
+        } catch let error as ASAuthorizationError where error.code == .canceled {
+            // User dismissed the sheet — silent, like Google's `.canceled`.
+        } catch {
+            print("[Auth] Apple sign-in failed: \(error)")
+            self.error = "Sign-in failed — try again"
         }
     }
 
@@ -267,17 +310,6 @@ final class AuthManager: ObservableObject {
         }
     }
 
-    private func signInWithGithub() async {
-        do {
-            try await client.auth.signInWithOAuth(
-                provider: .github,
-                redirectTo: URL(string: "byteai://auth/callback")
-            )
-        } catch {
-            self.error = "Sign-in failed — try again"
-        }
-    }
-
     private func topViewController() -> UIViewController? {
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = scene.windows.first(where: \.isKeyWindow) ?? scene.windows.first,
@@ -300,8 +332,33 @@ final class AuthManager: ObservableObject {
             try? await APIClient.shared.unregisterDevice(apnsToken: apnsToken)
             UserDefaults.standard.removeObject(forKey: "byteai_apns_token")
         }
+        // New device / new user on this device → re-opt-in required.
+        BiometricLock.shared.clearOnSignOut()
         try? await client.auth.signOut()
         // observeAuthState will pick up .signedOut and reset state
+    }
+
+    // MARK: - Biometric lock transitions
+    //
+    // FaceID is a UI gate, not a re-auth: the Supabase session stays valid
+    // through these transitions, so APIClient + ChatService don't need to
+    // tear down. RootView is the only listener that cares about the switch.
+
+    /// Move from `.authenticated` to `.locked`. No-op for any other state.
+    /// Called from RootView on `scenePhase → .background` when the user has
+    /// FaceID enabled.
+    func lock() {
+        if case .authenticated(let user) = state {
+            state = .locked(user: user)
+        }
+    }
+
+    /// Move from `.locked` to `.authenticated`. Called by `BiometricLockView`
+    /// after a successful FaceID/passcode evaluation.
+    func unlock() {
+        if case .locked(let user) = state {
+            state = .authenticated(user: user)
+        }
     }
 
     func completeOnboarding() async {
@@ -316,7 +373,43 @@ final class AuthManager: ObservableObject {
     }
 
     var currentUser: User? {
-        if case .authenticated(let user) = state { return user }
-        return nil
+        switch state {
+        case .authenticated(let user), .locked(let user): return user
+        default: return nil
+        }
+    }
+
+    /// Apply a freshly-uploaded avatar URL to the current session user. Updates
+    /// `state` so any view bound to `currentUser` repaints, and broadcasts an
+    /// avatarChanged notification so non-bound views (post cards, comment rows
+    /// holding captured user copies) can refresh their cached image.
+    func applyAvatarUpdate(_ url: String?) {
+        switch state {
+        case .authenticated(var user):
+            user.avatarUrl = url
+            state = .authenticated(user: user)
+            broadcastAvatarChanged(userId: user.id, url: url)
+        case .locked(var user):
+            user.avatarUrl = url
+            state = .locked(user: user)
+            broadcastAvatarChanged(userId: user.id, url: url)
+        default:
+            return
+        }
+    }
+
+    private func broadcastAvatarChanged(userId: String, url: String?) {
+        NotificationCenter.default.post(
+            name: .avatarChanged,
+            object: nil,
+            userInfo: ["userId": userId, "avatarUrl": url ?? ""]
+        )
+    }
+
+    /// Refetch `/users/me` from the server and update `state`. Used after
+    /// profile edits (avatar, display name) so the auth-scoped user object
+    /// stays in sync without needing to sign-out/in.
+    func refreshCurrentUser() async {
+        await loadCurrentUser()
     }
 }

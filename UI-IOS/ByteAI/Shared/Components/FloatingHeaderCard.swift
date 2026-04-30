@@ -6,32 +6,21 @@ import SwiftUI
 //   Interviews: border .35 alpha + bg .07 alpha (purple)
 
 // MARK: - ByteAI Logo Mark
-// Renders the </> brand icon matching the web ByteAILogo component and the app icon asset.
+// Thin shim around ByteAILogoView. Existing call sites pass a CGFloat — pick the
+// closest sized variant so the animated logo replaces the prior static mark
+// everywhere without touching their layout.
 
 struct ByteAILogoMark: View {
     var size: CGFloat = 20
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.22)
-                .fill(
-                    LinearGradient(
-                        colors: [Color(hex: "#1e2a6b"), Color(hex: "#0d1540")],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: size * 0.22)
-                        .stroke(Color(hex: "#3b82f6").opacity(0.45), lineWidth: 1)
-                )
-                .frame(width: size, height: size)
+        ByteAILogoView(size: matchedSize, showText: false)
+    }
 
-            Text("</>")
-                .font(.system(size: size * 0.38, weight: .bold, design: .monospaced))
-                .foregroundColor(Color(hex: "#06b6d4"))
-        }
-        .frame(width: size, height: size)
+    private var matchedSize: ByteAILogoSize {
+        if size >= 48 { return .lg }
+        if size >= 34 { return .md }
+        return .sm
     }
 }
 
@@ -155,7 +144,7 @@ struct SearchableDropdown: View {
                 showAllOption: showAllOption,
                 identity: identity
             )
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
     }
@@ -298,10 +287,24 @@ struct MultiSelectDropdown: View {
                     .font(.byteMono(11, weight: .bold))
                     .tracking(0.5)
                     .lineLimit(1)
-                Spacer()
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
-                    .opacity(0.7)
+                Spacer(minLength: 4)
+                if values.isEmpty {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .semibold))
+                        .opacity(0.7)
+                } else {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) { values = [] }
+                        Haptics.light()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(identity.solid)
+                            .frame(width: 20, height: 20)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .foregroundColor(values.isEmpty ? .byteText1 : identity.solid)
             .padding(.horizontal, 12).padding(.vertical, 10)
@@ -321,17 +324,19 @@ struct MultiSelectDropdown: View {
                 placeholder: placeholder,
                 identity: identity
             )
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
     }
 
     private var triggerLabel: String {
         if values.isEmpty { return placeholder.uppercased() }
-        if values.count == 1 {
-            return options.first(where: { $0.value == values[0] })?.label ?? values[0]
+        let labels = values.prefix(2).compactMap { v in
+            options.first(where: { $0.value == v })?.label ?? v
         }
-        return "\(values.count) SELECTED"
+        let base = labels.joined(separator: ", ")
+        let extra = values.count - 2
+        return extra > 0 ? "\(base) +\(extra)" : base
     }
 }
 
@@ -379,6 +384,32 @@ private struct MultiSelectDropdownSheet: View {
                 Rectangle().fill(Color.byteBorderHigh).frame(height: 1),
                 alignment: .bottom
             )
+
+            if !values.isEmpty {
+                HStack {
+                    Text("\(values.count) selected")
+                        .font(.byteMono(10, weight: .bold))
+                        .foregroundColor(identity.solid)
+                        .tracking(0.5)
+                    Spacer()
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) { values = [] }
+                        Haptics.light()
+                    } label: {
+                        Text("CLEAR ALL")
+                            .font(.byteMono(10, weight: .bold))
+                            .tracking(0.5)
+                            .foregroundColor(.byteText2)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(identity.bgFaint)
+                .overlay(
+                    Rectangle().fill(Color.byteBorderHigh).frame(height: 1),
+                    alignment: .bottom
+                )
+            }
 
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -497,7 +528,7 @@ struct CreatableDropdown: View {
                 placeholder: placeholder,
                 identity: identity
             )
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
     }

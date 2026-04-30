@@ -15,20 +15,39 @@ struct ByteAIApp: App {
         configureURLCache()
     }
 
+    @State private var splashFinished = false
+
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .overlay(alignment: .top) { ToastOverlay() }
-                .environmentObject(authManager)
-                .environmentObject(flags)
-                .environmentObject(chat)
-                .environmentObject(router)
-                .environmentObject(toasts)
-                .preferredColorScheme(themeManager.current.preferredColorScheme)
-                // Cap Dynamic Type at xxxLarge so the layout doesn't explode at the
-                // accessibility scales. Users can still scale up to the cap.
-                .dynamicTypeSize(.xSmall ... .xxxLarge)
-                .onOpenURL { authManager.handle(url: $0) }
+            ZStack {
+                RootView()
+                    .overlay(alignment: .top) { ToastOverlay() }
+                    .environmentObject(authManager)
+                    .environmentObject(flags)
+                    .environmentObject(chat)
+                    .environmentObject(router)
+                    .environmentObject(toasts)
+                    .preferredColorScheme(themeManager.current.preferredColorScheme)
+                    // Cap Dynamic Type at xxxLarge so the layout doesn't explode at the
+                    // accessibility scales. Users can still scale up to the cap.
+                    .dynamicTypeSize(.xSmall ... .xxxLarge)
+                    .onOpenURL { authManager.handle(url: $0) }
+
+                // Animated post-launch splash — sits on top of RootView and fades
+                // out after ~1.4s. Apple disallows animated launch screens, so we
+                // hand off from the static UILaunchScreen to this animated layer
+                // the moment SwiftUI takes over.
+                if !splashFinished {
+                    LaunchSplashView()
+                        .transition(.opacity)
+                        .task {
+                            try? await Task.sleep(nanoseconds: 1_400_000_000)
+                            withAnimation(.easeInOut(duration: 0.45)) {
+                                splashFinished = true
+                            }
+                        }
+                }
+            }
         }
     }
 

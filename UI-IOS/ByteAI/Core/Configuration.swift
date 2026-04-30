@@ -25,6 +25,16 @@ enum AppConfig {
 
     static let signalRHubURL: URL = apiBaseURL.appendingPathComponent("hubs/chat")
 
+    /// Public base URL used when generating share links (`<base>/post/<id>`).
+    /// Must match the production web origin so iOS-shared links resolve to the same
+    /// post page web users see.
+    static let shareBaseURL: URL = {
+        let raw = value(for: "BYTEAI_SHARE_BASE_URL", plistKey: "ByteAIShareBaseURL")
+        let fallback = "https://www.byteaiofficial.com"
+        let final = raw.isEmpty || raw.hasPrefix("$(") ? fallback : raw
+        return URL(string: final)!
+    }()
+
     /// Google Sign-In iOS client ID. Checked in order: scheme env var → Info.plist GIDClientID.
     static let googleIOSClientID: String = {
         let raw = value(for: "GOOGLE_IOS_CLIENT_ID", plistKey: "GIDClientID")

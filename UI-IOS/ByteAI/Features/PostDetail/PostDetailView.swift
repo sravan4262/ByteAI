@@ -100,7 +100,30 @@ struct PostDetailView: View {
             SimilarBytesView(byteId: post.id, sourceTitle: post.title)
         }
         .sheet(isPresented: $showLikers) { LikesSheet(postId: post.id) }
-        .task { await loadPreviewComments() }
+        .task {
+            // Refresh likes/comments from the API so stale counts from bookmarks
+            // or feed snapshots are corrected immediately on open.
+            if let fresh = try? await APIClient.shared.getPost(id: post.id) {
+                post.likes = fresh.likes
+                post.comments = fresh.comments
+                post.isLiked = fresh.isLiked
+                post.isBookmarked = fresh.isBookmarked
+            }
+            await loadPreviewComments()
+        }
+        // Reflect comment add/remove from CommentsView (push) without refetching.
+        // The header counter ("View all N") and the inline preview both update.
+        .onReceive(NotificationCenter.default.publisher(for: .postCommentsChanged)) { note in
+            guard let info = note.userInfo,
+                  let id = info["postId"] as? String, id == post.id else { return }
+            if let count = info["count"] as? Int {
+                post.comments = count
+            } else if let delta = info["delta"] as? Int {
+                post.comments = max(0, post.comments + delta)
+            }
+            onPostChanged?(post)
+            Task { await loadPreviewComments() }
+        }
         .onAppear {
             accumulatedMs = 0
             visibleSince = scenePhase == .active ? Date() : nil
@@ -205,6 +228,11 @@ struct PostDetailView: View {
             post.comments += 1
             onPostChanged?(post)
             await loadPreviewComments()
+            NotificationCenter.default.post(
+                name: .postCommentsChanged,
+                object: nil,
+                userInfo: ["postId": post.id, "delta": 1]
+            )
         } catch {
             toasts.show("Couldn't post comment", kind: .error)
         }
@@ -234,7 +262,7 @@ struct PostDetailView: View {
                 .accessibilityLabel("View comments")
 
                 interactionPill(icon: post.isBookmarked ? "bookmark.fill" : "bookmark",
-                                label: "SAVE", isActive: post.isBookmarked) {
+                                label: post.isBookmarked ? "SAVED" : "SAVE", isActive: post.isBookmarked) {
                     Haptics.light()
                     withAnimation { post.isBookmarked.toggle() }
                     onPostChanged?(post)
@@ -244,7 +272,7 @@ struct PostDetailView: View {
                 .accessibilityValue(post.isBookmarked ? "bookmarked" : "not bookmarked")
 
                 ShareLink(
-                    item: URL(string: "https://byteai.dev/post/\(post.id)")!,
+                    item: ShareURL.post(id: post.id),
                     subject: Text(post.title),
                     message: Text(String(post.body.prefix(140)))
                 ) {
@@ -266,7 +294,7 @@ struct PostDetailView: View {
     private func pillContent(icon: String, count: Int? = nil, label: String? = nil, isActive: Bool) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon).font(.system(size: 13))
-            if let count, count > 0 { Text("\(count)").font(.byteMono(11)).tracking(0.5).lineLimit(1) }
+            if let count { Text("\(count)").font(.byteMono(11)).tracking(0.5).lineLimit(1) }
             if let label { Text(label).font(.byteMono(11)).tracking(0.5).lineLimit(1) }
         }
         .fixedSize(horizontal: true, vertical: false)
@@ -442,22 +470,41 @@ struct SimilarBytesView: View {
 private struct SimilarByteCard: View {
     let byte: SimilarByte
 
+    private var authorInitial: String {
+        String(byte.authorUsername.first.map { String($0).uppercased() } ?? "U")
+    }
+
+    private var authorRoleLine: String? {
+        let role = byte.authorRoleTitle?.trimmingCharacters(in: .whitespaces) ?? ""
+        let company = byte.authorCompany?.trimmingCharacters(in: .whitespaces) ?? ""
+        switch (role.isEmpty, company.isEmpty) {
+        case (true, true):   return nil
+        case (false, true):  return role
+        case (true, false):  return company
+        case (false, false): return "\(role) @ \(company)"
+        }
+    }
+
     var body: some View {
         CardWithTopGradient {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .fill(IdentityColor.blue.bgFaint)
-                            .frame(width: 24, height: 24)
-                            .overlay(Circle().stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
-                        Text(byte.authorUsername.first.map { String($0).uppercased() } ?? "U")
-                            .font(.byteMono(10, weight: .bold))
-                            .foregroundColor(.byteAccent)
+                HStack(spacing: 10) {
+                    AvatarView(authorInitial,
+                               variant: .cyan,
+                               size: .sm,
+                               imageUrl: byte.authorAvatarUrl,
+                               ownerUserId: byte.authorId)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("@\(byte.authorUsername)")
+                            .font(.byteMono(11, weight: .bold))
+                            .foregroundColor(.byteText1)
+                        if let line = authorRoleLine {
+                            Text(line)
+                                .font(.byteMono(10))
+                                .foregroundColor(.byteText2)
+                                .lineLimit(1)
+                        }
                     }
-                    Text("@\(byte.authorUsername)")
-                        .font(.byteMono(11))
-                        .foregroundColor(.byteText2)
                     Spacer()
                 }
 
@@ -486,13 +533,6 @@ private struct SimilarByteCard: View {
                         }
                     }
                 }
-
-                HStack(spacing: 14) {
-                    Label("\(byte.likeCount)", systemImage: "heart")
-                    Label("\(byte.commentCount)", systemImage: "bubble.left")
-                }
-                .font(.byteMono(10))
-                .foregroundColor(.byteText2)
             }
             .padding(14)
         }

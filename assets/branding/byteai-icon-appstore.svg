@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ByteAI App Store icon — 1024×1024.
+  Apple guideline 1.4: 1024×1024, no transparency, no rounded corners
+  (system applies the mask), no outer effects beyond the bounds.
+  All the "rich" treatment lives inside the square: mesh-gradient bg,
+  inner highlight rim, chromatic aberration, cyan glow, grain.
+-->
+<svg width="1024" height="1024" viewBox="0 0 1024 1024"
+     xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <radialGradient id="bgHighlight" cx="0.30" cy="0.20" r="0.85">
+      <stop offset="0"   stop-color="#5b4eaa"/>
+      <stop offset="0.55" stop-color="#2a1e60" stop-opacity="0.35"/>
+      <stop offset="1"   stop-color="#0a0820" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bgCenter" cx="0.50" cy="0.50" r="0.75">
+      <stop offset="0"   stop-color="#1f1850"/>
+      <stop offset="0.65" stop-color="#0e0b30"/>
+      <stop offset="1"   stop-color="#06061a"/>
+    </radialGradient>
+    <radialGradient id="bgShadow" cx="0.85" cy="0.90" r="0.55">
+      <stop offset="0"   stop-color="#000000" stop-opacity="0.55"/>
+      <stop offset="1"   stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rimHighlight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"   stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="0.30" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="1"   stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="glyphFill" x1="0.50" y1="0" x2="0.50" y2="1">
+      <stop offset="0"   stop-color="#a8f0ff"/>
+      <stop offset="0.45" stop-color="#22d3ee"/>
+      <stop offset="1"   stop-color="#0fb6cf"/>
+    </linearGradient>
+    <filter id="glyphGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feFlood flood-color="#22d3ee" flood-opacity="0.85"/>
+      <feComposite in2="blur" operator="in" result="cyanGlow"/>
+      <feMerge>
+        <feMergeNode in="cyanGlow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glyphShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10"/>
+      <feOffset dy="6" result="offsetblur"/>
+      <feFlood flood-color="#000000" flood-opacity="0.55"/>
+      <feComposite in2="offsetblur" operator="in"/>
+    </filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3"/>
+      <feColorMatrix values="0 0 0 0 1
+                             0 0 0 0 1
+                             0 0 0 0 1
+                             0 0 0 0.06 0"/>
+    </filter>
+    <g id="glyph">
+      <path d="M 440 392 L 320 512 L 440 632"
+            stroke="url(#glyphFill)" stroke-width="56"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 588 392 L 480 632"
+            stroke="url(#glyphFill)" stroke-width="56"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 584 392 L 704 512 L 584 632"
+            stroke="url(#glyphFill)" stroke-width="56"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <g id="glyphMagenta">
+      <path d="M 440 392 L 320 512 L 440 632"
+            stroke="#f43f5e" stroke-width="56" stroke-opacity="0.40"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 588 392 L 480 632"
+            stroke="#f43f5e" stroke-width="56" stroke-opacity="0.40"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 584 392 L 704 512 L 584 632"
+            stroke="#f43f5e" stroke-width="56" stroke-opacity="0.40"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <g id="glyphBlue">
+      <path d="M 440 392 L 320 512 L 440 632"
+            stroke="#3b82f6" stroke-width="56" stroke-opacity="0.40"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 588 392 L 480 632"
+            stroke="#3b82f6" stroke-width="56" stroke-opacity="0.40"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 584 392 L 704 512 L 584 632"
+            stroke="#3b82f6" stroke-width="56" stroke-opacity="0.40"
+            stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+  </defs>
+
+  <!-- Square (no rounded corners) — system applies the mask. -->
+  <rect width="1024" height="1024" fill="#0e0b30"/>
+  <rect width="1024" height="1024" fill="url(#bgCenter)"/>
+  <rect width="1024" height="1024" fill="url(#bgHighlight)" style="mix-blend-mode: screen"/>
+  <rect width="1024" height="1024" fill="url(#bgShadow)" style="mix-blend-mode: multiply"/>
+
+  <use href="#glyph" filter="url(#glyphShadow)" opacity="0.85"/>
+  <g transform="translate(-3,0)" opacity="0.55"><use href="#glyphMagenta"/></g>
+  <g transform="translate(3,0)" opacity="0.55"><use href="#glyphBlue"/></g>
+  <use href="#glyph" filter="url(#glyphGlow)"/>
+
+  <rect width="1024" height="1024" filter="url(#grain)" opacity="0.55"/>
+</svg>

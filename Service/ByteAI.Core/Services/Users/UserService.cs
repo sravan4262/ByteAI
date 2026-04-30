@@ -10,10 +10,18 @@ namespace ByteAI.Core.Services.Users;
 public sealed class UserService(AppDbContext db, ILogger<UserService> logger) : IUserService
 {
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct) =>
-        db.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.RoleType).FirstOrDefaultAsync(u => u.Id == userId, ct);
+        db.Users
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.RoleType)
+            .Include(u => u.UserTechStacks).ThenInclude(uts => uts.TechStack)
+            .Include(u => u.UserBadges).ThenInclude(ub => ub.BadgeTypeNav)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
     public Task<User?> GetByUsernameAsync(string username, CancellationToken ct) =>
-        db.Users.Include(u => u.UserRoles).ThenInclude(ur => ur.RoleType).FirstOrDefaultAsync(u => u.Username == username, ct);
+        db.Users
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.RoleType)
+            .Include(u => u.UserTechStacks).ThenInclude(uts => uts.TechStack)
+            .Include(u => u.UserBadges).ThenInclude(ub => ub.BadgeTypeNav)
+            .FirstOrDefaultAsync(u => u.Username == username, ct);
 
     public async Task<PagedResult<User>> GetFollowersAsync(Guid userId, PaginationParams pagination, CancellationToken ct)
     {

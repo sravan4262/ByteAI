@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Auth Screen
 // Mirrors UI/components/features/auth/auth-screen.tsx + unified-auth-form.tsx
-// Web parity: Google + GitHub OAuth only. No tabs, no email, no magic link.
+// Web parity: Google + Apple OAuth only. No tabs, no email, no magic link.
 
 struct AuthView: View {
     @EnvironmentObject private var authManager: AuthManager
@@ -33,9 +33,9 @@ struct AuthView: View {
 
             ScrollView {
                 VStack(spacing: 20) {
-                    // Brand
-                    VStack(spacing: 10) {
-                        Text("⚡").font(.system(size: 44))
+                    // Brand — animated </> mark with shimmer + glow, matching web parity.
+                    VStack(spacing: 14) {
+                        ByteAILogoView(size: .lg, showText: false)
                         VStack(spacing: 6) {
                             Group {
                                 Text("Welcome to ")

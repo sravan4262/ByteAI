@@ -1,6 +1,7 @@
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Notifications;
+using ByteAI.Core.Services.Push;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -11,6 +12,7 @@ public sealed class UserFollowedEventHandler(
     AppDbContext db,
     INotificationService notifications,
     IBadgeService badgeService,
+    IPushDispatcher pushDispatcher,
     ILogger<UserFollowedEventHandler> logger)
     : INotificationHandler<UserFollowedEvent>
 {
@@ -42,6 +44,10 @@ public sealed class UserFollowedEventHandler(
                     actorAvatarUrl = actor?.AvatarUrl,
                 },
                 ct: cancellationToken);
+
+            pushDispatcher.Enqueue(PushPayloads.Follow(
+                recipientId: notification.FollowingId,
+                actorDisplay: actor?.DisplayName ?? actor?.Username ?? "Someone"));
         }
         catch (Exception ex)
         {

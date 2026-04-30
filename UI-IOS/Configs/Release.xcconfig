@@ -1,0 +1,17 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Release.xcconfig — PRODUCTION BUILD CONFIG
+//
+// Real values are injected by GitHub Actions (ios.testflight.yml) which writes
+// directly into Info.plist before xcodebuild runs, so this file's placeholder
+// values are never used in CI builds.
+//
+// For a manual local release build (rare), set real values here or use the
+// test-release-build.sh script which injects them via environment variables.
+// ─────────────────────────────────────────────────────────────────────────────
+
+BYTEAI_API_URL = REPLACE_ME_BY_CI
+SUPABASE_URL = REPLACE_ME_BY_CI
+SUPABASE_ANON_KEY = REPLACE_ME_BY_CI
+BYTEAI_SHARE_BASE_URL = https://www.byteaiofficial.com
+GOOGLE_IOS_CLIENT_ID = REPLACE_ME_BY_CI
+GOOGLE_WEB_CLIENT_ID = REPLACE_ME_BY_CI

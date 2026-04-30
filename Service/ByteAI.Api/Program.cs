@@ -167,6 +167,7 @@ try
     builder.Services.AddScoped<IFollowBusiness, FollowBusiness>();
     builder.Services.AddScoped<ILookupBusiness, LookupBusiness>();
     builder.Services.AddScoped<INotificationsBusiness, NotificationsBusiness>();
+    builder.Services.AddScoped<IDevicesBusiness, DevicesBusiness>();
     builder.Services.AddScoped<IReactionsBusiness, ReactionsBusiness>();
     builder.Services.AddScoped<IAdminBusiness, AdminBusiness>();
     builder.Services.AddScoped<IDraftsBusiness, DraftsBusiness>();
@@ -176,6 +177,34 @@ try
     // ── Chat ──────────────────────────────────────────────────────────────────
     builder.Services.AddScoped<ByteAI.Core.Services.Chat.ChatService>();
     builder.Services.AddSignalR();
+
+    // ── Push notifications (APNs) ─────────────────────────────────────────────
+    // Options bound from `Apns:KeyId / TeamId / KeyP8 / BundleId / Environment`
+    // (env vars `Apns__KeyId`, `Apns__TeamId`, etc. — set by the deploy workflow
+    // from GitHub Secrets).
+    builder.Services.Configure<ByteAI.Core.Services.Push.ApnsOptions>(
+        builder.Configuration.GetSection("Apns"));
+
+    // JWT provider is a singleton: it caches the parsed ECDsa key + a
+    // ~50-minute provider token. Cheap to recreate, but no reason to.
+    builder.Services.AddSingleton<ByteAI.Core.Services.Push.ApnsJwtProvider>();
+
+    // HttpClient for APNs. Stays around for the process lifetime — APNs
+    // benefits from connection reuse to the same HTTP/2 endpoint.
+    builder.Services.AddHttpClient<ByteAI.Core.Services.Push.IPushSenderService, ByteAI.Core.Services.Push.ApnsPushSenderService>(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(15);
+        client.DefaultRequestVersion = System.Net.HttpVersion.Version20;
+        client.DefaultVersionPolicy = System.Net.Http.HttpVersionPolicy.RequestVersionExact;
+    });
+
+    // Dispatcher is registered both as the queue facade event handlers see
+    // (IPushDispatcher) and as the IHostedService that drains the queue.
+    builder.Services.AddSingleton<ByteAI.Core.Services.Push.PushDispatcher>();
+    builder.Services.AddSingleton<ByteAI.Core.Services.Push.IPushDispatcher>(sp =>
+        sp.GetRequiredService<ByteAI.Core.Services.Push.PushDispatcher>());
+    builder.Services.AddHostedService(sp =>
+        sp.GetRequiredService<ByteAI.Core.Services.Push.PushDispatcher>());
 
     // ── Health checks ─────────────────────────────────────────────────────────
     builder.Services.AddHealthChecks()

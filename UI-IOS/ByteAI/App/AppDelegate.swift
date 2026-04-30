@@ -59,6 +59,18 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification) async
                                 -> UNNotificationPresentationOptions {
+        // Broadcast the payload so already-mounted views (bell badge,
+        // notification list) can update their state without a network
+        // round-trip. The system still shows the banner / plays sound — we
+        // just enrich the in-app state in parallel.
+        let userInfo = notification.request.content.userInfo
+        await MainActor.run {
+            NotificationCenter.default.post(
+                name: .pushReceived,
+                object: nil,
+                userInfo: userInfo
+            )
+        }
         return [.banner, .sound, .badge]
     }
 

@@ -452,7 +452,7 @@ export function InterviewsScreen() {
 
       {/* Feed */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
-        <div className="max-w-4xl mx-auto flex flex-col gap-2 p-2">
+        <div className="flex flex-col gap-2 p-2">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center min-h-[400px]">
               <div className="font-mono text-xs text-[var(--t2)] animate-pulse">LOADING INTERVIEWS...</div>

@@ -4,6 +4,14 @@ import Foundation
 // Mirrors /UI/lib/api/http.ts + client.ts
 // Base URL is sourced from AppConfig.apiBaseURL.
 
+// File-scope helper used by `request(...)` to detect the backend's structured
+// 400 response shape `{ error: "INVALID_CONTENT", reason: "…" }`. Lifted to file
+// scope because generic functions can't host nested Decodable types.
+private struct InvalidContentShape: Decodable {
+    let error: String?
+    let reason: String?
+}
+
 actor APIClient {
     static let shared = APIClient()
 
@@ -49,7 +57,14 @@ actor APIClient {
                 throw APIError.unauthorized
             }
             if !(200..<300).contains(http.statusCode) {
-                throw APIError.http(http.statusCode, Self.decodeErrorReason(data: data))
+                let reason = Self.decodeErrorReason(data: data)
+                if http.statusCode == 400 {
+                    if let body = try? JSONDecoder().decode(InvalidContentShape.self, from: data),
+                       body.error == "INVALID_CONTENT" {
+                        throw APIError.invalidContent(body.reason ?? reason)
+                    }
+                }
+                throw APIError.http(http.statusCode, reason)
             }
         }
 
@@ -377,9 +392,13 @@ actor APIClient {
     // MARK: - Devices (push)
 
     func registerDevice(apnsToken: String) async throws {
-        struct B: Encodable { let apnsToken: String; let platform: String }
+        // Backend contract (DevicesController): { platform: "ios", token: "<hex>" }.
+        // The iOS-facing parameter still says `apnsToken` for clarity at call
+        // sites, but the wire payload uses the generic `token` field so the
+        // same endpoint serves Android/web in the future.
+        struct B: Encodable { let platform: String; let token: String }
         let _: EmptyResponse = try await fetch("/api/users/me/devices", method: "POST",
-                                               body: B(apnsToken: apnsToken, platform: "ios"))
+                                               body: B(platform: "ios", token: apnsToken))
     }
 
     func unregisterDevice(apnsToken: String) async throws {
@@ -409,6 +428,7 @@ actor APIClient {
     }
 
     func createInterview(
+        title: String,
         company: String?,
         role: String?,
         location: String?,
@@ -418,6 +438,7 @@ actor APIClient {
     ) async throws -> String {
         struct Q: Encodable { let question: String; let answer: String }
         struct B: Encodable {
+            let title: String
             let company: String?
             let role: String?
             let location: String?
@@ -427,6 +448,7 @@ actor APIClient {
         }
         struct R: Decodable { let id: String }
         let r: R = try await fetch("/api/interviews/with-questions", method: "POST", body: B(
+            title: title,
             company: company, role: role, location: location,
             difficulty: difficulty,
             questions: questions.map { Q(question: $0.question, answer: $0.answer) },
@@ -472,13 +494,13 @@ actor APIClient {
     // MARK: - Follower / Following lists
 
     func getFollowers(userId: String) async throws -> [PersonResult] {
-        let paged: PagedResponse<PersonResult> = try await fetch("/api/users/\(userId)/followers")
-        return paged.items
+        let paged: PagedResponse<UserResponse> = try await fetch("/api/users/\(userId)/followers")
+        return paged.items.map { PersonResult(from: $0) }
     }
 
     func getFollowing(userId: String) async throws -> [PersonResult] {
-        let paged: PagedResponse<PersonResult> = try await fetch("/api/users/\(userId)/following")
-        return paged.items
+        let paged: PagedResponse<UserResponse> = try await fetch("/api/users/\(userId)/following")
+        return paged.items.map { PersonResult(from: $0) }
     }
 
     func getReachEstimate(content: String, tags: [String]) async throws -> Int {
@@ -561,7 +583,15 @@ actor APIClient {
 
     func getMyBookmarks() async throws -> [Post] {
         let paged: PagedResponse<ByteResponse> = try await fetch("/api/me/bookmarks")
-        return paged.items.map { Post(from: $0) }
+        // Every result is definitionally a bookmark, so force `isBookmarked = true`
+        // even if the projection omits it. Without this, the save toggle on a
+        // detail view opened from this list shows the unsaved state until the
+        // next refresh.
+        return paged.items.map { byte in
+            var post = Post(from: byte)
+            post.isBookmarked = true
+            return post
+        }
     }
 
     func getMyBytes(page: Int = 1) async throws -> [Post] {
@@ -663,26 +693,32 @@ actor APIClient {
     // MARK: - Chat (REST history)
 
     func getConversations() async throws -> [ConversationDto] {
-        let paged: PagedResponse<ConversationDto> = try await fetch("/api/chat/conversations")
-        return paged.items
+        return try await fetch("/api/conversations")
     }
 
     func getMessages(conversationId: String, before: String? = nil) async throws -> [MessageDto] {
-        var path = "/api/chat/conversations/\(conversationId)/messages"
+        var path = "/api/conversations/\(conversationId)/messages"
         if let before, let encoded = before.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
-            path += "?before=\(encoded)"
+            path += "?cursor=\(encoded)"
         }
-        let paged: PagedResponse<MessageDto> = try await fetch(path)
-        return paged.items
+        let wire: [MessageWire] = try await fetch(path)
+        return wire.map { MessageDto(from: $0, conversationId: conversationId) }
     }
 
+    /// Mirrors web `getOrCreateConversation`: backend returns `{conversationId, canMessage}`.
+    /// We re-fetch the conversation list to hand callers a fully-populated DTO, since they
+    /// navigate directly into the thread.
     func getOrCreateConversation(otherUserId: String) async throws -> ConversationDto {
-        struct B: Encodable { let otherUserId: String }
-        return try await fetch("/api/chat/conversations", method: "POST", body: B(otherUserId: otherUserId))
+        struct B: Encodable { let recipientId: String }
+        struct R: Decodable { let conversationId: String; let canMessage: Bool }
+        let r: R = try await fetch("/api/conversations", method: "POST", body: B(recipientId: otherUserId))
+        let all = try await getConversations()
+        if let dto = all.first(where: { $0.id == r.conversationId }) { return dto }
+        throw APIError.http(500, "Conversation \(r.conversationId) not found after create")
     }
 
     func getMutualFollows() async throws -> [PersonResult] {
-        let items: [PersonResponse] = try await fetch("/api/chat/mutual-follows")
+        let items: [MutualFollowResponse] = try await fetch("/api/conversations/messageable")
         return items.map { PersonResult(from: $0) }
     }
 
@@ -730,6 +766,7 @@ actor APIClient {
 enum APIError: LocalizedError {
     case http(Int, String)
     case unauthorized
+    case invalidContent(String)
 
     var errorDescription: String? { APIError.userMessage(from: self) }
 
@@ -738,9 +775,11 @@ enum APIError: LocalizedError {
             switch api {
             case .unauthorized:
                 return "Session expired — please sign in again"
+            case .invalidContent(let reason):
+                return reason.isEmpty ? "Content not valid for ByteAI" : reason
             case .http(422, let msg) where !msg.isEmpty && msg != "Stream request failed.":
                 return msg
-            case .http(400, _): return "Bad request — check your input"
+            case .http(400, let msg): return msg.isEmpty ? "Bad request — check your input" : msg
             case .http(401, _): return "Session expired — please sign in again"
             case .http(403, _): return "You don't have permission to do that"
             case .http(404, _): return "That content no longer exists"
@@ -765,6 +804,30 @@ enum APIError: LocalizedError {
 
 extension Notification.Name {
     static let apiDidReceiveUnauthorized = Notification.Name("APIClientDidReceiveUnauthorized")
+
+    /// Posted when a user's avatar changes (own upload, or learned from a refresh).
+    /// userInfo: ["userId": String, "avatarUrl": String?]. Already-mounted views
+    /// (post cards, mini profiles, comment compose, notification rows) listen
+    /// and replace cached images without waiting for the next list refresh.
+    static let avatarChanged = Notification.Name("ByteAIAvatarChanged")
+
+    /// Posted when the comment list for a post is mutated (added or removed).
+    /// userInfo: ["postId": String, "delta": Int]. Lets PostDetailView and feed
+    /// rows update the post's comment counter without re-fetching the byte.
+    static let postCommentsChanged = Notification.Name("ByteAIPostCommentsChanged")
+
+    /// Posted when the AppDelegate receives an APNs payload while the app is
+    /// in the foreground. userInfo carries the original APNs payload (`type`,
+    /// `byteId`, `conversationId`, etc.) so listeners — chiefly the
+    /// notifications panel and bell badge — can update their state without
+    /// hitting the server. A single `getUnreadCount` reconciliation on next
+    /// foreground transition is the safety net for any pushes APNs dropped.
+    static let pushReceived = Notification.Name("ByteAIPushReceived")
+
+    /// Posted after markRead or markAllRead succeeds. userInfo: ["delta": Int]
+    /// (negative number = how many were marked read). NotificationBadgeVM listens
+    /// and decrements its count immediately so the tab badge stays in sync.
+    static let notificationsMarkedRead = Notification.Name("ByteAINotificationsMarkedRead")
 }
 
 struct LikeUser: Identifiable {
@@ -826,6 +889,13 @@ struct UserResponse: Decodable {
     let isOnboarded: Bool
     let badges: [BadgeResponse]
     let avatarUrl: String?
+    // Optional projections — the backend sends these from /api/users/{id} and
+    // /api/users/username/{name} but not from embedded objects (e.g. byte.author).
+    let bytesCount: Int?
+    let followersCount: Int?
+    let followingCount: Int?
+    let isFollowedByMe: Bool?
+    let techStack: [String]?
 }
 
 struct BadgeResponse: Decodable {
@@ -835,16 +905,21 @@ struct BadgeResponse: Decodable {
     let earnedAt: String?
 }
 
+struct CommentAuthorSummary: Decodable {
+    let id: String
+    let username: String
+    let displayName: String
+    let initials: String
+    let avatarUrl: String?
+}
+
 struct CommentResponse: Decodable {
     let id: String
     let body: String
-    let authorId: String
-    let authorUsername: String
-    let authorDisplayName: String?
-    let authorAvatarUrl: String?
     let voteCount: Int
     let createdAt: String
     let parentId: String?
+    let author: CommentAuthorSummary
 }
 
 struct InterviewResponse: Decodable {
@@ -900,6 +975,14 @@ struct PersonResponse: Decodable {
     let isFollowing: Bool
 }
 
+// Mirrors backend MutualFollowDto — the shape returned by /api/conversations/messageable.
+struct MutualFollowResponse: Decodable {
+    let id: String
+    let username: String
+    let displayName: String
+    let avatarUrl: String?
+}
+
 struct SeniorityTypeResponse: Decodable { let id: String; let name: String; let label: String; let icon: String }
 struct DomainResponse: Decodable { let id: String; let name: String; let label: String; let icon: String }
 struct TechStackResponse: Decodable { let id: String; let subdomainId: String?; let name: String; let label: String }
@@ -925,10 +1008,16 @@ struct SearchResponse: Decodable {
 }
 
 // Similar bytes — mirrors Service/ByteAI.Api/ViewModels/AiViewModels.cs SimilarByteResponse.
+// Backend payload includes author profile fields (avatar, role, company) but NOT
+// like / comment counts. The earlier iOS decoder demanded those counts, which
+// caused the entire request to fail with the user seeing "Couldn't load".
 struct SimilarByteResponse: Decodable {
     let id: String
     let authorId: String
     let authorUsername: String
+    let authorAvatarUrl: String?
+    let authorRoleTitle: String?
+    let authorCompany: String?
     let title: String
     let body: String
     let codeSnippet: String?
@@ -936,14 +1025,15 @@ struct SimilarByteResponse: Decodable {
     let type: String
     let createdAt: String
     let tags: [String]
-    let likeCount: Int
-    let commentCount: Int
 }
 
 struct SimilarByte: Identifiable {
     let id: String
     let authorId: String
     let authorUsername: String
+    let authorAvatarUrl: String?
+    let authorRoleTitle: String?
+    let authorCompany: String?
     let title: String
     let body: String
     let codeSnippet: String?
@@ -951,13 +1041,14 @@ struct SimilarByte: Identifiable {
     let type: String
     let createdAt: String
     let tags: [String]
-    let likeCount: Int
-    let commentCount: Int
 
     init(from r: SimilarByteResponse) {
         self.id = r.id
         self.authorId = r.authorId
         self.authorUsername = r.authorUsername
+        self.authorAvatarUrl = r.authorAvatarUrl
+        self.authorRoleTitle = r.authorRoleTitle
+        self.authorCompany = r.authorCompany
         self.title = r.title
         self.body = r.body
         self.codeSnippet = r.codeSnippet
@@ -965,8 +1056,6 @@ struct SimilarByte: Identifiable {
         self.type = r.type
         self.createdAt = r.createdAt
         self.tags = r.tags
-        self.likeCount = r.likeCount
-        self.commentCount = r.commentCount
     }
 }
 
@@ -1033,6 +1122,27 @@ struct MessageDto: Decodable, Identifiable, Hashable {
     let readAt: String?
 }
 
+/// Wire shape returned by `GET /api/conversations/{id}/messages`. The backend's MessageDto
+/// omits `conversationId` (it's already in the URL), so we inject it during mapping.
+private struct MessageWire: Decodable {
+    let id: String
+    let senderId: String
+    let content: String
+    let sentAt: String
+    let readAt: String?
+}
+
+private extension MessageDto {
+    init(from wire: MessageWire, conversationId: String) {
+        self.id = wire.id
+        self.conversationId = conversationId
+        self.senderId = wire.senderId
+        self.content = wire.content
+        self.sentAt = wire.sentAt
+        self.readAt = wire.readAt
+    }
+}
+
 // MARK: - Domain model initialisers from API responses
 
 extension Post {
@@ -1078,7 +1188,7 @@ extension Post {
         return first.isEmpty ? "U" : first
     }
 
-    fileprivate static func relativeTime(from iso: String) -> String {
+    static func relativeTime(from iso: String) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let date = formatter.date(from: iso)
@@ -1122,31 +1232,31 @@ extension User {
             level: r.level,
             xp: r.xp,
             xpToNextLevel: (r.level + 1) * 1000,
-            followers: 0,
-            following: 0,
-            bytes: 0,
+            followers: r.followersCount ?? 0,
+            following: r.followingCount ?? 0,
+            bytes: r.bytesCount ?? 0,
             reactions: 0,
             streak: r.streak,
-            techStack: [],
+            techStack: r.techStack ?? [],
             feedPreferences: [],
             links: [],
-            badges: r.badges.map { Badge(id: $0.name, name: $0.label, icon: $0.icon, earned: true) },
+            badges: r.badges.map { Badge(id: $0.name, name: $0.name, icon: $0.icon, earned: true) },
             isVerified: r.isVerified,
             isOnline: false,
             avatarVariant: "cyan",
             avatarUrl: r.avatarUrl,
-            isOnboarded: r.isOnboarded
+            isOnboarded: r.isOnboarded,
+            isFollowedByMe: r.isFollowedByMe
         )
     }
 }
 
 extension Comment {
     init(from r: CommentResponse) {
-        let displayName = r.authorDisplayName ?? r.authorUsername
         self.init(
             id: r.id,
             content: r.body,
-            author: User.placeholder(id: r.authorId, username: r.authorUsername, displayName: displayName, avatarUrl: r.authorAvatarUrl),
+            author: User.placeholder(id: r.author.id, username: r.author.username, displayName: r.author.displayName, avatarUrl: r.author.avatarUrl),
             timestamp: Post.relativeTime(from: r.createdAt),
             replies: [],
             votes: r.voteCount
@@ -1292,6 +1402,38 @@ extension PersonResult {
             followers: r.followerCount,
             avatarVariant: "cyan",
             isFollowing: r.isFollowing
+        )
+    }
+
+    init(from r: UserResponse) {
+        let initials = String(r.displayName.split(separator: " ")
+            .compactMap { $0.first }.prefix(2).map { String($0) }.joined()).uppercased()
+        self.init(
+            id: r.id,
+            username: r.username,
+            displayName: r.displayName,
+            initials: initials,
+            role: r.roleTitle ?? "",
+            company: r.company ?? "",
+            followers: r.followersCount ?? 0,
+            avatarVariant: "cyan",
+            isFollowing: r.isFollowedByMe ?? false
+        )
+    }
+
+    init(from r: MutualFollowResponse) {
+        let initials = String(r.displayName.split(separator: " ")
+            .compactMap { $0.first }.prefix(2).map { String($0) }.joined()).uppercased()
+        self.init(
+            id: r.id,
+            username: r.username,
+            displayName: r.displayName,
+            initials: initials,
+            role: "",
+            company: "",
+            followers: 0,
+            avatarVariant: "cyan",
+            isFollowing: true
         )
     }
 }

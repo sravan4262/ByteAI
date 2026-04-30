@@ -33,6 +33,10 @@
 	<!-- Backend API base URL, injected from xcconfig / scheme env -->
 	<key>ByteAIApiURL</key>
 	<string>$(BYTEAI_API_URL)</string>
+	<!-- Public web origin used when generating share links. Falls back to the
+	     production web URL when unset, so dev builds still produce valid links. -->
+	<key>ByteAIShareBaseURL</key>
+	<string>$(BYTEAI_SHARE_BASE_URL)</string>
 	<!-- Local network access (iOS 14+ to reach LAN backend in dev) -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>ByteAI needs local network access to connect to the development backend.</string>
@@ -40,6 +44,9 @@
 	<array>
 		<string>_http._tcp</string>
 	</array>
+	<!-- Face ID for biometric authentication -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>ByteAI uses Face ID to securely sign you in.</string>
 	<!-- Photo library access for avatar uploads -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ByteAI needs access to your photo library so you can choose a profile picture.</string>
@@ -47,6 +54,8 @@
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
 	<!-- Google Sign-In iOS client ID. Picked up automatically by GoogleSignIn SDK
@@ -78,7 +87,14 @@
 		<string>remote-notification</string>
 	</array>
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+		<key>UIImageName</key>
+		<string>LaunchLogo</string>
+		<key>UIImageRespectsSafeAreaInsets</key>
+		<true/>
+	</dict>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>armv7</string>

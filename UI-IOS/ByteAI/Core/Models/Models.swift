@@ -28,6 +28,9 @@ struct User: Identifiable, Codable, Hashable {
     var avatarUrl: String?
     var isSystem: Bool = false   // AI-curated content account (web parity: SYSTEM_USER_ID)
     var isOnboarded: Bool = true // Server source of truth from /me; defaults true for embedded uses
+    /// Server-derived flag — does the *current viewer* follow this user?
+    /// nil when the projection didn't include it (e.g. /me, embedded post.author).
+    var isFollowedByMe: Bool? = nil
 }
 
 // Web parity (UI/lib/api/client.ts): authorId == SYSTEM_USER_ID flags AI-curated posts.
@@ -204,6 +207,10 @@ struct AppNotification: Identifiable, Codable {
 
 struct NotificationPayload: Codable {
     let byteId: String?
+    /// Snapshot of the byte's title at notification time. Lets like / comment
+    /// rows surface the byte context without an extra fetch and survives a
+    /// later byte rename or delete.
+    let byteTitle: String?
     let actorId: String?
     let actorUsername: String?
     let actorDisplayName: String?
@@ -218,6 +225,7 @@ struct NotificationPayload: Codable {
 
     init(
         byteId: String? = nil,
+        byteTitle: String? = nil,
         actorId: String? = nil,
         actorUsername: String? = nil,
         actorDisplayName: String? = nil,
@@ -231,6 +239,7 @@ struct NotificationPayload: Codable {
         preview: String? = nil
     ) {
         self.byteId = byteId
+        self.byteTitle = byteTitle
         self.actorId = actorId
         self.actorUsername = actorUsername
         self.actorDisplayName = actorDisplayName

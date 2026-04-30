@@ -26,6 +26,7 @@ struct ProfileView: View {
     let username: String
     @StateObject private var vm: ProfileViewModel
     @State private var selectedTab: ProfileTab = .profile
+    @State private var publicProfileTab: ProfileTab = .bytes
     @State private var showSupportFloat = false
     @State private var showChatFloat = false
     @State private var showEditProfile = false
@@ -65,30 +66,58 @@ struct ProfileView: View {
                     .redacted(reason: .placeholder)
                     .accessibilityHidden(true)
                 } else if let user = vm.user {
-                    VStack(spacing: 0) {
-                        ProfileTabs(selected: $selectedTab, tabs: visibleTabs)
+                    if vm.isOwnProfile {
+                        VStack(spacing: 0) {
+                            ProfileTabs(selected: $selectedTab, tabs: visibleTabs)
+                            ScrollView {
+                                ProfileTabContent(tab: selectedTab, user: user, vm: vm)
+                                    .padding(.vertical, 12)
+                            }
+                            .refreshable { await vm.load() }
+                            .scrollDismissesKeyboard(.interactively)
+                        }
+                    } else {
+                        // Public profile: profile info scrolls at top, tab bar sticks, content below.
                         ScrollView {
-                            ProfileTabContent(tab: selectedTab, user: user, vm: vm)
-                                .padding(.vertical, 12)
+                            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                                ProfileInfoTab(user: user, vm: vm)
+                                    .padding(.vertical, 12)
+                                Section {
+                                    ProfileTabContent(tab: publicProfileTab, user: user, vm: vm)
+                                        .padding(.vertical, 4)
+                                } header: {
+                                    ProfileTabs(selected: $publicProfileTab, tabs: [.bytes, .interviews])
+                                        .background(Color.byteBackground)
+                                }
+                            }
                         }
                         .refreshable { await vm.load() }
                         .scrollDismissesKeyboard(.interactively)
-                    }
-                    .onAppear {
-                        if !vm.isOwnProfile && (selectedTab == .prefs || selectedTab == .alerts) {
-                            selectedTab = .bytes
-                        }
                     }
                 } else {
                     EmptyStateView(icon: "person", title: "Profile not found", message: "")
                 }
 
-                // Floating action buttons — own profile only
+                // Floating action capsules — own profile only.
+                // Labelled pills (not bare circles) signal tappable surface and
+                // surface unread count inline. Bottom-trailing anchored above
+                // the tab bar safe area.
                 if vm.isOwnProfile {
-                    VStack(spacing: 10) {
-                        ProfileFAB(icon: "terminal", badge: 0) { showSupportFloat = true }
+                    VStack(alignment: .trailing, spacing: 10) {
+                        ProfileActionPill(
+                            icon: "terminal",
+                            label: "ASSIST",
+                            badge: 0,
+                            tint: .byteCyan
+                        ) { showSupportFloat = true }
+
                         if flags.isEnabled("chat") {
-                            ProfileFAB(icon: "bubble.left.and.bubble.right", badge: chat.unreadCount) { showChatFloat = true }
+                            ProfileActionPill(
+                                icon: "bubble.left.and.bubble.right.fill",
+                                label: "CHAT",
+                                badge: chat.unreadCount,
+                                tint: .byteAccent
+                            ) { showChatFloat = true }
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
@@ -102,27 +131,45 @@ struct ProfileView: View {
             .toolbarBackground(Color.byteBackground, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if vm.isOwnProfile {
-                        HStack(spacing: 14) {
-                            Button {
-                                showEditProfile = true
-                            } label: {
-                                Image(systemName: "pencil")
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundColor(.byteAccent)
-                            }
-                            .accessibilityLabel("Edit profile")
-
-                            Button {
-                                Task { await AuthManager.shared.signOut() }
-                            } label: {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    .font(.system(size: 15))
-                                    .foregroundColor(.byteText2)
-                            }
-                            .accessibilityLabel("Sign out")
+                // System accounts (e.g. @byteai) get an OFFICIAL ribbon in the
+                // trailing slot — web parity with the `+ OFFICIAL` chip on the
+                // public profile.
+                if !vm.isOwnProfile, vm.user?.isSystem == true {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 9, weight: .bold))
+                            Text("OFFICIAL")
+                                .font(.byteMono(10, weight: .bold))
+                                .tracking(0.8)
                         }
+                        .foregroundColor(.bytePurple)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(IdentityColor.purple.bgActive)
+                        .overlay(Capsule().stroke(IdentityColor.purple.solid, lineWidth: 1))
+                        .clipShape(Capsule())
+                    }
+                }
+
+                if vm.isOwnProfile {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        ProfileToolbarButton(
+                            icon: "rectangle.portrait.and.arrow.right",
+                            tint: .byteRed
+                        ) {
+                            Task { await AuthManager.shared.signOut() }
+                        }
+                        .accessibilityLabel("Sign out")
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        ProfileToolbarButton(
+                            icon: "pencil",
+                            tint: .byteAccent
+                        ) {
+                            showEditProfile = true
+                        }
+                        .accessibilityLabel("Edit profile")
                     }
                 }
             }
@@ -132,9 +179,15 @@ struct ProfileView: View {
                 }
             }
             .sheet(isPresented: $showSupportFloat) {
+                // Compact medium detent — terminal sits over the lower half of
+                // the screen instead of taking it whole, so the user can still
+                // see the byte they were reading. Drag up to .large for more
+                // history when needed.
                 SupportTerminalView()
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
+                    .presentationBackground(Color.byteCard)
+                    .presentationCornerRadius(20)
             }
             .sheet(isPresented: $showChatFloat) {
                 ChatTerminalSheet { convo in
@@ -144,6 +197,8 @@ struct ProfileView: View {
                 .environmentObject(chat)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(Color.byteCard)
+                .presentationCornerRadius(20)
             }
             .navigationDestination(item: $chatTerminalConversation) { convo in
                 ChatThreadView(conversation: convo)
@@ -185,30 +240,46 @@ private struct ChatToolbarButton: View {
 // MARK: - Profile Floating Action Button
 // Matches web app-shell fixed bottom-right circular buttons (chat + terminal/support).
 
-private struct ProfileFAB: View {
+// MARK: - Profile Action Pill (chat / assist launchers)
+// Capsule with icon + uppercase mono label and an inline unread chip when
+// non-zero. Replaces the prior bare-icon FAB so the button reads as
+// tappable / actionable on first glance and never collides with the tab bar.
+
+private struct ProfileActionPill: View {
     let icon: String
+    let label: String
     let badge: Int
+    let tint: Color
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            ZStack(alignment: .topTrailing) {
+            HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.byteText2)
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(Color.byteCard))
-                    .overlay(Circle().stroke(Color.byteGreen.opacity(0.25), lineWidth: 1))
-                    .shadow(color: Color.byteGreen.opacity(0.15), radius: 6)
-
+                    .font(.system(size: 13, weight: .semibold))
+                Text(label)
+                    .font(.byteMono(11, weight: .bold))
+                    .tracking(0.8)
                 if badge > 0 {
-                    Circle()
-                        .fill(Color.byteGreen)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: Color.byteGreen.opacity(0.8), radius: 4)
-                        .offset(x: 2, y: -2)
+                    Text(badge > 99 ? "99+" : "\(badge)")
+                        .font(.byteMono(10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Capsule().fill(tint))
+                        .shadow(color: tint.opacity(0.5), radius: 4)
                 }
             }
+            .foregroundColor(tint)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                Capsule()
+                    .fill(Color.byteCard.opacity(0.92))
+                    .background(.ultraThinMaterial, in: Capsule())
+            )
+            .overlay(Capsule().stroke(tint.opacity(0.45), lineWidth: 1))
+            .shadow(color: tint.opacity(0.18), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
     }
@@ -274,35 +345,53 @@ private struct ProfileInfoTab: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
-            XPBar(user: user)
+            // OWN profile: rich dashboard (XP bar + activity stats + badges).
+            // PUBLIC profile: web parity — three identity stats (BYTES /
+            // FOLLOWERS / LEVEL), no XP bar, no badges, no streak. The viewer
+            // doesn't need someone else's progression detail.
+            if vm.isOwnProfile {
+                XPBar(user: user)
 
-            HStack(spacing: 0) {
-                StatItem(label: "FOLLOWING", value: user.following) { vm.followersListMode = .following }
-                Divider().frame(height: 30).background(Color.byteBorderMedium)
-                StatItem(label: "FOLLOWERS", value: user.followers) { vm.followersListMode = .followers }
-                Divider().frame(height: 30).background(Color.byteBorderMedium)
-                StreakStatItem(streak: user.streak)
+                HStack(spacing: 0) {
+                    StatItem(label: "FOLLOWING", value: user.following) { vm.followersListMode = .following }
+                    Divider().frame(height: 30).background(Color.byteBorderMedium)
+                    StatItem(label: "FOLLOWERS", value: user.followers) { vm.followersListMode = .followers }
+                    Divider().frame(height: 30).background(Color.byteBorderMedium)
+                    StreakStatItem(streak: user.streak)
+                }
+                .padding(.vertical, 12)
+                .background(Color.byteCard)
+                .cornerRadius(10)
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderMedium, lineWidth: 1))
+            } else {
+                HStack(spacing: 8) {
+                    PublicStatCard(label: "BYTES",      value: user.bytes)
+                    PublicStatCard(label: "INTERVIEWS", value: vm.interviews.count)
+                    PublicStatCard(label: "LEVEL",      value: user.level)
+                }
             }
-            .padding(.vertical, 12)
-            .background(Color.byteCard)
-            .cornerRadius(10)
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderMedium, lineWidth: 1))
 
-            if !user.techStack.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(user.techStack, id: \.self) { TagView(label: $0, isSelected: true) }
+            // Tech-stack tags + badges + social links + XP only land on the owner's
+            // view. Public profile stays minimal to match the web's compact layout.
+            if vm.isOwnProfile {
+                if !user.techStack.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(user.techStack, id: \.self) { TagView(label: $0, isSelected: true) }
+                        }
                     }
                 }
             }
 
-            BadgesSection(
-                earnedNames: Set(user.badges.map { $0.name.lowercased() }),
-                catalog: vm.badgeCatalog
-            )
+            if vm.isOwnProfile {
+                BadgesSection(
+                    earnedNames: Set(user.badges.map { $0.name.lowercased() }),
+                    catalog: vm.badgeCatalog
+                )
 
-            if !user.links.isEmpty {
-                SocialLinksRow(links: user.links)
+                if !user.links.isEmpty {
+                    SocialLinksRow(links: user.links)
+                }
             }
 
             if !vm.isOwnProfile {
@@ -340,15 +429,30 @@ private struct ProfileInfoTab: View {
         isUploadingAvatar = true
         defer { isUploadingAvatar = false }
         do {
-            let url = try await APIClient.shared.uploadAvatar(data)
+            let serverUrl = try await APIClient.shared.uploadAvatar(data)
+            // Append a cache-busting query so KFImage and the system URL cache
+            // see a different key — Supabase upserts to the same storage path,
+            // so without this the old image keeps coming back.
+            let busted = appendCacheBust(serverUrl)
             if var updated = vm.user {
-                updated.avatarUrl = url
+                updated.avatarUrl = busted
                 vm.user = updated
+            }
+            // Broadcast: AuthManager updates `state` so any view bound to
+            // currentUser repaints; .avatarChanged notification refreshes
+            // captured user copies in feed/comments/notifications rows.
+            if vm.isOwnProfile {
+                AuthManager.shared.applyAvatarUpdate(busted)
             }
             ToastCenter.shared.show("Avatar updated", kind: .success)
         } catch {
             ToastCenter.shared.show("Couldn't upload avatar", kind: .error)
         }
+    }
+
+    private func appendCacheBust(_ url: String) -> String {
+        let stamp = Int(Date().timeIntervalSince1970)
+        return url.contains("?") ? "\(url)&v=\(stamp)" : "\(url)?v=\(stamp)"
     }
 }
 
@@ -369,6 +473,9 @@ private struct ProfilePrefsTab: View {
                 VStack(alignment: .leading, spacing: 22) {
                     techStackSection
                     themeSection
+                    if BiometricLock.shared.isAvailable {
+                        biometricSection
+                    }
                     dangerZoneSection
                 }
                 .padding(.horizontal, 16)
@@ -384,11 +491,14 @@ private struct ProfilePrefsTab: View {
     }
 
     // MARK: Tech Stack Section
+    // Web parity (profile-screen.tsx:1215–1244): wrap-flow chips for the user's
+    // current stacks (each tappable to remove), plus an `+ ADD` pill that
+    // expands to a typeable dropdown.
 
     private var techStackSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             AccentBarHeader(label: "TECH_STACK", size: .compact)
-            StackPicker(
+            TechStackPrefsEditor(
                 values: Binding(
                     get: { vm.user?.techStack ?? [] },
                     set: { newStack in
@@ -396,7 +506,7 @@ private struct ProfilePrefsTab: View {
                         Task { _ = try? await APIClient.shared.updateProfile(techStack: newStack) }
                     }
                 ),
-                options: availableTechStacks.map { $0.label }
+                allOptions: availableTechStacks.map { TechOption(value: $0.name, label: $0.label) }
             )
         }
     }
@@ -431,6 +541,18 @@ private struct ProfilePrefsTab: View {
                 }
                 Spacer()
             }
+        }
+    }
+
+    // MARK: Biometric Section
+
+    private var biometricSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            AccentBarHeader(label: "PRIVACY & SECURITY", size: .compact)
+            BiometricLockToggleRow()
+                .background(Color.byteCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
         }
     }
 
@@ -662,6 +784,7 @@ private struct XPBar: View {
     let user: User
     @State private var glowPulse = false
     @State private var barPulse = false
+    @State private var levelPop = false
 
     private var current: LevelMeta { LevelMeta.current(for: user.level) }
     private var next: LevelMeta? { LevelMeta.next(after: user.level) }
@@ -688,6 +811,13 @@ private struct XPBar: View {
                     .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.byteCyan.opacity(glowPulse ? 0.55 : 0.25), lineWidth: 1))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .shadow(color: Color.byteCyan.opacity(glowPulse ? 0.55 : 0.20), radius: glowPulse ? 14 : 8)
+                    // Spring-pop whenever the level increments — small celebration on level-up.
+                    .scaleEffect(levelPop ? 1.18 : 1.0)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.45), value: levelPop)
+                    .onChange(of: user.level) { _, _ in
+                        levelPop = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.36) { levelPop = false }
+                    }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("LVL \(user.level) · \(current.name)")
@@ -731,6 +861,10 @@ private struct XPBar: View {
                         ))
                         .frame(width: geo.size.width * CGFloat(pct), height: 8)
                         .shadow(color: Color.byteCyan.opacity(barPulse ? 0.85 : 0.45), radius: barPulse ? 12 : 6)
+                        // Web parity: when XP changes, the bar springs to its
+                        // new width instead of snapping. Keyed off `pct` so a
+                        // level-up (which resets pct toward 0) also animates.
+                        .animation(.interpolatingSpring(stiffness: 80, damping: 14), value: pct)
                 }
                 .frame(height: 8)
             }
@@ -768,6 +902,50 @@ private struct XPBar: View {
         f.groupingSeparator = ","
         f.numberStyle = .decimal
         return f.string(from: NSNumber(value: n)) ?? "\(n)"
+    }
+}
+
+// MARK: - Public Stat Card
+// Web parity: a row of bordered cards showing identity stats (BYTES / FOLLOWERS
+// / LEVEL) on the public profile. Each card is its own bordered tile, in
+// contrast to the own-profile StatItem which lives inside a single shared card.
+
+private struct PublicStatCard: View {
+    let label: String
+    let value: Int
+    var onTap: (() -> Void)? = nil
+
+    var body: some View {
+        Group {
+            if let onTap {
+                Button(action: onTap) { content }
+                    .buttonStyle(.plain)
+            } else {
+                content
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var content: some View {
+        VStack(spacing: 4) {
+            Text(formatted)
+                .font(.byteSans(20, weight: .bold))
+                .foregroundColor(.byteText1)
+            Text(label)
+                .font(.byteMono(10, weight: .semibold))
+                .foregroundColor(.byteText2)
+                .tracking(0.6)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(Color.byteCard)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var formatted: String {
+        value >= 1000 ? String(format: "%.1fk", Double(value)/1000) : "\(value)"
     }
 }
 
@@ -833,8 +1011,26 @@ private struct BadgesSection: View {
     let catalog: [BadgeType]
     @State private var selected: BadgeDetail?
 
-    private var earnedCount: Int { catalog.filter { earnedNames.contains($0.name.lowercased()) }.count }
-    private var firstLockedIdx: Int? { catalog.firstIndex(where: { !earnedNames.contains($0.name.lowercased()) }) }
+    private func isEarned(_ b: BadgeType) -> Bool {
+        earnedNames.contains(b.name.lowercased())
+    }
+
+    private var earnedCount: Int { catalog.filter(isEarned).count }
+
+    /// Web parity: earned badges render first, locked badges follow. Within each
+    /// group the original catalog (progression) order is preserved so the
+    /// "next" badge stays the first locked one in the chain.
+    private var orderedCatalog: [BadgeType] {
+        let earned = catalog.filter(isEarned)
+        let locked = catalog.filter { !isEarned($0) }
+        return earned + locked
+    }
+
+    /// `isNext` is the FIRST locked badge in the original catalog (progression
+    /// chain), regardless of where it lands in display order.
+    private var nextLockedId: String? {
+        catalog.first(where: { !isEarned($0) })?.id
+    }
 
     var body: some View {
         if catalog.isEmpty && earnedNames.isEmpty {
@@ -856,9 +1052,9 @@ private struct BadgesSection: View {
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
-                        ForEach(Array(catalog.enumerated()), id: \.element.id) { idx, type in
-                            let earned = earnedNames.contains(type.name.lowercased())
-                            let isNext = firstLockedIdx == idx
+                        ForEach(Array(orderedCatalog.enumerated()), id: \.element.id) { idx, type in
+                            let earned = isEarned(type)
+                            let isNext = type.id == nextLockedId
                             BadgeCard(
                                 type: type,
                                 earned: earned,
@@ -872,9 +1068,9 @@ private struct BadgesSection: View {
                     .padding(.vertical, 4)
                 }
             }
-            .sheet(item: $selected) { detail in
+            .fullScreenCover(item: $selected) { detail in
                 BadgeDetailSheet(detail: detail)
-                    .presentationDetents([.fraction(0.4), .medium])
+                    .presentationBackground(.clear)
             }
         }
     }
@@ -1013,7 +1209,7 @@ private struct BadgeCard: View {
                     glowPulse = true
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.06 + 0.6) {
-                    withAnimation(.easeInOut(duration: 1.4)) {
+                    withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: false)) {
                         shineX = 120
                     }
                 }
@@ -1032,60 +1228,294 @@ private struct BadgeCard: View {
 
 // MARK: - Badge Detail Sheet
 
+// Centered floating modal — mirrors the web `profile-screen.tsx` badge popup.
+// Earned = gold halo + particle burst + 3 expanding rings + floating icon + shine
+// sweep. Locked = lock-shake on appear. Tap card or backdrop to dismiss.
 private struct BadgeDetailSheet: View {
     let detail: BadgesSection.BadgeDetail
     @Environment(\.dismiss) private var dismiss
 
+    // Animation state — kept verbatim from the prior sheet, plus particles/rings/shake.
+    @State private var iconScale: CGFloat = 0.4
+    @State private var iconRotation: Double = -12
+    @State private var iconOpacity: Double = 0
+    @State private var glowOn = false
+    @State private var shineX: CGFloat = -160
+    @State private var floatY: CGFloat = 0
+    @State private var ringScales: [CGFloat] = [0.5, 0.5, 0.5]
+    @State private var ringOpacities: [Double] = [0.8, 0.8, 0.8]
+    @State private var lockShake: CGFloat = 0
+    @State private var didEnter = false
+
+    private static let gold = Color(red: 251/255, green: 191/255, blue: 36/255)
+    private static let goldDim = Color(red: 251/255, green: 191/255, blue: 36/255).opacity(0.4)
+
+    // Particle burst — 12 dots fanned out radially, only on earned.
+    private static let particles: [Particle] = (0..<12).map { i in
+        let angle = Double(i) * (2 * .pi / 12)
+        let dist: CGFloat = 90 + CGFloat((i * 7) % 30)
+        return Particle(
+            id: i,
+            dx: CGFloat(cos(angle)) * dist,
+            dy: CGFloat(sin(angle)) * dist,
+            size: i.isMultiple(of: 3) ? 5 : 3,
+            color: i.isMultiple(of: 2) ? gold : Color(hex: "#fde68a"),
+            delay: Double(i % 4) * 0.04
+        )
+    }
+    private struct Particle: Identifiable {
+        let id: Int; let dx: CGFloat; let dy: CGFloat
+        let size: CGFloat; let color: Color; let delay: Double
+    }
+
     var body: some View {
+        ZStack {
+            // Backdrop — tap dismisses.
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .background(.ultraThinMaterial)
+                .contentShape(Rectangle())
+                .onTapGesture { dismiss() }
+
+            ZStack {
+                if detail.earned {
+                    // Big radial gold halo behind the card.
+                    RadialGradient(
+                        colors: [Self.gold.opacity(0.55), Self.gold.opacity(0.18), .clear],
+                        center: .center, startRadius: 20, endRadius: 220
+                    )
+                    .frame(width: 440, height: 440)
+                    .blur(radius: 12)
+                    .opacity(didEnter ? 1.0 : 0.0)
+                    .scaleEffect(didEnter ? 1.0 : 0.6)
+                    .allowsHitTesting(false)
+
+                    // 3 expanding ring rings (one-shot on appear).
+                    ForEach(0..<3, id: \.self) { i in
+                        Circle()
+                            .stroke(Self.goldDim, lineWidth: 1)
+                            .frame(width: 90, height: 90)
+                            .scaleEffect(ringScales[i])
+                            .opacity(ringOpacities[i])
+                            .allowsHitTesting(false)
+                    }
+
+                    // Particle burst (one-shot on appear).
+                    ForEach(Self.particles) { p in
+                        Circle()
+                            .fill(p.color)
+                            .frame(width: p.size, height: p.size)
+                            .offset(x: didEnter ? p.dx : 0, y: didEnter ? p.dy : 0)
+                            .opacity(didEnter ? 0 : 1)
+                            .scaleEffect(didEnter ? 0.4 : 1)
+                            .animation(
+                                .timingCurve(0.2, 0, 0.8, 1, duration: 0.7 + p.delay).delay(p.delay),
+                                value: didEnter
+                            )
+                            .allowsHitTesting(false)
+                    }
+                }
+
+                // Card.
+                cardContent
+                    .scaleEffect(iconScale)
+                    .rotationEffect(.degrees(iconRotation))
+                    .opacity(iconOpacity)
+                    .shadow(
+                        color: detail.earned
+                            ? Self.gold.opacity(glowOn ? 0.45 : 0.20)
+                            : Color.black.opacity(0.5),
+                        radius: detail.earned ? (glowOn ? 60 : 40) : 28
+                    )
+                    .shadow(
+                        color: detail.earned ? Self.gold.opacity(0.10) : .clear,
+                        radius: detail.earned ? 120 : 0
+                    )
+                    .padding(.horizontal, 24)
+                    .onTapGesture { dismiss() }
+            }
+        }
+        .onAppear { runEntryAnimations() }
+    }
+
+    private var cardContent: some View {
         VStack(spacing: 16) {
-            Capsule().fill(Color.byteBorderMedium).frame(width: 36, height: 4).padding(.top, 8)
+            // Icon block
+            ZStack {
+                if detail.earned {
+                    // Soft gold halo right behind the icon (mirrors the inset blur on web).
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Self.gold.opacity(0.35), .clear],
+                                center: .center, startRadius: 0, endRadius: 50
+                            )
+                        )
+                        .frame(width: 100, height: 100)
+                        .blur(radius: 8)
+                        .allowsHitTesting(false)
+                }
 
-            Text(detail.type.icon)
-                .font(.system(size: 56))
-                .opacity(detail.earned ? 1 : 0.45)
-                .padding(.top, 6)
+                Text(detail.type.icon)
+                    .font(.system(size: 56))
+                    .opacity(detail.earned ? 1 : 0.45)
+                    .offset(y: floatY)
+                    .modifier(LockShakeModifier(amount: lockShake, enabled: !detail.earned))
+                    .shadow(
+                        color: detail.earned ? Self.gold.opacity(glowOn ? 0.55 : 0.2) : .clear,
+                        radius: glowOn ? 22 : 8
+                    )
 
-            Text(detail.type.label)
-                .font(.byteSans(20, weight: .bold))
-                .foregroundColor(.byteText1)
+                // Diagonal shine sweep — earned only.
+                if detail.earned {
+                    LinearGradient(
+                        colors: [.clear, Self.gold.opacity(0.28), .clear],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                    .frame(width: 60)
+                    .rotationEffect(.degrees(14))
+                    .offset(x: shineX)
+                    .allowsHitTesting(false)
+                    .clipped()
+                }
+            }
+            .frame(width: 110, height: 110)
+            .clipShape(RoundedRectangle(cornerRadius: 24))
 
-            Text(detail.earned ? "EARNED" : "LOCKED")
-                .font(.byteMono(11, weight: .bold))
-                .tracking(0.8)
-                .foregroundColor(detail.earned ? .byteAccent : .byteText2)
-                .padding(.horizontal, 10).padding(.vertical, 4)
-                .background(detail.earned ? IdentityColor.blue.bgActive : IdentityColor.blue.bgFaint)
-                .overlay(RoundedRectangle(cornerRadius: 6)
-                    .stroke(detail.earned ? Color.byteAccent : IdentityColor.blue.borderFaint, lineWidth: 1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+            // Title
+            Text(detail.earned ? detail.type.label.lowercased().replacingOccurrences(of: " ", with: "_") : "LOCKED")
+                .font(.byteMono(13, weight: .bold))
+                .tracking(1.2)
+                .foregroundColor(detail.earned ? Self.gold : .byteText2)
 
-            if let desc = detail.type.description, !desc.isEmpty {
+            // Description
+            if let desc = detail.type.description, !desc.isEmpty, detail.earned {
                 Text(desc)
-                    .font(.byteSans(14))
+                    .font(.byteMono(11))
                     .foregroundColor(.byteText2)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
+                    .lineSpacing(2)
+                    .padding(.horizontal, 12)
+            } else if !detail.earned {
+                Text("Keep building to unlock\nthis badge.")
+                    .font(.byteMono(11))
+                    .foregroundColor(.byteText3)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+                    .padding(.horizontal, 12)
             }
 
-            Spacer()
-
-            Button { dismiss() } label: {
-                Text("CLOSE")
-                    .font(.byteMono(11, weight: .bold))
-                    .tracking(0.8)
-                    .foregroundColor(.byteAccent)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(IdentityColor.blue.bgActive)
-                    .overlay(RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.byteAccent, lineWidth: 1))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            // Status pill
+            HStack(spacing: 6) {
+                if detail.earned {
+                    Text("✦")
+                        .font(.system(size: 11))
+                        .foregroundColor(Self.gold)
+                    Text("BADGE_UNLOCKED")
+                        .font(.byteMono(11, weight: .bold))
+                        .tracking(1.0)
+                        .foregroundColor(Self.gold.opacity(0.85))
+                } else {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(.byteText3)
+                    Text("NOT_YET_EARNED")
+                        .font(.byteMono(11, weight: .bold))
+                        .tracking(1.0)
+                        .foregroundColor(.byteText3)
+                }
             }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 20).padding(.bottom, 20)
+            .padding(.horizontal, 12).padding(.vertical, 5)
+            .background(detail.earned ? Self.gold.opacity(0.12) : Color.byteElement)
+            .overlay(
+                Capsule()
+                    .stroke(detail.earned ? Self.gold.opacity(0.4) : Color.byteBorderMedium, lineWidth: 1)
+            )
+            .clipShape(Capsule())
+
+            // Footer
+            Text("tap to close")
+                .font(.byteMono(10))
+                .foregroundColor(.byteText3)
+                .padding(.top, 2)
         }
-        .frame(maxWidth: .infinity)
-        .background(Color.byteBackground.ignoresSafeArea())
+        .padding(.horizontal, 36)
+        .padding(.vertical, 28)
+        .background(Color.byteCard)
+        .overlay(
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(detail.earned ? Self.gold.opacity(0.55) : Color.byteBorderMedium, lineWidth: 1.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 22))
+    }
+
+    private func runEntryAnimations() {
+        // Spring entry (mirrors web `type:'spring', stiffness:300, damping:20`).
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) {
+            iconScale = 1.0
+            iconRotation = 0
+            iconOpacity = 1
+            didEnter = true
+        }
+
+        if detail.earned {
+            // Floating icon loop.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
+                withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
+                    floatY = -6
+                }
+                withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                    glowOn = true
+                }
+                withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: false)) {
+                    shineX = 160
+                }
+            }
+
+            // Expanding rings — staggered one-shot.
+            for i in 0..<3 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.12) {
+                    withAnimation(.easeOut(duration: 0.9)) {
+                        ringScales[i] = 1.5 + CGFloat(i) * 0.8
+                        ringOpacities[i] = 0
+                    }
+                }
+            }
+        } else {
+            // Lock shake (mirrors web `[0,-6,6,-4,4,-2,2,0]`).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    lockShake = 1
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Lock-shake modifier
+
+private struct LockShakeModifier: ViewModifier {
+    let amount: CGFloat
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .offset(x: shakeOffset(for: amount))
+        } else {
+            content
+        }
+    }
+
+    /// Simulates the web sequence [0,-6,6,-4,4,-2,2,0] over the animation phase.
+    private func shakeOffset(for t: CGFloat) -> CGFloat {
+        guard t > 0 else { return 0 }
+        let phase = t * 7
+        let stops: [CGFloat] = [0, -6, 6, -4, 4, -2, 2, 0]
+        let idx = Int(phase.rounded(.down))
+        guard idx < stops.count - 1 else { return 0 }
+        let frac = phase - CGFloat(idx)
+        return stops[idx] + (stops[idx + 1] - stops[idx]) * frac
     }
 }
 
@@ -1183,11 +1613,16 @@ private struct ProfileTabContent: View {
 
         case .bytes:
             LazyVStack(spacing: 0) {
-                BytesSubTabBar(selected: $bytesSubTab)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                // POSTED / SAVED / DRAFTS only make sense on the owner's view.
+                // Public profile shows posted bytes only — saved + drafts are
+                // inherently personal.
+                if vm.isOwnProfile {
+                    BytesSubTabBar(selected: $bytesSubTab)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                }
 
-                switch bytesSubTab {
+                switch (vm.isOwnProfile ? bytesSubTab : .posted) {
                 case .posted:
                     if vm.bytes.isEmpty {
                         bytesEmptyState
@@ -1236,11 +1671,13 @@ private struct ProfileTabContent: View {
 
         case .interviews:
             LazyVStack(spacing: 0) {
-                InterviewsSubTabBar(selected: $interviewsSubTab)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                if vm.isOwnProfile {
+                    InterviewsSubTabBar(selected: $interviewsSubTab)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                }
 
-                switch interviewsSubTab {
+                switch (vm.isOwnProfile ? interviewsSubTab : .posted) {
                 case .posted:
                     if vm.interviews.isEmpty {
                         interviewsEmptyState
@@ -1258,21 +1695,34 @@ private struct ProfileTabContent: View {
                     }
 
                 case .saved:
-                    VStack(spacing: 14) {
-                        Image(systemName: "bookmark")
-                            .font(.system(size: 44, weight: .thin))
-                            .foregroundColor(.byteText3)
-                        Text("NO SAVED INTERVIEWS")
-                            .font(.byteMono(13, weight: .bold))
-                            .tracking(1.0)
-                            .foregroundColor(.byteText1)
-                        Text("Save interviews to revisit them later.")
-                            .font(.byteBody)
-                            .foregroundColor(.byteText2)
-                            .multilineTextAlignment(.center)
+                    if vm.savedInterviews.isEmpty {
+                        VStack(spacing: 14) {
+                            Image(systemName: "bookmark")
+                                .font(.system(size: 44, weight: .thin))
+                                .foregroundColor(.byteText3)
+                            Text("NO SAVED INTERVIEWS")
+                                .font(.byteMono(13, weight: .bold))
+                                .tracking(1.0)
+                                .foregroundColor(.byteText1)
+                            Text("Save interviews to revisit them later.")
+                                .font(.byteBody)
+                                .foregroundColor(.byteText2)
+                                .multilineTextAlignment(.center)
+                        }
+                        .padding(.top, 60)
+                        .padding(.horizontal, 24)
+                    } else {
+                        LazyVStack(spacing: 12) {
+                            ForEach(vm.savedInterviews) { iv in
+                                NavigationLink(destination: InterviewDetailView(interviewId: iv.id)) {
+                                    InterviewSummaryRow(interview: iv)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 16)
+                            }
+                        }
+                        .padding(.top, 4)
                     }
-                    .padding(.top, 60)
-                    .padding(.horizontal, 24)
                 }
             }
             .sheet(isPresented: $showCompose) { ComposeView(initialType: .interview) }
@@ -1294,22 +1744,24 @@ private struct ProfileTabContent: View {
                 .font(.byteMono(13, weight: .bold))
                 .tracking(1.0)
                 .foregroundColor(.byteText1)
-            Text("Share a technique, pattern, or lesson")
+            Text(vm.isOwnProfile ? "Share a technique, pattern, or lesson" : "No bytes posted yet.")
                 .font(.byteBody)
                 .foregroundColor(.byteText2)
                 .multilineTextAlignment(.center)
-            Button { showCompose = true } label: {
-                Text("→ POST A BYTE")
-                    .font(.byteMono(11, weight: .bold))
-                    .tracking(0.5)
-                    .foregroundColor(.byteAccent)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(IdentityColor.blue.bgActive)
-                    .overlay(Capsule().stroke(Color.byteAccent, lineWidth: 1))
-                    .clipShape(Capsule())
+            if vm.isOwnProfile {
+                Button { showCompose = true } label: {
+                    Text("→ POST A BYTE")
+                        .font(.byteMono(11, weight: .bold))
+                        .tracking(0.5)
+                        .foregroundColor(.byteAccent)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(IdentityColor.blue.bgActive)
+                        .overlay(Capsule().stroke(Color.byteAccent, lineWidth: 1))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.top, 60)
         .padding(.horizontal, 24)
@@ -1324,22 +1776,24 @@ private struct ProfileTabContent: View {
                 .font(.byteMono(13, weight: .bold))
                 .tracking(1.0)
                 .foregroundColor(.byteText1)
-            Text("Document your interview experience")
+            Text(vm.isOwnProfile ? "Document your interview experience" : "No interviews posted yet.")
                 .font(.byteBody)
                 .foregroundColor(.byteText2)
                 .multilineTextAlignment(.center)
-            Button { showCompose = true } label: {
-                Text("→ SHARE ONE")
-                    .font(.byteMono(11, weight: .bold))
-                    .tracking(0.5)
-                    .foregroundColor(.bytePurple)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(IdentityColor.purple.bgActive)
-                    .overlay(Capsule().stroke(Color.bytePurple, lineWidth: 1))
-                    .clipShape(Capsule())
+            if vm.isOwnProfile {
+                Button { showCompose = true } label: {
+                    Text("→ SHARE ONE")
+                        .font(.byteMono(11, weight: .bold))
+                        .tracking(0.5)
+                        .foregroundColor(.bytePurple)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(IdentityColor.purple.bgActive)
+                        .overlay(Capsule().stroke(Color.bytePurple, lineWidth: 1))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.top, 60)
         .padding(.horizontal, 24)
@@ -1628,6 +2082,13 @@ private struct CollapsiblePostCard: View {
 }
 
 // MARK: - Edit Profile Sheet
+// Config-editor terminal aesthetic — mirrors the web's `EDIT_PROFILE` drawer:
+// mono caps header with pulsing dirty-state dot, gradient COMMIT pill (also pinned
+// at the bottom for thumb reach), accent-bar section labels, mono `KEY = value`
+// inputs with focus glow, dev-avatar tile picker, social-link icon rows.
+//
+// Logic preserved: every @State, init(user:), save closure, techStackOptions task.
+// View layer only — no API/VM changes.
 
 struct EditProfileSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -1644,118 +2105,174 @@ struct EditProfileSheet: View {
     @State private var techStack: [String]
     @State private var techStackOptions: [SearchableDropdown.DropdownOption] = []
     @State private var isLoading = false
+    @State private var showDiscardAlert = false
+    @State private var dirtyDotPulse = false
     let onSave: (User) -> Void
 
+    // Snapshot of init values — `isDirty` compares current @State against this.
+    // Pure view-layer concern; no model change.
+    private let original: Original
+
+    private struct Original {
+        let displayName: String
+        let username: String
+        let bio: String
+        let company: String
+        let roleTitle: String
+        let avatarVariant: String
+        let github: String
+        let twitter: String
+        let linkedin: String
+        let website: String
+        let techStack: [String]
+    }
+
     init(user: User, onSave: @escaping (User) -> Void) {
+        let github = user.links.first(where: { $0.platform == "github" })?.url ?? ""
+        let twitter = user.links.first(where: { $0.platform == "twitter" })?.url ?? ""
+        let linkedin = user.links.first(where: { $0.platform == "linkedin" })?.url ?? ""
+        let website = user.links.first(where: { $0.platform == "website" })?.url ?? ""
         self._displayName = State(initialValue: user.displayName)
         self._username = State(initialValue: user.username)
         self._bio = State(initialValue: user.bio)
         self._company = State(initialValue: user.company)
         self._roleTitle = State(initialValue: user.role)
         self._avatarVariant = State(initialValue: user.avatarVariant)
-        self._github = State(initialValue: user.links.first(where: { $0.platform == "github" })?.url ?? "")
-        self._twitter = State(initialValue: user.links.first(where: { $0.platform == "twitter" })?.url ?? "")
-        self._linkedin = State(initialValue: user.links.first(where: { $0.platform == "linkedin" })?.url ?? "")
-        self._website = State(initialValue: user.links.first(where: { $0.platform == "website" })?.url ?? "")
+        self._github = State(initialValue: github)
+        self._twitter = State(initialValue: twitter)
+        self._linkedin = State(initialValue: linkedin)
+        self._website = State(initialValue: website)
         self._techStack = State(initialValue: user.techStack)
+        self.original = Original(
+            displayName: user.displayName,
+            username: user.username,
+            bio: user.bio,
+            company: user.company,
+            roleTitle: user.role,
+            avatarVariant: user.avatarVariant,
+            github: github,
+            twitter: twitter,
+            linkedin: linkedin,
+            website: website,
+            techStack: user.techStack
+        )
         self.onSave = onSave
     }
 
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.byteBackground
-                    .ignoresSafeArea()
-                    .dismissKeyboardOnTap()
-                ScrollView {
-                    VStack(spacing: 18) {
-                        AccentBarHeader(label: "AVATAR", size: .compact)
-                        AvatarVariantPicker(selected: $avatarVariant)
+    private var isDirty: Bool {
+        displayName    != original.displayName    ||
+        username       != original.username       ||
+        bio            != original.bio            ||
+        company        != original.company        ||
+        roleTitle      != original.roleTitle      ||
+        avatarVariant  != original.avatarVariant  ||
+        github         != original.github         ||
+        twitter        != original.twitter        ||
+        linkedin       != original.linkedin       ||
+        website        != original.website        ||
+        techStack      != original.techStack
+    }
 
-                        AccentBarHeader(label: "BASICS", size: .compact)
-                        ByteTextField(placeholder: "Display name", text: $displayName, icon: "person")
-                        ByteTextField(placeholder: "username", text: $username, icon: "at")
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                        ByteTextField(placeholder: "Company", text: $company, icon: "building.2")
-                        ByteTextField(placeholder: "Role (e.g. Senior Engineer)", text: $roleTitle, icon: "briefcase")
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("BIO").font(.byteMono(10)).foregroundColor(.byteText2)
-                            TextField("Tell the world about yourself...", text: $bio, axis: .vertical)
-                                .font(.byteBody).foregroundColor(.byteText1)
-                                .lineLimit(3...6)
-                                .padding(12)
-                                .background(Color.byteElement)
-                                .cornerRadius(8)
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.byteBorderMedium, lineWidth: 1))
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.byteBackground
+                .ignoresSafeArea()
+                .dismissKeyboardOnTap()
+
+            VStack(spacing: 0) {
+                EditProfileHeader(
+                    isDirty: isDirty,
+                    isLoading: isLoading,
+                    pulse: dirtyDotPulse,
+                    onCommit: { Task { await save() } },
+                    onClose: { attemptDismiss() }
+                )
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        // ── AVATAR ──────────────────────────────────────────
+                        Section {
+                            AccentBarHeader(label: "AVATAR", size: .compact)
+                            EditProfileAvatarPicker(selected: $avatarVariant)
                         }
 
-                        AccentBarHeader(label: "TECH STACK", size: .compact)
-                        MultiSelectDropdown(
-                            values: $techStack,
-                            options: techStackOptions,
-                            placeholder: "SELECT TECH STACKS",
-                            identity: .blue
-                        )
-
-                        AccentBarHeader(label: "SOCIAL LINKS", size: .compact)
-                        ByteTextField(placeholder: "GitHub URL", text: $github, icon: "chevron.left.forwardslash.chevron.right")
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                        ByteTextField(placeholder: "Twitter / X URL", text: $twitter, icon: "xmark")
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                        ByteTextField(placeholder: "LinkedIn URL", text: $linkedin, icon: "person.2.fill")
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                        ByteTextField(placeholder: "Website URL", text: $website, icon: "globe")
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-
-                        ByteButton("Save Changes", icon: "checkmark", isLoading: isLoading) {
-                            Task {
-                                isLoading = true
-                                defer { isLoading = false }
-                                do {
-                                    let links: [SocialLink] = [
-                                        ("github", github),
-                                        ("twitter", twitter),
-                                        ("linkedin", linkedin),
-                                        ("website", website),
-                                    ].compactMap { (platform, url) in
-                                        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-                                        return trimmed.isEmpty ? nil : SocialLink(platform: platform, url: trimmed, label: nil)
-                                    }
-                                    let updated = try await APIClient.shared.updateProfile(
-                                        username: username.isEmpty ? nil : username,
-                                        displayName: displayName.isEmpty ? nil : displayName,
-                                        bio: bio.isEmpty ? nil : bio,
-                                        company: company.isEmpty ? nil : company,
-                                        roleTitle: roleTitle.isEmpty ? nil : roleTitle,
-                                        techStack: techStack,
-                                        avatarVariant: avatarVariant,
-                                        links: links
-                                    )
-                                    onSave(updated)
-                                    dismiss()
-                                } catch let err {
-                                    ToastCenter.shared.show(error: err, context: "Couldn't save profile")
-                                }
+                        // ── BASICS ──────────────────────────────────────────
+                        Section {
+                            AccentBarHeader(label: "BASICS", size: .compact)
+                            VStack(alignment: .leading, spacing: 14) {
+                                ConfigField(
+                                    label: "USERNAME",
+                                    placeholder: "your_handle",
+                                    text: $username,
+                                    prefix: "@",
+                                    autocapitalize: false,
+                                    keyboardType: .asciiCapable
+                                )
+                                ConfigField(
+                                    label: "DISPLAY_NAME",
+                                    placeholder: "Your name",
+                                    text: $displayName
+                                )
+                                ConfigBioField(label: "BIO", text: $bio, maxChars: 280)
+                                RoleAtCompanyRow(roleTitle: $roleTitle, company: $company)
                             }
                         }
+
+                        // ── TECH_STACK ──────────────────────────────────────
+                        Section {
+                            AccentBarHeader(label: "TECH_STACK", size: .compact)
+                            MultiSelectDropdown(
+                                values: $techStack,
+                                options: techStackOptions,
+                                placeholder: "SELECT TECH STACKS",
+                                identity: .blue
+                            )
+                        }
+
+                        // ── SOCIAL_LINKS ────────────────────────────────────
+                        Section {
+                            AccentBarHeader(label: "SOCIAL_LINKS", size: .compact)
+                            VStack(spacing: 10) {
+                                SocialLinkRow(
+                                    platform: .github,
+                                    url: $github
+                                )
+                                SocialLinkRow(
+                                    platform: .twitter,
+                                    url: $twitter
+                                )
+                                SocialLinkRow(
+                                    platform: .linkedin,
+                                    url: $linkedin
+                                )
+                                SocialLinkRow(
+                                    platform: .website,
+                                    url: $website
+                                )
+                            }
+                        }
+
+                        // Bottom spacer so the floating save bar never overlaps the last field.
+                        Color.clear.frame(height: 80)
                     }
-                    .padding(20)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 16)
                 }
             }
-            .navigationTitle("Edit Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.byteBackground, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }.foregroundColor(.byteText2)
-                }
-            }
+
+            // Floating thumb-reachable save bar.
+            EditProfileSaveBar(
+                isDirty: isDirty,
+                isLoading: isLoading,
+                pulse: dirtyDotPulse,
+                onCommit: { Task { await save() } }
+            )
+        }
+        .alert("Discard changes?", isPresented: $showDiscardAlert) {
+            Button("Keep editing", role: .cancel) {}
+            Button("Discard", role: .destructive) { dismiss() }
+        } message: {
+            Text("You have unsaved changes. Discarding will lose them.")
         }
         .task {
             if let stacks = try? await APIClient.shared.getTechStacks() {
@@ -1764,6 +2281,491 @@ struct EditProfileSheet: View {
                 }
             }
         }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
+                dirtyDotPulse.toggle()
+            }
+        }
+    }
+
+    private func attemptDismiss() {
+        if isDirty { showDiscardAlert = true } else { dismiss() }
+    }
+
+    @MainActor
+    private func save() async {
+        guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let links: [SocialLink] = [
+                ("github", github),
+                ("twitter", twitter),
+                ("linkedin", linkedin),
+                ("website", website),
+            ].compactMap { (platform, url) in
+                let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmed.isEmpty ? nil : SocialLink(platform: platform, url: trimmed, label: nil)
+            }
+            let updated = try await APIClient.shared.updateProfile(
+                username: username.isEmpty ? nil : username,
+                displayName: displayName.isEmpty ? nil : displayName,
+                bio: bio.isEmpty ? nil : bio,
+                company: company.isEmpty ? nil : company,
+                roleTitle: roleTitle.isEmpty ? nil : roleTitle,
+                techStack: techStack,
+                avatarVariant: avatarVariant,
+                links: links
+            )
+            Haptics.success()
+            onSave(updated)
+            dismiss()
+        } catch let err {
+            Haptics.error()
+            ToastCenter.shared.show(error: err, context: "Couldn't save profile")
+        }
+    }
+}
+
+// MARK: Edit Profile — Header
+
+private struct EditProfileHeader: View {
+    let isDirty: Bool
+    let isLoading: Bool
+    let pulse: Bool
+    let onCommit: () -> Void
+    let onClose: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            HStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("EDIT_PROFILE")
+                        .font(.byteMono(13, weight: .bold))
+                        .tracking(1.2)
+                        .foregroundColor(.byteText1)
+                    Circle()
+                        .fill(isDirty ? Color.byteAccent : Color.byteText3.opacity(0.45))
+                        .frame(width: 6, height: 6)
+                        .opacity(isDirty ? (pulse ? 1.0 : 0.35) : 0.5)
+                        .shadow(color: isDirty ? Color.byteAccent.opacity(0.6) : .clear, radius: 4)
+                        .animation(.easeInOut(duration: 0.4), value: isDirty)
+                }
+                Spacer()
+                GradientCommitPill(isLoading: isLoading, isEnabled: isDirty, action: onCommit)
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.byteText2)
+                        .frame(width: 28, height: 28)
+                        .background(Color.byteElement)
+                        .overlay(
+                            Circle().stroke(Color.byteBorderHigh, lineWidth: 1)
+                        )
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close edit profile")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.byteBackground)
+
+            // Gradient accent line under header.
+            LinearGradient(
+                colors: [Color.byteAccent, Color.byteAccent.opacity(0.25), .clear],
+                startPoint: .leading, endPoint: .trailing
+            )
+            .frame(height: 1)
+        }
+    }
+}
+
+// MARK: Edit Profile — Floating Save Bar
+
+private struct EditProfileSaveBar: View {
+    let isDirty: Bool
+    let isLoading: Bool
+    let pulse: Bool
+    let onCommit: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 6) {
+                if isDirty {
+                    Circle()
+                        .fill(Color.byteAccent)
+                        .frame(width: 6, height: 6)
+                        .opacity(pulse ? 1.0 : 0.35)
+                        .shadow(color: Color.byteAccent.opacity(0.6), radius: 4)
+                    Text("UNSAVED")
+                        .font(.byteMono(10, weight: .bold))
+                        .tracking(0.8)
+                        .foregroundColor(.byteAccent)
+                } else {
+                    Text("// .profile")
+                        .font(.byteMono(11))
+                        .foregroundColor(.byteText3)
+                }
+            }
+            Spacer()
+            GradientCommitPill(isLoading: isLoading, isEnabled: isDirty, action: onCommit)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            Color.byteBackground.opacity(0.92)
+                .background(.ultraThinMaterial)
+        )
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.byteBorderHigh).frame(height: 1)
+        }
+    }
+}
+
+// MARK: Edit Profile — Gradient COMMIT pill
+
+private struct GradientCommitPill: View {
+    let isLoading: Bool
+    let isEnabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: { if isEnabled && !isLoading { Haptics.medium(); action() } }) {
+            HStack(spacing: 6) {
+                if isLoading {
+                    ProgressView().tint(.white).scaleEffect(0.7)
+                    Text("SAVING…")
+                        .font(.byteMono(11, weight: .bold))
+                        .tracking(0.8)
+                        .foregroundColor(.white)
+                } else {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                    Text("COMMIT")
+                        .font(.byteMono(11, weight: .bold))
+                        .tracking(0.8)
+                        .foregroundColor(.white)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                LinearGradient(
+                    colors: [Color.byteAccent, Color(hex: "#2563eb")],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.white.opacity(0.08), lineWidth: 1))
+            .shadow(color: Color.byteAccent.opacity(isEnabled ? 0.30 : 0), radius: 12, y: 0)
+            .opacity(isEnabled || isLoading ? 1.0 : 0.45)
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled || isLoading)
+        .accessibilityLabel("Commit profile changes")
+    }
+}
+
+// MARK: Edit Profile — Mono "ConfigField" input
+
+private struct ConfigField: View {
+    let label: String
+    let placeholder: String
+    @Binding var text: String
+    var prefix: String? = nil
+    var autocapitalize: Bool = true
+    var keyboardType: UIKeyboardType = .default
+    var focusGlow: Color = .byteAccent
+
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            EditProfileFieldLabel(text: label)
+            HStack(spacing: 6) {
+                if let prefix {
+                    Text(prefix)
+                        .font(.byteMono(12, weight: .semibold))
+                        .foregroundColor(.byteText3)
+                }
+                TextField(placeholder, text: $text)
+                    .font(.byteMono(12, weight: .medium))
+                    .foregroundColor(.byteText1)
+                    .tint(focusGlow)
+                    .keyboardType(keyboardType)
+                    .textInputAutocapitalization(autocapitalize ? .sentences : .never)
+                    .autocorrectionDisabled(!autocapitalize)
+                    .focused($focused)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.byteElement)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(focused ? focusGlow : Color.byteBorderHigh, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .shadow(color: focused ? focusGlow.opacity(0.18) : .clear, radius: 6)
+            .animation(.easeInOut(duration: 0.15), value: focused)
+        }
+    }
+}
+
+// MARK: Edit Profile — Bio field with character counter
+
+private struct ConfigBioField: View {
+    let label: String
+    @Binding var text: String
+    let maxChars: Int
+
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            EditProfileFieldLabel(text: label)
+            TextField("Tell the world what you build…", text: $text, axis: .vertical)
+                .font(.byteMono(12))
+                .foregroundColor(.byteText1)
+                .tint(.byteAccent)
+                .lineLimit(3...6)
+                .focused($focused)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.byteElement)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(focused ? Color.byteAccent : Color.byteBorderHigh, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .shadow(color: focused ? Color.byteAccent.opacity(0.18) : .clear, radius: 6)
+                .animation(.easeInOut(duration: 0.15), value: focused)
+            HStack {
+                Spacer()
+                Text("\(text.count)/\(maxChars)")
+                    .font(.byteMono(10))
+                    .foregroundColor(text.count > maxChars ? .byteRed : .byteText3)
+            }
+        }
+    }
+}
+
+// MARK: Edit Profile — Mono field label with accent pill
+
+private struct EditProfileFieldLabel: View {
+    let text: String
+    var body: some View {
+        HStack(spacing: 6) {
+            Capsule()
+                .fill(Color.byteAccent)
+                .frame(width: 3, height: 12)
+            Text(text)
+                .font(.byteMono(10, weight: .bold))
+                .tracking(0.8)
+                .foregroundColor(.byteText1)
+        }
+    }
+}
+
+// MARK: Edit Profile — Role @ Company row
+
+private struct RoleAtCompanyRow: View {
+    @Binding var roleTitle: String
+    @Binding var company: String
+
+    @FocusState private var focusedField: Field?
+    private enum Field { case role, company }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            EditProfileFieldLabel(text: "ROLE_TITLE @ COMPANY")
+            HStack(spacing: 8) {
+                fieldBox(text: $roleTitle, placeholder: "Sr. Engineer", focusColor: .byteAccent, field: .role)
+                Text("@")
+                    .font(.byteMono(13))
+                    .foregroundColor(.byteText3)
+                fieldBox(text: $company, placeholder: "company.io", focusColor: .byteGreen, field: .company)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func fieldBox(text: Binding<String>, placeholder: String, focusColor: Color, field: Field) -> some View {
+        let isFocused = focusedField == field
+        TextField(placeholder, text: text)
+            .font(.byteMono(12, weight: .medium))
+            .foregroundColor(.byteText1)
+            .tint(focusColor)
+            .focused($focusedField, equals: field)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.byteElement)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isFocused ? focusColor : Color.byteBorderHigh, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .shadow(color: isFocused ? focusColor.opacity(0.18) : .clear, radius: 6)
+            .animation(.easeInOut(duration: 0.15), value: focusedField)
+    }
+}
+
+// MARK: Edit Profile — Social link row
+
+private struct SocialLinkRow: View {
+    enum Platform {
+        case github, twitter, linkedin, website
+
+        var glyph: String {
+            switch self {
+            case .github:   return "chevron.left.forwardslash.chevron.right"
+            case .twitter:  return "xmark"
+            case .linkedin: return "person.2.fill"
+            case .website:  return "globe"
+            }
+        }
+        var placeholder: String {
+            switch self {
+            case .github:   return "https://github.com/username"
+            case .twitter:  return "https://x.com/username"
+            case .linkedin: return "https://linkedin.com/in/username"
+            case .website:  return "https://yoursite.dev"
+            }
+        }
+    }
+
+    let platform: Platform
+    @Binding var url: String
+
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.byteBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.byteBorderHigh, lineWidth: 1)
+                    )
+                    .frame(width: 36, height: 36)
+                Image(systemName: platform.glyph)
+                    .font(.system(size: 13))
+                    .foregroundColor(.byteText2)
+            }
+
+            TextField(platform.placeholder, text: $url)
+                .font(.byteMono(11))
+                .foregroundColor(.byteText1)
+                .tint(.byteAccent)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .focused($focused)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.byteElement)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(focused ? Color.byteAccent : Color.byteBorderHigh, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .shadow(color: focused ? Color.byteAccent.opacity(0.18) : .clear, radius: 6)
+                .animation(.easeInOut(duration: 0.15), value: focused)
+
+            if !url.isEmpty {
+                Button {
+                    url = ""
+                    Haptics.light()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.byteText3)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear link")
+            }
+        }
+    }
+}
+
+// MARK: Edit Profile — Avatar picker (4 themed tiles, lossless to backend variant)
+
+private struct EditProfileAvatarPicker: View {
+    @Binding var selected: String
+
+    private struct Tile: Identifiable {
+        let id = UUID()
+        let variant: AvatarVariant
+        let glyph: String
+        let label: String
+    }
+
+    private let tiles: [Tile] = [
+        .init(variant: .cyan,   glyph: "🤖", label: "CYBORG"),
+        .init(variant: .purple, glyph: "👾", label: "RETRO"),
+        .init(variant: .green,  glyph: "⚡", label: "FORCE"),
+        .init(variant: .orange, glyph: "🚀", label: "ROCKET"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            EditProfileFieldLabel(text: "DEV_AVATAR")
+            HStack(spacing: 10) {
+                ForEach(tiles) { tile in
+                    AvatarTile(
+                        glyph: tile.glyph,
+                        label: tile.label,
+                        glow: tile.variant.glowColor,
+                        isSelected: selected == tile.variant.rawValue
+                    ) {
+                        guard selected != tile.variant.rawValue else { return }
+                        Haptics.light()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selected = tile.variant.rawValue
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct AvatarTile: View {
+    let glyph: String
+    let label: String
+    let glow: Color
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(isSelected ? glow.opacity(0.10) : Color.byteElement)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(isSelected ? glow : Color.byteBorderHigh, lineWidth: isSelected ? 2 : 1)
+                        )
+                        .frame(width: 56, height: 56)
+                    Text(glyph)
+                        .font(.system(size: 26))
+                }
+                .shadow(color: isSelected ? glow.opacity(0.45) : .clear, radius: 10)
+                Text(label)
+                    .font(.byteMono(8, weight: .bold))
+                    .tracking(0.6)
+                    .foregroundColor(isSelected ? glow : .byteText3)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(isSelected ? 1.0 : 0.98)
+        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: isSelected)
+        .accessibilityLabel("\(label) avatar")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 
@@ -1792,6 +2794,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var bytes: [Post] = []
     @Published var interviews: [Interview] = []
     @Published var bookmarks: [Post] = []
+    @Published var savedInterviews: [Interview] = []
     @Published var badgeCatalog: [BadgeType] = []
     @Published var isLoading = false
     @Published var isFollowing = false
@@ -1825,9 +2828,11 @@ final class ProfileViewModel: ObservableObject {
             async let b = APIClient.shared.getMyBytes()
             async let iv = APIClient.shared.getMyInterviews()
             async let bk = APIClient.shared.getMyBookmarks()
-            bytes     = (try? await b)  ?? []
-            interviews = (try? await iv) ?? []
-            bookmarks  = (try? await bk) ?? []
+            async let siv = APIClient.shared.getMyInterviewBookmarks()
+            bytes          = (try? await b)   ?? []
+            interviews     = (try? await iv)  ?? []
+            bookmarks      = (try? await bk)  ?? []
+            savedInterviews = (try? await siv) ?? []
         } else if let uid = user?.id {
             // Public profile: fetch ONLY this author's bytes + interviews. Do NOT fetch
             // bookmarks (private). Previously this was calling getFeed() (the viewer's
@@ -1887,6 +2892,7 @@ struct SupportTerminalView: View {
                 titleBar
                 accentLine
                 outputScroll
+                quickActionStrip
                 terminalInput
             }
         }
@@ -1895,6 +2901,81 @@ struct SupportTerminalView: View {
                 caretOn.toggle()
             }
             inputFocused = true
+            Task { await vm.loadInitialContext() }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Button { vm.recallPrevious() } label: {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .disabled(!vm.canRecallPrevious)
+                .accessibilityLabel("Previous command")
+
+                Button { vm.recallNext() } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .disabled(!vm.canRecallNext)
+                .accessibilityLabel("Next command")
+
+                Button { vm.tabComplete() } label: {
+                    Image(systemName: "arrow.right.to.line.compact")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .accessibilityLabel("Tab complete")
+
+                Spacer()
+
+                if !vm.draft.isEmpty {
+                    Button { vm.draft = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
+                    }
+                    .accessibilityLabel("Clear input")
+                }
+
+                Button("Done") { inputFocused = false }
+                    .font(.byteSans(13, weight: .semibold))
+            }
+        }
+    }
+
+    // Tap-to-fill command palette above the input. Idle = command shortcuts,
+    // awaitingMessage = quick-cancel only (message must be free-typed).
+    @ViewBuilder
+    private var quickActionStrip: some View {
+        if vm.draft.isEmpty || vm.stage == .awaitingMessage {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(SupportQuickAction.actions(for: vm.stage), id: \.self) { action in
+                        SupportQuickChip(action: action) {
+                            handleQuickAction(action)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+            }
+            .background(Color.byteGreen.opacity(0.02))
+            .overlay(alignment: .top) {
+                Rectangle().fill(Color.byteBorderHigh.opacity(0.4)).frame(height: 1)
+            }
+            .transition(.opacity)
+        }
+    }
+
+    private func handleQuickAction(_ action: SupportQuickAction) {
+        Haptics.light()
+        switch action {
+        case .help, .whoami, .history, .clear:
+            vm.draft = action.commandToken
+            Task { await vm.submitDraft(onClose: { dismiss() }) }
+        case .good, .bad, .idea:
+            vm.draft = "feedback -type \(action.commandToken)"
+            Task { await vm.submitDraft(onClose: { dismiss() }) }
+        case .cancel:
+            vm.cancelAwaitingMessage()
         }
     }
 
@@ -1992,16 +3073,18 @@ struct SupportTerminalView: View {
     private var outputScroll: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
+                // Wider line-spacing + slightly larger text → less cluttered while
+                // keeping the same terminal silhouette.
+                LazyVStack(alignment: .leading, spacing: 6) {
                     ForEach(vm.lines) { line in
                         SupportTerminalLineRow(line: line)
                             .id(line.id)
                     }
                     if vm.loading {
-                        HStack(spacing: 4) {
-                            Text("◆").font(.system(size: 10, design: .monospaced)).foregroundColor(.byteText3)
+                        HStack(spacing: 5) {
+                            Text("◆").font(.system(size: 11, design: .monospaced)).foregroundColor(.byteText3)
                             ForEach(0..<3) { i in
-                                Circle().fill(Color.byteGreen).frame(width: 4, height: 4)
+                                Circle().fill(Color.byteGreen).frame(width: 5, height: 5)
                                     .opacity(caretOn ? 0.9 : 0.3)
                                     .animation(.easeInOut(duration: 0.6).repeatForever().delay(Double(i) * 0.15), value: caretOn)
                             }
@@ -2010,8 +3093,8 @@ struct SupportTerminalView: View {
                     }
                     Color.clear.frame(height: 4).id("bottom-anchor")
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
             }
             .onChange(of: vm.lines.count) { _, _ in
                 withAnimation(.easeOut(duration: 0.15)) {
@@ -2025,13 +3108,13 @@ struct SupportTerminalView: View {
         VStack(spacing: 0) {
             Rectangle().fill(Color.byteBorderHigh).frame(height: 1)
 
-            HStack(spacing: 4) {
+            HStack(spacing: 5) {
                 if vm.stage == .awaitingMessage {
                     HStack(spacing: 3) {
                         Text("input").foregroundColor(Color(red: 0.98, green: 0.75, blue: 0.14))
                         Text("›").foregroundColor(.byteGreen).fontWeight(.bold)
                     }
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: 13, design: .monospaced))
                 } else {
                     HStack(spacing: 3) {
                         Text("byteai").foregroundColor(Color.byteGreen.opacity(0.55))
@@ -2039,12 +3122,12 @@ struct SupportTerminalView: View {
                         Text("~").foregroundColor(.byteAccent)
                         Text("$").foregroundColor(.byteGreen).fontWeight(.bold)
                     }
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: 13, design: .monospaced))
                 }
 
                 TextField(vm.stage == .awaitingMessage ? "Type your message..." : "type a command...",
                           text: $vm.draft, axis: .vertical)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: 13, design: .monospaced))
                     .foregroundColor(.byteText1)
                     .tint(.byteGreen)
                     .lineLimit(1...5)
@@ -2062,7 +3145,7 @@ struct SupportTerminalView: View {
 
                 Rectangle()
                     .fill(Color.byteGreen)
-                    .frame(width: 6, height: 14)
+                    .frame(width: 7, height: 16)
                     .opacity(inputFocused && caretOn ? 0.9 : 0.3)
                     .cornerRadius(1)
 
@@ -2070,14 +3153,14 @@ struct SupportTerminalView: View {
                     Task { await vm.submitDraft(onClose: { dismiss() }) }
                 } label: {
                     Image(systemName: "return")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundColor(vm.draft.trimmingCharacters(in: .whitespaces).isEmpty ? .byteText3 : .byteGreen)
                 }
                 .buttonStyle(.plain)
                 .disabled(vm.draft.trimmingCharacters(in: .whitespaces).isEmpty || vm.loading)
                 .accessibilityLabel("Submit")
             }
-            .padding(.horizontal, 14).padding(.vertical, 10)
+            .padding(.horizontal, 16).padding(.vertical, 12)
             .background(Color.byteGreen.opacity(0.02))
         }
     }
@@ -2090,37 +3173,37 @@ private struct SupportTerminalLineRow: View {
         switch line.kind {
         case .system:
             Text(line.text)
-                .font(.system(size: 11, design: .monospaced))
+                .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(.byteText2)
                 .padding(.bottom, 4)
         case .input, .output:
             Text(line.text)
-                .font(.system(size: 11, design: .monospaced))
+                .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(.byteText1)
         case .success:
             Text(line.text)
-                .font(.system(size: 11, design: .monospaced))
+                .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(.byteGreen)
         case .error:
             Text(line.text)
-                .font(.system(size: 11, design: .monospaced))
+                .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(.byteRed)
         case .record:
             HStack(spacing: 8) {
                 if let meta = line.meta {
                     Text(meta.feedbackType.uppercased())
-                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(.byteGreen)
-                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Color.byteGreen.opacity(0.12))
                         .overlay(RoundedRectangle(cornerRadius: 3).stroke(Color.byteGreen.opacity(0.25), lineWidth: 1))
                         .clipShape(RoundedRectangle(cornerRadius: 3))
                     Text(meta.date)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(.byteText3)
                 }
                 Text(line.text)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.system(size: 12, design: .monospaced))
                     .foregroundColor(.byteText1)
                     .lineLimit(1)
             }
@@ -2143,7 +3226,7 @@ final class SupportTerminalVM: ObservableObject {
 
     @Published var lines: [SupportTerminalLine] = [
         SupportTerminalLine(id: 1, kind: .system,
-                            text: "ByteAI Terminal v1.0 — type help to get started.",
+                            text: "ByteAI Terminal v1.0 — type help or tap a command below.",
                             meta: nil)
     ]
     @Published var draft: String = ""
@@ -2152,6 +3235,73 @@ final class SupportTerminalVM: ObservableObject {
 
     private var nextId: Int = 2
     private var pendingType: String?
+    private var hasLoadedContext = false
+
+    // Command history — `↑` / `↓` keyboard accessory cycles through this ring.
+    private var history: [String] = []
+    private var historyCursor: Int = -1
+    private static let maxHistory = 20
+
+    var canRecallPrevious: Bool { !history.isEmpty && historyCursor < history.count - 1 }
+    var canRecallNext: Bool { historyCursor > 0 }
+
+    func recallPrevious() {
+        guard canRecallPrevious else { return }
+        historyCursor += 1
+        draft = history[history.count - 1 - historyCursor]
+        Haptics.selection()
+    }
+
+    func recallNext() {
+        guard canRecallNext else { return }
+        historyCursor -= 1
+        draft = history[history.count - 1 - historyCursor]
+        Haptics.selection()
+    }
+
+    /// Best-prefix tab completion against the available top-level commands.
+    func tabComplete() {
+        let prefix = draft.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !prefix.isEmpty else { return }
+        let pool = ["help", "whoami", "history", "clear", "exit",
+                    "feedback -type good", "feedback -type bad", "feedback -type idea"]
+        if let match = pool.first(where: { $0.hasPrefix(prefix) }), match != prefix {
+            draft = match
+            Haptics.light()
+        }
+    }
+
+    func cancelAwaitingMessage() {
+        guard stage == .awaitingMessage else { return }
+        push(.error, "[!] cancelled")
+        stage = .idle
+        pendingType = nil
+        draft = ""
+    }
+
+    /// Pushed once on first appear — adds a `whoami` snapshot + last 3 feedback rows so
+    /// the terminal isn't a single intro line on iPhone.
+    func loadInitialContext() async {
+        guard !hasLoadedContext else { return }
+        hasLoadedContext = true
+        if let me = AuthManager.shared.currentUser {
+            push(.output, "◆ logged in as @\(me.username) (Lv \(me.level))")
+        }
+        loading = true
+        let items = (try? await APIClient.shared.getMyFeedbackHistory()) ?? []
+        loading = false
+        if !items.isEmpty {
+            push(.output, "◆ Last \(min(items.count, 3)) submission\(items.count == 1 ? "" : "s"):")
+            for f in items.prefix(3) {
+                let date = formattedDate(f.createdAt)
+                let preview = f.message.count > 40
+                    ? String(f.message.prefix(40)) + "…"
+                    : f.message
+                pushRecord(text: preview,
+                           meta: SupportTerminalLine.Meta(feedbackType: f.type, status: f.status, date: date))
+            }
+        }
+    }
 
     private let helpText = [
         "  help                           show this menu",
@@ -2177,6 +3327,12 @@ final class SupportTerminalVM: ObservableObject {
         let raw = draft
         let trimmedLower = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !raw.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+
+        // Record into history ring — only commands, not the free-text feedback message itself.
+        if stage != .awaitingMessage {
+            recordHistory(raw)
+        }
+        historyCursor = -1
 
         if trimmedLower == "clear" { draft = ""; clear(); return }
         if trimmedLower == "exit"  { draft = ""; onClose(); return }
@@ -2283,6 +3439,16 @@ final class SupportTerminalVM: ObservableObject {
         nextId += 1
     }
 
+    private func recordHistory(_ raw: String) {
+        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        if let last = history.last, last == cleaned { return }
+        history.append(cleaned)
+        if history.count > Self.maxHistory {
+            history.removeFirst(history.count - Self.maxHistory)
+        }
+    }
+
     private func labelFor(_ type: String) -> String {
         switch type {
         case "good": return "positive feedback"
@@ -2341,6 +3507,92 @@ final class SupportTerminalVM: ObservableObject {
     }
 }
 
+// MARK: - Support Quick Action chip strip
+
+enum SupportQuickAction: Hashable {
+    case help, whoami, history, clear
+    case good, bad, idea
+    case cancel
+
+    var label: String {
+        switch self {
+        case .help:    return "help"
+        case .whoami:  return "whoami"
+        case .history: return "history"
+        case .clear:   return "clear"
+        case .good:    return "good"
+        case .bad:     return "bad"
+        case .idea:    return "idea"
+        case .cancel:  return "cancel"
+        }
+    }
+
+    var glyph: String {
+        switch self {
+        case .help:    return "questionmark.circle"
+        case .whoami:  return "person"
+        case .history: return "clock.arrow.circlepath"
+        case .clear:   return "xmark.bin"
+        case .good:    return "hand.thumbsup.fill"
+        case .bad:     return "exclamationmark.triangle.fill"
+        case .idea:    return "lightbulb.fill"
+        case .cancel:  return "xmark"
+        }
+    }
+
+    /// Token typed into the input on tap (commands only — feedback expands separately).
+    var commandToken: String {
+        switch self {
+        case .help:    return "help"
+        case .whoami:  return "whoami"
+        case .history: return "history"
+        case .clear:   return "clear"
+        case .good:    return "good"
+        case .bad:     return "bad"
+        case .idea:    return "idea"
+        case .cancel:  return ""
+        }
+    }
+
+    static func actions(for stage: SupportTerminalVM.Stage) -> [SupportQuickAction] {
+        switch stage {
+        case .idle:
+            return [.help, .whoami, .good, .bad, .idea, .history, .clear]
+        case .awaitingMessage:
+            return [.cancel]
+        }
+    }
+}
+
+private struct SupportQuickChip: View {
+    let action: SupportQuickAction
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                Image(systemName: action.glyph)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(action == .cancel ? .byteRed : .byteGreen)
+                Text(action.label)
+                    .font(.byteMono(11, weight: .semibold))
+                    .tracking(0.4)
+                    .foregroundColor(.byteText1)
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 7)
+            .background(action == .cancel ? IdentityColor.red.bgFaint : IdentityColor.green.bgFaint)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(action == .cancel ? IdentityColor.red.borderFaint : IdentityColor.green.borderFaint, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(action.label) shortcut")
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MARK: - Followers / Following list sheet
 // Tapping a row navigates to that user's profile (push on the parent NavigationStack
@@ -2352,6 +3604,7 @@ struct FollowersListSheet: View {
     let mode: FollowersListMode
     @State private var people: [PersonResult] = []
     @State private var isLoading = true
+    @State private var loadFailed = false
     @State private var query = ""
     @Environment(\.dismiss) private var dismiss
 
@@ -2396,6 +3649,21 @@ struct FollowersListSheet: View {
                         Spacer()
                         ByteSpinner()
                         Spacer()
+                    } else if loadFailed {
+                        Spacer()
+                        VStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 28))
+                                .foregroundColor(.byteRed)
+                            Text("Couldn't load \(mode == .followers ? "followers" : "following")")
+                                .font(.byteSans(14, weight: .semibold))
+                                .foregroundColor(.byteRed)
+                            Text("Pull down to retry.")
+                                .font(.byteMono(11))
+                                .foregroundColor(.byteText2)
+                        }
+                        .multilineTextAlignment(.center)
+                        Spacer()
                     } else if filtered.isEmpty {
                         Spacer()
                         EmptyStateView(
@@ -2424,9 +3692,16 @@ struct FollowersListSheet: View {
                     }
                 }
             }
-            .navigationTitle("\(mode.title) (\(people.count))")
+            // Static title — interpolating `people.count` made the title's
+            // intrinsic width change on load, which re-laid out the toolbar
+            // and rippled into the search field below ("dancing search bar").
+            // `.toolbarBackground(.visible)` locks the bar's appearance so iOS
+            // doesn't fade between scrollEdge/standard appearances as content
+            // size changes — that fade was the residual cause of the bounce.
+            .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.byteBackground, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -2435,55 +3710,20 @@ struct FollowersListSheet: View {
                 }
             }
         }
-        .task {
-            isLoading = true
-            do {
-                people = mode == .followers
-                    ? try await APIClient.shared.getFollowers(userId: userId)
-                    : try await APIClient.shared.getFollowing(userId: userId)
-            } catch let err {
-                people = []
-                ToastCenter.shared.show(error: err, context: "Couldn't load \(mode == .followers ? "followers" : "following")")
-            }
-            isLoading = false
-        }
+        .task { await fetchPeople() }
     }
-}
 
-// MARK: - Avatar variant picker
-
-private struct AvatarVariantPicker: View {
-    @Binding var selected: String
-
-    private let variants: [(key: String, color: Color)] = [
-        ("cyan", .byteCyan),
-        ("purple", .bytePurple),
-        ("green", .byteGreen),
-        ("orange", .byteOrange),
-    ]
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ForEach(variants, id: \.key) { variant in
-                Button {
-                    selected = variant.key
-                    Haptics.light()
-                } label: {
-                    Circle()
-                        .fill(variant.color)
-                        .frame(width: 36, height: 36)
-                        .overlay(
-                            Circle()
-                                .stroke(selected == variant.key ? Color.white : Color.clear, lineWidth: 2)
-                                .padding(-3)
-                        )
-                        .shadow(color: variant.color.opacity(selected == variant.key ? 0.6 : 0.0), radius: 8)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(variant.key) avatar variant")
-            }
-            Spacer()
+    private func fetchPeople() async {
+        isLoading = true; loadFailed = false
+        do {
+            people = mode == .followers
+                ? try await APIClient.shared.getFollowers(userId: userId)
+                : try await APIClient.shared.getFollowing(userId: userId)
+        } catch {
+            people = []
+            loadFailed = true
         }
+        isLoading = false
     }
 }
 
@@ -2568,6 +3808,16 @@ struct PreferencesView: View {
 
                             AccentBarHeader(label: "VISIBILITY", size: .compact)
                             VisibilityPicker(value: $vm.prefs.visibility)
+
+                            // Hidden on simulator / devices without enrolled biometrics
+                            // so the toggle never lies about being available.
+                            if BiometricLock.shared.isAvailable {
+                                AccentBarHeader(label: "PRIVACY & SECURITY", size: .compact)
+                                BiometricLockToggleRow()
+                                    .background(Color.byteCard)
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
                         }
                         .padding(20)
                     }
@@ -2619,6 +3869,70 @@ private struct PreferencesToggle: View {
                 .tint(.byteAccent)
         }
         .padding(.horizontal, 14).padding(.vertical, 12)
+    }
+}
+
+/// Settings row for the FaceID/TouchID lock. Toggling **on** runs a real
+/// biometric prompt first so we don't lie to the user about it working —
+/// if the prompt fails or is cancelled, the toggle stays off.
+private struct BiometricLockToggleRow: View {
+    @State private var isEnabled = BiometricLock.shared.isEnabled
+    @State private var errorMessage: String?
+
+    private let lock = BiometricLock.shared
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Require \(lock.biometryType.label)")
+                        .font(.byteSans(14, weight: .semibold))
+                        .foregroundColor(.byteText1)
+                    Text("Unlock ByteAI with \(lock.biometryType.label) when you reopen the app")
+                        .font(.byteMono(10))
+                        .foregroundColor(.byteText2)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(
+                    get: { isEnabled },
+                    set: { newValue in handleToggle(newValue) }
+                ))
+                .labelsHidden()
+                .tint(.byteAccent)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.byteMono(10))
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 10)
+            }
+        }
+    }
+
+    private func handleToggle(_ newValue: Bool) {
+        errorMessage = nil
+        if newValue {
+            // Prove the device can do it before we rely on it on cold launch.
+            Task { @MainActor in
+                do {
+                    let ok = try await lock.evaluate(reason: "Enable \(lock.biometryType.label) for ByteAI")
+                    if ok {
+                        lock.isEnabled = true
+                        isEnabled = true
+                    }
+                } catch {
+                    isEnabled = false
+                    errorMessage = "Couldn't enable \(lock.biometryType.label)"
+                }
+            }
+        } else {
+            lock.isEnabled = false
+            isEnabled = false
+        }
     }
 }
 
@@ -2792,3 +4106,133 @@ struct DeleteAccountSheet: View {
         }
     }
 }
+
+// MARK: - Tech Stack Prefs Editor (wrap-flow chips + ADD)
+// Web parity (profile-screen.tsx tech stack section): selected stacks render as
+// removable chips that wrap to multiple lines, followed by an ADD pill that
+// expands into a typeable picker.
+
+private struct TechStackPrefsEditor: View {
+    @Binding var values: [String]
+    let allOptions: [TechOption]
+    @State private var isAdding = false
+
+    private func label(for value: String) -> String {
+        allOptions.first(where: { $0.value == value })?.label ?? value
+    }
+
+    private var addableOptions: [TechOption] {
+        allOptions.filter { !values.contains($0.value) }
+    }
+
+    var body: some View {
+        FlowLayout(spacing: 6) {
+            ForEach(values, id: \.self) { v in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.12)) {
+                        values.removeAll { $0 == v }
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(label(for: v))
+                            .font(.byteMono(11, weight: .semibold))
+                        Image(systemName: "xmark")
+                            .font(.system(size: 8, weight: .bold))
+                            .opacity(0.6)
+                    }
+                    .foregroundColor(.byteAccent)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(IdentityColor.blue.bgActive)
+                    .overlay(Capsule().stroke(Color.byteAccent, lineWidth: 1))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            if isAdding {
+                Menu {
+                    if addableOptions.isEmpty {
+                        Text("All stacks added")
+                    } else {
+                        ForEach(addableOptions, id: \.value) { opt in
+                            Button(opt.label) {
+                                if !values.contains(opt.value) { values.append(opt.value) }
+                                isAdding = false
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text("SELECT STACK")
+                            .font(.byteMono(11, weight: .semibold))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundColor(.byteAccent)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(IdentityColor.blue.bgFaint)
+                    .overlay(Capsule().stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                    .clipShape(Capsule())
+                }
+                .menuStyle(.borderlessButton)
+
+                Button { isAdding = false } label: {
+                    Text("CANCEL")
+                        .font(.byteMono(11, weight: .semibold))
+                        .foregroundColor(.byteRed)
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(Color.byteRed.opacity(0.06))
+                        .overlay(Capsule().stroke(Color.byteRed.opacity(0.3), lineWidth: 1))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button { isAdding = true } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("ADD")
+                            .font(.byteMono(11, weight: .semibold))
+                    }
+                    .foregroundColor(.byteAccent)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(IdentityColor.blue.bgFaint)
+                    .overlay(Capsule().stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+// MARK: - Toolbar icon button with tinted background + spring press
+
+private struct ProfileToolbarButton: View {
+    let icon: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(0.15))
+                    .frame(width: 32, height: 32)
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(tint)
+            }
+        }
+        .buttonStyle(SpringPressButtonStyle())
+    }
+}
+
+private struct SpringPressButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.86 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+

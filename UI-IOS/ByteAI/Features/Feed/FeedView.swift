@@ -13,6 +13,7 @@ struct FeedView: View {
     var scrollToTopTrigger: Int = 0
     @StateObject private var vm = FeedViewModel()
     @EnvironmentObject private var router: DeepLinkRouter
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedPost: Post?
     @State private var showProfile = false
     @State private var showNotifications = false
@@ -42,7 +43,8 @@ struct FeedView: View {
                             AvatarRingButton(
                                 imageURL: vm.meAvatarUrl,
                                 initials: vm.meInitials,
-                                variant: .cyan
+                                variant: .cyan,
+                                ownerUserId: vm.meUserId
                             ) {
                                 showProfile = true
                             }
@@ -74,7 +76,17 @@ struct FeedView: View {
                     .presentationDragIndicator(.visible)
             }
         }
-        .task { await vm.load() }
+        .task {
+            await vm.load()
+            await vm.refreshUnreadCount()
+        }
+        // Foreground transition → reconcile bell badge against the server.
+        // Catches any APNs pushes the OS dropped while the app was suspended.
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                Task { await vm.refreshUnreadCount() }
+            }
+        }
         .onChange(of: router.pendingPostId) { _, id in
             guard let id else { return }
             Task {
@@ -160,7 +172,7 @@ struct FeedView: View {
 private struct FeedFilterRow: View {
     @Binding var selectedTab: FeedFilter
     @Binding var selectedStacks: [String]
-    let stackOptions: [String]
+    let stackOptions: [TechOption]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -217,15 +229,24 @@ private struct FeedFilterRow: View {
 // Suggestions appear as a horizontal scroll row — no sheet.
 
 struct StackPicker: View {
+    /// Holds canonical tech-stack `value` strings (e.g. `aspnet-core`). The UI
+    /// renders chips with the matching `label` looked up from `options`.
     @Binding var values: [String]
-    let options: [String]
+    let options: [TechOption]
     @State private var query = ""
     @FocusState private var focused: Bool
 
-    private var suggestions: [String] {
+    private var suggestions: [TechOption] {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return [] }
-        return options.filter { !values.contains($0) && $0.lowercased().contains(q) }
+        return options.filter {
+            !values.contains($0.value) &&
+            ($0.label.lowercased().contains(q) || $0.value.lowercased().contains(q))
+        }
+    }
+
+    private func label(for value: String) -> String {
+        options.first(where: { $0.value == value })?.label ?? value
     }
 
     var body: some View {
@@ -243,14 +264,14 @@ struct StackPicker: View {
     private var chipRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(values, id: \.self) { stack in
+                ForEach(values, id: \.self) { stackValue in
                     HStack(spacing: 4) {
-                        Text(stack)
+                        Text(label(for: stackValue))
                             .font(.byteMono(11, weight: .semibold))
                             .foregroundColor(.byteAccent)
                         Button {
                             withAnimation(.easeInOut(duration: 0.12)) {
-                                values.removeAll { $0 == stack }
+                                values.removeAll { $0 == stackValue }
                             }
                         } label: {
                             Image(systemName: "xmark")
@@ -323,12 +344,12 @@ struct StackPicker: View {
     private var suggestionsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(suggestions.prefix(10), id: \.self) { s in
+                ForEach(suggestions.prefix(10), id: \.value) { s in
                     Button { add(s) } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
                                 .font(.system(size: 8, weight: .bold))
-                            Text(s)
+                            Text(s.label)
                                 .font(.byteMono(11))
                         }
                         .foregroundColor(.byteText1)
@@ -345,9 +366,9 @@ struct StackPicker: View {
         }
     }
 
-    private func add(_ s: String) {
-        guard !values.contains(s) else { return }
-        withAnimation(.easeInOut(duration: 0.12)) { values.append(s) }
+    private func add(_ option: TechOption) {
+        guard !values.contains(option.value) else { return }
+        withAnimation(.easeInOut(duration: 0.12)) { values.append(option.value) }
         query = ""
     }
 }
@@ -486,7 +507,7 @@ struct BytePageCard: View {
             }
             .buttonStyle(.plain)
 
-            ShareLink(item: URL(string: "https://byteai.dev/post/\(post.id)")!,
+            ShareLink(item: ShareURL.post(id: post.id),
                       subject: Text(post.title),
                       message: Text(String(post.body.prefix(140)))) {
                 actionPillLabel(icon: "square.and.arrow.up", text: nil, isActive: false)
@@ -566,18 +587,37 @@ struct LikesSheet: View {
 
 // MARK: - ViewModel
 
+/// One row in the tech-stack picker: the canonical lowercase `value` is what the
+/// backend matches against (`bts.TechStack.Name.ToLower()`); the human `label`
+/// is what we render in chips and suggestions. Web sends `stack.name`; iOS used
+/// to send `stack.label`, which silently no-op'd the filter.
+struct TechOption: Hashable {
+    let value: String
+    let label: String
+}
+
 @MainActor
 final class FeedViewModel: ObservableObject {
     @Published var posts: [Post] = []
     @Published var isLoading = false
     @Published var isLoadingMore = false
     @Published var hasMore = true
-    @Published var stackOptions: [String] = ["React", "TypeScript", "Go", "Rust", "Python", "PostgreSQL", "Swift", "Kubernetes"]
+    @Published var stackOptions: [TechOption] = [
+        .init(value: "react",       label: "React"),
+        .init(value: "typescript",  label: "TypeScript"),
+        .init(value: "go",          label: "Go"),
+        .init(value: "rust",        label: "Rust"),
+        .init(value: "python",      label: "Python"),
+        .init(value: "postgresql",  label: "PostgreSQL"),
+        .init(value: "swift",       label: "Swift"),
+        .init(value: "kubernetes",  label: "Kubernetes"),
+    ]
     @Published var selectedTab: FeedFilter = .forYou {
         didSet { guard oldValue != selectedTab else { return }; Task { await load() } }
     }
-    /// Multi-select. CSV-joined when sent to /api/feed?stack=. Web parity:
-    /// UI/components/features/feed/feed-screen.tsx state shape `string[]`.
+    /// Multi-select holding the canonical `name` values (e.g. `aspnet-core`),
+    /// CSV-joined into `?stack=` when calling `/api/feed`. Web parity: same
+    /// canonical values via `feed-filters.tsx → onChange(stack.name)`.
     @Published var selectedStacks: [String] = [] {
         didSet { guard oldValue != selectedStacks else { return }; Task { await load() } }
     }
@@ -590,9 +630,40 @@ final class FeedViewModel: ObservableObject {
 
     private var page = 1
 
+    init() {
+        // APNs push arrived while app is foreground → bump the bell badge
+        // immediately. Refresh from server next foreground transition reconciles
+        // any drift from dropped pushes.
+        NotificationCenter.default.addObserver(
+            forName: .pushReceived, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.unreadNotifications += 1 }
+        }
+        // Notifications sheet marked one or all as read → decrement the badge.
+        NotificationCenter.default.addObserver(
+            forName: .notificationsMarkedRead, object: nil, queue: .main
+        ) { [weak self] note in
+            let delta = (note.userInfo?["delta"] as? Int) ?? 0
+            Task { @MainActor in
+                guard let self else { return }
+                self.unreadNotifications = max(0, self.unreadNotifications + delta)
+            }
+        }
+    }
+
+    /// Pulls the canonical unread count from the server. Called on app launch
+    /// and on every foreground transition — the safety net for any APNs
+    /// pushes the OS dropped while the app was backgrounded.
+    func refreshUnreadCount() async {
+        if let count = try? await APIClient.shared.getUnreadCount() {
+            unreadNotifications = count
+        }
+    }
+
     var meUsername: String { AuthManager.shared.currentUser?.username ?? "" }
     var meInitials: String { AuthManager.shared.currentUser?.initials ?? "?" }
     var meAvatarUrl: String? { AuthManager.shared.currentUser?.avatarUrl }
+    var meUserId: String? { AuthManager.shared.currentUser?.id }
 
     /// Trending tab ignores stack filter; FOR_YOU joins selections as CSV (backend accepts it).
     private var stackQueryValue: String? {
@@ -629,8 +700,8 @@ final class FeedViewModel: ObservableObject {
             print("[Feed] load failed: \(error)")
         }
         if let stacks = try? await APIClient.shared.getTechStacks() {
-            let names = stacks.map { $0.label }
-            if !names.isEmpty { stackOptions = names }
+            let opts = stacks.map { TechOption(value: $0.name, label: $0.label) }
+            if !opts.isEmpty { stackOptions = opts }
         }
     }
 

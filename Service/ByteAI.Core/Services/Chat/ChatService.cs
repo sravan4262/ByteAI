@@ -57,6 +57,8 @@ public sealed class ChatService(AppDbContext db, IPublisher publisher)
 
         await db.SaveChangesAsync(ct);
         await publisher.Publish(new MessageSentEvent(message.Id, conversationId, senderId, recipientId), ct);
+        // Note: no APNs push for DMs by design. Users open the chat to read
+        // their messages; SignalR delivers live while the app is open.
         return message;
     }
 

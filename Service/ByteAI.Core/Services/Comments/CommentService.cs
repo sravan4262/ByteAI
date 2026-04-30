@@ -4,12 +4,18 @@ using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.Badges;
 using ByteAI.Core.Services.Notifications;
+using ByteAI.Core.Services.Push;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Comments;
 
-public sealed class CommentService(AppDbContext db, IBadgeService badgeService, INotificationService notifications, IPublisher publisher) : ICommentService
+public sealed class CommentService(
+    AppDbContext db,
+    IBadgeService badgeService,
+    INotificationService notifications,
+    IPushDispatcher pushDispatcher,
+    IPublisher publisher) : ICommentService
 {
     public async Task<PagedResult<Comment>> GetCommentsByByteAsync(Guid byteId, PaginationParams pagination, CancellationToken ct)
     {
@@ -83,12 +89,23 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
                     .Select(u => new { u.Username, u.DisplayName, u.AvatarUrl })
                     .FirstOrDefaultAsync(CancellationToken.None);
 
+                // Snapshot the byte title alongside the comment preview so the
+                // recipient can see WHICH byte the comment landed on without
+                // opening it. Stored at write time so a later byte rename or
+                // delete still leaves a useful notification row.
+                var byteTitle = await db.Bytes
+                    .AsNoTracking()
+                    .Where(b => b.Id == byteId)
+                    .Select(b => b.Title)
+                    .FirstOrDefaultAsync(CancellationToken.None);
+
                 await notifications.CreateAsync(
                     userId: byteAuthorId,
                     type: "comment",
                     payload: new
                     {
                         byteId,
+                        byteTitle,
                         commentId = comment.Id,
                         actorId = authorId,
                         actorUsername = actor?.Username ?? string.Empty,
@@ -97,6 +114,13 @@ public sealed class CommentService(AppDbContext db, IBadgeService badgeService, 
                         preview = body.Length > 50 ? body[..50] + "…" : body,
                     },
                     ct: ct);
+
+                pushDispatcher.Enqueue(PushPayloads.Comment(
+                    recipientId: byteAuthorId,
+                    actorDisplay: actor?.DisplayName ?? actor?.Username ?? "Someone",
+                    byteTitle: byteTitle,
+                    preview: body,
+                    byteId: byteId));
             }
         }
 

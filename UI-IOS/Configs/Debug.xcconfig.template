@@ -1,0 +1,25 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Debug.xcconfig.template — COMMITTED TEMPLATE (no real secrets)
+//
+// Setup for a new dev environment:
+//   cp UI-IOS/Configs/Debug.xcconfig.template UI-IOS/Configs/Debug.xcconfig
+//   # Edit Debug.xcconfig with your values (file is gitignored)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ngrok tunnel to your local Docker service.
+// Run: ngrok http 5239  →  copy the https URL here each session.
+BYTEAI_API_URL = https://REPLACE_ME.ngrok-free.app
+
+// Supabase dev/staging project credentials.
+// Find them in: Supabase Dashboard → Project Settings → API
+SUPABASE_URL = https://REPLACE_ME.supabase.co
+SUPABASE_ANON_KEY = REPLACE_ME_SUPABASE_ANON_KEY
+
+// Public web origin for share links (safe to leave as prod).
+BYTEAI_SHARE_BASE_URL = https://www.byteaiofficial.com
+
+// Google Sign-In client IDs.
+// iOS client ID:  Google Cloud Console → Credentials → iOS OAuth 2.0 client
+// Web client ID:  Google Cloud Console → Credentials → Web application client
+GOOGLE_IOS_CLIENT_ID = REPLACE_ME.apps.googleusercontent.com
+GOOGLE_WEB_CLIENT_ID = REPLACE_ME.apps.googleusercontent.com
