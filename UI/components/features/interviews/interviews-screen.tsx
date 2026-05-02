@@ -193,6 +193,11 @@ function InterviewCard({ interview, avatarVariant }: { interview: InterviewWithQ
               ) : (
                 <>@{interview.authorUsername || interview.authorId.slice(0, 8)}</>
               )}
+              {interview.authorId === api.SYSTEM_USER_ID && !interview.isAnonymous && (
+                <span className="font-mono text-[9px] px-1.5 py-0.5 rounded border border-[var(--accent)] bg-[rgba(99,102,241,0.08)] text-[var(--accent)] tracking-wider leading-none">
+                  AI CURATED
+                </span>
+              )}
             </div>
             <div className="font-mono text-[11px] text-[var(--t2)] mt-0.5 tracking-[0.04em]">
               {interview.isAnonymous ? (

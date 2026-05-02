@@ -1401,7 +1401,8 @@ extension Interview {
                 techStack: [], feedPreferences: [], links: [], badges: [],
                 isVerified: false, isOnline: false,
                 avatarVariant: "purple",
-                avatarUrl: r.authorAvatarUrl
+                avatarUrl: r.authorAvatarUrl,
+                isSystem: r.authorId == BYTEAI_SYSTEM_USER_ID
             )
         }()
 
