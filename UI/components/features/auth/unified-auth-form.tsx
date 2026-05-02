@@ -18,23 +18,34 @@ export function UnifiedAuthForm() {
   const errorParam = searchParams?.get('error')
   const [googleLoading, setGoogleLoading] = useState(false)
   const [appleLoading, setAppleLoading] = useState(false)
+  // True when Supabase returns error_code=user_banned in the OAuth redirect hash.
+  // Set synchronously-as-possible (first effect) so the session redirect below
+  // sees it before the async getSession() resolves.
+  const [isBannedFromHash, setIsBannedFromHash] = useState(false)
 
   useEffect(() => {
-    // When the OAuth callback redirected here with the suspended marker,
-    // we don't want to immediately bounce the user back into the app even if
-    // a stale session is still cached locally.
-    if (errorParam === 'account_suspended') return
+    const hash = window.location.hash.slice(1)
+    if (!hash) return
+    const params = new URLSearchParams(hash)
+    if (params.get('error_code') === 'user_banned') {
+      setIsBannedFromHash(true)
+      router.replace('/?error=account_suspended')
+    }
+  }, [router])
+
+  useEffect(() => {
+    // Don't bounce the user into the app if they're suspended (either path).
+    if (errorParam === 'account_suspended' || isBannedFromHash) return
 
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
-        // If a safe `next` was provided, honor it. Otherwise resume normal flow.
         router.replace(next || '/onboarding-check')
       }
     })
-  }, [router, next, errorParam])
+  }, [router, next, errorParam, isBannedFromHash])
 
   const isLoading = googleLoading || appleLoading
-  const isSuspended = errorParam === 'account_suspended'
+  const isSuspended = errorParam === 'account_suspended' || isBannedFromHash
 
   return (
     <div className="flex flex-col gap-[13px] animate-fadeup" style={{ animationDelay: '0.2s' }}>
