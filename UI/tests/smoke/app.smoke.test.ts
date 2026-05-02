@@ -15,11 +15,12 @@ test('login page renders ByteAI branding', async ({ page }) => {
   expect(jsErrors, `JS runtime errors:\n${jsErrors.join('\n')}`).toHaveLength(0)
 })
 
-test('login page renders auth form', async ({ page }) => {
+test('login page renders sign-in buttons', async ({ page }) => {
   await page.goto('/')
   await page.waitForLoadState('load')
 
-  await expect(page.locator('form')).toBeVisible()
+  await expect(page.getByText('Continue with Google')).toBeVisible()
+  await expect(page.getByText('Continue with Apple')).toBeVisible()
 })
 
 // ── Auth guard ────────────────────────────────────────────────────────────────

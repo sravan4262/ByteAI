@@ -78,6 +78,7 @@ infra/.env.prod
 # Generated test results
 TestResults/
 coverage/
+UI/tests/smoke/test-results/
 
 # JetBrains
 .idea/

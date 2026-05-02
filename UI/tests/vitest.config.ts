@@ -16,7 +16,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['tests/fixtures/**', 'tests/mocks/**', 'node_modules', '.next'],
+    exclude: ['tests/fixtures/**', 'tests/mocks/**', 'tests/smoke/**', 'node_modules', '.next'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
