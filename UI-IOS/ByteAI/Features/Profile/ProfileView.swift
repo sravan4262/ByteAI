@@ -27,12 +27,11 @@ struct ProfileView: View {
     @StateObject private var vm: ProfileViewModel
     @State private var selectedTab: ProfileTab = .profile
     @State private var publicProfileTab: ProfileTab = .bytes
-    @State private var showSupportFloat = false
-    @State private var showChatFloat = false
     @State private var showEditProfile = false
     @State private var chatTerminalConversation: ConversationDto?
     @EnvironmentObject private var flags: FeatureFlagsManager
     @EnvironmentObject private var chat: ChatService
+    @EnvironmentObject private var gestures: GestureManager
 
     init(username: String = "") {
         self.username = username
@@ -117,7 +116,7 @@ struct ProfileView: View {
                             label: "ASSIST",
                             badge: 0,
                             tint: .byteCyan
-                        ) { showSupportFloat = true }
+                        ) { gestures.openSupport() }
 
                         if flags.isEnabled("chat") {
                             ProfileActionPill(
@@ -125,7 +124,7 @@ struct ProfileView: View {
                                 label: "CHAT",
                                 badge: chat.unreadCount,
                                 tint: .byteAccent
-                            ) { showChatFloat = true }
+                            ) { gestures.openChat() }
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
@@ -186,28 +185,6 @@ struct ProfileView: View {
                     EditProfileSheet(user: user) { updated in vm.user = updated }
                 }
             }
-            .sheet(isPresented: $showSupportFloat) {
-                // Compact medium detent — terminal sits over the lower half of
-                // the screen instead of taking it whole, so the user can still
-                // see the byte they were reading. Drag up to .large for more
-                // history when needed.
-                SupportTerminalView()
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(Color.byteCard)
-                    .presentationCornerRadius(20)
-            }
-            .sheet(isPresented: $showChatFloat) {
-                ChatTerminalSheet { convo in
-                    showChatFloat = false
-                    chatTerminalConversation = convo
-                }
-                .environmentObject(chat)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(Color.byteCard)
-                .presentationCornerRadius(20)
-            }
             .navigationDestination(item: $chatTerminalConversation) { convo in
                 ChatThreadView(conversation: convo)
             }
@@ -219,6 +196,11 @@ struct ProfileView: View {
             }
         }
         .task { await vm.load() }
+        .onChange(of: gestures.chatConversation) { _, convo in
+            guard let convo else { return }
+            chatTerminalConversation = convo
+            gestures.chatConversation = nil
+        }
     }
 }
 

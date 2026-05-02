@@ -12,6 +12,7 @@ struct RootView: View {
     @EnvironmentObject private var flags: FeatureFlagsManager
     @EnvironmentObject private var chat: ChatService
     @EnvironmentObject private var router: DeepLinkRouter
+    @EnvironmentObject private var gestures: GestureManager
     @Environment(\.scenePhase) private var scenePhase
 
     /// Debounce window for auto-FaceID. Banner-tap re-activations and brief
@@ -48,6 +49,31 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: stateKey)
+        // Shake → Support terminal (authenticated only)
+        .onReceive(NotificationCenter.default.publisher(for: .deviceDidShake)) { _ in
+            guard case .authenticated = auth.state else { return }
+            gestures.openSupport()
+        }
+        // Global Support terminal sheet
+        .sheet(isPresented: $gestures.showSupportTerminal) {
+            SupportTerminalView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.byteCard)
+                .presentationCornerRadius(20)
+        }
+        // Global Chat terminal sheet
+        .sheet(isPresented: $gestures.showChatTerminal) {
+            ChatTerminalSheet { convo in
+                gestures.showChatTerminal = false
+                gestures.chatConversation = convo
+            }
+            .environmentObject(chat)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color.byteCard)
+            .presentationCornerRadius(20)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .apiDidReceiveAccountSuspended)) { note in
             let msg = (note.userInfo?["message"] as? String)
                 ?? "Your account has been suspended."
@@ -166,10 +192,12 @@ struct MainTabView: View {
     @State private var showNotifications = false
     @State private var showBiometricOptIn = false
     @State private var feedScrollToTop = 0
+    @State private var lastMagnification: CGFloat = 1.0
     @StateObject private var notifBadge = NotificationBadgeVM()
     @EnvironmentObject private var auth: AuthManager
     @EnvironmentObject private var router: DeepLinkRouter
     @EnvironmentObject private var chat: ChatService
+    @EnvironmentObject private var gestures: GestureManager
     @ObservedObject private var themeManager = ThemeManager.shared
 
     enum Tab: Int, CaseIterable {
@@ -253,6 +281,34 @@ struct MainTabView: View {
                 UIApplication.shared.applicationIconBadgeNumber = total
             }
         }
+        // Pinch to zoom entire app; double-tap to reset.
+        .scaleEffect(gestures.zoomScale, anchor: .center)
+        .gesture(
+            MagnificationGesture()
+                .onChanged { value in
+                    gestures.applyZoomDelta(value / lastMagnification)
+                    lastMagnification = value
+                }
+                .onEnded { _ in lastMagnification = 1.0 }
+        )
+        .simultaneousGesture(
+            TapGesture(count: 2)
+                .onEnded { gestures.resetZoom() }
+        )
+        // Bottom-right edge swipe → Chat terminal.
+        .overlay(alignment: .bottomTrailing) {
+            Color.clear
+                .frame(width: 80, height: 80)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 40)
+                        .onEnded { value in
+                            guard value.translation.height < -40 else { return }
+                            gestures.openChat()
+                        }
+                )
+                .padding(.bottom, 83)
+        }
     }
 
     private func applyTabBarAppearance() {
@@ -307,4 +363,5 @@ final class NotificationBadgeVM: ObservableObject {
         .environmentObject(ChatService.shared)
         .environmentObject(DeepLinkRouter.shared)
         .environmentObject(ToastCenter.shared)
+        .environmentObject(GestureManager.shared)
 }
