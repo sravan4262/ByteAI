@@ -124,6 +124,7 @@ struct FeedView: View {
             GeometryReader { geo in
                 ScrollViewReader { proxy in
                     ScrollView(.vertical, showsIndicators: false) {
+                        ByteScrollOffsetReader(coordinateSpace: "byteScroll")
                         Color.clear.frame(height: 0).id("feed-top")
 
                         LazyVStack(spacing: 0) {
@@ -152,9 +153,12 @@ struct FeedView: View {
                             }
                         }
                         .scrollTargetLayout()
+                        .byteScrollContentSize()
                     }
+                    .coordinateSpace(name: "byteScroll")
                     .scrollTargetBehavior(.paging)
                     .scrollIndicators(.hidden)
+                    .byteScrollbar(config: ByteScrollbarConfig(showPositionPill: true))
                     .refreshable { await vm.refresh() }
                     .onChange(of: scrollToTopTrigger) { _, _ in
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -207,7 +211,7 @@ private struct FeedFilterRow: View {
                 HStack(spacing: 6) {
                     Text("🔥")
                     Text("MOST VIEWED IN LAST 24 HOURS")
-                        .font(.byteMono(11))
+                        .font(.byteTerminalSmall)
                         .foregroundColor(.byteText1)
                         .tracking(0.6)
                 }
@@ -292,7 +296,7 @@ struct StackPicker: View {
                         .font(.system(size: 10))
                         .foregroundColor(focused ? .byteAccent : .byteText3)
                     TextField(values.isEmpty ? "filter by stack…" : "add more…", text: $query)
-                        .font(.byteMono(11))
+                        .font(.byteTerminalSmall)
                         .foregroundColor(.byteText1)
                         .tint(.byteAccent)
                         .autocorrectionDisabled()
@@ -350,7 +354,7 @@ struct StackPicker: View {
                             Image(systemName: "plus")
                                 .font(.system(size: 8, weight: .bold))
                             Text(s.label)
-                                .font(.byteMono(11))
+                                .font(.byteTerminalSmall)
                         }
                         .foregroundColor(.byteText1)
                         .padding(.horizontal, 9).padding(.vertical, 5)
@@ -407,13 +411,13 @@ struct BytePageCard: View {
                         }
 
                         Text(post.title)
-                            .font(.byteSans(22, weight: .bold))
+                            .font(.byteTitleMedium)
                             .foregroundColor(.byteText1)
                             .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
 
                         Text(post.body)
-                            .font(.byteSans(15))
+                            .font(.byteBodyMedium)
                             .foregroundColor(.byteText2)
                             .lineSpacing(5)
                             .lineLimit(8)
@@ -523,7 +527,7 @@ struct BytePageCard: View {
     private func actionPillLabel(icon: String, text: String?, isActive: Bool, activeTint: Color = .byteAccent) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon).font(.system(size: 14))
-            if let text { Text(text).font(.byteMono(11)).tracking(0.5) }
+            if let text { Text(text).font(.byteTerminalSmall).tracking(0.5) }
         }
         .foregroundColor(isActive ? activeTint : .byteText1)
         .padding(.horizontal, 12).padding(.vertical, 8)
@@ -649,6 +653,31 @@ final class FeedViewModel: ObservableObject {
                 self.unreadNotifications = max(0, self.unreadNotifications + delta)
             }
         }
+        // User changed their tech-stack preferences in profile → clobber the
+        // For-You filter to mirror the new list. The `selectedStacks` didSet
+        // already triggers `load()`, so we don't call it ourselves. Guard against
+        // no-op assignments (same array) so the feed isn't reloaded for free.
+        NotificationCenter.default.addObserver(
+            forName: .techStackChanged, object: nil, queue: .main
+        ) { [weak self] note in
+            let stack = (note.userInfo?["techStack"] as? [String]) ?? []
+            Task { @MainActor in
+                guard let self else { return }
+                // Mark as seeded — without this flag, the next load() would re-seed
+                // from `me.techStack` (which is now identical anyway, but the
+                // intent is clearer). It also prevents the auto-seed branch from
+                // ever overwriting an explicit user clear.
+                self.hasSeededStacks = true
+                if self.selectedStacks != stack {
+                    self.selectedStacks = stack // didSet → load()
+                } else {
+                    // Identical array — didSet won't fire. Reload anyway so the
+                    // server can pick up any tech-stack-affecting changes (e.g.
+                    // ranking weights derived from the user's profile).
+                    Task { await self.load() }
+                }
+            }
+        }
     }
 
     /// Pulls the canonical unread count from the server. Called on app launch
@@ -674,10 +703,14 @@ final class FeedViewModel: ObservableObject {
     func load() async {
         guard !isLoading else { return }
         // Auto-seed from current user's techStack on first load (web parity:
-        // feed-screen.tsx seeds activeStackFilter from `me.techStack` when no
-        // explicit `?stack=` was set). Triggers a re-load on change → load() runs again.
+        // feed-screen.tsx seeds activeStackFilter from `me.techStack`). The
+        // previous implementation gated this on `selectedStacks.isEmpty`, but
+        // the new contract is "the For-You filter mirrors the user's profile
+        // tech stack" — so we seed on the first load regardless of whether
+        // the filter was already populated. After this initial seed, profile
+        // updates flow in through `.techStackChanged` (see init), which also
+        // sets `hasSeededStacks` so we don't double-seed.
         if !hasSeededStacks,
-           selectedStacks.isEmpty,
            let me = AuthManager.shared.currentUser,
            !me.techStack.isEmpty {
             hasSeededStacks = true

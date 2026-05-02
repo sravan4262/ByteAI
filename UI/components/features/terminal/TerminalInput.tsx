@@ -18,7 +18,7 @@ const MAX_MESSAGE = 1000
 interface Props {
   onSubmit: (value: string) => void
   disabled: boolean
-  stage: 'idle' | 'awaiting-message'
+  stage: 'idle' | 'awaiting-message' | 'awaiting-report-type' | 'awaiting-report-id' | 'awaiting-report-message'
   completions?: string[]
 }
 
@@ -83,7 +83,7 @@ export function TerminalInput({ onSubmit, disabled, stage, completions: completi
     }
   }
 
-  const isInput   = stage === 'awaiting-message'
+  const isInput   = stage !== 'idle'
   const charCount = value.length
   const overLimit = charCount > MAX_MESSAGE
   const nearLimit = charCount > MAX_MESSAGE * 0.8

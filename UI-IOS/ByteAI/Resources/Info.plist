@@ -50,6 +50,12 @@
 	<!-- Photo library access for avatar uploads -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ByteAI needs access to your photo library so you can choose a profile picture.</string>
+	<!-- Pasteboard usage description (defensive): standard UITextView edit-menu
+	     paste does not require this on iOS, but providing a string ensures any
+	     future programmatic UIPasteboard reads (e.g. "paste link" affordances)
+	     don't trip the iOS 16+ pasteboard prompt with a generic placeholder. -->
+	<key>NSPasteboardUsageDescription</key>
+	<string>ByteAI uses the clipboard so you can paste content into your posts.</string>
 	<!-- Allow plain HTTP to localhost for local dev -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
@@ -67,9 +73,12 @@
 	<string>$(GOOGLE_WEB_CLIENT_ID)</string>
 	<!-- URL schemes:
 	     - "byteai" — GitHub OAuth callback (still goes through Supabase)
-	     - The reversed Google iOS client ID scheme is injected at build time by
-	       the TestFlight workflow from the GOOGLE_IOS_CLIENT_ID secret, so it
-	       can never drift from GIDClientID. -->
+	     - $(GOOGLE_IOS_REVERSED_CLIENT_ID) — reversed Google iOS client ID,
+	       required by the GoogleSignIn SDK to receive the OAuth callback.
+	       Debug builds resolve it from Configs/Debug.xcconfig; Release builds are
+	       overwritten by the TestFlight workflow which derives it from the
+	       GOOGLE_IOS_CLIENT_ID secret. Keep CFBundleURLName = "com.byteai.googlesignin"
+	       so CI's dedup-and-replace logic finds and overwrites this entry. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -79,6 +88,14 @@
 			</array>
 			<key>CFBundleURLName</key>
 			<string>com.byteai.auth</string>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.byteai.googlesignin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_IOS_REVERSED_CLIENT_ID)</string>
+			</array>
 		</dict>
 	</array>
 	<!-- Background modes for push notifications -->

@@ -8,6 +8,16 @@ on:
         type: boolean
         default: false
         required: false
+      wipe_supabase_auth:
+        description: 'Also wipe Supabase auth.users and storage buckets (DANGEROUS — production wipe)'
+        type: boolean
+        default: false
+        required: false
+      confirmation:
+        description: "Type 'WIPE-PROD' to confirm wipe_supabase_auth (required only when that box is ticked)"
+        type: string
+        default: ''
+        required: false
   workflow_call:
     inputs:
       clean_slate:
@@ -15,14 +25,39 @@ on:
         type: boolean
         default: false
         required: false
+      wipe_supabase_auth:
+        description: 'Also wipe Supabase auth.users and storage buckets (DANGEROUS — production wipe)'
+        type: boolean
+        default: false
+        required: false
+      confirmation:
+        description: "Type 'WIPE-PROD' to confirm wipe_supabase_auth (required only when that box is ticked)"
+        type: string
+        default: ''
+        required: false
 
 jobs:
   deploy-schema:
     name: Apply schema & migrations
     runs-on: ubuntu-latest
+    # TODO: configure GitHub environment "production-destructive" with required reviewers
+    # in repo Settings → Environments. Once created, gate destructive runs by adding:
+    #   environment: ${{ (inputs.wipe_supabase_auth == true || inputs.clean_slate == true) && 'production-destructive' || '' }}
+    # (GitHub does not support fully conditional environments today; the simplest
+    # safe option is to set `environment: production-destructive` unconditionally
+    # once the environment exists.)
 
     steps:
       - uses: actions/checkout@v4
+
+      # ── Guard: typed-confirmation required when wiping Supabase auth/storage ──
+      - name: Validate wipe confirmation
+        if: ${{ inputs.wipe_supabase_auth == true }}
+        run: |
+          if [ "${{ inputs.confirmation }}" != "WIPE-PROD" ]; then
+            echo "::error::Supabase wipe requested but confirmation phrase incorrect. Type 'WIPE-PROD' to confirm."
+            exit 1
+          fi
 
       # ── Clean slate: drop all app schemas before migrating ────────────────────
       # Cascades drop all tables, indexes, RLS policies, and functions inside
@@ -40,6 +75,62 @@ jobs:
             DROP SCHEMA IF EXISTS interviews CASCADE;
           SQL
           echo "All app schemas dropped"
+
+      # ── Wipe Supabase auth users + storage objects ────────────────────────────
+      # Independent of clean_slate: auth.* and storage.* live outside the app
+      # schemas, so dropping app schemas does NOT remove users or files. Runs
+      # after clean_slate (if enabled) and BEFORE migrations/seeds so that any
+      # seeded users/files land in a freshly emptied auth + storage layer.
+      - name: Wipe Supabase auth users and storage
+        if: ${{ inputs.wipe_supabase_auth == true }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          echo "::warning::Wiping all Supabase auth users and storage objects"
+
+          # Delete all auth users (paginate)
+          page=1
+          while : ; do
+            USERS_JSON=$(curl -fsS \
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              "$SUPABASE_URL/auth/v1/admin/users?page=$page&per_page=200")
+            USER_IDS=$(echo "$USERS_JSON" | jq -r '.users[].id // empty')
+            if [ -z "$USER_IDS" ]; then break; fi
+            for uid in $USER_IDS; do
+              echo "  delete user $uid"
+              curl -fsS -X DELETE \
+                -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+                -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+                "$SUPABASE_URL/auth/v1/admin/users/$uid" > /dev/null
+            done
+            page=$((page+1))
+          done
+          echo "auth.users wiped"
+
+          # Empty all storage buckets
+          BUCKETS=$(curl -fsS \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/storage/v1/bucket" | jq -r '.[].name')
+          for bucket in $BUCKETS; do
+            echo "  emptying bucket $bucket"
+            OBJECTS=$(curl -fsS -X POST \
+              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"prefix":"","limit":1000}' \
+              "$SUPABASE_URL/storage/v1/object/list/$bucket" | jq -r '.[].name // empty')
+            for obj in $OBJECTS; do
+              curl -fsS -X DELETE \
+                -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+                -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+                "$SUPABASE_URL/storage/v1/object/$bucket/$obj" > /dev/null || true
+            done
+          done
+          echo "storage buckets emptied"
 
       # ── Apply pending migrations in sort order ─────────────────────────────────
       # Migration files follow the naming convention: YYYYMMDDHHMMSS_description.sql

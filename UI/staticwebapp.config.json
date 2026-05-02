@@ -5,5 +5,16 @@
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
-  }
+  },
+  "mimeTypes": {
+    ".well-known/apple-app-site-association": "application/json"
+  },
+  "routes": [
+    {
+      "route": "/.well-known/apple-app-site-association",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+  ]
 }

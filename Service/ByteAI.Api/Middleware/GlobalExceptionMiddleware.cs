@@ -1,6 +1,7 @@
 using ByteAI.Core.Entities;
 using ByteAI.Core.Exceptions;
 using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Moderation;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -29,6 +30,14 @@ public sealed class GlobalExceptionMiddleware(RequestDelegate next, ILogger<Glob
 
     private async Task HandleAsync(HttpContext ctx, Exception ex)
     {
+        // ContentModerationException needs a richer body (per-reason structure) than ProblemDetails
+        // — handle it before falling through to the generic mapper.
+        if (ex is ContentModerationException mod)
+        {
+            await WriteModerationResponseAsync(ctx, mod);
+            return;
+        }
+
         var (status, title, detail) = ex switch
         {
             // NotFoundException is thrown explicitly by app code with a sanitized message — safe to echo.
@@ -37,7 +46,6 @@ public sealed class GlobalExceptionMiddleware(RequestDelegate next, ILogger<Glob
             NotFoundException              => (404, "Not Found",                ex.Message),
             KeyNotFoundException           => (404, "Not Found",                "Resource not found."),
             UnauthorizedAccessException    => (403, "Forbidden",                "You are not authorized to perform this action."),
-            InvalidContentException ice    => (422, "Invalid Content",          ice.Reason),
             DuplicateContentException      => (409, "Duplicate Content",        ex.Message),
             ValidationException ve         => (400, "Validation Failed",        BuildValidationDetail(ve)),
             ServiceUnavailableException    => (503, "Service Unavailable",      ex.Message),
@@ -113,4 +121,27 @@ public sealed class GlobalExceptionMiddleware(RequestDelegate next, ILogger<Glob
 
     private static string BuildValidationDetail(ValidationException ve) =>
         string.Join("; ", ve.Errors.Select(e => $"{e.PropertyName}: {e.ErrorMessage}"));
+
+    private async Task WriteModerationResponseAsync(HttpContext ctx, ContentModerationException ex)
+    {
+        const int status = StatusCodes.Status422UnprocessableEntity;
+
+        logger.LogWarning(
+            "Content rejected by moderation: severity={Severity} codes={Codes} path={Path}",
+            ex.Severity,
+            string.Join(",", ex.Reasons.Select(r => r.Code)),
+            ctx.Request.Path);
+
+        await PersistLogAsync(ctx, ex, status, "Content Rejected");
+
+        ctx.Response.StatusCode  = status;
+        ctx.Response.ContentType = "application/json";
+
+        await ctx.Response.WriteAsJsonAsync(new
+        {
+            error    = "CONTENT_REJECTED",
+            severity = ex.Severity.ToString().ToLowerInvariant(),
+            reasons  = ex.Reasons.Select(r => new { code = r.Code, message = r.Message }),
+        });
+    }
 }

@@ -8,6 +8,8 @@ import { Avatar } from '@/components/layout/avatar'
 import { CodeBlock } from '@/components/ui/code-block'
 import { addComment, getCurrentUser, deleteComment, getPostComments } from '@/lib/api'
 import type { Comment, Post } from '@/lib/api'
+import { ApiError, type ModerationReason } from '@/lib/api/http'
+import { ErrorModal, resolveErrorModal } from '@/components/ui/error-modal'
 import { getMeCache } from '@/lib/user-cache'
 
 interface CommentsScreenProps {
@@ -86,6 +88,7 @@ export function CommentsScreen({ post }: CommentsScreenProps) {
   const [body, setBody] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [postError, setPostError] = useState<{ errorCode: string; reason?: string; reasons?: ModerationReason[] } | null>(null)
 
   useEffect(() => {
     getCurrentUser().then((u) => { if (u) setCurrentUserId(u.id) })
@@ -144,8 +147,12 @@ export function CommentsScreen({ post }: CommentsScreenProps) {
       setComments((prev) => [...prev, optimistic])
       setBody('')
       toast.success('Comment posted')
-    } catch {
-      toast.error('Failed to post comment')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setPostError({ errorCode: err.errorCode, reason: err.reason, reasons: err.reasons })
+      } else {
+        toast.error('Failed to post comment')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -275,6 +282,15 @@ export function CommentsScreen({ post }: CommentsScreenProps) {
           </button>
         </div>
       </div>
+
+      {/* Post error modal — moderation rejections preserve the draft */}
+      {postError && (
+        <ErrorModal
+          {...resolveErrorModal(postError.errorCode, postError.reason)}
+          reasons={postError.reasons}
+          onClose={() => setPostError(null)}
+        />
+      )}
     </div>
   )
 }

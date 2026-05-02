@@ -1,5 +1,6 @@
 import SwiftUI
 import UserNotifications
+import LocalAuthentication
 
 // MARK: - Root View
 //   unauthenticated → AuthView
@@ -12,6 +13,11 @@ struct RootView: View {
     @EnvironmentObject private var chat: ChatService
     @EnvironmentObject private var router: DeepLinkRouter
     @Environment(\.scenePhase) private var scenePhase
+
+    /// Debounce window for auto-FaceID. Banner-tap re-activations and brief
+    /// system sheets can fire `.active` again moments after a successful
+    /// unlock — re-prompting in those cases is jarring.
+    @State private var lastUnlockedAt: Date = .distantPast
 
     var body: some View {
         Group {
@@ -45,6 +51,14 @@ struct RootView: View {
                 if case .authenticated = auth.state {
                     Task { await chat.start() }
                 }
+                // Auto-prompt FaceID on foreground. The Supabase session is
+                // still alive (FaceID is just a UI gate), so unlocking here
+                // is only a transition from `.locked` → `.authenticated`.
+                if case .locked = auth.state,
+                   BiometricLock.shared.isEnabled,
+                   BiometricLock.shared.isAvailable {
+                    Task { await autoUnlockOnForeground() }
+                }
             case .background:
                 // FaceID enabled? Re-lock so the next foreground starts at
                 // the lock screen. Doing this here (not on .inactive) avoids
@@ -54,6 +68,50 @@ struct RootView: View {
                     auth.lock()
                 }
                 Task { await chat.stop() }
+            default:
+                break
+            }
+        }
+    }
+
+    /// Auto-FaceID flow triggered on `scenePhase → .active`.
+    ///
+    /// Flow:
+    ///   1. Debounce: skip if we just unlocked <30s ago (banner-tap re-activations).
+    ///   2. Run the system FaceID/TouchID prompt.
+    ///   3. On success: flip auth state, then refresh the Supabase token in the
+    ///      background so the user returns to a guaranteed-fresh session.
+    ///   4. If the refresh token is dead, surface the sign-in screen via signOut.
+    ///   5. On user-cancel / user-fallback, leave `BiometricLockView` mounted so the
+    ///      manual "Unlock" button is available.
+    ///   6. On app/system cancel (e.g. another sheet stole focus), retry on next `.active`.
+    @MainActor
+    private func autoUnlockOnForeground() async {
+        if Date().timeIntervalSince(lastUnlockedAt) < 30 { return }
+
+        do {
+            let ok = try await BiometricLock.shared.evaluate(reason: "Unlock ByteAI")
+            guard ok else { return }
+            auth.unlock()
+            lastUnlockedAt = Date()
+            // Token refresh is best-effort — if Supabase has already
+            // refreshed silently this is a no-op. If the refresh token
+            // is dead, sign out so the user lands on the auth screen
+            // instead of seeing 401s on the next API call.
+            do {
+                try await auth.refreshSession()
+            } catch {
+                print("[Auth] auto-unlock refreshSession failed: \(error) — signing out")
+                await auth.signOut()
+            }
+        } catch let nsError as NSError {
+            switch nsError.code {
+            case LAError.userCancel.rawValue, LAError.userFallback.rawValue:
+                // User explicitly dismissed → fall back to manual unlock UI.
+                break
+            case LAError.appCancel.rawValue, LAError.systemCancel.rawValue:
+                // Interrupted by another sheet / OS → next `.active` will retry.
+                break
             default:
                 break
             }

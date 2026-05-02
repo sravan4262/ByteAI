@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		47284DE37EB36259627F566C /* PasteAwareTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3DA2A5E9F1838208C25CF2A /* PasteAwareTextEditor.swift */; };
 		5F1E00C02F9E6F6600210D6B /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 5F1E00BF2F9E6F6600210D6B /* GoogleSignIn */; };
 		5F1E00C22F9E6F6600210D6B /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 5F1E00C12F9E6F6600210D6B /* GoogleSignInSwift */; };
 		5F1E00C62FA175A800210D6B /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1E00C52FA175A800210D6B /* ThemeManager.swift */; };
@@ -75,15 +76,20 @@
 		5F93A3342F9D2797009E36CA /* CTAButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A3252F9D2797009E36CA /* CTAButton.swift */; };
 		5F93A3352F9D2797009E36CA /* NotificationBellButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A3292F9D2797009E36CA /* NotificationBellButton.swift */; };
 		5F93A3372F9D27AB009E36CA /* Tints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A3362F9D27AB009E36CA /* Tints.swift */; };
+		9B35D811215486143515BE6B /* ContentRejectedModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F10F3649B838D4CB27D750C /* ContentRejectedModal.swift */; };
 		AA01000000000000ABCDEF01 /* ShareURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF02 /* ShareURL.swift */; };
 		AA01000000000000ABCDEF03 /* ByteAILogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF04 /* ByteAILogoView.swift */; };
 		AA01000000000000ABCDEF21 /* BiometricLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF20 /* BiometricLock.swift */; };
 		AA01000000000000ABCDEF23 /* AppleSignInCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF22 /* AppleSignInCoordinator.swift */; };
-		AA01000000000000ABCDEF41 /* LaunchSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF40 /* LaunchSplashView.swift */; };
 		AA01000000000000ABCDEF27 /* BiometricOptInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF26 /* BiometricOptInSheet.swift */; };
+		AA01000000000000ABCDEF41 /* LaunchSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF40 /* LaunchSplashView.swift */; };
+		B766E3D959D980655959CDC4 /* ByteScrollbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5A05B3DEA2D6F94DC219E3 /* ByteScrollbar.swift */; };
+		C25E9D8C38C09DC33644A919 /* TerminalChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCCB10E161C584E66C3B9BF /* TerminalChrome.swift */; };
+		EF98FFBA4D280710FBF59867 /* TerminalOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3F2EEFD954DC2B6CCE9A958 /* TerminalOrb.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		4A5A05B3DEA2D6F94DC219E3 /* ByteScrollbar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ByteScrollbar.swift; sourceTree = "<group>"; };
 		5F1E00C52FA175A800210D6B /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		5F1E00C92FA2840B00210D6B /* BiometricLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricLock.swift; sourceTree = "<group>"; };
 		5F1E00CB2FA2841E00210D6B /* BiometricLockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricLockView.swift; sourceTree = "<group>"; };
@@ -141,18 +147,22 @@
 		5F93A32A2F9D2797009E36CA /* RmConfirmButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RmConfirmButton.swift; sourceTree = "<group>"; };
 		5F93A32B2F9D2797009E36CA /* TabPills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabPills.swift; sourceTree = "<group>"; };
 		5F93A3362F9D27AB009E36CA /* Tints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tints.swift; sourceTree = "<group>"; };
+		7F10F3649B838D4CB27D750C /* ContentRejectedModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentRejectedModal.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF02 /* ShareURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareURL.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF04 /* ByteAILogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByteAILogoView.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF20 /* BiometricLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricLock.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF22 /* AppleSignInCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInCoordinator.swift; sourceTree = "<group>"; };
-		AA01000000000000ABCDEF40 /* LaunchSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchSplashView.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF26 /* BiometricOptInSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricOptInSheet.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF28 /* ByteAI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ByteAI.entitlements; sourceTree = "<group>"; };
+		AA01000000000000ABCDEF40 /* LaunchSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchSplashView.swift; sourceTree = "<group>"; };
 		AA200000 /* ByteAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ByteAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFGD0001 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		CFGD0002 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		CFGD0004 /* ByteAI.Debug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ByteAI.Debug.entitlements; sourceTree = "<group>"; };
 		CFGD0005 /* Debug.xcconfig.template */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig.template; sourceTree = "<group>"; };
+		E3DA2A5E9F1838208C25CF2A /* PasteAwareTextEditor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PasteAwareTextEditor.swift; sourceTree = "<group>"; };
+		F3F2EEFD954DC2B6CCE9A958 /* TerminalOrb.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalOrb.swift; sourceTree = "<group>"; };
+		FFCCB10E161C584E66C3B9BF /* TerminalChrome.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TerminalChrome.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -208,6 +218,7 @@
 				5F93A3362F9D27AB009E36CA /* Tints.swift */,
 				5F93A2BC2F9D1119009E36CA /* Colors.swift */,
 				5F93A2BD2F9D1119009E36CA /* Typography.swift */,
+				4A5A05B3DEA2D6F94DC219E3 /* ByteScrollbar.swift */,
 			);
 			path = Design;
 			sourceTree = "<group>";
@@ -388,6 +399,10 @@
 				5F93A2EE2F9D1119009E36CA /* LoadingView.swift */,
 				5F93A2EF2F9D1119009E36CA /* TagView.swift */,
 				AA01000000000000ABCDEF04 /* ByteAILogoView.swift */,
+				FFCCB10E161C584E66C3B9BF /* TerminalChrome.swift */,
+				F3F2EEFD954DC2B6CCE9A958 /* TerminalOrb.swift */,
+				E3DA2A5E9F1838208C25CF2A /* PasteAwareTextEditor.swift */,
+				7F10F3649B838D4CB27D750C /* ContentRejectedModal.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -598,6 +613,11 @@
 				5F93A31F2F9D1119009E36CA /* ComposeView.swift in Sources */,
 				5F93A3202F9D1119009E36CA /* Typography.swift in Sources */,
 				5F93A3212F9D1119009E36CA /* ChatThreadView.swift in Sources */,
+				C25E9D8C38C09DC33644A919 /* TerminalChrome.swift in Sources */,
+				EF98FFBA4D280710FBF59867 /* TerminalOrb.swift in Sources */,
+				47284DE37EB36259627F566C /* PasteAwareTextEditor.swift in Sources */,
+				B766E3D959D980655959CDC4 /* ByteScrollbar.swift in Sources */,
+				9B35D811215486143515BE6B /* ContentRejectedModal.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

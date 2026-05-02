@@ -70,6 +70,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     // Support
     public DbSet<Feedback> Feedbacks => Set<Feedback>();
 
+    // Moderation
+    public DbSet<FlaggedContent> FlaggedContents => Set<FlaggedContent>();
+
     // Admin activity views (keyless)
     public DbSet<LoggedInTodayUser>    LoggedInToday     => Set<LoggedInTodayUser>();
     public DbSet<CurrentlyLoggedInUser> CurrentlyLoggedIn => Set<CurrentlyLoggedInUser>();

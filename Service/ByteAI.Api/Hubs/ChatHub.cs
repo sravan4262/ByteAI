@@ -1,4 +1,6 @@
+using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Infrastructure.Services;
+using ByteAI.Core.Moderation;
 using ByteAI.Core.Services.Chat;
 using ByteAI.Core.Services.FeatureFlags;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +9,12 @@ using Microsoft.AspNetCore.SignalR;
 namespace ByteAI.Api.Hubs;
 
 [Authorize]
-public sealed class ChatHub(ChatService chatService, IFeatureFlagService featureFlagService, ICurrentUserService currentUserService) : Hub<IChatClient>
+public sealed class ChatHub(
+    ChatService chatService,
+    IFeatureFlagService featureFlagService,
+    ICurrentUserService currentUserService,
+    IModerationService moderation,
+    AppDbContext db) : Hub<IChatClient>
 {
     public override async Task OnConnectedAsync()
     {
@@ -30,6 +37,18 @@ public sealed class ChatHub(ChatService chatService, IFeatureFlagService feature
 
         if (string.IsNullOrWhiteSpace(content) || content.Length > 2000)
             throw new HubException("Message content must be between 1 and 2000 characters.");
+
+        // Moderation runs before persistence/broadcast. High severity surfaces as a HubException
+        // so the SignalR caller sees a typed failure and the message never fans out to the recipient.
+        try
+        {
+            await moderation.EnforceAsync(db, content, ModerationContext.Chat, ct: Context.ConnectionAborted);
+        }
+        catch (ContentModerationException ex)
+        {
+            var codes = string.Join(",", ex.Reasons.Select(r => r.Code));
+            throw new HubException($"Message rejected by moderation ({codes}).");
+        }
 
         var canMessage = await chatService.CanMessageAsync(senderId.Value, recipientId, Context.ConnectionAborted);
         if (!canMessage) throw new HubException("You must follow each other to send messages.");

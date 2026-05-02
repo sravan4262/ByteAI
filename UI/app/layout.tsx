@@ -12,9 +12,40 @@ const jetbrains = JetBrains_Mono({
   variable: '--font-mono'
 })
 
+const SITE_TITLE = 'ByteAI — Social Platform for Developers'
+const SITE_DESCRIPTION =
+  'Share insights, learn from peers, and level up your dev skills with the ByteAI developer community.'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.byteaiofficial.com'
+
 export const metadata: Metadata = {
-  title: 'ByteAI — Social Platform for Developers',
-  description: 'Share insights, learn from peers, and level up your dev skills with the ByteAI developer community.',
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  applicationName: 'ByteAI',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'ByteAI',
+  },
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: 'ByteAI',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ['/og-image.png'],
+  },
 }
 
 export const viewport: Viewport = {

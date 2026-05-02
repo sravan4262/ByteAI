@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Terminal } from 'lucide-react'
 import { TerminalShell } from './TerminalShell'
@@ -14,6 +14,14 @@ interface Props {
 export function TerminalWidget({ open, onOpenChange }: Props) {
   const close = useCallback(() => onOpenChange(false), [onOpenChange])
   const { lines, loading, stage, handleInput, clear } = useTerminal(close)
+  const [maximized, setMaximized] = useState(false)
+  const toggleMaximize = useCallback(() => setMaximized(m => !m), [])
+
+  // When the terminal closes, reset to the default size so the next open
+  // doesn't surprise the user with a leftover full-screen state.
+  useEffect(() => {
+    if (!open) setMaximized(false)
+  }, [open])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -70,7 +78,11 @@ export function TerminalWidget({ open, onOpenChange }: Props) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-20 right-5 z-50 w-[560px] h-[600px] max-w-[calc(100vw-2.5rem)]"
+            className={
+              maximized
+                ? 'fixed inset-0 z-50'
+                : 'fixed bottom-20 right-5 z-50 w-[560px] h-[600px] max-w-[calc(100vw-2.5rem)]'
+            }
           >
             <TerminalShell
               lines={lines}
@@ -79,6 +91,8 @@ export function TerminalWidget({ open, onOpenChange }: Props) {
               onInput={handleInput}
               onClose={close}
               onClear={clear}
+              onMaximize={toggleMaximize}
+              isMaximized={maximized}
             />
           </motion.div>
         )}

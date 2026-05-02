@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { isSafeRelativePath } from '@/lib/utils/safe-redirect'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5239'
 
@@ -46,7 +47,14 @@ export async function GET(request: NextRequest) {
     user.email?.split('@')[0] ||
     'User'
 
+  // Honor a safe relative `next` query param so deep-links (e.g. /post/{id})
+  // resume after sign-in. We only allow paths that start with a single `/` and
+  // contain no scheme — see isSafeRelativePath for the full rules.
+  const rawNext = searchParams.get('next')
+  const safeNext = isSafeRelativePath(rawNext) ? rawNext : null
+
   let destination = `${origin}/onboarding`
+  let isOnboarded = false
   try {
     const provisionResp = await fetch(`${API_URL}/api/auth/provision`, {
       method: 'POST',
@@ -62,7 +70,12 @@ export async function GET(request: NextRequest) {
     })
     if (provisionResp.ok) {
       const { data } = await provisionResp.json()
-      if (data?.isOnboarded) destination = `${origin}/feed`
+      if (data?.isOnboarded) {
+        isOnboarded = true
+        // Only honor `next` for already-onboarded users. Un-onboarded users
+        // must complete onboarding first; we drop the deep-link in that case.
+        destination = safeNext ? `${origin}${safeNext}` : `${origin}/feed`
+      }
     }
   } catch {
     // Fall through to /onboarding as a safe default
@@ -80,7 +93,7 @@ export async function GET(request: NextRequest) {
   // "switch accounts" flow where a stale `byteai_onboarded=1` from a prior
   // session would otherwise mislead the proxy into bouncing a new (un-onboarded)
   // user straight to /feed.
-  if (destination.endsWith('/feed')) {
+  if (isOnboarded) {
     response.cookies.set('byteai_onboarded', '1', {
       path: '/',
       maxAge: 2592000,

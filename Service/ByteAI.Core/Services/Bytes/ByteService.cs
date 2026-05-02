@@ -4,16 +4,16 @@ using ByteAI.Core.Events;
 using ByteAI.Core.Exceptions;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Moderation;
 using ByteAI.Core.Services.AI;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Bytes;
 
-public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddingService embedding, TechDomainAnchors anchors, ILlmService llm, ILogger<ByteService> logger) : IByteService
+public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddingService embedding, IModerationService moderation) : IByteService
 {
     public async Task UpdateEmbeddingAsync(Guid byteId, float[] embedding, CancellationToken ct = default)
     {
@@ -77,40 +77,12 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
         var normalised = type == "byte" ? "article" : type;
         if (!validTypes.Contains(normalised)) normalised = "article";
 
-        // ── Stage 1: Anti-gibberish entropy check ─────────────────────────────
-        if (IsGibberish(title, body))
-            throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");
-
-        // ── Stage 2: Tech-relevance embedding check ───────────────────────────
-        var topicText = $"{title} {body}";
-        var topicVec = await embedding.EmbedQueryAsync(topicText, ct);
-        var maxSim = anchors.MaxSimilarity(topicVec);
-
-        logger.LogInformation("Content validation similarity score: {Score:F4} for title: {Title}", maxSim, title);
-
-        if (maxSim < 0.15f)
-            throw new InvalidContentException("ByteAI is for tech content only. This doesn't appear to be tech-related.");
-
-        // ── Stage 3: Gemini is the real content gate ─────────────────────────
-        // nomic scores general English too high against tech anchors (0.55+),
-        // so embedding is only used as a cheap hard-reject at very low scores.
-        // Gemini decides for everything else.
-        {
-            var validation = await llm.ValidateTechContentAsync(title, body, ct);
-            logger.LogInformation("LLM validation result: {Result}", validation);
-            if (validation is not null)
-            {
-                if (!validation.IsCoherent)
-                    throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");
-                if (!validation.IsTechRelated)
-                    throw new InvalidContentException($"ByteAI is for tech content only. {validation.Reason}");
-            }
-            else
-            {
-                // Stages 1 & 2 already passed — let the post through rather than block on a transient AI failure.
-                logger.LogWarning("LLM validation unavailable — falling back to embedding-only check for: {Title}", title);
-            }
-        }
+        // ── Unified moderation (Layer 1 deterministic + Gemini) ───────────────
+        // Throws ContentModerationException → 422 CONTENT_REJECTED on a hard block
+        // (off-topic, profanity, toxicity, hate, sexual, harm, PII, spam, gibberish, prompt-injection).
+        // On Medium severity (Layer 1 PII / URL spam) the call records a flag row
+        // for moderator review and returns; the post still goes through.
+        await moderation.EnforceAsync(db, $"{title}\n\n{body}", ModerationContext.Byte, ct: ct);
 
         // ── Near-duplicate detection (skip if force=true) ─────────────────────
         if (!force)
@@ -207,28 +179,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
 
         if (contentChanged)
         {
-            // Stage 1: entropy / gibberish check
-            if (IsGibberish(newTitle, newBody))
-                throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");
-
-            // Stage 2: hard-reject very low similarity
-            var topicVec = await embedding.EmbedQueryAsync($"{newTitle} {newBody}", ct);
-            var maxSim = anchors.MaxSimilarity(topicVec);
-            logger.LogInformation("Update validation similarity: {Score:F4} for byte {ByteId}", maxSim, byteId);
-            if (maxSim < 0.15f)
-                throw new InvalidContentException("ByteAI is for tech content only. This doesn't appear to be tech-related.");
-
-            // Stage 3: Gemini is the authoritative gate
-            var validation = await llm.ValidateTechContentAsync(newTitle, newBody, ct);
-            if (validation is null)
-            {
-                logger.LogWarning("LLM validation unavailable during update for byte {ByteId}", byteId);
-                throw new ServiceUnavailableException("Content validation is temporarily unavailable. Please try again in a moment.");
-            }
-            if (!validation.IsCoherent)
-                throw new InvalidContentException("Content appears to be gibberish. Please write meaningful tech content.");
-            if (!validation.IsTechRelated)
-                throw new InvalidContentException($"ByteAI is for tech content only. {validation.Reason}");
+            await moderation.EnforceAsync(db, $"{newTitle}\n\n{newBody}", ModerationContext.Byte, contentId: byteId, ct: ct);
         }
 
         if (!string.IsNullOrWhiteSpace(title)) entity.Title = title;
@@ -323,36 +274,6 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Returns true if the combined title+body looks like gibberish:
-    /// too short, very low character entropy, or suspiciously short average word length.
-    /// This is a cheap pre-filter — runs before any embedding or LLM call.
-    /// </summary>
-    private static bool IsGibberish(string title, string body)
-    {
-        var combined = $"{title} {body}";
-        if (combined.TrimEnd().Length < 15) return true;
-
-        var letters = combined.Where(char.IsLetter).ToList();
-        if (letters.Count == 0) return true;
-
-        // Shannon entropy of the character distribution
-        var freq = combined.GroupBy(c => c).Select(g => (double)g.Count() / combined.Length);
-        var entropy = -freq.Sum(p => p * Math.Log2(p));
-
-        var words = combined.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var avgWordLen = words.Length > 0 ? words.Average(w => (double)w.Length) : 0;
-
-        // Vowel ratio — normal English is ~38%, gibberish is typically <15%
-        var vowels = new HashSet<char> { 'a', 'e', 'i', 'o', 'u' };
-        var vowelRatio = (double)letters.Count(c => vowels.Contains(char.ToLower(c))) / letters.Count;
-
-        // Non-alpha ratio — high punctuation/symbol density signals keyboard mashing
-        var nonAlphaRatio = (double)combined.Count(c => !char.IsLetterOrDigit(c) && c != ' ') / combined.Length;
-
-        return entropy < 3.0 || avgWordLen < 2.5 || vowelRatio < 0.15 || nonAlphaRatio > 0.25;
-    }
 
     private static string SlugifyTechStack(string raw)
     {

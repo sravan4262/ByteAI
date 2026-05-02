@@ -7,6 +7,7 @@ export type ParsedCommand =
   | { cmd: 'history' }
   | { cmd: 'whoami' }
   | { cmd: 'feedback'; feedbackType: FeedbackType; inlineMessage?: string }
+  | { cmd: 'report'; contentType?: string; contentId?: string; message?: string }
   | { cmd: 'unknown'; raw: string }
   | { cmd: 'error'; message: string }
 
@@ -42,6 +43,10 @@ export function parseCommand(input: string): ParsedCommand {
       : undefined
 
     return { cmd: 'feedback', feedbackType: t, inlineMessage: inlineMessage || undefined }
+  }
+
+  if (base === 'report') {
+    return { cmd: 'report' }
   }
 
   return { cmd: 'unknown', raw: input }

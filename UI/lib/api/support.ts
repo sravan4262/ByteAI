@@ -1,4 +1,4 @@
-import { apiFetch } from './http'
+import { apiFetch, ApiError } from './http'
 
 export interface FeedbackResponse {
   id: string
@@ -38,7 +38,12 @@ export async function submitFeedback(data: {
       body: JSON.stringify(data),
     })
     return res.data
-  } catch {
+  } catch (err) {
+    // Surface moderation rejections (HTTP 422) to the terminal so it can
+    // render structured per-reason error lines instead of a generic failure.
+    if (err instanceof ApiError && err.errorCode === 'CONTENT_REJECTED') {
+      throw err
+    }
     return null
   }
 }
@@ -71,6 +76,28 @@ export async function getAllFeedback(params: {
     return res.data
   } catch {
     return { items: [], total: 0, page: 1, pageSize: 20 }
+  }
+}
+
+export async function reportContent(data: {
+  contentType: string
+  contentId: string
+  reasonCode: string
+  message?: string
+}): Promise<{ id: string; status: string } | null> {
+  try {
+    const res = await apiFetch<{ data: { id: string; status: string } }>('/api/moderation/reports', {
+      method: 'POST',
+      body: JSON.stringify({
+        contentType: data.contentType,
+        contentId: data.contentId,
+        reasonCode: data.reasonCode,
+        message: data.message ?? null,
+      }),
+    })
+    return res.data
+  } catch {
+    return null
   }
 }
 

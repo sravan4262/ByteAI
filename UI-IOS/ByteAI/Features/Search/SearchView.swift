@@ -86,7 +86,7 @@ struct SearchView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(queryFocused ? .byteAccent : .byteText2)
             TextField(vm.mode.placeholder, text: $vm.query)
-                .font(.byteSans(14))
+                .font(.byteBodyMedium)
                 .foregroundColor(.byteText1)
                 .tint(.byteAccent)
                 .focused($queryFocused)
@@ -243,7 +243,7 @@ struct SearchView: View {
                                 .font(.system(size: 12))
                                 .foregroundColor(.byteAccent)
                             Text(item)
-                                .font(.byteSans(13))
+                                .font(.byteBodySmall)
                                 .foregroundColor(.byteText1)
                                 .multilineTextAlignment(.leading)
                             Spacer()
@@ -407,7 +407,7 @@ private struct MarkdownAnswerView: View {
                 }
             }
         }
-        .font(.byteSans(13))
+        .font(.byteBodySmall)
     }
 
     /// Splits a line on `[N]` citation markers; renders each non-citation chunk via
@@ -495,7 +495,7 @@ private struct MarkdownAnswerView: View {
                 i = s.index(end, offsetBy: 2, limitedBy: s.endIndex) ?? s.endIndex
             } else if s[i] == "`", let end = s[s.index(after: i)...].firstIndex(of: "`") {
                 let segment = String(s[s.index(after: i)..<end])
-                output = output + Text(segment).font(.byteMono(11)).foregroundColor(.byteAccent)
+                output = output + Text(segment).font(.byteTerminalSmall).foregroundColor(.byteAccent)
                 i = s.index(after: end)
             } else {
                 let next = s[i...].firstIndex(where: { $0 == "*" || $0 == "`" }) ?? s.endIndex
@@ -529,17 +529,17 @@ private struct PersonRow: View {
                     .font(.byteSans(14, weight: .semibold))
                     .foregroundColor(.byteText1)
                 Text("@\(person.username)")
-                    .font(.byteMono(11))
+                    .font(.byteTerminalSmall)
                     .foregroundColor(.byteText2)
                 if !person.role.isEmpty {
                     Text(person.role)
-                        .font(.byteMono(11))
+                        .font(.byteTerminalSmall)
                         .foregroundColor(.byteText2)
                 }
             }
             Spacer()
             Text("\(person.followers) followers")
-                .font(.byteMono(11))
+                .font(.byteTerminalSmall)
                 .foregroundColor(.byteText2)
         }
         .padding(12)

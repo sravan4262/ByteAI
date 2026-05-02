@@ -4,6 +4,8 @@ import SwiftUI
 
 struct InterviewsView: View {
     @StateObject private var vm = InterviewsViewModel()
+    @EnvironmentObject private var router: DeepLinkRouter
+    @State private var deepLinkInterviewId: String?
 
     var body: some View {
         NavigationStack {
@@ -36,6 +38,7 @@ struct InterviewsView: View {
                         Spacer()
                     } else {
                         ScrollView(.vertical, showsIndicators: false) {
+                            ByteScrollOffsetReader(coordinateSpace: "byteScroll")
                             LazyVStack(spacing: 12) {
                                 ForEach(vm.interviews) { interview in
                                     InterviewPageCard(interview: interview)
@@ -48,14 +51,28 @@ struct InterviewsView: View {
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 8)
+                            .byteScrollContentSize()
                         }
+                        .coordinateSpace(name: "byteScroll")
+                        .byteScrollbar()
                         .refreshable { await vm.load() }
                     }
                 }
             }
             .navigationBarHidden(true)
+            // Universal-link / share-link entry: jump straight to detail
+            // without forcing the list to load first. The detail view fetches
+            // its own data by id.
+            .navigationDestination(item: $deepLinkInterviewId) { id in
+                InterviewDetailView(interviewId: id)
+            }
         }
         .task { await vm.load() }
+        .onChange(of: router.pendingInterviewId) { _, id in
+            guard let id else { return }
+            deepLinkInterviewId = id
+            router.clearPendingInterview()
+        }
     }
 }
 
@@ -67,6 +84,11 @@ struct InterviewPageCard: View {
     @State private var isBookmarked: Bool
     @State private var bookmarkGlow = false
     @State private var miniProfileTarget: MiniProfileTarget? = nil
+    /// Drives the whole-card-tap navigation. Programmatic NavigationLink rather
+    /// than a wrapping `NavigationLink { … }` because the card already contains
+    /// nested NavigationLinks (action row's "comments" + "View") and SwiftUI
+    /// won't compose those correctly inside an outer link.
+    @State private var navigateToDetail = false
 
     init(interview: Interview) {
         self.interview = interview
@@ -85,76 +107,89 @@ struct InterviewPageCard: View {
     var body: some View {
         CardWithTopGradient(identity: .purple) {
             VStack(alignment: .leading, spacing: 12) {
-                if interview.isAnonymous {
-                    AnonymousAuthorRow(timestamp: Post.relativeTime(from: interview.createdAt))
-                } else {
-                    PostHeader(post: Post(
-                        id: interview.id,
-                        title: interview.title,
-                        body: "",
-                        author: interview.author,
-                        tags: [],
-                        likes: 0, comments: 0, shares: 0, bookmarks: 0,
-                        timestamp: Post.relativeTime(from: interview.createdAt),
-                        isLiked: false, isBookmarked: false,
-                        code: nil, views: nil,
-                        type: .interview
-                    )) {
-                        miniProfileTarget = MiniProfileTarget(
-                            userId: interview.author.id,
-                            username: interview.author.username,
-                            displayName: interview.author.displayName,
-                            initials: interview.author.initials,
-                            avatarUrl: interview.author.avatarUrl,
-                            role: interview.author.role,
-                            company: interview.author.company,
-                            tags: []
-                        )
+                // Tappable region: header + meta + title + question rows. Putting
+                // the gesture on this inner VStack (NOT the outer one with
+                // `actionRow`) keeps the action row's own buttons / NavigationLinks
+                // routing their taps correctly. QuestionRow's expand/collapse
+                // toggle is itself a Button, so it wins over an ancestor tap
+                // gesture by SwiftUI's gesture composition rules.
+                VStack(alignment: .leading, spacing: 12) {
+                    if interview.isAnonymous {
+                        AnonymousAuthorRow(timestamp: Post.relativeTime(from: interview.createdAt))
+                    } else {
+                        PostHeader(post: Post(
+                            id: interview.id,
+                            title: interview.title,
+                            body: "",
+                            author: interview.author,
+                            tags: [],
+                            likes: 0, comments: 0, shares: 0, bookmarks: 0,
+                            timestamp: Post.relativeTime(from: interview.createdAt),
+                            isLiked: false, isBookmarked: false,
+                            code: nil, views: nil,
+                            type: .interview
+                        )) {
+                            miniProfileTarget = MiniProfileTarget(
+                                userId: interview.author.id,
+                                username: interview.author.username,
+                                displayName: interview.author.displayName,
+                                initials: interview.author.initials,
+                                avatarUrl: interview.author.avatarUrl,
+                                role: interview.author.role,
+                                company: interview.author.company,
+                                tags: []
+                            )
+                        }
                     }
-                }
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        TypeBadge("INTERVIEW", color: .bytePurple)
-                        if let company = interview.company { MetaChip(text: company) }
-                        if let role = interview.role { MetaChip(text: role) }
-                        if let location = interview.location { MetaChip(text: location, icon: "mappin") }
-                        DifficultyChip(difficulty: interview.difficulty)
-                        MetaChip(text: questionCountLabel, icon: "list.bullet.rectangle")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            TypeBadge("INTERVIEW", color: .bytePurple)
+                            if let company = interview.company { MetaChip(text: company) }
+                            if let role = interview.role { MetaChip(text: role) }
+                            if let location = interview.location { MetaChip(text: location, icon: "mappin") }
+                            DifficultyChip(difficulty: interview.difficulty)
+                            MetaChip(text: questionCountLabel, icon: "list.bullet.rectangle")
+                        }
                     }
-                }
 
-                Text(interview.title)
-                    .font(.byteSans(18, weight: .bold))
-                    .foregroundColor(.byteText1)
-                    .lineLimit(2)
+                    Text(interview.title)
+                        .font(.byteSans(18, weight: .bold))
+                        .foregroundColor(.byteText1)
+                        .lineLimit(2)
 
-                Divider().background(Color.byteBorder)
+                    Divider().background(Color.byteBorder)
 
-                VStack(spacing: 0) {
-                    ForEach(visibleQuestions) { question in
-                        QuestionRow(
-                            question: question,
-                            isExpanded: expandedId == question.id
-                        ) {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                                expandedId = expandedId == question.id ? nil : question.id
+                    VStack(spacing: 0) {
+                        ForEach(visibleQuestions) { question in
+                            QuestionRow(
+                                question: question,
+                                isExpanded: expandedId == question.id
+                            ) {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                    expandedId = expandedId == question.id ? nil : question.id
+                                }
                             }
                         }
                     }
-                }
 
-                if interview.questions.count > 4 {
-                    Text("+ \(interview.questions.count - 4) more questions")
-                        .font(.byteMono(11))
-                        .foregroundColor(.byteText2)
-                        .padding(.top, 2)
+                    if interview.questions.count > 4 {
+                        Text("+ \(interview.questions.count - 4) more questions")
+                            .font(.byteTerminalSmall)
+                            .foregroundColor(.byteText2)
+                            .padding(.top, 2)
+                    }
                 }
+                .contentShape(Rectangle())
+                .onTapGesture { navigateToDetail = true }
 
                 actionRow
                     .padding(.top, 4)
             }
             .padding(18)
+        }
+        .navigationDestination(isPresented: $navigateToDetail) {
+            InterviewDetailView(interviewId: interview.id)
         }
         .sheet(item: $miniProfileTarget) { target in
             UserMiniProfileSheet(target: target)
@@ -182,7 +217,17 @@ struct InterviewPageCard: View {
             }
             .buttonStyle(.plain)
 
-            ShareLink(item: "Check out this interview on ByteAI: \(interview.title)") {
+            // Share a real URL (mirrors `/interviews/[id]` on the web) rather
+            // than a free-form string — links pasted into chats now resolve
+            // back to the interview detail page on desktop / mobile web.
+            // Subject + message line up with the pattern in
+            // `Features/Feed/PostCardView.swift` so the iOS share sheet looks
+            // the same across content types.
+            ShareLink(
+                item: ShareURL.interview(id: interview.id),
+                subject: Text(interview.title),
+                message: Text("Check out this interview on ByteAI")
+            ) {
                 interviewPillLabel(icon: "square.and.arrow.up", text: "SHARE", isActive: false)
             }
             .buttonStyle(.plain)
@@ -219,7 +264,7 @@ struct InterviewPageCard: View {
     private func interviewPillLabel(icon: String, text: String, isActive: Bool, activeTint: Color = .bytePurple) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon).font(.system(size: 13))
-            Text(text).font(.byteMono(11)).tracking(0.5)
+            Text(text).font(.byteTerminalSmall).tracking(0.5)
         }
         .foregroundColor(isActive ? activeTint : .byteText1)
         .padding(.horizontal, 12).padding(.vertical, 8)
@@ -501,7 +546,7 @@ private struct InterviewFilterBar: View {
                 .padding(.leading, 4)
             } else {
                 Text("── 4 columns")
-                    .font(.byteMono(11))
+                    .font(.byteTerminalSmall)
                     .tracking(0.3)
                     .foregroundColor(.byteText3)
             }
@@ -628,7 +673,7 @@ private struct InterviewFilterBar: View {
                 .font(.byteMono(10))
                 .foregroundColor(.byteText3)
             Text(meaning)
-                .font(.byteMono(11))
+                .font(.byteTerminalSmall)
                 .foregroundColor(.byteText3)
         }
     }
@@ -640,7 +685,7 @@ private struct InterviewFilterBar: View {
         if parsed.hasAny {
             HStack(spacing: 6) {
                 Text("◆")
-                    .font(.byteMono(11))
+                    .font(.byteTerminalSmall)
                     .foregroundColor(.bytePurple)
                 if let v = parsed.company { previewChip(key: "company", value: v) }
                 if let v = parsed.role    { previewChip(key: "role",    value: v) }

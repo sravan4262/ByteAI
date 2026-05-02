@@ -10,6 +10,10 @@ import { UserMiniProfile } from '@/components/features/profile/user-mini-profile
 import { getMeCache } from '@/lib/user-cache'
 import * as api from '@/lib/api'
 import type { InterviewWithQuestions, InterviewQuestion, InterviewComment, QuestionComment } from '@/lib/api'
+import { ApiError, type ModerationReason } from '@/lib/api/http'
+import { ErrorModal, resolveErrorModal } from '@/components/ui/error-modal'
+
+type CommentPostError = { errorCode: string; reason?: string; reasons?: ModerationReason[] } | null
 
 // ── Question comment thread ────────────────────────────────────────────────────
 
@@ -25,6 +29,7 @@ function QuestionCommentThread({
   const [isLoaded, setIsLoaded] = useState(false)
   const [body, setBody] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [postError, setPostError] = useState<CommentPostError>(null)
 
   const load = async () => {
     if (isLoaded) return
@@ -46,8 +51,12 @@ function QuestionCommentThread({
       const created = await api.addQuestionComment(question.id, trimmed)
       setComments((prev) => [...prev, created])
       setBody('')
-    } catch {
-      toast.error('Failed to post comment')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setPostError({ errorCode: err.errorCode, reason: err.reason, reasons: err.reasons })
+      } else {
+        toast.error('Failed to post comment')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -142,6 +151,14 @@ function QuestionCommentThread({
           </div>
         </div>
       )}
+
+      {postError && (
+        <ErrorModal
+          {...resolveErrorModal(postError.errorCode, postError.reason)}
+          reasons={postError.reasons}
+          onClose={() => setPostError(null)}
+        />
+      )}
     </div>
   )
 }
@@ -205,6 +222,7 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
   const [commentBody, setCommentBody] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [commentPostError, setCommentPostError] = useState<CommentPostError>(null)
 
   useEffect(() => {
     api.getCurrentUser().then((u) => { if (u) setCurrentUserId(u.id) })
@@ -247,8 +265,12 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
       setComments((prev) => [...prev, created])
       setCommentBody('')
       toast.success('Comment posted')
-    } catch {
-      toast.error('Failed to post comment')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setCommentPostError({ errorCode: err.errorCode, reason: err.reason, reasons: err.reasons })
+      } else {
+        toast.error('Failed to post comment')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -520,6 +542,14 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
           <Send size={14} />
         </button>
       </div>
+
+      {commentPostError && (
+        <ErrorModal
+          {...resolveErrorModal(commentPostError.errorCode, commentPostError.reason)}
+          reasons={commentPostError.reasons}
+          onClose={() => setCommentPostError(null)}
+        />
+      )}
     </PhoneFrame>
   )
 }

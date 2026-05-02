@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseMiddlewareClient } from '@/lib/supabase-server'
+import { isSafeRelativePath } from '@/lib/utils/safe-redirect'
 
 const PROTECTED_PATHS = [
   '/feed',
@@ -11,6 +12,13 @@ const PROTECTED_PATHS = [
   '/onboarding',
   '/admin',
 ]
+
+// Paths that should resume after sign-in via ?next= (e.g. shared deep-links).
+const DEEP_LINKABLE_PREFIXES = ['/post/', '/interviews/']
+
+function isDeepLinkable(pathname: string) {
+  return DEEP_LINKABLE_PREFIXES.some(p => pathname.startsWith(p))
+}
 
 // These are part of the auth flow and must never be blocked
 const AUTH_FLOW_PATHS = ['/onboarding-check', '/auth/callback']
@@ -37,16 +45,33 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isOnboarded = request.cookies.get('byteai_onboarded')?.value === '1'
 
-  // Signed-in user hitting the root → send to feed (or onboarding if not done)
+  // Signed-in user hitting the root → send to feed (or onboarding if not done).
+  // If a safe `next` was provided (deep-link share flow), honor it once the
+  // user is fully onboarded; otherwise route through onboarding-check first.
   if (pathname === '/' && user) {
-    return NextResponse.redirect(
-      new URL(isOnboarded ? '/feed' : '/onboarding-check', request.url)
-    )
+    const rawNext = request.nextUrl.searchParams.get('next')
+    const safeNext = isSafeRelativePath(rawNext) ? rawNext : null
+    let dest: string
+    if (isOnboarded) {
+      dest = safeNext ?? '/feed'
+    } else {
+      dest = '/onboarding-check'
+    }
+    return NextResponse.redirect(new URL(dest, request.url))
   }
 
-  // Unauthenticated request to protected route → back to sign-in
+  // Unauthenticated request to protected route → back to sign-in.
+  // For deep-linkable routes (shared post / interview links), preserve the
+  // original path as ?next= so we can return there after auth completes.
   if (!user && isProtected(pathname)) {
-    return NextResponse.redirect(new URL('/', request.url))
+    const target = new URL('/', request.url)
+    if (isDeepLinkable(pathname)) {
+      const next = `${pathname}${request.nextUrl.search}`
+      if (isSafeRelativePath(next)) {
+        target.searchParams.set('next', next)
+      }
+    }
+    return NextResponse.redirect(target)
   }
 
   // Signed-in but not onboarded → keep them in the onboarding flow regardless of

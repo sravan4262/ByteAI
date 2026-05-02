@@ -331,11 +331,13 @@ max_frequency = "5s"
 # `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
 [auth.external.apple]
 enabled = true
-client_id = "com.byteai.app"
+# Comma-separated: 1st entry = Services ID for web OAuth (matches JWT `sub`),
+# additional entries are accepted as iOS ID-token `aud` for native signInWithIdToken.
+client_id = "com.byteai.auth,com.byteai.app"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
-# Overrides the default auth redirectUrl.
-redirect_uri = ""
+# Web OAuth must terminate at a public HTTPS URL Apple can reach — use the same ngrok tunnel as Google.
+redirect_uri = "https://unheard-finisher-promotion.ngrok-free.dev/auth/v1/callback"
 # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
 # or any other third-party OIDC providers.
 url = ""

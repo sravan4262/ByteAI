@@ -32,7 +32,7 @@ struct BiometricOptInSheet: View {
                         .foregroundColor(.byteText1)
                         .multilineTextAlignment(.center)
                     Text("ByteAI stays signed in. \(biometryLabel) is just a quick check before the app opens — you can turn it off anytime in Preferences.")
-                        .font(.byteSans(12))
+                        .font(.byteBodySmall)
                         .foregroundColor(.byteText2)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
@@ -40,7 +40,7 @@ struct BiometricOptInSheet: View {
 
                 if let errorMessage {
                     Text(errorMessage)
-                        .font(.byteMono(11))
+                        .font(.byteTerminalSmall)
                         .foregroundColor(.red)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)

@@ -9,12 +9,20 @@ export function setTokenProvider(fn: TokenProvider) {
   tokenProvider = fn
 }
 
+/** Structured rejection reason returned by the moderation pipeline (HTTP 422). */
+export interface ModerationReason {
+  code: string
+  message: string
+}
+
 /** Structured error thrown by apiFetch for non-2xx responses. */
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly errorCode: string,
     public readonly reason: string,
+    /** Populated when the backend returns CONTENT_REJECTED (HTTP 422). */
+    public readonly reasons?: ModerationReason[],
   ) {
     super(`${errorCode}: ${reason}`)
     this.name = 'ApiError'
@@ -41,13 +49,28 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       throw new ApiError(503, 'AI_QUOTA_EXHAUSTED', 'AI services are temporarily overloaded. Please try again in a few minutes.')
     }
     try {
-      // Server uses three error shapes: ProblemDetails (middleware fallback),
-      // { message } (controller-caught domain errors), and the legacy { error, reason }.
-      // Probe each so the human-readable reason actually reaches the toast.
+      // Server uses several error shapes:
+      //   • ProblemDetails (middleware fallback)
+      //   • { message } (controller-caught domain errors)
+      //   • { error, reason } (legacy)
+      //   • { error: "CONTENT_REJECTED", severity, reasons: [{code, message}] } (HTTP 422 moderation)
+      // Probe each so the human-readable reason actually reaches the UI.
       const body = JSON.parse(text)
-      const reason = body.reason ?? body.detail ?? body.message ?? text
       const code = body.error ?? body.title ?? 'API_ERROR'
-      throw new ApiError(res.status, code, reason)
+      const rawReasons = Array.isArray(body.reasons) ? body.reasons : undefined
+      const reasons: ModerationReason[] | undefined = rawReasons
+        ?.filter((r: unknown): r is ModerationReason =>
+          typeof r === 'object' && r !== null &&
+          typeof (r as { code?: unknown }).code === 'string' &&
+          typeof (r as { message?: unknown }).message === 'string',
+        )
+      // For CONTENT_REJECTED, synthesise a reason string from the structured
+      // list so legacy callers that only read err.reason still get something.
+      const fallbackReason = reasons && reasons.length > 0
+        ? reasons.map((r) => r.message).join(' ')
+        : undefined
+      const reason = body.reason ?? body.detail ?? body.message ?? fallbackReason ?? text
+      throw new ApiError(res.status, code, reason, reasons)
     } catch (e) {
       if (e instanceof ApiError) throw e
       throw new ApiError(res.status, 'API_ERROR', text || 'An unexpected error occurred.')

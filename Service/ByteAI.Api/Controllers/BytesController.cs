@@ -63,13 +63,11 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
 
         try
         {
+            // ByteService runs moderation before persistence; ContentModerationException → 422
+            // is handled by the global exception middleware.
             var result = await bytesBusiness.CreateByteAsync(supabaseUserId, request.Title, request.Body, request.CodeSnippet, request.Language, request.Type, ct, force, request.TechStackNames);
             return CreatedAtAction(nameof(GetByteById), new { byteId = result.Id },
                 ApiResponse<object>.Success(new { result.Id, result.AuthorId, result.Title, result.Body, result.Type, result.CreatedAt }));
-        }
-        catch (InvalidContentException ex)
-        {
-            return BadRequest(new { error = "INVALID_CONTENT", reason = ex.Reason });
         }
         catch (DuplicateContentException ex)
         {
@@ -95,10 +93,11 @@ public sealed class BytesController(IBytesBusiness bytesBusiness) : ControllerBa
 
         try
         {
+            // Moderation runs inside ByteService.UpdateByteAsync; ContentModerationException → 422
+            // is handled by the global exception middleware.
             var result = await bytesBusiness.UpdateByteAsync(supabaseUserId, byteId, request.Title, request.Body, request.CodeSnippet, request.Language, ct);
             return Ok(ApiResponse<ByteResponse>.Success(result.ToResponse()));
         }
-        catch (InvalidContentException ex) { return BadRequest(new { error = "INVALID_CONTENT", reason = ex.Reason }); }
         catch (UnauthorizedAccessException) { return Forbid(); }
         catch (KeyNotFoundException) { return NotFound(new { message = $"Byte {byteId} not found" }); }
     }

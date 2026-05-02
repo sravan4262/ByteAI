@@ -3,6 +3,8 @@ using ByteAI.Api.Mappers;
 using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
+using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Moderation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -14,7 +16,7 @@ namespace ByteAI.Api.Controllers;
 [Produces("application/json")]
 [Tags("Comments")]
 [RequireRole("user")]
-public sealed class CommentsController(ICommentsBusiness commentsBusiness) : ControllerBase
+public sealed class CommentsController(ICommentsBusiness commentsBusiness, IModerationService moderation, AppDbContext db) : ControllerBase
 {
     /// <summary>List comments on a byte (includes author username and avatar).</summary>
     [HttpGet]
@@ -38,6 +40,8 @@ public sealed class CommentsController(ICommentsBusiness commentsBusiness) : Con
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
+        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, ct: ct);
+
         try
         {
             var result = await commentsBusiness.CreateCommentAsync(supabaseUserId, byteId, request.Body, request.ParentCommentId, ct);
@@ -58,6 +62,8 @@ public sealed class CommentsController(ICommentsBusiness commentsBusiness) : Con
         Guid commentId, [FromBody] UpdateCommentRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+
+        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, contentId: commentId, ct: ct);
 
         try
         {

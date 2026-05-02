@@ -8,8 +8,16 @@ public sealed record QualityScore(int Clarity, int Specificity, int Relevance)
 /// <summary>A tag suggestion including its classified subdomain.</summary>
 public sealed record TagSuggestion(string Tag, string Subdomain);
 
-/// <summary>Result of the LLM-based tech-relevance classification (Stage 3 of content validation).</summary>
-public sealed record ContentValidationResult(bool IsTechRelated, bool IsCoherent, string Reason);
+/// <summary>One reason returned by <see cref="ILlmService.ModerateContentAsync"/>.
+/// Code is one of the canonical moderation reason codes; Message is a short user-facing
+/// hint produced by the model.</summary>
+public sealed record LlmModerationReason(string Code, string Message);
+
+/// <summary>Result of the unified LLM moderation pass.
+/// IsClean=true means no blocking concerns; otherwise <see cref="Reasons"/> lists why.
+/// All reasons returned are treated as blocking by callers — model is instructed not
+/// to emit advisory-only signals.</summary>
+public sealed record LlmModerationResult(bool IsClean, IReadOnlyList<LlmModerationReason> Reasons);
 
 /// <summary>A single retrieved passage fed into the RAG context window.</summary>
 public sealed record RagPassage(string Title, string Body, string? SourceId = null);
@@ -42,10 +50,16 @@ public interface ILlmService
     Task<string> AskAsync(string question, string? context, CancellationToken ct = default);
 
     /// <summary>
-    /// Stage 3 of content validation: classifies whether the content is tech-related and coherent.
-    /// Returns null on LLM failure — callers must fail open (pass) when null.
+    /// Unified moderation pass. The model evaluates the content against profanity,
+    /// toxicity, harassment, hate, sexual, harm, PII, spam, gibberish, prompt-injection,
+    /// and (for tech-content surfaces) off-topic. Returns null on LLM failure — callers
+    /// decide whether to fail open or fail closed based on the surface (e.g. chat fails
+    /// closed, byte fails open).
     /// </summary>
-    Task<ContentValidationResult?> ValidateTechContentAsync(string title, string body, CancellationToken ct = default);
+    /// <param name="text">Combined text to moderate (e.g. title + body, or message body).</param>
+    /// <param name="surface">One of: "byte", "interview", "comment", "chat", "support", "profile".
+    /// Drives whether OFF_TOPIC is treated as a blocking reason.</param>
+    Task<LlmModerationResult?> ModerateContentAsync(string text, string surface, CancellationToken ct = default);
 
     /// <summary>Formats code in the given language. Returns null if the LLM is unavailable.</summary>
     Task<string?> FormatCodeAsync(string code, string language, CancellationToken ct = default);

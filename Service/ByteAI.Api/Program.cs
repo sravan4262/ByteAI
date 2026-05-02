@@ -6,6 +6,9 @@ using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Infrastructure.AI;
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Infrastructure.Services;
+using ByteAI.Core.Moderation;
+using ByteAI.Core.Pipeline;
+using MediatR;
 using ByteAI.Core.Services.AI;
 using ByteAI.Core.Services.Bookmarks;
 using ByteAI.Core.Services.Bytes;
@@ -77,6 +80,19 @@ try
     // ── MediatR — scan Core assembly for all handlers ─────────────────────────
     builder.Services.AddMediatR(cfg =>
         cfg.RegisterServicesFromAssembly(typeof(AppDbContext).Assembly));
+
+    // ── Content moderation ────────────────────────────────────────────────────
+    // Layer 1 (deterministic) always runs. The Gemini moderator runs second for everything
+    // Layer 1 didn't already block. Composite handles LLM failure: fail-closed for chat,
+    // fail-open everywhere else.
+    builder.Services.Configure<ModerationOptions>(builder.Configuration.GetSection("Moderation"));
+    builder.Services.AddScoped<Layer1Moderator>();
+    builder.Services.AddScoped<GeminiModerator>();
+    builder.Services.AddScoped<IModerationService, CompositeModerator>();
+
+    // Open-generic pipeline behaviour — only opts-in for IModeratableCommand requests,
+    // pass-through for everything else.
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ModerationPipelineBehavior<,>));
 
     // ── FluentValidation — scan Core assembly for all validators ──────────────
     builder.Services.AddValidatorsFromAssemblyContaining<UserValidator>();

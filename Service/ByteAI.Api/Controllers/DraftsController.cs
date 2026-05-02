@@ -3,6 +3,8 @@ using ByteAI.Api.Mappers;
 using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
+using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Moderation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -15,7 +17,7 @@ namespace ByteAI.Api.Controllers;
 [Tags("Drafts")]
 [Authorize]
 [RequireRole("user")]
-public sealed class DraftsController(IDraftsBusiness draftsBusiness) : ControllerBase
+public sealed class DraftsController(IDraftsBusiness draftsBusiness, IModerationService moderation, AppDbContext db) : ControllerBase
 {
     /// <summary>Save or update a draft. Pass DraftId to update an existing one; omit to create new.</summary>
     [HttpPost]
@@ -25,6 +27,13 @@ public sealed class DraftsController(IDraftsBusiness draftsBusiness) : Controlle
     public async Task<ActionResult<ApiResponse<DraftResponse>>> SaveDraft([FromBody] SaveDraftRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+
+        // Drafts get the same moderation as full bytes — easier to catch garbage now
+        // than at publish time and prevents using drafts as a private TOS workaround.
+        var draftText = string.Join("\n",
+            new[] { request.Title, request.Body }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        if (!string.IsNullOrWhiteSpace(draftText))
+            await moderation.EnforceAsync(db, draftText, ModerationContext.Byte, contentId: request.DraftId, ct: ct);
 
         try
         {

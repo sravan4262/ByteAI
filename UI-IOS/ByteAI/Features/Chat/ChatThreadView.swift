@@ -39,6 +39,9 @@ struct ChatThreadView: View {
                 if !canMessage {
                     cannotMessageBanner
                 }
+                if let rejection = vm.contentRejection {
+                    rejectionBanner(rejection)
+                }
                 terminalInput
             }
         }
@@ -242,6 +245,53 @@ struct ChatThreadView: View {
             .opacity(canMessage ? 1 : 0.5)
             .allowsHitTesting(canMessage)
         }
+    }
+
+    // Inline moderation banner — chat is dense, so we avoid a sheet. Lists each
+    // rejected reason in compact form. Tap to dismiss; auto-hides after 5s in VM.
+    private func rejectionBanner(_ rejection: ContentRejection) -> some View {
+        Button {
+            vm.dismissRejectionBanner()
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark.shield")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(.byteRed)
+                    Text("CONTENT_REJECTED")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .tracking(0.6)
+                        .foregroundColor(.byteRed)
+                    Spacer(minLength: 0)
+                    Text("TAP TO DISMISS")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.byteText3)
+                }
+                ForEach(rejection.reasons) { reason in
+                    HStack(alignment: .top, spacing: 6) {
+                        Text(reason.code)
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(.byteRed)
+                        Text(reason.message)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundColor(.byteText2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.byteRed.opacity(0.06))
+            .overlay(alignment: .top) {
+                Rectangle().fill(Color.byteRed.opacity(0.20)).frame(height: 1)
+            }
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.byteRed.opacity(0.20)).frame(height: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .transition(.opacity.combined(with: .move(edge: .bottom)))
+        .accessibilityLabel("Message rejected by moderation")
     }
 
     // Mutual-follow banner — shown when the relationship is no longer mutual.

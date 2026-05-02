@@ -12,6 +12,15 @@ private struct InvalidContentShape: Decodable {
     let reason: String?
 }
 
+// File-scope helper for the new 422 moderation envelope:
+//   { "error": "CONTENT_REJECTED", "severity": "...", "reasons": [{ code, message }] }
+// We intentionally ignore `severity` per UX direction — only reason rows are shown.
+private struct ContentRejectedShape: Decodable {
+    struct ReasonShape: Decodable { let code: String?; let message: String? }
+    let error: String?
+    let reasons: [ReasonShape]?
+}
+
 actor APIClient {
     static let shared = APIClient()
 
@@ -58,6 +67,21 @@ actor APIClient {
             }
             if !(200..<300).contains(http.statusCode) {
                 let reason = Self.decodeErrorReason(data: data)
+                // New moderation envelope (HTTP 422). Decoded into a ContentRejection
+                // and surfaced as a typed `APIError.contentRejected(...)` so call
+                // sites can pattern-match without re-parsing the body.
+                if http.statusCode == 422 {
+                    if let body = try? JSONDecoder().decode(ContentRejectedShape.self, from: data),
+                       body.error == "CONTENT_REJECTED" {
+                        let reasons = (body.reasons ?? []).compactMap { r -> ContentRejection.Reason? in
+                            guard let code = r.code, !code.isEmpty else { return nil }
+                            return ContentRejection.Reason(code: code, message: r.message ?? "")
+                        }
+                        if !reasons.isEmpty {
+                            throw APIError.contentRejected(ContentRejection(reasons: reasons))
+                        }
+                    }
+                }
                 if http.statusCode == 400 {
                     if let body = try? JSONDecoder().decode(InvalidContentShape.self, from: data),
                        body.error == "INVALID_CONTENT" {
@@ -759,6 +783,19 @@ actor APIClient {
         let items: [FeedbackEntry] = try await fetch("/api/support/feedback/history")
         return items
     }
+
+    // MARK: - User content reports (terminal "report" command)
+
+    struct ReportResponse: Decodable { let id: String; let status: String }
+
+    func reportContent(contentType: String, contentId: String, message: String?) async throws -> ReportResponse {
+        struct B: Encodable { let contentType: String; let contentId: String; let reasonCode: String; let message: String? }
+        struct Wrapper: Decodable { let data: ReportResponse }
+        let w: Wrapper = try await fetch("/api/moderation/reports", method: "POST",
+                                         body: B(contentType: contentType, contentId: contentId,
+                                                 reasonCode: "USER_REPORT", message: message))
+        return w.data
+    }
 }
 
 // MARK: - API Error
@@ -767,8 +804,46 @@ enum APIError: LocalizedError {
     case http(Int, String)
     case unauthorized
     case invalidContent(String)
+    case contentRejected(ContentRejection)
 
     var errorDescription: String? { APIError.userMessage(from: self) }
+
+    /// Convenience: extract the typed rejection from any error, regardless of
+    /// whether it surfaced as the new 422 envelope or the legacy 400. Returns
+    /// nil for non-moderation errors. Also handles non-APIError sources (e.g.
+    /// SignalR HubException) by scanning the localized description for a
+    /// CONTENT_REJECTED JSON envelope. Used by call sites that want to drive
+    /// `ContentRejectedModal` uniformly.
+    static func rejection(from error: Error) -> ContentRejection? {
+        if let api = error as? APIError {
+            switch api {
+            case .contentRejected(let r):    return r
+            case .invalidContent(let reason): return .legacy(reason)
+            default:                         break
+            }
+        }
+        // Fallback: SignalR / arbitrary errors whose `localizedDescription`
+        // embeds the backend's CONTENT_REJECTED JSON. We slice from the first
+        // `{` to the matching last `}` and try to decode the moderation shape.
+        let text = error.localizedDescription
+        if text.contains("CONTENT_REJECTED"),
+           let start = text.firstIndex(of: "{"),
+           let end = text.lastIndex(of: "}") {
+            let slice = String(text[start...end])
+            if let data = slice.data(using: .utf8),
+               let decoded = try? JSONDecoder().decode(ContentRejectedShape.self, from: data),
+               decoded.error == "CONTENT_REJECTED" {
+                let reasons = (decoded.reasons ?? []).compactMap { r -> ContentRejection.Reason? in
+                    guard let code = r.code, !code.isEmpty else { return nil }
+                    return ContentRejection.Reason(code: code, message: r.message ?? "")
+                }
+                if !reasons.isEmpty {
+                    return ContentRejection(reasons: reasons)
+                }
+            }
+        }
+        return nil
+    }
 
     static func userMessage(from error: Error) -> String {
         if let api = error as? APIError {
@@ -777,6 +852,12 @@ enum APIError: LocalizedError {
                 return "Session expired — please sign in again"
             case .invalidContent(let reason):
                 return reason.isEmpty ? "Content not valid for ByteAI" : reason
+            case .contentRejected(let r):
+                // Compact fallback string for callers that don't render the modal
+                // (e.g. logging, generic toasts). Surfaces are expected to
+                // intercept .contentRejected and show the rich modal/banner.
+                let msg = r.reasons.first?.message
+                return (msg?.isEmpty == false ? msg! : "Content rejected by moderation")
             case .http(422, let msg) where !msg.isEmpty && msg != "Stream request failed.":
                 return msg
             case .http(400, let msg): return msg.isEmpty ? "Bad request — check your input" : msg
@@ -828,6 +909,12 @@ extension Notification.Name {
     /// (negative number = how many were marked read). NotificationBadgeVM listens
     /// and decrements its count immediately so the tab badge stays in sync.
     static let notificationsMarkedRead = Notification.Name("ByteAINotificationsMarkedRead")
+
+    /// Posted when the signed-in user updates their tech-stack preferences from
+    /// the profile screen. userInfo: ["userId": String, "techStack": [String]].
+    /// FeedViewModel mirrors the For-You filter to the new list immediately so
+    /// the feed reflects the change without remounting.
+    static let techStackChanged = Notification.Name("ByteAITechStackChanged")
 }
 
 struct LikeUser: Identifiable {

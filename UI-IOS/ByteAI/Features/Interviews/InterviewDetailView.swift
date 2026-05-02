@@ -13,6 +13,15 @@ struct InterviewDetailView: View {
         self._vm = StateObject(wrappedValue: InterviewDetailViewModel(id: interviewId))
     }
 
+    /// Submits the interview-level comment, clearing the draft only on success
+    /// so a moderation rejection preserves the user's text for editing.
+    private func submitInterviewComment() async {
+        let copy = commentText
+        if await vm.addComment(copy) {
+            commentText = ""
+        }
+    }
+
     var body: some View {
         ZStack {
             Color.byteBackground.ignoresSafeArea()
@@ -33,7 +42,7 @@ struct InterviewDetailView: View {
                     }
 
                     CommentBar(text: $commentText, submitting: vm.submitting) {
-                        Task { await vm.addComment(commentText); commentText = "" }
+                        Task { await submitInterviewComment() }
                     }
                 }
             } else {
@@ -68,6 +77,15 @@ struct InterviewDetailView: View {
                     }
                 }
             }
+        }
+        .sheet(item: $vm.contentRejection) { rejection in
+            ContentRejectedModal(rejection: rejection) {
+                vm.contentRejection = nil
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color.byteCard)
+            .presentationCornerRadius(20)
         }
         .task { await vm.load() }
     }
@@ -272,6 +290,7 @@ private struct QuestionCommentThread: View {
     @State private var comments: [QuestionComment] = []
     @State private var draft = ""
     @State private var isSending = false
+    @State private var contentRejection: ContentRejection?
     @FocusState private var inputFocused: Bool
 
     var body: some View {
@@ -332,7 +351,10 @@ private struct QuestionCommentThread: View {
                             let text = draft
                             draft = ""
                             inputFocused = false
-                            Task { await submit(text) }
+                            Task {
+                                let ok = await submit(text)
+                                if !ok { draft = text }
+                            }
                         } label: {
                             Image(systemName: "paperplane.fill")
                                 .font(.system(size: 11))
@@ -351,6 +373,15 @@ private struct QuestionCommentThread: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
+        .sheet(item: $contentRejection) { rejection in
+            ContentRejectedModal(rejection: rejection) {
+                contentRejection = nil
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color.byteCard)
+            .presentationCornerRadius(20)
+        }
     }
 
     private var displayedCount: Int { isLoaded ? comments.count : initialCount }
@@ -361,13 +392,22 @@ private struct QuestionCommentThread: View {
         isLoaded = true
     }
 
-    private func submit(_ body: String) async {
+    /// Returns `true` only on a clean submit. On rejection we surface the modal
+    /// and return `false` so the caller restores the draft.
+    private func submit(_ body: String) async -> Bool {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return false }
         isSending = true
         defer { isSending = false }
-        if let created = try? await APIClient.shared.addQuestionComment(questionId: questionId, body: trimmed) {
+        do {
+            let created = try await APIClient.shared.addQuestionComment(questionId: questionId, body: trimmed)
             comments.append(created)
+            return true
+        } catch {
+            if let rejection = APIError.rejection(from: error) {
+                contentRejection = rejection
+            }
+            return false
         }
     }
 
@@ -594,6 +634,9 @@ class InterviewDetailViewModel: ObservableObject {
     @Published var isBookmarked = false
     @Published var submitting = false
     @Published var expandedIds: Set<String> = []
+    /// Drives `.sheet(item:)` for moderation rejections on the interview-level
+    /// comment composer.
+    @Published var contentRejection: ContentRejection?
 
     var allExpanded: Bool {
         guard let iv = interview, !iv.questions.isEmpty else { return false }
@@ -627,14 +670,23 @@ class InterviewDetailViewModel: ObservableObject {
         } catch { isBookmarked.toggle() }
     }
 
-    func addComment(_ text: String) async {
-        guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+    /// Returns `true` only on a clean submit — `false` (and an opened rejection
+    /// sheet, when applicable) tells the view to keep the user's draft text.
+    @discardableResult
+    func addComment(_ text: String) async -> Bool {
+        guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
         submitting = true
+        defer { submitting = false }
         do {
             try await APIClient.shared.addInterviewComment(interviewId: id, body: text)
             comments = (try? await APIClient.shared.getInterviewComments(interviewId: id)) ?? comments
-        } catch { }
-        submitting = false
+            return true
+        } catch {
+            if let rejection = APIError.rejection(from: error) {
+                contentRejection = rejection
+            }
+            return false
+        }
     }
 
     func deleteComment(_ c: InterviewComment) async {

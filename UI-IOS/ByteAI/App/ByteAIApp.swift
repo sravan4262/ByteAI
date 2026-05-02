@@ -31,7 +31,7 @@ struct ByteAIApp: App {
                     // Cap Dynamic Type at xxxLarge so the layout doesn't explode at the
                     // accessibility scales. Users can still scale up to the cap.
                     .dynamicTypeSize(.xSmall ... .xxxLarge)
-                    .onOpenURL { authManager.handle(url: $0) }
+                    .onOpenURL { handleIncomingURL($0) }
 
                 // Animated post-launch splash — sits on top of RootView and fades
                 // out after ~1.4s. Apple disallows animated launch screens, so we
@@ -72,5 +72,52 @@ struct ByteAIApp: App {
             diskCapacity: 50 * 1024 * 1024,
             diskPath: "byteai_url_cache"
         )
+    }
+
+    /// Routes every URL the app receives — Apple universal links, OAuth
+    /// callback redirects (`com.byteai.app://`), and any future custom schemes.
+    ///
+    /// Universal links land here as full `https://` URLs whose host matches an
+    /// `applinks:` entry in the entitlements. We dispatch by path to the
+    /// matching `DeepLinkRouter` channel; everything else falls through to the
+    /// auth manager so OAuth/magic-link flows continue to work unchanged.
+    @MainActor
+    private func handleIncomingURL(_ url: URL) {
+        if let host = url.host?.lowercased(), isShareHost(host) {
+            // Path can have a leading slash; split once and inspect the first
+            // two non-empty components: ["post", "<id>"] or ["interviews", "<id>"].
+            let parts = url.path.split(separator: "/").map(String.init)
+            if parts.count >= 2 {
+                let kind = parts[0].lowercased()
+                let id = parts[1]
+                switch kind {
+                case "post":
+                    router.openPost(id: id)
+                    return
+                case "interviews", "interview":
+                    router.openInterview(id: id)
+                    return
+                default:
+                    break
+                }
+            }
+        }
+        // Anything else (Supabase OAuth redirect, magic link, GoogleSignIn fallback) → auth.
+        authManager.handle(url: url)
+    }
+
+    /// Hosts we consider "ours" for share-link routing. Must stay in sync with
+    /// `applinks:` entries in `ByteAI.entitlements` / `ByteAI.Debug.entitlements`.
+    private func isShareHost(_ host: String) -> Bool {
+        let known: Set<String> = [
+            "byteaiofficial.com",
+            "www.byteaiofficial.com",
+            "staging.byteaiofficial.com",
+            "dev.byteaiofficial.com",
+        ]
+        if known.contains(host) { return true }
+        // Also accept whatever shareBaseURL points at — keeps prod/staging/dev
+        // override builds working without touching this list.
+        return AppConfig.shareBaseURL.host?.lowercased() == host
     }
 }

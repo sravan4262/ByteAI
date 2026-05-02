@@ -56,8 +56,13 @@ struct ComposeView: View {
                             isDisabled: !vm.canSubmit
                         ) {
                             Task {
-                                await vm.post()
-                                if vm.lastError == nil { dismiss() }
+                                // `post()` returns true only on a clean success; on
+                                // CONTENT_REJECTED it raises the inline modal but
+                                // returns false so we keep ComposeView mounted and
+                                // the form contents intact for the user to edit.
+                                if await vm.post() {
+                                    dismiss()
+                                }
                             }
                         }
                         .padding(.top, 4)
@@ -95,11 +100,11 @@ struct ComposeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.byteBackground, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .sheet(isPresented: $vm.showInvalidContentModal) {
-                InvalidContentModal(reason: vm.invalidContentReason) {
-                    vm.showInvalidContentModal = false
+            .sheet(item: $vm.contentRejection) { rejection in
+                ContentRejectedModal(rejection: rejection) {
+                    vm.contentRejection = nil
                 }
-                .presentationDetents([.medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(Color.byteCard)
                 .presentationCornerRadius(20)
@@ -139,80 +144,6 @@ struct ComposeView: View {
                 .frame(minHeight: 44)
             }
         }
-    }
-}
-
-// MARK: - Invalid Content Modal
-// Mirrors the web's INVALID_CONTENT error modal in compose-screen.tsx.
-// Shown when the backend rejects a byte (400 INVALID_CONTENT) — no tech relevance detected.
-
-private struct InvalidContentModal: View {
-    let reason: String
-    let onDismiss: () -> Void
-
-    private let tip = "// TIP  Try writing about a language, framework, pattern, bug\n// you fixed, or a tool you use — even a one-liner insight counts."
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Header
-            HStack(spacing: 10) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.byteRed)
-                Text("INVALID_CONTENT")
-                    .font(.byteMono(11, weight: .bold))
-                    .tracking(0.8)
-                    .foregroundColor(.byteRed)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(Color.byteRed.opacity(0.12))
-                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.byteRed.opacity(0.4), lineWidth: 1))
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-                Spacer()
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("NO TECH CONTENT FOUND")
-                    .font(.byteSans(20, weight: .heavy))
-                    .foregroundColor(.byteText1)
-
-                Text(reason.isEmpty
-                    ? "We couldn't find any recognisable tech content in this byte. It may be too short, too vague, or not related to software, tools, or engineering."
-                    : reason)
-                    .font(.byteBody)
-                    .foregroundColor(.byteText2)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            // Tip code block
-            VStack(spacing: 0) {
-                Text(tip)
-                    .font(.byteMono(12))
-                    .foregroundColor(Color(hex: "#94a3b8"))
-                    .lineSpacing(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-            }
-            .background(Color(hex: "#0f0f1a"))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.byteBorderMedium, lineWidth: 1))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-
-            // Dismiss button
-            Button(action: onDismiss) {
-                Text("DISMISS")
-                    .font(.byteMono(12, weight: .bold))
-                    .tracking(1.0)
-                    .foregroundColor(.byteText1)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color.byteElement)
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.byteBorderHigh, lineWidth: 1))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -536,7 +467,7 @@ private struct ComposeInput: View {
 
     var body: some View {
         TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.byteText2))
-            .font(.byteSans(14, weight: .medium))
+            .font(.byteUsername)
             .foregroundColor(.byteText1)
             .tint(identity.solid)
             .focused($focused)
@@ -558,25 +489,50 @@ private struct ComposeTextEditor: View {
     var identity: IdentityColor = .blue
     var mono: Bool = false
     var codeBg: Bool = false
-    @FocusState private var focused: Bool
+    /// Plain `@State` (not `@FocusState`) — focus is tracked by the
+    /// underlying `UITextView` and surfaced through `PasteAwareTextEditor`'s
+    /// optional `isFocused` binding. `@FocusState` only works against SwiftUI
+    /// text inputs, not `UIViewRepresentable`.
+    @State private var focused: Bool = false
+
+    // UIFont equivalents of the SwiftUI `byteSans(14)` / `byteMono(12)` design
+    // tokens used elsewhere in compose.
+    private var uiFont: UIFont {
+        if mono {
+            let base = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
+            let mono = base.withDesign(.monospaced) ?? base
+            return UIFont(descriptor: mono, size: 12)
+        } else {
+            let base = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
+            let rounded = base.withDesign(.rounded) ?? base
+            return UIFont(descriptor: rounded, size: 14)
+        }
+    }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            if text.isEmpty {
-                Text(placeholder)
-                    .font(mono ? .byteMono(12) : .byteSans(14))
-                    .foregroundColor(.byteText2)
-                    .padding(.horizontal, 14).padding(.vertical, 11)
-            }
-            TextEditor(text: $text)
-                .font(mono ? .byteMono(12) : .byteSans(14))
-                .foregroundColor(.byteText1)
-                .tint(identity.solid)
-                .scrollContentBackground(.hidden)
-                .frame(minHeight: minHeight)
-                .padding(.horizontal, 10).padding(.vertical, 4)
-                .focused($focused)
-        }
+        // Why PasteAwareTextEditor here:
+        //   The previous implementation used SwiftUI's `TextEditor` overlaid
+        //   with a placeholder `Text` in a `ZStack`. The placeholder didn't
+        //   set `.allowsHitTesting(false)`, so before any text was typed the
+        //   placeholder was eating taps in the editor area — including the
+        //   long-press that surfaces the iOS edit menu. Result: paste was
+        //   inaccessible until the user typed at least one character.
+        //   Wrapping `UITextView` directly puts paste behavior on solid
+        //   ground (UITextView's default `canPerformAction(:withSender:)`
+        //   already returns true for `paste:` when the pasteboard has a
+        //   string) AND keeps the placeholder strictly non-interactive.
+        PasteAwareTextEditor(
+            text: $text,
+            placeholder: placeholder,
+            font: uiFont,
+            textColor: UIColor(Color.byteText1),
+            tintColor: UIColor(identity.solid),
+            placeholderColor: UIColor(Color.byteText2),
+            codeStyle: mono,
+            isFocused: $focused
+        )
+        .frame(minHeight: minHeight)
+        .padding(.horizontal, 10).padding(.vertical, 4)
         .background(codeBg ? Color.byteCodeBg : Color.byteElement)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
@@ -794,8 +750,10 @@ final class ComposeViewModel: ObservableObject {
     @Published var isPosting = false
     @Published var draftId: String?
     @Published var lastError: String?
-    @Published var showInvalidContentModal = false
-    @Published var invalidContentReason = ""
+    /// Drives the moderation rejection sheet via `.sheet(item:)`. Non-nil when the
+    /// backend returns either the new 422 CONTENT_REJECTED envelope or the legacy
+    /// 400 INVALID_CONTENT error. Setting it back to nil dismisses the sheet.
+    @Published var contentRejection: ContentRejection?
 
     // Interview-specific
     @Published var company = ""
@@ -870,42 +828,48 @@ final class ComposeViewModel: ObservableObject {
         }
     }
 
-    func post() async {
+    /// Returns `true` only when the post / interview was successfully created.
+    /// All other paths — validation toasts, CONTENT_REJECTED modal, network
+    /// errors — return `false` so the caller knows NOT to dismiss ComposeView
+    /// (the form, including everything the user typed, must be preserved so
+    /// they can fix it and resubmit).
+    @discardableResult
+    func post() async -> Bool {
         if composeType == .byte {
             let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
             guard !trimmedTitle.isEmpty else {
                 ToastCenter.shared.show("Title is required", kind: .warning)
-                return
+                return false
             }
             let trimmedContent = content.trimmingCharacters(in: .whitespaces)
             guard !trimmedContent.isEmpty else {
                 ToastCenter.shared.show("Content is required", kind: .warning)
-                return
+                return false
             }
             guard !selectedTechStacks.isEmpty else {
                 ToastCenter.shared.show("Pick at least one tech stack", kind: .warning)
-                return
+                return false
             }
         } else {
             guard !title.trimmingCharacters(in: .whitespaces).isEmpty else {
                 ToastCenter.shared.show("Title is required", kind: .warning)
-                return
+                return false
             }
             guard !company.trimmingCharacters(in: .whitespaces).isEmpty else {
                 ToastCenter.shared.show("Company is required", kind: .warning)
-                return
+                return false
             }
             guard !interviewRole.trimmingCharacters(in: .whitespaces).isEmpty else {
                 ToastCenter.shared.show("Role is required", kind: .warning)
-                return
+                return false
             }
             guard !location.trimmingCharacters(in: .whitespaces).isEmpty else {
                 ToastCenter.shared.show("Location is required", kind: .warning)
-                return
+                return false
             }
             guard !validQuestions.isEmpty else {
                 ToastCenter.shared.show("Add at least one Q&A pair", kind: .warning)
-                return
+                return false
             }
         }
 
@@ -950,13 +914,20 @@ final class ComposeViewModel: ObservableObject {
             }
             Haptics.success()
             ToastCenter.shared.show(composeType == .byte ? "Byte posted" : "Interview posted", kind: .success)
-        } catch APIError.invalidContent(let reason) {
-            invalidContentReason = reason
-            showInvalidContentModal = true
+            return true
         } catch {
+            // Both the new 422 CONTENT_REJECTED and the legacy 400 INVALID_CONTENT
+            // funnel through `APIError.rejection(from:)` — we open the modal but
+            // do NOT clear the form, so the user can edit and resubmit. Caller
+            // checks the return value to know not to dismiss the screen.
+            if let rejection = APIError.rejection(from: error) {
+                contentRejection = rejection
+                return false
+            }
             let msg = APIError.userMessage(from: error)
             lastError = msg
             ToastCenter.shared.show(msg, kind: .error)
+            return false
         }
     }
 

@@ -33,7 +33,7 @@ struct BiometricLockView: View {
                         .font(.byteSans(20, weight: .heavy))
                         .foregroundColor(.byteText1)
                     Text("Use \(biometryLabel) to continue")
-                        .font(.byteMono(11))
+                        .font(.byteTerminalSmall)
                         .tracking(1.2)
                         .foregroundColor(.byteText2)
                 }

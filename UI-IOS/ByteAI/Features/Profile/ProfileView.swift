@@ -70,15 +70,20 @@ struct ProfileView: View {
                         VStack(spacing: 0) {
                             ProfileTabs(selected: $selectedTab, tabs: visibleTabs)
                             ScrollView {
+                                ByteScrollOffsetReader(coordinateSpace: "byteScroll")
                                 ProfileTabContent(tab: selectedTab, user: user, vm: vm)
                                     .padding(.vertical, 12)
+                                    .byteScrollContentSize()
                             }
+                            .coordinateSpace(name: "byteScroll")
+                            .byteScrollbar()
                             .refreshable { await vm.load() }
                             .scrollDismissesKeyboard(.interactively)
                         }
                     } else {
                         // Public profile: profile info scrolls at top, tab bar sticks, content below.
                         ScrollView {
+                            ByteScrollOffsetReader(coordinateSpace: "byteScroll")
                             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                                 ProfileInfoTab(user: user, vm: vm)
                                     .padding(.vertical, 12)
@@ -90,7 +95,10 @@ struct ProfileView: View {
                                         .background(Color.byteBackground)
                                 }
                             }
+                            .byteScrollContentSize()
                         }
+                        .coordinateSpace(name: "byteScroll")
+                        .byteScrollbar()
                         .refreshable { await vm.load() }
                         .scrollDismissesKeyboard(.interactively)
                     }
@@ -503,7 +511,15 @@ private struct ProfilePrefsTab: View {
                     get: { vm.user?.techStack ?? [] },
                     set: { newStack in
                         vm.user?.techStack = newStack
-                        Task { _ = try? await APIClient.shared.updateProfile(techStack: newStack) }
+                        Task {
+                            // Persist server-side, then mirror into the auth-scoped
+                            // currentUser + broadcast `techStackChanged` so listeners
+                            // (chiefly FeedViewModel's For-You filter) update without
+                            // requiring a remount.
+                            if (try? await APIClient.shared.updateProfile(techStack: newStack)) != nil {
+                                AuthManager.shared.applyTechStackUpdate(newStack)
+                            }
+                        }
                     }
                 ),
                 allOptions: availableTechStacks.map { TechOption(value: $0.name, label: $0.label) }
@@ -1992,7 +2008,7 @@ private struct InterviewSummaryRow: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if let role = interview.role, !role.isEmpty {
                     Text(role)
-                        .font(.byteMono(11))
+                        .font(.byteTerminalSmall)
                         .foregroundColor(.byteText2)
                 }
             }
@@ -2883,18 +2899,44 @@ struct SupportTerminalView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
     @State private var caretOn = true
+    @State private var isMaximized = false
+    @State private var isMinimized = false
 
     var body: some View {
         ZStack {
-            Color.byteBackground.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                titleBar
-                accentLine
-                outputScroll
-                quickActionStrip
-                terminalInput
+            if isMinimized {
+                Color.clear
+                    .ignoresSafeArea()
+                TerminalOrb(label: "support") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        isMinimized = false
+                    }
+                }
+            } else {
+                terminalSurface
+                    .transition(.scale.combined(with: .opacity))
             }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isMinimized)
+    }
+
+    private var terminalSurface: some View {
+        GeometryReader { geo in
+            ZStack {
+                Color.byteBackground.ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    titleBar
+                    accentLine
+                    outputScroll
+                    quickActionStrip
+                    terminalInput
+                }
+            }
+            .frame(
+                width: isMaximized ? UIScreen.main.bounds.width : geo.size.width,
+                height: isMaximized ? UIScreen.main.bounds.height : geo.size.height
+            )
         }
         .onAppear {
             withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
@@ -2974,73 +3016,31 @@ struct SupportTerminalView: View {
         case .good, .bad, .idea:
             vm.draft = "feedback -type \(action.commandToken)"
             Task { await vm.submitDraft(onClose: { dismiss() }) }
+        case .report:
+            vm.draft = "report"
+            Task { await vm.submitDraft(onClose: { dismiss() }) }
         case .cancel:
             vm.cancelAwaitingMessage()
         }
     }
 
     private var titleBar: some View {
-        ZStack {
-            HStack(spacing: 6) {
-                Button { dismiss() } label: {
-                    Circle()
-                        .fill(Color(red: 1, green: 0.37, blue: 0.34))
-                        .overlay(Circle().stroke(Color.black.opacity(0.15), lineWidth: 1))
-                        .frame(width: 12, height: 12)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close support terminal")
-
-                Button { vm.clear() } label: {
-                    Circle()
-                        .fill(Color(red: 1, green: 0.74, blue: 0.18))
-                        .overlay(Circle().stroke(Color.black.opacity(0.15), lineWidth: 1))
-                        .frame(width: 12, height: 12)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Clear terminal")
-
-                Circle()
-                    .fill(Color.white.opacity(0.10))
-                    .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
-                    .frame(width: 12, height: 12)
-
-                Spacer()
-
-                stageBadge
-            }
-            .padding(.horizontal, 14)
-
-            HStack(spacing: 6) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.byteGreen.opacity(0.10))
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.byteGreen.opacity(0.20), lineWidth: 1))
-                        .frame(width: 16, height: 16)
-                    Image(systemName: "lifepreserver")
-                        .font(.system(size: 9))
-                        .foregroundColor(.byteGreen)
-                }
-                Text("SUPPORT")
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.byteText1)
-                    .tracking(0.6)
-                Text("v1.0")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.byteText3)
-            }
-        }
-        .frame(height: 44)
-        .background(Color.byteGreen.opacity(0.03))
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.byteGreen.opacity(0.15)).frame(height: 1)
-        }
+        TerminalChrome(
+            title: "SUPPORT",
+            version: "v1.0",
+            icon: "lifepreserver",
+            isMaximized: $isMaximized,
+            isMinimized: $isMinimized,
+            onClear: { vm.clear() },
+            onClose: { dismiss() },
+            trailingBadge: AnyView(stageBadge)
+        )
     }
 
     @ViewBuilder
     private var stageBadge: some View {
-        if vm.stage == .awaitingMessage {
-            Text("INPUT")
+        if vm.stage != .idle {
+            Text(vm.stage == .awaitingMessage ? "INPUT" : "REPORT")
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundColor(Color(red: 0.98, green: 0.75, blue: 0.14))
                 .tracking(0.5)
@@ -3109,9 +3109,10 @@ struct SupportTerminalView: View {
             Rectangle().fill(Color.byteBorderHigh).frame(height: 1)
 
             HStack(spacing: 5) {
-                if vm.stage == .awaitingMessage {
+                if vm.stage != .idle {
                     HStack(spacing: 3) {
-                        Text("input").foregroundColor(Color(red: 0.98, green: 0.75, blue: 0.14))
+                        Text(vm.stage == .awaitingMessage ? "input" : "report")
+                            .foregroundColor(Color(red: 0.98, green: 0.75, blue: 0.14))
                         Text("›").foregroundColor(.byteGreen).fontWeight(.bold)
                     }
                     .font(.system(size: 13, design: .monospaced))
@@ -3125,7 +3126,7 @@ struct SupportTerminalView: View {
                     .font(.system(size: 13, design: .monospaced))
                 }
 
-                TextField(vm.stage == .awaitingMessage ? "Type your message..." : "type a command...",
+                TextField(vm.stage == .idle ? "type a command..." : "type your response...",
                           text: $vm.draft, axis: .vertical)
                     .font(.system(size: 13, design: .monospaced))
                     .foregroundColor(.byteText1)
@@ -3222,7 +3223,7 @@ struct SupportTerminalLine: Identifiable {
 
 @MainActor
 final class SupportTerminalVM: ObservableObject {
-    enum Stage { case idle, awaitingMessage }
+    enum Stage { case idle, awaitingMessage, awaitingReportType, awaitingReportId, awaitingReportMessage }
 
     @Published var lines: [SupportTerminalLine] = [
         SupportTerminalLine(id: 1, kind: .system,
@@ -3235,6 +3236,8 @@ final class SupportTerminalVM: ObservableObject {
 
     private var nextId: Int = 2
     private var pendingType: String?
+    private var pendingReportType: String?
+    private var pendingReportId: String?
     private var hasLoadedContext = false
 
     // Command history — `↑` / `↓` keyboard accessory cycles through this ring.
@@ -3263,7 +3266,7 @@ final class SupportTerminalVM: ObservableObject {
     func tabComplete() {
         let prefix = draft.lowercased().trimmingCharacters(in: .whitespaces)
         guard !prefix.isEmpty else { return }
-        let pool = ["help", "whoami", "history", "clear", "exit",
+        let pool = ["help", "whoami", "history", "clear", "exit", "report",
                     "feedback -type good", "feedback -type bad", "feedback -type idea"]
         if let match = pool.first(where: { $0.hasPrefix(prefix) }), match != prefix {
             draft = match
@@ -3272,10 +3275,13 @@ final class SupportTerminalVM: ObservableObject {
     }
 
     func cancelAwaitingMessage() {
-        guard stage == .awaitingMessage else { return }
+        guard stage == .awaitingMessage || stage == .awaitingReportType
+                || stage == .awaitingReportId || stage == .awaitingReportMessage else { return }
         push(.error, "[!] cancelled")
         stage = .idle
         pendingType = nil
+        pendingReportType = nil
+        pendingReportId = nil
         draft = ""
     }
 
@@ -3309,6 +3315,7 @@ final class SupportTerminalVM: ObservableObject {
         "  feedback -type good            submit positive feedback",
         "  feedback -type bad             report a bug or issue",
         "  feedback -type idea            suggest a feature",
+        "  report                         report offensive content",
         "  history                        view your last 5 submissions",
         "  clear                          clear terminal",
         "  exit                           close terminal"
@@ -3321,6 +3328,8 @@ final class SupportTerminalVM: ObservableObject {
         nextId += 1
         stage = .idle
         pendingType = nil
+        pendingReportType = nil
+        pendingReportId = nil
     }
 
     func submitDraft(onClose: @escaping () -> Void) async {
@@ -3328,8 +3337,8 @@ final class SupportTerminalVM: ObservableObject {
         let trimmedLower = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !raw.trimmingCharacters(in: .whitespaces).isEmpty else { return }
 
-        // Record into history ring — only commands, not the free-text feedback message itself.
-        if stage != .awaitingMessage {
+        // Record into history ring — only commands, not free-text responses.
+        if stage == .idle {
             recordHistory(raw)
         }
         historyCursor = -1
@@ -3350,6 +3359,55 @@ final class SupportTerminalVM: ObservableObject {
             await submit(type: type, message: message)
             stage = .idle
             pendingType = nil
+            return
+        }
+
+        if stage == .awaitingReportType {
+            let t = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard ["byte", "comment", "interview", "chat"].contains(t) else {
+                push(.error, "[!] Unknown type \"\(t)\". Use: byte, comment, interview, chat")
+                return
+            }
+            pendingReportType = t
+            stage = .awaitingReportId
+            push(.output, "[?] Paste the content ID (UUID from the URL):")
+            return
+        }
+
+        if stage == .awaitingReportId {
+            let id = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            let uuidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            guard (try? NSRegularExpression(pattern: uuidPattern))?.firstMatch(
+                    in: id, range: NSRange(id.startIndex..., in: id)) != nil else {
+                push(.error, "[!] That doesn't look like a valid ID. Copy it from the post URL.")
+                return
+            }
+            pendingReportId = id
+            stage = .awaitingReportMessage
+            push(.output, "[?] Describe the issue (optional — press Enter to skip):")
+            return
+        }
+
+        if stage == .awaitingReportMessage {
+            let message: String? = raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? nil
+                : raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let contentType = pendingReportType, let contentId = pendingReportId else {
+                stage = .idle; return
+            }
+            loading = true
+            do {
+                _ = try await APIClient.shared.reportContent(contentType: contentType,
+                                                             contentId: contentId,
+                                                             message: message)
+                push(.success, "[✓] Report submitted. Our team will review it.")
+            } catch {
+                push(.error, "[!] Report failed. Please try again.")
+            }
+            loading = false
+            stage = .idle
+            pendingReportType = nil
+            pendingReportId = nil
             return
         }
 
@@ -3411,6 +3469,10 @@ final class SupportTerminalVM: ObservableObject {
                 push(.output, "[?] Tell us your \(label) (5–1000 chars):")
             }
 
+        case .report:
+            stage = .awaitingReportType
+            push(.output, "[?] What type of content? (byte / comment / interview / chat):")
+
         case .unknown(let raw):
             push(.error, "[!] Unknown command: \"\(raw)\". Type help for available commands.")
         }
@@ -3418,14 +3480,24 @@ final class SupportTerminalVM: ObservableObject {
 
     private func submit(type: String, message: String) async {
         loading = true
-        let result = try? await APIClient.shared.submitFeedback(
-            type: type, message: message, pageContext: "ios:profile"
-        )
-        loading = false
-        if result != nil {
+        defer { loading = false }
+        do {
+            _ = try await APIClient.shared.submitFeedback(
+                type: type, message: message, pageContext: "ios:profile"
+            )
             push(.success, "[✓] Feedback submitted (\(type)). Thank you!")
-        } else {
-            push(.error, "[!] Submission failed. Please try again.")
+        } catch {
+            // Moderation rejections render as one red error line per reason —
+            // matches the terminal aesthetic of this screen. Fall back to the
+            // generic failure line for any other error.
+            if let rejection = APIError.rejection(from: error) {
+                push(.error, "[!] CONTENT_REJECTED — feedback was not submitted.")
+                for reason in rejection.reasons {
+                    push(.error, "> ERROR: \(reason.code) — \(reason.message)")
+                }
+            } else {
+                push(.error, "[!] Submission failed. Please try again.")
+            }
         }
     }
 
@@ -3469,7 +3541,7 @@ final class SupportTerminalVM: ObservableObject {
     }
 
     private enum Parsed {
-        case help, whoami, history
+        case help, whoami, history, report
         case feedback(type: String, inlineMessage: String?)
         case unknown(String)
     }
@@ -3481,6 +3553,7 @@ final class SupportTerminalVM: ObservableObject {
         if lower == "help"    { return .help }
         if lower == "whoami"  { return .whoami }
         if lower == "history" { return .history }
+        if lower == "report"  { return .report }
 
         if lower.hasPrefix("feedback") {
             let rest = trimmed.dropFirst("feedback".count).trimmingCharacters(in: .whitespaces)
@@ -3512,6 +3585,7 @@ final class SupportTerminalVM: ObservableObject {
 enum SupportQuickAction: Hashable {
     case help, whoami, history, clear
     case good, bad, idea
+    case report
     case cancel
 
     var label: String {
@@ -3523,6 +3597,7 @@ enum SupportQuickAction: Hashable {
         case .good:    return "good"
         case .bad:     return "bad"
         case .idea:    return "idea"
+        case .report:  return "report"
         case .cancel:  return "cancel"
         }
     }
@@ -3536,6 +3611,7 @@ enum SupportQuickAction: Hashable {
         case .good:    return "hand.thumbsup.fill"
         case .bad:     return "exclamationmark.triangle.fill"
         case .idea:    return "lightbulb.fill"
+        case .report:  return "flag.fill"
         case .cancel:  return "xmark"
         }
     }
@@ -3550,6 +3626,7 @@ enum SupportQuickAction: Hashable {
         case .good:    return "good"
         case .bad:     return "bad"
         case .idea:    return "idea"
+        case .report:  return "report"
         case .cancel:  return ""
         }
     }
@@ -3557,8 +3634,8 @@ enum SupportQuickAction: Hashable {
     static func actions(for stage: SupportTerminalVM.Stage) -> [SupportQuickAction] {
         switch stage {
         case .idle:
-            return [.help, .whoami, .good, .bad, .idea, .history, .clear]
-        case .awaitingMessage:
+            return [.help, .whoami, .good, .bad, .idea, .report, .history, .clear]
+        case .awaitingMessage, .awaitingReportType, .awaitingReportId, .awaitingReportMessage:
             return [.cancel]
         }
     }
@@ -3628,7 +3705,7 @@ struct FollowersListSheet: View {
                             .font(.system(size: 13))
                             .foregroundColor(.byteText2)
                         TextField("Search…", text: $query)
-                            .font(.byteSans(14))
+                            .font(.byteBodyMedium)
                             .foregroundColor(.byteText1)
                             .tint(.byteAccent)
                             .autocorrectionDisabled()
@@ -3659,7 +3736,7 @@ struct FollowersListSheet: View {
                                 .font(.byteSans(14, weight: .semibold))
                                 .foregroundColor(.byteRed)
                             Text("Pull down to retry.")
-                                .font(.byteMono(11))
+                                .font(.byteTerminalSmall)
                                 .foregroundColor(.byteText2)
                         }
                         .multilineTextAlignment(.center)
@@ -3675,6 +3752,15 @@ struct FollowersListSheet: View {
                         )
                         Spacer()
                     } else {
+                        // `.scrollBounceBehavior(.basedOnSize)` keeps short lists
+                        // from bouncing — that overscroll was visually pulling on
+                        // the static search bar above it through the shared VStack
+                        // layout (the bar isn't inside the scroll view, but iOS's
+                        // safe-area / content-margin animations during bounce
+                        // re-flow the parent VStack). Locking bounce to "only when
+                        // content actually overflows" is enough to make the search
+                        // bar feel pinned. The list itself still bounces on long
+                        // results, where overscroll feels natural.
                         ScrollView {
                             LazyVStack(spacing: 0) {
                                 ForEach(filtered) { person in
@@ -3689,6 +3775,7 @@ struct FollowersListSheet: View {
                                 }
                             }
                         }
+                        .scrollBounceBehavior(.basedOnSize)
                     }
                 }
             }
@@ -3740,11 +3827,11 @@ private struct FollowerRow: View {
                     .font(.byteSans(14, weight: .semibold))
                     .foregroundColor(.byteText1)
                 Text("@\(person.username)")
-                    .font(.byteMono(11))
+                    .font(.byteTerminalSmall)
                     .foregroundColor(.byteText2)
                 if !person.role.isEmpty {
                     Text(person.role)
-                        .font(.byteMono(11))
+                        .font(.byteTerminalSmall)
                         .foregroundColor(.byteText2)
                 }
             }

@@ -358,18 +358,46 @@ struct ChatTerminalSheet: View {
     @EnvironmentObject private var chat: ChatService
     @FocusState private var inputFocused: Bool
     @State private var caretOn = true
+    @State private var isMaximized = false
+    @State private var isMinimized = false
     let onOpenThread: (ConversationDto) -> Void
 
     var body: some View {
         ZStack {
-            Color.byteBackground.ignoresSafeArea()
-            VStack(spacing: 0) {
-                titleBar
-                accentLine
-                outputScroll
-                quickActionStrip
-                terminalInput
+            if isMinimized {
+                // Collapsed → floating orb. The terminal state (lines, draft, vm)
+                // is preserved because this view is still mounted.
+                Color.clear
+                    .ignoresSafeArea()
+                TerminalOrb(label: "chat") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        isMinimized = false
+                    }
+                }
+            } else {
+                terminalSurface
+                    .transition(.scale.combined(with: .opacity))
             }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isMinimized)
+    }
+
+    private var terminalSurface: some View {
+        GeometryReader { geo in
+            ZStack {
+                Color.byteBackground.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    titleBar
+                    accentLine
+                    outputScroll
+                    quickActionStrip
+                    terminalInput
+                }
+            }
+            .frame(
+                width: isMaximized ? UIScreen.main.bounds.width : geo.size.width,
+                height: isMaximized ? UIScreen.main.bounds.height : geo.size.height
+            )
         }
         .onAppear {
             withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
@@ -467,59 +495,15 @@ struct ChatTerminalSheet: View {
     // MARK: Title bar
 
     private var titleBar: some View {
-        ZStack {
-            HStack(spacing: 6) {
-                Button { dismiss() } label: {
-                    Circle()
-                        .fill(Color(red: 1, green: 0.37, blue: 0.34))
-                        .overlay(Circle().stroke(Color.black.opacity(0.15), lineWidth: 1))
-                        .frame(width: 12, height: 12)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close chat terminal")
-
-                Button { vm.clear() } label: {
-                    Circle()
-                        .fill(Color(red: 1, green: 0.74, blue: 0.18))
-                        .overlay(Circle().stroke(Color.black.opacity(0.15), lineWidth: 1))
-                        .frame(width: 12, height: 12)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Clear terminal")
-
-                Circle()
-                    .fill(Color.white.opacity(0.10))
-                    .overlay(Circle().stroke(Color.white.opacity(0.08), lineWidth: 1))
-                    .frame(width: 12, height: 12)
-
-                Spacer()
-            }
-            .padding(.horizontal, 14)
-
-            HStack(spacing: 6) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.byteGreen.opacity(0.10))
-                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.byteGreen.opacity(0.20), lineWidth: 1))
-                        .frame(width: 16, height: 16)
-                    Image(systemName: "bubble.left.and.bubble.right")
-                        .font(.system(size: 8))
-                        .foregroundColor(.byteGreen)
-                }
-                Text("CHAT")
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.byteText1)
-                    .tracking(0.6)
-                Text("v1.0")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.byteText3)
-            }
-        }
-        .frame(height: 44)
-        .background(Color.byteGreen.opacity(0.03))
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.byteGreen.opacity(0.15)).frame(height: 1)
-        }
+        TerminalChrome(
+            title: "CHAT",
+            version: "v1.0",
+            icon: "bubble.left.and.bubble.right",
+            isMaximized: $isMaximized,
+            isMinimized: $isMinimized,
+            onClear: { vm.clear() },
+            onClose: { dismiss() }
+        )
     }
 
     private var accentLine: some View {

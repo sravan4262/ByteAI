@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { ErrorModal, resolveErrorModal } from '@/components/ui/error-modal'
-import { ApiError } from '@/lib/api/http'
+import { ApiError, type ModerationReason } from '@/lib/api/http'
 import * as api from '@/lib/api'
 import { useFeatureFlag } from '@/hooks/use-feature-flags'
 
@@ -60,7 +60,7 @@ export function ComposeScreen() {
   const [draftId, setDraftId] = useState<string | null>(null)
   const hasReachEstimate = useFeatureFlag('reach-estimate')
   const [showEscModal, setShowEscModal] = useState(false)
-  const [postError, setPostError] = useState<{ errorCode: string; reason?: string } | null>(null)
+  const [postError, setPostError] = useState<{ errorCode: string; reason?: string; reasons?: ModerationReason[] } | null>(null)
 
   // ── Interview state ─────────────────────────────────────────────────────────
   const [company, setCompany] = useState('')
@@ -183,7 +183,7 @@ export function ComposeScreen() {
       router.push('/feed')
     } catch (err) {
       if (err instanceof ApiError) {
-        setPostError({ errorCode: err.errorCode, reason: err.reason })
+        setPostError({ errorCode: err.errorCode, reason: err.reason, reasons: err.reasons })
       } else {
         setPostError({ errorCode: 'POST_FAILED' })
       }
@@ -234,8 +234,12 @@ export function ComposeScreen() {
       })
       toast.success('Interview Byte posted!')
       router.push('/interviews')
-    } catch {
-      toast.error('Failed to post interview byte')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setPostError({ errorCode: err.errorCode, reason: err.reason, reasons: err.reasons })
+      } else {
+        toast.error('Failed to post interview byte')
+      }
     } finally {
       setIsInterviewLoading(false)
     }
@@ -635,6 +639,7 @@ export function ComposeScreen() {
       {postError && (
         <ErrorModal
           {...resolveErrorModal(postError.errorCode, postError.reason)}
+          reasons={postError.reasons}
           onClose={() => setPostError(null)}
           onRetry={postError.errorCode === 'AI_QUOTA_EXHAUSTED' ? () => { setPostError(null); handlePostByte() } : undefined}
         />

@@ -1,12 +1,39 @@
 'use client'
 
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { X, Minus, Terminal } from 'lucide-react'
+import { X, Minus, Terminal, AlertTriangle } from 'lucide-react'
 import { useMessages } from '@/hooks/use-messages'
 import { useChatConnection, type IncomingMessage } from '@/hooks/use-chat-connection'
 import { ChatMessage } from './ChatMessage'
 import { TerminalInput } from '@/components/features/terminal/TerminalInput'
 import type { MessageDto } from '@/lib/api/chat'
+import type { ModerationReason } from '@/lib/api/http'
+
+/**
+ * SignalR HubExceptions surface as `Error` objects whose message is the raw
+ * server-side string. The chat hub serialises moderation rejections as a
+ * JSON payload matching the REST `CONTENT_REJECTED` shape, so we sniff the
+ * message for that JSON and pull out the structured reasons.
+ */
+function parseModerationReasons(err: unknown): ModerationReason[] | null {
+  if (!(err instanceof Error)) return null
+  const msg = err.message
+  const start = msg.indexOf('{')
+  if (start < 0) return null
+  try {
+    const body = JSON.parse(msg.slice(start))
+    if (body?.error !== 'CONTENT_REJECTED' || !Array.isArray(body?.reasons)) return null
+    const reasons: ModerationReason[] = body.reasons.filter(
+      (r: unknown): r is ModerationReason =>
+        typeof r === 'object' && r !== null &&
+        typeof (r as { code?: unknown }).code === 'string' &&
+        typeof (r as { message?: unknown }).message === 'string',
+    )
+    return reasons.length > 0 ? reasons : null
+  } catch {
+    return null
+  }
+}
 
 interface Props {
   conversationId: string
@@ -18,8 +45,16 @@ interface Props {
 export function ChatThread({ conversationId, otherUsername, otherUserId, currentUserId }: Props) {
   const { messages, loading, hasMore, loadMore, appendMessage } = useMessages(conversationId)
   const [sending, setSending] = useState(false)
+  const [moderationReasons, setModerationReasons] = useState<ModerationReason[] | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const topRef = useRef<HTMLDivElement>(null)
+
+  // Auto-dismiss the moderation banner after 5 seconds.
+  useEffect(() => {
+    if (!moderationReasons) return
+    const timer = window.setTimeout(() => setModerationReasons(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [moderationReasons])
 
   const onReceiveMessage = useCallback((msg: IncomingMessage) => {
     if (msg.conversationId !== conversationId) return
@@ -58,9 +93,12 @@ export function ChatThread({ conversationId, otherUsername, otherUserId, current
     const trimmed = value.trim()
     if (!trimmed || sending) return
     setSending(true)
+    setModerationReasons(null)
     try {
       await sendMessage(otherUserId, trimmed)
-    } catch {
+    } catch (err) {
+      const reasons = parseModerationReasons(err)
+      if (reasons) setModerationReasons(reasons)
       setSending(false)
     }
   }, [sending, sendMessage, otherUserId])
@@ -119,6 +157,28 @@ export function ChatThread({ conversationId, otherUsername, otherUserId, current
 
         <div ref={bottomRef} />
       </div>
+
+      {/* Moderation rejection banner — auto-dismisses after 5s */}
+      {moderationReasons && (
+        <div className="px-3 py-2 border-t border-[rgba(244,63,94,0.25)] bg-[rgba(244,63,94,0.06)] flex items-start gap-2">
+          <AlertTriangle size={11} className="text-[var(--red)] mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+            {moderationReasons.map((r, i) => (
+              <div key={`${r.code}-${i}`} className="font-mono text-[10px] leading-snug text-[var(--red)] break-words">
+                <span className="font-bold tracking-[0.06em]">{r.code}</span>
+                <span className="text-[var(--t2)]"> — {r.message}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => setModerationReasons(null)}
+            className="text-[var(--t3)] hover:text-[var(--t1)] transition-colors flex-shrink-0"
+            aria-label="Dismiss"
+          >
+            <X size={11} />
+          </button>
+        </div>
+      )}
 
       {/* Input — reuses TerminalInput */}
       <TerminalInput onSubmit={handleSubmit} disabled={sending} stage="awaiting-message" />

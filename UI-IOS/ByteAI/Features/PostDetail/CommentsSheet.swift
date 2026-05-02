@@ -77,6 +77,15 @@ struct CommentsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.byteBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .sheet(item: $vm.contentRejection) { rejection in
+            ContentRejectedModal(rejection: rejection) {
+                vm.contentRejection = nil
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color.byteCard)
+            .presentationCornerRadius(20)
+        }
         .task { await vm.load() }
     }
 }
@@ -135,7 +144,9 @@ private struct CommentRow: View {
 
 struct CommentComposeBar: View {
     let isSending: Bool
-    let onSubmit: (String) async -> Void
+    /// Returns `true` only on a clean submit; on `false` the draft text is restored
+    /// so the user can edit and resubmit (e.g. moderation rejected the comment).
+    let onSubmit: (String) async -> Bool
     @State private var text = ""
     @FocusState private var focused: Bool
 
@@ -168,7 +179,10 @@ struct CommentComposeBar: View {
                 let copy = text
                 text = ""
                 focused = false
-                Task { await onSubmit(copy) }
+                Task {
+                    let ok = await onSubmit(copy)
+                    if !ok { text = copy }
+                }
             } label: {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 14))
@@ -201,6 +215,8 @@ final class CommentsVM: ObservableObject {
     @Published var isLoading = false
     @Published var isSending = false
     @Published var loadError = false
+    /// Drives the moderation rejection sheet via `.sheet(item:)`.
+    @Published var contentRejection: ContentRejection?
     private let postId: String
 
     init(postId: String) { self.postId = postId }
@@ -216,17 +232,25 @@ final class CommentsVM: ObservableObject {
 
     func reload() async { await load() }
 
-    func submit(body: String) async {
+    /// Returns `true` only on a clean submit. On rejection we surface the modal
+    /// and return `false` so the compose bar restores the draft for editing.
+    func submit(body: String) async -> Bool {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return false }
         isSending = true; defer { isSending = false }
         do {
             try await APIClient.shared.addComment(postId: postId, body: trimmed)
             Haptics.success()
             await load()
             broadcastCount()
+            return true
         } catch {
+            if let rejection = APIError.rejection(from: error) {
+                contentRejection = rejection
+                return false
+            }
             ToastCenter.shared.show("Couldn't post comment", kind: .error)
+            return false
         }
     }
 

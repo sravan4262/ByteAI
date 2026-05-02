@@ -7,4 +7,8 @@ enum ShareURL {
     static func post(id: String) -> URL {
         AppConfig.shareBaseURL.appendingPathComponent("post/\(id)")
     }
+
+    static func interview(id: String) -> URL {
+        AppConfig.shareBaseURL.appendingPathComponent("interviews/\(id)")
+    }
 }

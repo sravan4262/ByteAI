@@ -19,6 +19,9 @@ struct PostDetailView: View {
     @State private var previewComments: [Comment] = []
     @State private var isLoadingPreview = true
     @State private var isSendingComment = false
+    /// Drives the moderation rejection sheet via `.sheet(item:)` when the
+    /// inline compose bar's comment is rejected by the backend.
+    @State private var contentRejection: ContentRejection?
     @EnvironmentObject private var toasts: ToastCenter
 
     init(post: Post, onPostChanged: ((Post) -> Void)? = nil) {
@@ -44,7 +47,7 @@ struct PostDetailView: View {
                                     .fixedSize(horizontal: false, vertical: true)
 
                                 Text(post.body)
-                                    .font(.byteSans(15))
+                                    .font(.byteBodyMedium)
                                     .foregroundColor(.byteText2)
                                     .lineSpacing(5)
 
@@ -56,7 +59,7 @@ struct PostDetailView: View {
                                     FlowLayout(spacing: 6) {
                                         ForEach(post.tags, id: \.self) { tag in
                                             Text(tag)
-                                                .font(.byteMono(11))
+                                                .font(.byteTerminalSmall)
                                                 .foregroundColor(.byteText1)
                                                 .padding(.horizontal, 10).padding(.vertical, 4)
                                                 .background(IdentityColor.blue.bgFaint)
@@ -88,6 +91,15 @@ struct PostDetailView: View {
                     await submitComment(body: text)
                 }
             }
+        }
+        .sheet(item: $contentRejection) { rejection in
+            ContentRejectedModal(rejection: rejection) {
+                contentRejection = nil
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(Color.byteCard)
+            .presentationCornerRadius(20)
         }
         .navigationTitle("Byte")
         .navigationBarTitleDisplayMode(.inline)
@@ -169,12 +181,12 @@ struct PostDetailView: View {
                 HStack(spacing: 8) {
                     ByteSpinner(size: 14)
                     Text("Loading comments…")
-                        .font(.byteMono(11)).foregroundColor(.byteText2)
+                        .font(.byteTerminalSmall).foregroundColor(.byteText2)
                 }
                 .padding(.vertical, 4)
             } else if previewComments.isEmpty {
                 Text("Be the first to add a comment.")
-                    .font(.byteSans(13))
+                    .font(.byteBodySmall)
                     .foregroundColor(.byteText2)
                     .padding(.vertical, 6)
             } else {
@@ -196,7 +208,7 @@ struct PostDetailView: View {
                                     .foregroundColor(.byteText2)
                             }
                             Text(c.content)
-                                .font(.byteSans(13))
+                                .font(.byteBodySmall)
                                 .foregroundColor(.byteText2)
                                 .lineLimit(3)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -217,9 +229,9 @@ struct PostDetailView: View {
         previewComments = Array(all.prefix(3))
     }
 
-    private func submitComment(body: String) async {
+    private func submitComment(body: String) async -> Bool {
         let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return false }
         isSendingComment = true
         defer { isSendingComment = false }
         do {
@@ -233,8 +245,14 @@ struct PostDetailView: View {
                 object: nil,
                 userInfo: ["postId": post.id, "delta": 1]
             )
+            return true
         } catch {
+            if let rejection = APIError.rejection(from: error) {
+                contentRejection = rejection
+                return false
+            }
             toasts.show("Couldn't post comment", kind: .error)
+            return false
         }
     }
 
@@ -294,8 +312,8 @@ struct PostDetailView: View {
     private func pillContent(icon: String, count: Int? = nil, label: String? = nil, isActive: Bool) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon).font(.system(size: 13))
-            if let count { Text("\(count)").font(.byteMono(11)).tracking(0.5).lineLimit(1) }
-            if let label { Text(label).font(.byteMono(11)).tracking(0.5).lineLimit(1) }
+            if let count { Text("\(count)").font(.byteTerminalSmall).tracking(0.5).lineLimit(1) }
+            if let label { Text(label).font(.byteTerminalSmall).tracking(0.5).lineLimit(1) }
         }
         .fixedSize(horizontal: true, vertical: false)
         .foregroundColor(isActive ? .byteAccent : .byteText1)
@@ -515,7 +533,7 @@ private struct SimilarByteCard: View {
                     .multilineTextAlignment(.leading)
 
                 Text(byte.body)
-                    .font(.byteSans(12))
+                    .font(.byteBodySmall)
                     .foregroundColor(.byteText2)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)

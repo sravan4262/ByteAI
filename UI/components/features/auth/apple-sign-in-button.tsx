@@ -11,9 +11,11 @@ const btnCls =
 interface Props {
   disabled?: boolean
   onLoadingChange?: (loading: boolean) => void
+  /** Safe relative path to redirect to after sign-in (validated upstream). */
+  next?: string
 }
 
-export function AppleSignInButton({ disabled, onLoadingChange }: Props) {
+export function AppleSignInButton({ disabled, onLoadingChange, next }: Props) {
   const [loading, setLoading] = useState(false)
 
   const setBusy = useCallback((b: boolean) => {
@@ -24,15 +26,17 @@ export function AppleSignInButton({ disabled, onLoadingChange }: Props) {
   const handleClick = useCallback(async () => {
     if (disabled || loading) return
     setBusy(true)
+    const callback = new URL(`${window.location.origin}/auth/callback`)
+    if (next) callback.searchParams.set('next', next)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'apple',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callback.toString() },
     })
     if (error) {
       toast.error('Sign-in failed — try again')
       setBusy(false)
     }
-  }, [disabled, loading, setBusy])
+  }, [disabled, loading, setBusy, next])
 
   return (
     <button type="button" disabled={disabled || loading} onClick={handleClick} className={btnCls}>

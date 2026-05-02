@@ -2,6 +2,8 @@ using ByteAI.Api.Common.Auth;
 using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
+using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Moderation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -13,7 +15,7 @@ namespace ByteAI.Api.Controllers;
 [Produces("application/json")]
 [Tags("Support")]
 [Authorize]
-public sealed class SupportController(ISupportBusiness supportBusiness) : ControllerBase
+public sealed class SupportController(ISupportBusiness supportBusiness, IModerationService moderation, AppDbContext db) : ControllerBase
 {
     /// <summary>Submit feedback about the app. Rate limited to 5 req/min per user.</summary>
     [HttpPost("feedback")]
@@ -25,6 +27,8 @@ public sealed class SupportController(ISupportBusiness supportBusiness) : Contro
         [FromBody] SubmitFeedbackRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+
+        await moderation.EnforceAsync(db, request.Message ?? string.Empty, ModerationContext.Support, ct: ct);
 
         try
         {

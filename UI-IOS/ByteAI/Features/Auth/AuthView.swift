@@ -59,13 +59,13 @@ struct AuthView: View {
                     // Context copy — web parity: underlined "Job postings", "Random videos",
                     // "Dank memes", "Content you never asked for".
                     VStack(spacing: 8) {
-                        Self.tagline.font(.byteSans(12))
+                        Self.tagline.font(.byteBodySmall)
 
                         (Text("ByteAI is strictly tech — knowledge, insights, and real interview experiences, ")
                             .foregroundColor(.byteText2)
                          + Text("shared by people who've been there.")
                             .foregroundColor(.byteText1))
-                            .font(.byteSans(12))
+                            .font(.byteBodySmall)
                     }
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)

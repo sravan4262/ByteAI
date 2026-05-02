@@ -17,40 +17,53 @@ struct PostCardView: View {
     var body: some View {
         CardWithTopGradient {
             VStack(alignment: .leading, spacing: 14) {
-                PostHeader(post: post, activeTab: activeTab) {
-                    miniProfileUser = MiniProfileTarget(
-                        userId: post.author.id,
-                        username: post.author.username,
-                        displayName: post.author.displayName,
-                        initials: post.author.initials,
-                        avatarUrl: post.author.avatarUrl,
-                        role: post.author.role,
-                        company: post.author.company,
-                        tags: post.tags
-                    )
+                // Tappable region: the inert, content portion of the card opens
+                // the post detail when tapped. We can't make the WHOLE card a
+                // tap gesture (that would swallow taps on the action row's like /
+                // share / save buttons because gesture composition is order-
+                // dependent and SwiftUI's Button gesture doesn't always win over
+                // an ancestor `.onTapGesture` when the ancestor's hit area is
+                // also a `Rectangle`). Putting the gesture on a sibling subtree
+                // (header + title + body + code + tags) keeps the button row
+                // taps intact while still giving users a large tap target.
+                VStack(alignment: .leading, spacing: 14) {
+                    PostHeader(post: post, activeTab: activeTab) {
+                        miniProfileUser = MiniProfileTarget(
+                            userId: post.author.id,
+                            username: post.author.username,
+                            displayName: post.author.displayName,
+                            initials: post.author.initials,
+                            avatarUrl: post.author.avatarUrl,
+                            role: post.author.role,
+                            company: post.author.company,
+                            tags: post.tags
+                        )
+                    }
+
+                    Text(post.title)
+                        .font(.byteSans(18, weight: .heavy))
+                        .foregroundColor(.byteText1)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(post.body)
+                        .font(.byteBodyMedium)
+                        .foregroundColor(.byteText2)
+                        .lineSpacing(4)
+                        .lineLimit(3)
+
+                    if let code = post.code {
+                        CodeBlockView(snippet: code)
+                            .frame(maxHeight: 140)
+                            .clipped()
+                    }
+
+                    if !post.tags.isEmpty {
+                        FlowTagRow(tags: post.tags)
+                    }
                 }
-
-                Text(post.title)
-                    .font(.byteSans(18, weight: .heavy))
-                    .foregroundColor(.byteText1)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(post.body)
-                    .font(.byteSans(14))
-                    .foregroundColor(.byteText2)
-                    .lineSpacing(4)
-                    .lineLimit(3)
-
-                if let code = post.code {
-                    CodeBlockView(snippet: code)
-                        .frame(maxHeight: 140)
-                        .clipped()
-                }
-
-                if !post.tags.isEmpty {
-                    FlowTagRow(tags: post.tags)
-                }
+                .contentShape(Rectangle())
+                .onTapGesture { (onTap ?? {})() }
 
                 if !hideInteractions {
                     Divider().background(Color.byteBorderHigh).padding(.vertical, 2)
@@ -92,7 +105,7 @@ struct PostCardView: View {
                     if post.likes > 0 { showLikers = true }
                 } label: {
                     Text("\(post.likes)")
-                        .font(.byteMono(11))
+                        .font(.byteTerminalSmall)
                         .tracking(0.5)
                         .foregroundColor(post.isLiked ? .byteAccent : .byteText1)
                         .padding(.horizontal, 9)
@@ -127,7 +140,7 @@ struct PostCardView: View {
                       message: Text(String(post.body.prefix(140)))) {
                 HStack(spacing: 6) {
                     Image(systemName: "square.and.arrow.up").font(.system(size: 13))
-                    Text("SHARE").font(.byteMono(11)).tracking(0.5)
+                    Text("SHARE").font(.byteTerminalSmall).tracking(0.5)
                 }
                 .foregroundColor(.byteText1)
                 .padding(.horizontal, 12).padding(.vertical, 8)
@@ -168,8 +181,8 @@ struct PostCardView: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon).font(.system(size: 13))
-                if let count, count > 0 { Text("\(count)").font(.byteMono(11)).tracking(0.5) }
-                if let label { Text(label).font(.byteMono(11)).tracking(0.5) }
+                if let count, count > 0 { Text("\(count)").font(.byteTerminalSmall).tracking(0.5) }
+                if let label { Text(label).font(.byteTerminalSmall).tracking(0.5) }
             }
             .foregroundColor(isActive ? .byteAccent : .byteText1)
             .padding(.horizontal, 12).padding(.vertical, 8)
@@ -225,7 +238,7 @@ struct PostHeader: View {
                 }
                 if !post.author.role.isEmpty || !post.author.company.isEmpty {
                     Text("\(post.author.role)\(post.author.role.isEmpty || post.author.company.isEmpty ? "" : " @ ")\(post.author.company)")
-                        .font(.byteMono(12))
+                        .font(.byteCodeSmall)
                         .foregroundColor(.byteText2)
                         .tracking(0.4)
                         .lineLimit(1)
@@ -262,7 +275,7 @@ private struct FlowTagRow: View {
             HStack(spacing: 8) {
                 ForEach(tags, id: \.self) { tag in
                     Text(tag)
-                        .font(.byteMono(11))
+                        .font(.byteTerminalSmall)
                         .foregroundColor(.byteText1)
                         .padding(.horizontal, 10).padding(.vertical, 4)
                         .background(IdentityColor.blue.bgFaint)
@@ -430,7 +443,7 @@ struct UserMiniProfileSheet: View {
             }
             Button { pushFullProfile = true } label: {
                 Text("@\(resolvedUsername)")
-                    .font(.byteMono(11))
+                    .font(.byteTerminalSmall)
                     .foregroundColor(.byteAccent)
             }
             .buttonStyle(.plain)

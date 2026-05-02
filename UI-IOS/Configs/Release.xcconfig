@@ -14,4 +14,9 @@ SUPABASE_URL = REPLACE_ME_BY_CI
 SUPABASE_ANON_KEY = REPLACE_ME_BY_CI
 BYTEAI_SHARE_BASE_URL = https://www.byteaiofficial.com
 GOOGLE_IOS_CLIENT_ID = REPLACE_ME_BY_CI
+// Reversed iOS client ID — only consulted by xcodebuild's $(...) substitution
+// in Info.plist if CI doesn't pre-rewrite the URL types entry. The TestFlight
+// workflow always overwrites that entry directly, so this value is unused in
+// CI builds; keep the placeholder for parity with manual Release builds.
+GOOGLE_IOS_REVERSED_CLIENT_ID = REPLACE_ME_BY_CI
 GOOGLE_WEB_CLIENT_ID = REPLACE_ME_BY_CI

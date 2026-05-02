@@ -275,7 +275,7 @@ private struct TechStep: View {
                     .font(.system(size: 12))
                     .foregroundColor(.byteText2)
                 TextField("Search across all domains…", text: $search)
-                    .font(.byteMono(11))
+                    .font(.byteTerminalSmall)
                     .foregroundColor(.byteText1)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)

@@ -372,6 +372,15 @@ final class AuthManager: ObservableObject {
         try? await client.auth.session.accessToken
     }
 
+    /// Force a Supabase token refresh. Used by the auto-unlock path on
+    /// `scenePhase → .active` so the user always returns from background
+    /// with a fresh access token. Throws on network or refresh-token failure
+    /// so callers can decide whether to surface the manual unlock UI.
+    func refreshSession() async throws {
+        let session = try await client.auth.refreshSession()
+        await APIClient.shared.setToken(session.accessToken)
+    }
+
     var currentUser: User? {
         switch state {
         case .authenticated(let user), .locked(let user): return user
@@ -403,6 +412,33 @@ final class AuthManager: ObservableObject {
             name: .avatarChanged,
             object: nil,
             userInfo: ["userId": userId, "avatarUrl": url ?? ""]
+        )
+    }
+
+    /// Apply the user's freshly-saved tech-stack preferences to the current
+    /// session user. Updates `state` so views bound to `currentUser` repaint,
+    /// and broadcasts `techStackChanged` so the For-You feed can mirror the
+    /// new filter without re-mounting.
+    func applyTechStackUpdate(_ stack: [String]) {
+        switch state {
+        case .authenticated(var user):
+            user.techStack = stack
+            state = .authenticated(user: user)
+            broadcastTechStackChanged(userId: user.id, stack: stack)
+        case .locked(var user):
+            user.techStack = stack
+            state = .locked(user: user)
+            broadcastTechStackChanged(userId: user.id, stack: stack)
+        default:
+            return
+        }
+    }
+
+    private func broadcastTechStackChanged(userId: String, stack: [String]) {
+        NotificationCenter.default.post(
+            name: .techStackChanged,
+            object: nil,
+            userInfo: ["userId": userId, "techStack": stack]
         )
     }
 

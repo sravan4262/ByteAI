@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Minus, LifeBuoy } from 'lucide-react'
+import { X, Minus, Maximize2, LifeBuoy } from 'lucide-react'
 import { TerminalOutput } from './TerminalOutput'
 import { TerminalInput } from './TerminalInput'
 import type { TerminalLine } from './useTerminal'
@@ -8,13 +8,26 @@ import type { TerminalLine } from './useTerminal'
 interface Props {
   lines: TerminalLine[]
   loading: boolean
-  stage: 'idle' | 'awaiting-message'
+  stage: 'idle' | 'awaiting-message' | 'awaiting-report-type' | 'awaiting-report-id' | 'awaiting-report-message'
   onInput: (value: string) => void
   onClose: () => void
   onClear: () => void
+  /** When provided, the green traffic light becomes a maximize toggle. */
+  onMaximize?: () => void
+  /** Reflects current maximized state for the green button styling. */
+  isMaximized?: boolean
 }
 
-export function TerminalShell({ lines, loading, stage, onInput, onClose, onClear }: Props) {
+export function TerminalShell({
+  lines,
+  loading,
+  stage,
+  onInput,
+  onClose,
+  onClear,
+  onMaximize,
+  isMaximized,
+}: Props) {
   return (
     <div className="flex flex-col h-full rounded-xl overflow-hidden border border-[rgba(16,217,160,0.3)] bg-[var(--bg-card)] shadow-[0_24px_80px_rgba(0,0,0,0.85),0_0_0_1px_rgba(16,217,160,0.08),0_0_60px_rgba(16,217,160,0.05)]">
 
@@ -40,7 +53,17 @@ export function TerminalShell({ lines, loading, stage, onInput, onClose, onClear
           >
             <Minus size={7} className="text-[rgba(0,0,0,0.65)]" />
           </button>
-          <div className="w-3.5 h-3.5 rounded-full bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.08)]" />
+          {onMaximize ? (
+            <button
+              onClick={onMaximize}
+              title={isMaximized ? 'Restore' : 'Maximize'}
+              className="w-3.5 h-3.5 rounded-full bg-[#28c940] border border-[rgba(0,0,0,0.15)] flex items-center justify-center hover:brightness-90 transition-all"
+            >
+              <Maximize2 size={7} className="text-[rgba(0,0,0,0.65)]" />
+            </button>
+          ) : (
+            <div className="w-3.5 h-3.5 rounded-full bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.08)]" />
+          )}
         </div>
 
         {/* Title */}
@@ -56,13 +79,17 @@ export function TerminalShell({ lines, loading, stage, onInput, onClose, onClear
 
         {/* Stage badge */}
         <div className="flex items-center">
-          {stage === 'awaiting-message' ? (
+          {stage === 'idle' ? (
+            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[rgba(16,217,160,0.08)] border border-[rgba(16,217,160,0.2)] text-[var(--green)] tracking-wide font-bold">
+              READY
+            </span>
+          ) : stage === 'awaiting-message' ? (
             <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.25)] text-[#fbbf24] tracking-wide font-bold">
               INPUT
             </span>
           ) : (
-            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[rgba(16,217,160,0.08)] border border-[rgba(16,217,160,0.2)] text-[var(--green)] tracking-wide font-bold">
-              READY
+            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[rgba(251,191,36,0.12)] border border-[rgba(251,191,36,0.25)] text-[#fbbf24] tracking-wide font-bold">
+              REPORT
             </span>
           )}
         </div>

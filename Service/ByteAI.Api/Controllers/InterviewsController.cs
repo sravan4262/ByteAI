@@ -4,7 +4,9 @@ using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Commands.Interviews;
 using ByteAI.Core.Entities;
+using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Infrastructure.Services;
+using ByteAI.Core.Moderation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -16,7 +18,11 @@ namespace ByteAI.Api.Controllers;
 [Produces("application/json")]
 [Tags("Interviews")]
 [RequireRole("user")]
-public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness, ICurrentUserService currentUserService) : ControllerBase
+public sealed class InterviewsController(
+    IInterviewsBusiness interviewsBusiness,
+    ICurrentUserService currentUserService,
+    IModerationService moderation,
+    AppDbContext db) : ControllerBase
 {
     // ── Mappers ──────────────────────────────────────────────────────────────
 
@@ -126,6 +132,10 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
 
+        await moderation.EnforceAsync(db,
+            string.Join("\n", new[] { request.Title, request.Body }.Where(s => !string.IsNullOrWhiteSpace(s))),
+            ModerationContext.Interview, ct: ct);
+
         try
         {
             var result = await interviewsBusiness.CreateInterviewAsync(
@@ -149,6 +159,17 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
 
         if (request.Questions is null || request.Questions.Count == 0)
             return BadRequest(new { error = "At least one question is required." });
+
+        // Moderate the title plus every question/answer in one pass — joined with newlines
+        // so a single rejection bubbles up with all offending text considered together.
+        var combined = string.Join("\n", new[]
+        {
+            request.Title,
+            string.Join("\n",
+                request.Questions.SelectMany(q => new[] { q.Question, q.Answer })
+                                 .Where(s => !string.IsNullOrWhiteSpace(s)))
+        }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        await moderation.EnforceAsync(db, combined, ModerationContext.Interview, ct: ct);
 
         try
         {
@@ -239,6 +260,9 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
         Guid questionId, [FromBody] AddInterviewCommentRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+
+        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, ct: ct);
+
         try
         {
             var result = await interviewsBusiness.AddQuestionCommentAsync(supabaseUserId, questionId, request.Body, request.ParentId, ct);
@@ -281,6 +305,9 @@ public sealed class InterviewsController(IInterviewsBusiness interviewsBusiness,
     public async Task<ActionResult> AddComment(Guid id, [FromBody] AddInterviewCommentRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+
+        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, ct: ct);
+
         try
         {
             var result = await interviewsBusiness.AddCommentAsync(supabaseUserId, id, request.Body, request.ParentId, ct);

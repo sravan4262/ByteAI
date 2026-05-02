@@ -39,6 +39,11 @@ final class ChatThreadVM: ObservableObject {
     @Published var draft = ""
     @Published var isSending = false
     @Published var isLoadingHistory = false
+    /// Inline (non-modal) moderation rejection shown above the chat input. Chat
+    /// is dense enough that a full sheet would be too heavy — the banner
+    /// auto-dismisses after 5s or when tapped. Setting back to nil hides it.
+    @Published var contentRejection: ContentRejection?
+    private var bannerDismissTask: Task<Void, Never>?
 
     init(conversation: ConversationDto) {
         self.conversation = conversation
@@ -70,7 +75,28 @@ final class ChatThreadVM: ObservableObject {
             Haptics.light()
         } catch {
             draft = copy // restore so user can retry
+            if let rejection = APIError.rejection(from: error) {
+                showRejectionBanner(rejection)
+                return
+            }
             ToastCenter.shared.show("Couldn't send message", kind: .error)
         }
+    }
+
+    /// Surface the moderation banner above the chat input and schedule auto-dismiss
+    /// in 5s. Cancels any prior pending dismissal.
+    private func showRejectionBanner(_ rejection: ContentRejection) {
+        contentRejection = rejection
+        bannerDismissTask?.cancel()
+        bannerDismissTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run { self?.contentRejection = nil }
+        }
+    }
+
+    func dismissRejectionBanner() {
+        bannerDismissTask?.cancel()
+        contentRejection = nil
     }
 }

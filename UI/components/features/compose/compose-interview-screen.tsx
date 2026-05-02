@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { ByteAILogo } from '@/components/layout/byteai-logo'
 import { CreatableDropdown } from '@/components/ui/creatable-dropdown'
+import { ErrorModal, resolveErrorModal } from '@/components/ui/error-modal'
+import { ApiError, type ModerationReason } from '@/lib/api/http'
 import * as api from '@/lib/api'
 
 interface QuestionPair {
@@ -33,6 +35,7 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
   ])
   const [isLoading, setIsLoading] = useState(false)
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null)
+  const [postError, setPostError] = useState<{ errorCode: string; reason?: string; reasons?: ModerationReason[] } | null>(null)
 
   useEffect(() => {
     api.getInterviewCompanies().then(setCompanyOptions)
@@ -80,8 +83,12 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
       })
       toast.success('Interview Byte posted!')
       router.push('/interviews')
-    } catch {
-      toast.error('Failed to post interview byte')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setPostError({ errorCode: err.errorCode, reason: err.reason, reasons: err.reasons })
+      } else {
+        toast.error('Failed to post interview byte')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -281,6 +288,15 @@ export function ComposeInterviewScreen({ onBack }: ComposeInterviewScreenProps) 
           {isLoading ? 'POSTING...' : 'POST INTERVIEW →'}
         </button>
       </div>
+
+      {/* Post error modal */}
+      {postError && (
+        <ErrorModal
+          {...resolveErrorModal(postError.errorCode, postError.reason)}
+          reasons={postError.reasons}
+          onClose={() => setPostError(null)}
+        />
+      )}
     </PhoneFrame>
   )
 }

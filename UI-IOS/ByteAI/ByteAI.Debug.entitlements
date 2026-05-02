@@ -8,5 +8,12 @@
 	</array>
 	<key>aps-environment</key>
 	<string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:byteaiofficial.com</string>
+		<string>applinks:www.byteaiofficial.com</string>
+		<string>applinks:staging.byteaiofficial.com</string>
+		<string>applinks:dev.byteaiofficial.com</string>
+	</array>
 </dict>
 </plist>

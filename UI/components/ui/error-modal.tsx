@@ -1,17 +1,78 @@
 "use client"
 
-import { XCircle, RefreshCw, X } from 'lucide-react'
+import {
+  XCircle,
+  RefreshCw,
+  X,
+  Globe,
+  Flame,
+  EyeOff,
+  AlertTriangle,
+  Ban,
+  Lock,
+  Link2,
+  Keyboard,
+  Zap,
+  WifiOff,
+} from 'lucide-react'
+import type { ComponentType } from 'react'
+
+export interface ModerationReason {
+  code: string
+  message: string
+}
 
 export interface ErrorModalProps {
   errorCode: string
   title: string
   message: string
   hint?: string
+  reasons?: ModerationReason[]
   onClose: () => void
   onRetry?: () => void
 }
 
-export function ErrorModal({ errorCode, title, message, hint, onClose, onRetry }: ErrorModalProps) {
+// Lucide icons share the same prop surface; keep the type loose so we don't
+// import the lucide-react `LucideIcon` symbol just for this map.
+type IconComponent = ComponentType<{ size?: number; className?: string }>
+
+const REASON_ICON: Record<string, IconComponent> = {
+  OFF_TOPIC: Globe,
+  TOXICITY: Flame,
+  HATE: Flame,
+  HARASSMENT: Flame,
+  SEXUAL: EyeOff,
+  HARM: AlertTriangle,
+  PROFANITY: Ban,
+  PII: Lock,
+  SPAM: Link2,
+  GIBBERISH: Keyboard,
+  PROMPT_INJECTION: Zap,
+  MODERATION_UNAVAILABLE: WifiOff,
+}
+
+const REASON_TITLE: Record<string, string> = {
+  OFF_TOPIC: 'Off-topic',
+  TOXICITY: 'Toxicity',
+  HATE: 'Hate speech',
+  HARASSMENT: 'Harassment',
+  SEXUAL: 'Sexual content',
+  HARM: 'Harmful content',
+  PROFANITY: 'Profanity',
+  PII: 'Personal info',
+  SPAM: 'Spam',
+  GIBBERISH: 'Gibberish',
+  PROMPT_INJECTION: 'Prompt injection',
+  MODERATION_UNAVAILABLE: 'Moderation unavailable',
+}
+
+function reasonTitle(code: string): string {
+  return REASON_TITLE[code] ?? code.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+export function ErrorModal({ errorCode, title, message, hint, reasons, onClose, onRetry }: ErrorModalProps) {
+  const hasReasons = Array.isArray(reasons) && reasons.length > 0
+
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-[var(--bg-o80)] backdrop-blur-sm rounded-[inherit]">
       <div className="w-[300px] bg-[var(--bg-card)] border border-[rgba(244,63,94,0.25)] rounded-xl shadow-[0_8px_40px_rgba(0,0,0,0.7),0_0_0_1px_rgba(244,63,94,0.08)] overflow-hidden">
@@ -53,6 +114,33 @@ export function ErrorModal({ errorCode, title, message, hint, onClose, onRetry }
             {message}
           </p>
 
+          {/* Moderation reasons */}
+          {hasReasons && (
+            <ul className="flex flex-col gap-2">
+              {reasons!.map((r, i) => {
+                const Icon = REASON_ICON[r.code] ?? XCircle
+                return (
+                  <li
+                    key={`${r.code}-${i}`}
+                    className="flex items-start gap-2.5 rounded-lg border border-[rgba(244,63,94,0.18)] bg-[rgba(244,63,94,0.05)] px-3 py-2.5"
+                  >
+                    <div className="w-6 h-6 rounded-md bg-[rgba(244,63,94,0.12)] border border-[rgba(244,63,94,0.2)] flex items-center justify-center flex-shrink-0 mt-px">
+                      <Icon size={12} className="text-[var(--red)]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-[10px] font-bold tracking-[0.08em] text-[var(--red)] uppercase">
+                        {reasonTitle(r.code)}
+                      </div>
+                      <p className="font-mono text-[11px] text-[var(--t2)] leading-relaxed mt-0.5 break-words">
+                        {r.message}
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+
           {/* Hint */}
           {hint && (
             <div className="rounded-lg border border-[var(--border-m)] bg-[var(--bg-el)] px-3 py-2.5">
@@ -87,8 +175,15 @@ export function ErrorModal({ errorCode, title, message, hint, onClose, onRetry }
 }
 
 /** Maps an ApiError code to human-readable modal props */
-export function resolveErrorModal(errorCode: string, reason?: string): Omit<ErrorModalProps, 'onClose' | 'onRetry'> {
+export function resolveErrorModal(errorCode: string, reason?: string): Omit<ErrorModalProps, 'onClose' | 'onRetry' | 'reasons'> {
   switch (errorCode) {
+    case 'CONTENT_REJECTED':
+      return {
+        errorCode: 'CONTENT_REJECTED',
+        title: "WE COULDN'T POST THIS",
+        message: 'Your content was flagged by moderation. Fix the issues below and try again.',
+        hint: undefined,
+      }
     case 'INVALID_CONTENT':
       return {
         errorCode: 'INVALID_CONTENT',
