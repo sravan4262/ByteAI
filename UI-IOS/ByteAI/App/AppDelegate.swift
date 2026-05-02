@@ -79,12 +79,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo
-        if let postId = info["byteId"] as? String {
-            await DeepLinkRouter.shared.openPost(id: postId)
-        } else if let conversationId = info["conversationId"] as? String {
-            await DeepLinkRouter.shared.openConversation(id: conversationId)
-        } else if info["type"] as? String == "notification" {
-            await DeepLinkRouter.shared.openNotifications()
+        await MainActor.run {
+            if let postId = info["byteId"] as? String {
+                DeepLinkRouter.shared.openPost(id: postId)
+            } else if let conversationId = info["conversationId"] as? String {
+                DeepLinkRouter.shared.openConversation(id: conversationId)
+            } else if info["type"] as? String == "notification" {
+                DeepLinkRouter.shared.openNotifications()
+            }
         }
     }
 }

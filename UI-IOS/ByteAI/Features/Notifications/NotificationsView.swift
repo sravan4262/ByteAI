@@ -79,7 +79,7 @@ struct NotificationsView: View {
         }
         .task {
             await vm.load()
-            UIApplication.shared.applicationIconBadgeNumber = 0
+            try? await UNUserNotificationCenter.current().setBadgeCount(0)
         }
         // APNs push delivered while the app is in foreground → reload list so
         // the new row appears at the top instantly, without waiting for the

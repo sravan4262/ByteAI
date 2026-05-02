@@ -276,10 +276,8 @@ struct MainTabView: View {
             }
         }
         .task(id: chat.unreadCount) {
-            await MainActor.run {
-                let total = notifBadge.unreadCount + chat.unreadCount
-                UIApplication.shared.applicationIconBadgeNumber = total
-            }
+            let total = notifBadge.unreadCount + chat.unreadCount
+            try? await UNUserNotificationCenter.current().setBadgeCount(total)
         }
         // Pinch to zoom entire app; double-tap to reset.
         .scaleEffect(gestures.zoomScale, anchor: .center)
@@ -347,7 +345,9 @@ final class NotificationBadgeVM: ObservableObject {
         ) { [weak self] note in
             guard let self else { return }
             let delta = (note.userInfo?["delta"] as? Int) ?? 0
-            self.unreadCount = max(0, self.unreadCount + delta)
+            MainActor.assumeIsolated {
+                self.unreadCount = max(0, self.unreadCount + delta)
+            }
         }
     }
 

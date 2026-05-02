@@ -75,10 +75,11 @@
 		5F93A3342F9D2797009E36CA /* CTAButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A3252F9D2797009E36CA /* CTAButton.swift */; };
 		5F93A3352F9D2797009E36CA /* NotificationBellButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A3292F9D2797009E36CA /* NotificationBellButton.swift */; };
 		5F93A3372F9D27AB009E36CA /* Tints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A3362F9D27AB009E36CA /* Tints.swift */; };
+		5FBDB3AE2FA68572006DB2F1 /* AccountSuspendedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBDB3AD2FA68572006DB2F1 /* AccountSuspendedView.swift */; };
+		5FBDB3B02FA68590006DB2F1 /* ShakeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBDB3AF2FA68590006DB2F1 /* ShakeDetector.swift */; };
 		9B35D811215486143515BE6B /* ContentRejectedModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F10F3649B838D4CB27D750C /* ContentRejectedModal.swift */; };
 		AA01000000000000ABCDEF01 /* ShareURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF02 /* ShareURL.swift */; };
 		AA01000000000000ABCDEF03 /* ByteAILogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF04 /* ByteAILogoView.swift */; };
-		AA01000000000000ABCDEF21 /* BiometricLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF20 /* BiometricLock.swift */; };
 		AA01000000000000ABCDEF23 /* AppleSignInCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF22 /* AppleSignInCoordinator.swift */; };
 		AA01000000000000ABCDEF27 /* BiometricOptInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF26 /* BiometricOptInSheet.swift */; };
 		AA01000000000000ABCDEF41 /* LaunchSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF40 /* LaunchSplashView.swift */; };
@@ -145,10 +146,13 @@
 		5F93A32A2F9D2797009E36CA /* RmConfirmButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RmConfirmButton.swift; sourceTree = "<group>"; };
 		5F93A32B2F9D2797009E36CA /* TabPills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabPills.swift; sourceTree = "<group>"; };
 		5F93A3362F9D27AB009E36CA /* Tints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tints.swift; sourceTree = "<group>"; };
+		5FBDB3AD2FA68572006DB2F1 /* AccountSuspendedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSuspendedView.swift; sourceTree = "<group>"; };
+		5FBDB3AF2FA68590006DB2F1 /* ShakeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShakeDetector.swift; sourceTree = "<group>"; };
 		7F10F3649B838D4CB27D750C /* ContentRejectedModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentRejectedModal.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF02 /* ShareURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareURL.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF04 /* ByteAILogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByteAILogoView.swift; sourceTree = "<group>"; };
-		AA01000000000000ABCDEF20 /* BiometricLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricLock.swift; sourceTree = "<group>"; };
+		AA01000000000000ABCDEF50 /* GestureManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureManager.swift; sourceTree = "<group>"; };
+		AA01000000000000ABCDEF51 /* GestureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF50 /* GestureManager.swift */; };
 		AA01000000000000ABCDEF22 /* AppleSignInCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInCoordinator.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF26 /* BiometricOptInSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricOptInSheet.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF28 /* ByteAI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ByteAI.entitlements; sourceTree = "<group>"; };
@@ -202,7 +206,6 @@
 			isa = PBXGroup;
 			children = (
 				5F93A2BA2F9D1119009E36CA /* AuthManager.swift */,
-				AA01000000000000ABCDEF20 /* BiometricLock.swift */,
 				AA01000000000000ABCDEF22 /* AppleSignInCoordinator.swift */,
 				5F1E00C92FA2840B00210D6B /* BiometricLock.swift */,
 			);
@@ -253,12 +256,21 @@
 			path = Realtime;
 			sourceTree = "<group>";
 		};
+		AA01000000000000ABCDEF52 /* Gestures */ = {
+			isa = PBXGroup;
+			children = (
+				AA01000000000000ABCDEF50 /* GestureManager.swift */,
+			);
+			path = Gestures;
+			sourceTree = "<group>";
+		};
 		5F93A2C92F9D1119009E36CA /* Core */ = {
 			isa = PBXGroup;
 			children = (
 				5F93A2BB2F9D1119009E36CA /* Auth */,
 				5F93A2BE2F9D1119009E36CA /* Design */,
 				5F93A2C02F9D1119009E36CA /* FeatureFlags */,
+				AA01000000000000ABCDEF52 /* Gestures */,
 				5F93A2C32F9D1119009E36CA /* Models */,
 				5F93A2C52F9D1119009E36CA /* Network */,
 				5F93A2C72F9D1119009E36CA /* Realtime */,
@@ -379,6 +391,7 @@
 		5F93A2F02F9D1119009E36CA /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				5FBDB3AD2FA68572006DB2F1 /* AccountSuspendedView.swift */,
 				5F93A3222F9D2797009E36CA /* AccentBar.swift */,
 				5F93A3232F9D2797009E36CA /* BioTextarea.swift */,
 				5F93A3242F9D2797009E36CA /* CardWithTopGradient.swift */,
@@ -407,6 +420,7 @@
 		5F93A2F32F9D1119009E36CA /* Extensions */ = {
 			isa = PBXGroup;
 			children = (
+				5FBDB3AF2FA68590006DB2F1 /* ShakeDetector.swift */,
 				5F93A2F12F9D1119009E36CA /* Haptics.swift */,
 				5F93A2F22F9D1119009E36CA /* KeyboardDismiss.swift */,
 				AA01000000000000ABCDEF02 /* ShareURL.swift */,
@@ -558,6 +572,7 @@
 				5F93A2FF2F9D1119009E36CA /* DeepLinkRouter.swift in Sources */,
 				5F93A3002F9D1119009E36CA /* DraftsListView.swift in Sources */,
 				5F93A3012F9D1119009E36CA /* ConversationsView.swift in Sources */,
+				5FBDB3B02FA68590006DB2F1 /* ShakeDetector.swift in Sources */,
 				5F93A3022F9D1119009E36CA /* AuthManager.swift in Sources */,
 				5F93A3032F9D1119009E36CA /* ChatConnection.swift in Sources */,
 				5F93A3042F9D1119009E36CA /* APIClient.swift in Sources */,
@@ -575,6 +590,7 @@
 				5F93A3102F9D1119009E36CA /* InterviewDetailView.swift in Sources */,
 				5F93A3112F9D1119009E36CA /* ByteTextField.swift in Sources */,
 				5F1E00C62FA175A800210D6B /* ThemeManager.swift in Sources */,
+				5FBDB3AE2FA68572006DB2F1 /* AccountSuspendedView.swift in Sources */,
 				5F93A3122F9D1119009E36CA /* AvatarView.swift in Sources */,
 				5F93A3132F9D1119009E36CA /* ByteAIApp.swift in Sources */,
 				5F93A3142F9D1119009E36CA /* MessageBubble.swift in Sources */,
@@ -602,7 +618,7 @@
 				5F93A31E2F9D1119009E36CA /* Haptics.swift in Sources */,
 				AA01000000000000ABCDEF01 /* ShareURL.swift in Sources */,
 				AA01000000000000ABCDEF03 /* ByteAILogoView.swift in Sources */,
-				AA01000000000000ABCDEF21 /* BiometricLock.swift in Sources */,
+				AA01000000000000ABCDEF51 /* GestureManager.swift in Sources */,
 				AA01000000000000ABCDEF23 /* AppleSignInCoordinator.swift in Sources */,
 				AA01000000000000ABCDEF41 /* LaunchSplashView.swift in Sources */,
 				AA01000000000000ABCDEF27 /* BiometricOptInSheet.swift in Sources */,
