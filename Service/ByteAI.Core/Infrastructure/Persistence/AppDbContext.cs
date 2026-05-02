@@ -72,6 +72,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     // Moderation
     public DbSet<FlaggedContent> FlaggedContents => Set<FlaggedContent>();
+    public DbSet<UserBan> UserBans => Set<UserBan>();
+    public DbSet<UserBanHistory> UserBanHistories => Set<UserBanHistory>();
+    public DbSet<BanHiddenContent> BanHiddenContents => Set<BanHiddenContent>();
 
     // Admin activity views (keyless)
     public DbSet<LoggedInTodayUser>    LoggedInToday     => Set<LoggedInTodayUser>();

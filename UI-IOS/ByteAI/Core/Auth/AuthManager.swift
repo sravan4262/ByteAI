@@ -257,7 +257,7 @@ final class AuthManager: ObservableObject {
             // User dismissed the sheet — silent, like Google's `.canceled`.
         } catch {
             print("[Auth] Apple sign-in failed: \(error)")
-            self.error = "Sign-in failed — try again"
+            self.error = Self.signInErrorMessage(from: error)
         }
     }
 
@@ -306,8 +306,20 @@ final class AuthManager: ObservableObject {
             // User dismissed the sheet — not an error worth surfacing.
         } catch {
             print("[Auth] Google sign-in failed: \(error)")
-            self.error = "Sign-in failed — try again"
+            self.error = Self.signInErrorMessage(from: error)
         }
+    }
+
+    /// Maps a Supabase / OAuth sign-in error to a human-readable string.
+    /// Banned users hit this path with `user_banned` (or a localized description
+    /// containing "banned") at signInWithIdToken time — surface the support email
+    /// instead of a generic failure toast.
+    private static func signInErrorMessage(from error: Error) -> String {
+        let text = error.localizedDescription.lowercased()
+        if text.contains("user_banned") || text.contains("user is banned") || text.contains("banned") {
+            return "Your account has been suspended. Please contact officialbyteai@gmail.com to appeal."
+        }
+        return "Sign-in failed — try again"
     }
 
     private func topViewController() -> UIViewController? {

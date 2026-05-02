@@ -4,6 +4,7 @@ using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business;
 using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Entities;
+using ByteAI.Core.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +16,10 @@ namespace ByteAI.Api.Controllers;
 [Tags("Admin")]
 [Authorize]
 [RequireRole("admin")] // Only admins can access these endpoints
-public sealed class AdminController(IAdminBusiness adminBusiness, ISupportBusiness supportBusiness) : ControllerBase
+public sealed class AdminController(
+    IAdminBusiness adminBusiness,
+    ISupportBusiness supportBusiness,
+    ICurrentUserService currentUserService) : ControllerBase
 {
     public sealed record UpsertFeatureFlagRequest(string Key, string Name, string? Description, bool GlobalOpen);
     public sealed record ToggleFeatureFlagRequest(bool GlobalOpen);
@@ -189,6 +193,52 @@ public sealed class AdminController(IAdminBusiness adminBusiness, ISupportBusine
             new PagedResponse<AdminFeedbackResponse>(items, result.Total, result.Page, result.PageSize)));
     }
 
+    // ── Moderation watchlist & bans ──────────────────────────────────────────
+
+    public sealed record BanUserRequest(Guid UserId, string Reason, DateTime? ExpiresAt);
+
+    /// <summary>Users whose own content has been flagged more than <paramref name="threshold"/> times.</summary>
+    [HttpGet("moderation/flagged-users")]
+    [ProducesResponseType(typeof(ApiResponse<List<FlaggedUserDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<FlaggedUserDto>>>> GetFlaggedUsers(
+        [FromQuery] int threshold = 5, CancellationToken ct = default)
+    {
+        var users = await adminBusiness.GetFlaggedUsersAsync(threshold, ct);
+        return Ok(ApiResponse<List<FlaggedUserDto>>.Success(users));
+    }
+
+    /// <summary>All currently active bans (expired bans are excluded).</summary>
+    [HttpGet("moderation/bans")]
+    [ProducesResponseType(typeof(ApiResponse<List<BannedUserDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<BannedUserDto>>>> GetBannedUsers(CancellationToken ct)
+    {
+        var bans = await adminBusiness.GetBannedUsersAsync(ct);
+        return Ok(ApiResponse<List<BannedUserDto>>.Success(bans));
+    }
+
+    /// <summary>Ban a user. Re-banning updates the existing ban record.</summary>
+    [HttpPost("moderation/bans")]
+    [ProducesResponseType(typeof(ApiResponse<UserBanDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<UserBanDto>>> BanUser(
+        [FromBody] BanUserRequest request, CancellationToken ct)
+    {
+        var adminSupabaseId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var adminId = await currentUserService.GetCurrentUserIdAsync(adminSupabaseId, ct) ?? Guid.Empty;
+
+        var ban = await adminBusiness.BanUserAsync(request.UserId, request.Reason, adminId, request.ExpiresAt, ct);
+        return Ok(ApiResponse<UserBanDto>.Success(ban));
+    }
+
+    /// <summary>Lift a ban. No-ops if the user is not currently banned.</summary>
+    [HttpDelete("moderation/bans/{userId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UnbanUser(Guid userId, CancellationToken ct)
+    {
+        await adminBusiness.UnbanUserAsync(userId, ct);
+        return NoContent();
+    }
+
     /// <summary>Update feedback status and optionally leave a note. Fires a notification to the user when status changes.</summary>
     [HttpPut("feedback/{feedbackId:guid}")]
     [ProducesResponseType(typeof(ApiResponse<AdminFeedbackResponse>), StatusCodes.Status200OK)]
@@ -204,5 +254,75 @@ public sealed class AdminController(IAdminBusiness adminBusiness, ISupportBusine
         }
         catch (ArgumentException ex)   { return BadRequest(new { message = ex.Message }); }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+    }
+
+    // ── Flag triage ──────────────────────────────────────────────────────────
+
+    public sealed record UpdateFlagStatusRequest(string Status, string? Note);
+
+    /// <summary>List flagged_content rows with optional filters. Default ordering is newest first.</summary>
+    [HttpGet("moderation/flags")]
+    [ProducesResponseType(typeof(ApiResponse<PagedResponse<FlaggedContentDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<PagedResponse<FlaggedContentDto>>>> GetFlaggedContent(
+        [FromQuery] string? status,
+        [FromQuery] string? contentType,
+        [FromQuery] string? severity,
+        [FromQuery] Guid?   authorId,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var filter = new FlagFilter(status, contentType, severity, authorId, from, to);
+        var result = await adminBusiness.GetFlaggedContentAsync(filter, page, pageSize, ct);
+        var response = new PagedResponse<FlaggedContentDto>(
+            result.Items.ToList(), result.Total, result.Page, result.PageSize);
+        return Ok(ApiResponse<PagedResponse<FlaggedContentDto>>.Success(response));
+    }
+
+    /// <summary>All flag rows authored by a specific user. Powers the per-user drilldown.</summary>
+    [HttpGet("moderation/users/{userId:guid}/flags")]
+    [ProducesResponseType(typeof(ApiResponse<List<FlaggedContentDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<FlaggedContentDto>>>> GetUserFlags(
+        Guid userId, CancellationToken ct)
+    {
+        var flags = await adminBusiness.GetUserFlagsAsync(userId, ct);
+        return Ok(ApiResponse<List<FlaggedContentDto>>.Success(flags));
+    }
+
+    /// <summary>
+    /// Update a flag's status. On <c>removed</c> with a real <c>content_id</c>, the source
+    /// content is hidden (bytes/interviews) or hard-deleted (comments).
+    /// </summary>
+    [HttpPut("moderation/flags/{flagId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse<FlaggedContentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<FlaggedContentDto>>> UpdateFlagStatus(
+        Guid flagId, [FromBody] UpdateFlagStatusRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var adminSupabaseId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+            var adminId = await currentUserService.GetCurrentUserIdAsync(adminSupabaseId, ct) ?? Guid.Empty;
+
+            var updated = await adminBusiness.UpdateFlagStatusAsync(flagId, request.Status, request.Note, adminId, ct);
+            if (updated is null)
+                return NotFound(new { message = $"Flag {flagId} not found" });
+
+            return Ok(ApiResponse<FlaggedContentDto>.Success(updated));
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    /// <summary>Append-only ban audit history for one user, newest first.</summary>
+    [HttpGet("moderation/users/{userId:guid}/ban-history")]
+    [ProducesResponseType(typeof(ApiResponse<List<UserBanHistoryDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<UserBanHistoryDto>>>> GetUserBanHistory(
+        Guid userId, CancellationToken ct)
+    {
+        var history = await adminBusiness.GetUserBanHistoryAsync(userId, ct);
+        return Ok(ApiResponse<List<UserBanHistoryDto>>.Success(history));
     }
 }

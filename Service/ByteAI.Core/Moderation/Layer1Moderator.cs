@@ -32,9 +32,17 @@ public sealed class Layer1Moderator(ILogger<Layer1Moderator> logger) : IModerati
     // SSN-like: 3-2-4
     private static readonly Regex SsnRegex = new(@"\b\d{3}-\d{2}-\d{4}\b", RegexOptions.Compiled);
 
-    // Raw 16-digit run (with optional spaces or dashes between groups of 4) — credit-card-shaped
+    // Credit-card shapes:
+    //   - 4-4-4-4 with explicit space or dash separators (Visa / Mastercard / Discover)
+    //   - 4-6-5 with explicit space or dash separators (Amex)
+    //   - bare 16-digit run (no separators)
+    //   - bare 15-digit run (no separators — Amex)
+    // Earlier the pattern was `(?:\d[ -]*?){13,19}` which matched any 13–19 digit run with
+    // arbitrary whitespace, producing false positives on phone numbers, timestamps, and
+    // numeric IDs. Luhn still gates the final flag — but tightening the shape keeps Layer 1
+    // from spending CPU on candidates that obviously aren't card numbers.
     private static readonly Regex CardRegex = new(
-        @"\b(?:\d[ -]*?){13,19}\b",
+        @"\b(?:\d{4}[ -]\d{4}[ -]\d{4}[ -]\d{4}|\d{4}[ -]\d{6}[ -]\d{5}|\d{16}|\d{15})\b",
         RegexOptions.Compiled);
 
     private static readonly Regex UrlRegex = new(@"https?://[^\s]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);

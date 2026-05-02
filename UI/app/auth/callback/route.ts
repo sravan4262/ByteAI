@@ -32,6 +32,15 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error || !data.session) {
+    // Banned users hit `user_banned` (or message contains "banned") at exchange
+    // time — Supabase Auth refuses to issue a session while banned_until > now().
+    // Surface a dedicated query param so the home page can show the suspended
+    // message instead of a generic "sign-in failed" toast.
+    const code = (error as { code?: string } | null)?.code
+    const msg  = error?.message?.toLowerCase() ?? ''
+    if (code === 'user_banned' || msg.includes('banned')) {
+      return NextResponse.redirect(`${origin}/?error=account_suspended`)
+    }
     return NextResponse.redirect(`${origin}/`)
   }
 

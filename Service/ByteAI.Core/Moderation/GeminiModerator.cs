@@ -17,13 +17,18 @@ public sealed class GeminiModerator(ILlmService llm, ILogger<GeminiModerator> lo
 
         var surface = context switch
         {
-            ModerationContext.Byte      => "byte",
-            ModerationContext.Interview => "interview",
-            ModerationContext.Comment   => "comment",
-            ModerationContext.Chat      => "chat",
-            ModerationContext.Support   => "support",
-            ModerationContext.Profile   => "profile",
-            _                           => "byte",
+            ModerationContext.Byte                     => "byte",
+            ModerationContext.Interview                => "interview",
+            // The three comment variants share the same prompt context — Gemini's
+            // tech-relevance gate is only applied to byte/interview surfaces, and
+            // every comment-shaped surface gets the same "comment" treatment.
+            ModerationContext.Comment                  => "comment",
+            ModerationContext.InterviewComment         => "comment",
+            ModerationContext.InterviewQuestionComment => "comment",
+            ModerationContext.Chat                     => "chat",
+            ModerationContext.Support                  => "support",
+            ModerationContext.Profile                  => "profile",
+            _                                          => "byte",
         };
 
         var llmResult = await llm.ModerateContentAsync(text, surface, ct);

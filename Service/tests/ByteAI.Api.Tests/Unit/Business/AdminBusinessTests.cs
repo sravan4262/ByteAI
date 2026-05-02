@@ -2,6 +2,8 @@ using ByteAI.Api.Tests.Helpers;
 using ByteAI.Core.Business;
 using ByteAI.Core.Entities;
 using ByteAI.Core.Services.FeatureFlags;
+using ByteAI.Core.Services.Supabase;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ByteAI.Api.Tests.Unit.Business;
 
@@ -12,13 +14,18 @@ namespace ByteAI.Api.Tests.Unit.Business;
 public sealed class AdminBusinessTests : IDisposable
 {
     private readonly Mock<IFeatureFlagService> _flagService = new();
+    private readonly Mock<ISupabaseAdminService> _supabaseAdmin = new();
     private readonly ByteAI.Core.Infrastructure.Persistence.AppDbContext _db;
     private readonly AdminBusiness _sut;
 
     public AdminBusinessTests()
     {
         _db = DbContextFactory.Create();
-        _sut = new AdminBusiness(_flagService.Object, _db);
+        _sut = new AdminBusiness(
+            _flagService.Object,
+            _supabaseAdmin.Object,
+            NullLogger<AdminBusiness>.Instance,
+            _db);
     }
 
     public void Dispose() => _db.Dispose();

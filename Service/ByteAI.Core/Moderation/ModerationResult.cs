@@ -19,11 +19,20 @@ public sealed record ModerationReason(string Code, string Message)
 }
 
 /// <summary>Type of content being moderated. Drives context-specific rules
-/// (e.g. tech-relevance only applied to Byte/Interview).</summary>
+/// (e.g. tech-relevance only applied to Byte/Interview) AND the content_type
+/// string written into flagged_content rows — so the admin triage UI can
+/// route a "Remove" action to the correct source table.
+///
+/// Comments are split into three variants because they live in three different
+/// tables (bytes.comments / interviews.interview_comments /
+/// interviews.interview_question_comments). Without this distinction the
+/// triage flow couldn't tell which table to delete from.</summary>
 public enum ModerationContext
 {
     Byte,
-    Comment,
+    Comment,                    // bytes.comments
+    InterviewComment,           // interviews.interview_comments (top-level interview comment)
+    InterviewQuestionComment,   // interviews.interview_question_comments (per-question Q&A comment)
     Interview,
     Chat,
     Support,

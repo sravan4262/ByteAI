@@ -15,4 +15,19 @@ public interface ISupabaseAdminService
     /// cannot re-provision a new profile with the same Supabase identity.
     /// </summary>
     Task DeleteAuthUserAsync(string supabaseUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets <c>auth.users.banned_until</c> via Supabase admin API. While
+    /// <c>banned_until &gt; now()</c>, every sign-in / token-refresh attempt at the
+    /// Supabase Auth layer is rejected with <c>user_banned</c>, so banned users
+    /// cannot get a fresh JWT even after our local <c>SignOutAllSessionsAsync</c>
+    /// revokes their refresh tokens.
+    ///
+    /// <paramref name="duration"/> semantics:
+    /// <list type="bullet">
+    ///   <item><description><c>null</c> → "none" — clears the ban (used by unban).</description></item>
+    ///   <item><description>positive <see cref="TimeSpan"/> → "{hours}h" — temporary ban.</description></item>
+    /// </list>
+    /// </summary>
+    Task SetAuthUserBanAsync(string supabaseUserId, TimeSpan? duration, CancellationToken ct = default);
 }

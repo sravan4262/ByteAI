@@ -21,6 +21,7 @@ public sealed class ByteConfiguration : IEntityTypeConfiguration<Byte>
         builder.Property(b => b.SearchVector).HasColumnName("search_vector").HasColumnType("tsvector");
         builder.Property(b => b.Type).HasColumnName("type").HasDefaultValue("article");
         builder.Property(b => b.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+        builder.Property(b => b.IsHidden).HasColumnName("is_hidden").HasDefaultValue(false);
         builder.Property(b => b.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
         builder.Property(b => b.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
 
@@ -33,5 +34,9 @@ public sealed class ByteConfiguration : IEntityTypeConfiguration<Byte>
         builder.HasIndex(b => b.AuthorId).HasDatabaseName("ix_bytes_author_id");
         builder.HasIndex(b => b.CreatedAt).HasDatabaseName("ix_bytes_created_at").IsDescending();
         builder.HasIndex(b => b.SearchVector).HasMethod("GIN").HasDatabaseName("ix_bytes_search_vector");
+
+        // Global query filter — every read excludes ban/moderation-hidden rows.
+        // Admin endpoints that need to see hidden rows must call IgnoreQueryFilters().
+        builder.HasQueryFilter(b => !b.IsHidden);
     }
 }

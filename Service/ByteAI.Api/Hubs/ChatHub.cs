@@ -42,7 +42,7 @@ public sealed class ChatHub(
         // so the SignalR caller sees a typed failure and the message never fans out to the recipient.
         try
         {
-            await moderation.EnforceAsync(db, content, ModerationContext.Chat, ct: Context.ConnectionAborted);
+            await moderation.EnforceAsync(db, content, ModerationContext.Chat, authorId: senderId, ct: Context.ConnectionAborted);
         }
         catch (ContentModerationException ex)
         {

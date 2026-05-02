@@ -21,6 +21,13 @@ private struct ContentRejectedShape: Decodable {
     let reasons: [ReasonShape]?
 }
 
+// 403 ban envelope from BanEnforcementMiddleware:
+//   { "code": "ACCOUNT_SUSPENDED", "message": "..." }
+private struct AccountSuspendedShape: Decodable {
+    let code: String?
+    let message: String?
+}
+
 actor APIClient {
     static let shared = APIClient()
 
@@ -81,6 +88,19 @@ actor APIClient {
                             throw APIError.contentRejected(ContentRejection(reasons: reasons))
                         }
                     }
+                }
+                // 403 ACCOUNT_SUSPENDED — banned-user takeover.
+                if http.statusCode == 403,
+                   let body = try? JSONDecoder().decode(AccountSuspendedShape.self, from: data),
+                   body.code == "ACCOUNT_SUSPENDED" {
+                    let msg = body.message ?? "Your account has been suspended."
+                    await MainActor.run {
+                        NotificationCenter.default.post(
+                            name: .apiDidReceiveAccountSuspended,
+                            object: nil,
+                            userInfo: ["message": msg])
+                    }
+                    throw APIError.accountSuspended(msg)
                 }
                 if http.statusCode == 400 {
                     if let body = try? JSONDecoder().decode(InvalidContentShape.self, from: data),
@@ -805,6 +825,7 @@ enum APIError: LocalizedError {
     case unauthorized
     case invalidContent(String)
     case contentRejected(ContentRejection)
+    case accountSuspended(String)
 
     var errorDescription: String? { APIError.userMessage(from: self) }
 
@@ -850,6 +871,8 @@ enum APIError: LocalizedError {
             switch api {
             case .unauthorized:
                 return "Session expired — please sign in again"
+            case .accountSuspended(let msg):
+                return msg.isEmpty ? "Your account has been suspended." : msg
             case .invalidContent(let reason):
                 return reason.isEmpty ? "Content not valid for ByteAI" : reason
             case .contentRejected(let r):
@@ -885,6 +908,11 @@ enum APIError: LocalizedError {
 
 extension Notification.Name {
     static let apiDidReceiveUnauthorized = Notification.Name("APIClientDidReceiveUnauthorized")
+
+    /// Posted when the API returns 403 ACCOUNT_SUSPENDED. App root listens to
+    /// sign the user out of Supabase locally and present the suspended screen.
+    /// userInfo: ["message": String].
+    static let apiDidReceiveAccountSuspended = Notification.Name("APIClientDidReceiveAccountSuspended")
 
     /// Posted when a user's avatar changes (own upload, or learned from a refresh).
     /// userInfo: ["userId": String, "avatarUrl": String?]. Already-mounted views

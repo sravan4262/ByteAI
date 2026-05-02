@@ -14,6 +14,9 @@ public sealed class Interview
     public Pgvector.Vector? Embedding { get; set; }
     public string Type { get; set; } = "interview";
     public bool IsActive { get; set; } = true;
+    /// <summary>True when hidden by moderation/ban. Distinct from IsActive (user soft-delete).
+    /// A global EF query filter excludes IsHidden rows from all reads.</summary>
+    public bool IsHidden { get; set; } = false;
     public bool IsAnonymous { get; set; } = false;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

@@ -20,6 +20,9 @@ public sealed class FlaggedContent
     /// <summary>Null when the system flagged the content automatically.</summary>
     public Guid? ReporterUserId { get; set; }
 
+    /// <summary>Internal user ID of the person who created the flagged content. Null for legacy rows.</summary>
+    public Guid? ContentAuthorId { get; set; }
+
     /// <summary>'TOXICITY' | 'PROFANITY' | 'PII' | 'SPAM' | 'GIBBERISH' | 'USER_REPORT'</summary>
     public string ReasonCode { get; set; } = string.Empty;
 

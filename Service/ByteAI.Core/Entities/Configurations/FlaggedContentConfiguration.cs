@@ -14,6 +14,7 @@ public sealed class FlaggedContentConfiguration : IEntityTypeConfiguration<Flagg
         builder.Property(f => f.ContentType).HasColumnName("content_type").IsRequired();
         builder.Property(f => f.ContentId).HasColumnName("content_id").IsRequired();
         builder.Property(f => f.ReporterUserId).HasColumnName("reporter_user_id");
+        builder.Property(f => f.ContentAuthorId).HasColumnName("content_author_id");
         builder.Property(f => f.ReasonCode).HasColumnName("reason_code").IsRequired();
         builder.Property(f => f.ReasonMessage).HasColumnName("reason_message");
         builder.Property(f => f.Severity).HasColumnName("severity").IsRequired();

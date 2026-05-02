@@ -19,20 +19,40 @@ struct RootView: View {
     /// unlock — re-prompting in those cases is jarring.
     @State private var lastUnlockedAt: Date = .distantPast
 
+    /// Set when the API returns 403 ACCOUNT_SUSPENDED. While present, overlays
+    /// AccountSuspendedView in place of any other UI; tapping SIGN OUT clears
+    /// the local Supabase session and routes back to the auth screen.
+    @State private var suspensionMessage: String?
+
     var body: some View {
         Group {
-            switch auth.state {
-            case .unauthenticated:
-                AuthView().transition(.opacity)
-            case .onboarding:
-                OnboardingView().transition(.opacity)
-            case .locked:
-                BiometricLockView().transition(.opacity)
-            case .authenticated:
-                MainTabView().transition(.opacity)
+            if let suspensionMessage {
+                AccountSuspendedView(message: suspensionMessage) {
+                    Task {
+                        await auth.signOut()
+                        self.suspensionMessage = nil
+                    }
+                }
+                .transition(.opacity)
+            } else {
+                switch auth.state {
+                case .unauthenticated:
+                    AuthView().transition(.opacity)
+                case .onboarding:
+                    OnboardingView().transition(.opacity)
+                case .locked:
+                    BiometricLockView().transition(.opacity)
+                case .authenticated:
+                    MainTabView().transition(.opacity)
+                }
             }
         }
         .animation(.easeInOut(duration: 0.3), value: stateKey)
+        .onReceive(NotificationCenter.default.publisher(for: .apiDidReceiveAccountSuspended)) { note in
+            let msg = (note.userInfo?["message"] as? String)
+                ?? "Your account has been suspended."
+            suspensionMessage = msg
+        }
         .onChange(of: auth.state) { _, newState in
             if case .authenticated = newState {
                 Task {

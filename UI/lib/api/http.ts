@@ -54,9 +54,10 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       //   • { message } (controller-caught domain errors)
       //   • { error, reason } (legacy)
       //   • { error: "CONTENT_REJECTED", severity, reasons: [{code, message}] } (HTTP 422 moderation)
+      //   • { code: "ACCOUNT_SUSPENDED", message } (HTTP 403 ban-enforcement middleware)
       // Probe each so the human-readable reason actually reaches the UI.
       const body = JSON.parse(text)
-      const code = body.error ?? body.title ?? 'API_ERROR'
+      const code = body.error ?? body.code ?? body.title ?? 'API_ERROR'
       const rawReasons = Array.isArray(body.reasons) ? body.reasons : undefined
       const reasons: ModerationReason[] | undefined = rawReasons
         ?.filter((r: unknown): r is ModerationReason =>
@@ -70,6 +71,17 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
         ? reasons.map((r) => r.message).join(' ')
         : undefined
       const reason = body.reason ?? body.detail ?? body.message ?? fallbackReason ?? text
+
+      // Notify the app that this user's account is suspended so the AuthGuard
+      // can sign them out and present the suspended screen. Dispatched on every
+      // 403 with this code — listeners deduplicate. Browser-only guard so SSR
+      // doesn't blow up.
+      if (code === 'ACCOUNT_SUSPENDED' && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('byteai:account-suspended', {
+          detail: { message: reason },
+        }))
+      }
+
       throw new ApiError(res.status, code, reason, reasons)
     } catch (e) {
       if (e instanceof ApiError) throw e

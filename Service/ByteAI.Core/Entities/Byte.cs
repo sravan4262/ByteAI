@@ -15,6 +15,9 @@ public sealed class Byte
     public NpgsqlTsVector? SearchVector { get; set; }
     public string Type { get; set; } = "article";
     public bool IsActive { get; set; } = true;
+    /// <summary>True when hidden by moderation/ban. Distinct from IsActive (user soft-delete).
+    /// A global EF query filter excludes IsHidden rows from all reads.</summary>
+    public bool IsHidden { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

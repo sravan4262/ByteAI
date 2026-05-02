@@ -3,6 +3,9 @@ using ByteAI.Api.Mappers;
 using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
+using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Infrastructure.Services;
+using ByteAI.Core.Moderation;
 using ByteAI.Core.Services.Avatar;
 using ByteAI.Core.Services.Preferences;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +19,13 @@ namespace ByteAI.Api.Controllers;
 [Produces("application/json")]
 [Tags("Users")]
 [RequireRole("user")]
-public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferencesService prefsService, IAvatarService avatarService) : ControllerBase
+public sealed class UsersController(
+    IUsersBusiness usersBusiness,
+    IUserPreferencesService prefsService,
+    IAvatarService avatarService,
+    IModerationService moderation,
+    ICurrentUserService currentUserService,
+    AppDbContext db) : ControllerBase
 {
     /// <summary>Get a user's public profile by ID.</summary>
     [HttpGet("{userId:guid}")]
@@ -94,6 +103,31 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     public async Task<ActionResult<ApiResponse<UserResponse>>> UpdateMyProfile([FromBody] UpdateProfileRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var authorId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
+
+        // ── Username gets strict handling: ANY flag (medium or high) blocks the change.
+        //    Handles appear in URLs / @-mentions / notifications and are hard to retract.
+        if (!string.IsNullOrWhiteSpace(request.Username))
+        {
+            var unameResult = await moderation.ModerateAsync(request.Username, ModerationContext.Profile, ct);
+            if (!unameResult.IsClean && unameResult.Severity >= ModerationSeverity.Medium)
+            {
+                try
+                {
+                    await FlaggedContentWriter.RecordAsync(
+                        db, ModerationContext.Profile, authorId, unameResult, ct, authorId, request.Username);
+                }
+                catch { /* never block on flag-write failure */ }
+                throw new ContentModerationException(unameResult);
+            }
+        }
+
+        // Other fields use the standard medium-leniency flow (high → block, medium → flag + allow).
+        var profileText = string.Join("\n",
+            new[] { request.DisplayName, request.Bio, request.RoleTitle, request.Company }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+        if (!string.IsNullOrWhiteSpace(profileText))
+            await moderation.EnforceAsync(db, profileText, ModerationContext.Profile, contentId: authorId, authorId: authorId, ct: ct);
 
         try
         {
@@ -114,6 +148,11 @@ public sealed class UsersController(IUsersBusiness usersBusiness, IUserPreferenc
     public async Task<ActionResult<ApiResponse<UserResponse>>> UpdateProfile(Guid userId, [FromBody] UpdateProfileRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+
+        var profileText = string.Join("\n",
+            new[] { request.DisplayName, request.Bio }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        if (!string.IsNullOrWhiteSpace(profileText))
+            await moderation.EnforceAsync(db, profileText, ModerationContext.Profile, contentId: userId, authorId: userId, ct: ct);
 
         try
         {

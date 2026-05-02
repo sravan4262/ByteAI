@@ -82,7 +82,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
         // (off-topic, profanity, toxicity, hate, sexual, harm, PII, spam, gibberish, prompt-injection).
         // On Medium severity (Layer 1 PII / URL spam) the call records a flag row
         // for moderator review and returns; the post still goes through.
-        await moderation.EnforceAsync(db, $"{title}\n\n{body}", ModerationContext.Byte, ct: ct);
+        await moderation.EnforceAsync(db, $"{title}\n\n{body}", ModerationContext.Byte, authorId: authorId, ct: ct);
 
         // ── Near-duplicate detection (skip if force=true) ─────────────────────
         if (!force)
@@ -179,7 +179,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
 
         if (contentChanged)
         {
-            await moderation.EnforceAsync(db, $"{newTitle}\n\n{newBody}", ModerationContext.Byte, contentId: byteId, ct: ct);
+            await moderation.EnforceAsync(db, $"{newTitle}\n\n{newBody}", ModerationContext.Byte, contentId: byteId, authorId: authorId, ct: ct);
         }
 
         if (!string.IsNullOrWhiteSpace(title)) entity.Title = title;

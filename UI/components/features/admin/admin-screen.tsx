@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Shield, Plus, Globe, User, Search, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Lock, ShieldCheck, MessageSquare, CheckCheck, Activity } from 'lucide-react'
+import { Shield, Plus, Globe, User, Search, ChevronDown, ChevronUp, ToggleLeft, ToggleRight, Lock, ShieldCheck, MessageSquare, CheckCheck, Activity, AlertTriangle, Ban, X } from 'lucide-react'
 import { useIsAdmin } from '@/hooks/use-is-admin'
 import { searchUsers } from '@/lib/api/client'
 import { apiFetch } from '@/lib/api/http'
@@ -28,10 +28,24 @@ import {
   getAllFeedback,
   updateFeedbackStatus,
 } from '@/lib/api/support'
+import {
+  FlaggedUser,
+  BannedUser,
+  FlaggedContent,
+  UserBanHistory,
+  getFlaggedUsers,
+  getBannedUsers,
+  banUser,
+  unbanUser,
+  getFlaggedContent,
+  getUserFlags,
+  updateFlagStatus,
+  getUserBanHistory,
+} from '@/lib/api/admin-moderation'
 import { UserActivityPanels } from './user-activity-panels'
 
 const SYSTEM_ROLES = ['user', 'admin']
-type AdminTab = 'system' | 'feedback' | 'activity'
+type AdminTab = 'system' | 'feedback' | 'activity' | 'moderation'
 
 export function AdminScreen() {
   const { isAdmin, isLoaded } = useIsAdmin()
@@ -68,6 +82,28 @@ export function AdminScreen() {
   const [savingNote, setSavingNote]             = useState(false)
   const [feedbackTypeTabs, setFeedbackTypeTabs] = useState<Record<string, 'good' | 'bad' | 'idea'>>({ open: 'bad', reviewed: 'good', closed: 'good' })
   const [collapsedFeedbackSections, setCollapsedFeedbackSections] = useState<Record<string, boolean>>({})
+
+  // ── Moderation state ──────────────────────────────────────────────────────
+  const [flaggedUsers, setFlaggedUsers]     = useState<FlaggedUser[]>([])
+  const [bannedUsers, setBannedUsers]       = useState<BannedUser[]>([])
+  const [moderationLoading, setModerationLoading] = useState(false)
+  const [banModal, setBanModal]             = useState<FlaggedUser | null>(null)
+  const [banReason, setBanReason]           = useState('')
+  const [banExpiry, setBanExpiry]           = useState('')
+  const [savingBan, setSavingBan]           = useState(false)
+
+  // ── Flag-queue state ───────────────────────────────────────────────────────
+  const [flagQueue, setFlagQueue]                 = useState<FlaggedContent[]>([])
+  const [flagQueueLoading, setFlagQueueLoading]   = useState(false)
+  const [flagStatusFilter, setFlagStatusFilter]   = useState<'open' | 'reviewing' | 'removed' | 'dismissed' | ''>('open')
+  const [flagSeverityFilter, setFlagSeverityFilter] = useState<'low' | 'medium' | 'high' | ''>('')
+  const [flagTypeFilter, setFlagTypeFilter]       = useState<string>('')
+
+  // ── Per-user drilldown ─────────────────────────────────────────────────────
+  const [drilldownUser, setDrilldownUser]         = useState<FlaggedUser | null>(null)
+  const [userFlags, setUserFlags]                 = useState<FlaggedContent[]>([])
+  const [userBanHistory, setUserBanHistory]       = useState<UserBanHistory[]>([])
+  const [drilldownLoading, setDrilldownLoading]   = useState(false)
 
   // ── User override state ────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
@@ -110,6 +146,32 @@ export function AdminScreen() {
     loadFeedback(1)
   }, [isAdmin, adminTab, loadFeedback])
 
+  useEffect(() => {
+    if (!isAdmin || adminTab !== 'moderation') return
+    setModerationLoading(true)
+    Promise.all([getFlaggedUsers(), getBannedUsers()])
+      .then(([flagged, banned]) => { setFlaggedUsers(flagged); setBannedUsers(banned) })
+      .finally(() => setModerationLoading(false))
+  }, [isAdmin, adminTab])
+
+  // ── Flag-queue loader ──────────────────────────────────────────────────────
+  const loadFlagQueue = useCallback(async () => {
+    setFlagQueueLoading(true)
+    const data = await getFlaggedContent({
+      status:      flagStatusFilter || undefined,
+      severity:    flagSeverityFilter || undefined,
+      contentType: flagTypeFilter || undefined,
+      pageSize:    50,
+    })
+    setFlagQueue(data.items)
+    setFlagQueueLoading(false)
+  }, [flagStatusFilter, flagSeverityFilter, flagTypeFilter])
+
+  useEffect(() => {
+    if (!isAdmin || adminTab !== 'moderation') return
+    loadFlagQueue()
+  }, [isAdmin, adminTab, loadFlagQueue])
+
   const handleMarkReviewed = async (item: AdminFeedbackResponse) => {
     const updated = await updateFeedbackStatus(item.id, 'reviewed')
     if (updated) {
@@ -133,6 +195,68 @@ export function AdminScreen() {
     } else {
       toast.error('Failed to update')
     }
+  }
+
+  // ── Moderation handlers ────────────────────────────────────────────────────
+  const handleBanUser = async () => {
+    if (!banModal || !banReason.trim()) { toast.error('Reason is required'); return }
+    setSavingBan(true)
+    // The <input type="datetime-local"> control returns a naive local string
+    // (e.g. "2026-08-15T18:00"). Convert to UTC-ISO so the server's UTC
+    // comparisons are unambiguous regardless of the admin's timezone.
+    const expiresAtUtc = banExpiry ? new Date(banExpiry).toISOString() : null
+    const result = await banUser({
+      userId: banModal.userId,
+      reason: banReason,
+      expiresAt: expiresAtUtc,
+    })
+    setSavingBan(false)
+    if (result) {
+      toast.success(`${banModal.displayName ?? banModal.username} has been banned`)
+      setFlaggedUsers(prev => prev.map(u => u.userId === banModal.userId ? { ...u, isBanned: true } : u))
+      setBanModal(null)
+      setBanReason('')
+      setBanExpiry('')
+      getBannedUsers().then(setBannedUsers)
+    } else {
+      toast.error('Failed to ban user')
+    }
+  }
+
+  const handleUnbanUser = async (userId: string, username: string) => {
+    const ok = await unbanUser(userId)
+    if (ok) {
+      toast.success(`${username} has been unbanned`)
+      setBannedUsers(prev => prev.filter(b => b.userId !== userId))
+      setFlaggedUsers(prev => prev.map(u => u.userId === userId ? { ...u, isBanned: false } : u))
+    } else {
+      toast.error('Failed to unban user')
+    }
+  }
+
+  // ── Drilldown + flag triage handlers ───────────────────────────────────────
+  const openDrilldown = async (user: FlaggedUser) => {
+    setDrilldownUser(user)
+    setDrilldownLoading(true)
+    const [flags, history] = await Promise.all([
+      getUserFlags(user.userId),
+      getUserBanHistory(user.userId),
+    ])
+    setUserFlags(flags)
+    setUserBanHistory(history)
+    setDrilldownLoading(false)
+  }
+
+  const handleUpdateFlagStatus = async (
+    flag: FlaggedContent,
+    status: 'reviewing' | 'removed' | 'dismissed',
+  ) => {
+    const updated = await updateFlagStatus(flag.id, status)
+    if (!updated) { toast.error('Failed to update flag'); return }
+    toast.success(`Flag marked ${status}`)
+    // Update both lists wherever this flag appears
+    setFlagQueue(prev => prev.map(f => f.id === updated.id ? updated : f))
+    setUserFlags(prev => prev.map(f => f.id === updated.id ? updated : f))
   }
 
   // ── Flag handlers ──────────────────────────────────────────────────────────
@@ -289,8 +413,8 @@ export function AdminScreen() {
         </div>
 
         {/* Top-level tabs */}
-        <div className="flex gap-2">
-          {([['system', Shield, 'SYSTEM_CONFIG'], ['feedback', MessageSquare, 'FEEDBACK'], ['activity', Activity, 'USER ACTIVITY']] as const).map(([tab, Icon, label]) => (
+        <div className="flex flex-wrap gap-2">
+          {([['system', Shield, 'SYSTEM_CONFIG'], ['feedback', MessageSquare, 'FEEDBACK'], ['activity', Activity, 'USER ACTIVITY'], ['moderation', AlertTriangle, 'MODERATION']] as const).map(([tab, Icon, label]) => (
             <button key={tab} onClick={() => setAdminTab(tab)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-[10px] font-bold tracking-[0.08em] border transition-all ${
                 adminTab === tab
@@ -632,6 +756,298 @@ export function AdminScreen() {
         {/* ── Activity tab ─────────────────────────────────────────────────── */}
         {adminTab === 'activity' && <UserActivityPanels />}
 
+        {/* ── Moderation tab ───────────────────────────────────────────────── */}
+        {adminTab === 'moderation' && (
+          <div className="flex flex-col gap-6">
+            {moderationLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <span className="font-mono text-xs text-[var(--t2)] tracking-[0.08em] animate-pulse">LOADING...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                {/* At-Risk Users */}
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-[3px] h-4 rounded-full bg-[var(--yellow,#f59e0b)] flex-shrink-0" />
+                    <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">AT-RISK USERS</span>
+                    <span className="ml-auto font-mono text-[10px] text-[var(--t2)]">{flaggedUsers.length} USERS · &gt;5 FLAGS</span>
+                  </div>
+                  {flaggedUsers.length === 0 ? (
+                    <p className="font-mono text-xs text-[var(--t2)] py-6 text-center tracking-[0.06em]">NO AT-RISK USERS</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {flaggedUsers.map(u => (
+                        <div key={u.userId} className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border-h)] bg-[var(--bg-el)] hover:border-[rgba(59,130,246,0.4)] transition-all cursor-pointer"
+                             onClick={() => openDrilldown(u)}>
+                          <div className="w-8 h-8 rounded-full bg-[rgba(59,130,246,0.12)] border border-[rgba(59,130,246,0.2)] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            {u.avatarUrl
+                              ? <img src={u.avatarUrl} alt="" className="w-full h-full object-cover" />
+                              : <User size={14} className="text-[var(--t2)]" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-xs font-bold text-[var(--t1)] truncate">{u.displayName ?? u.username}</span>
+                              <span className="font-mono text-[10px] text-[var(--t2)]">@{u.username}</span>
+                              {u.isBanned && (
+                                <span className="px-1.5 py-0.5 rounded font-mono text-[9px] font-bold tracking-[0.08em] bg-[rgba(239,68,68,0.12)] text-[var(--red,#ef4444)] border border-[rgba(239,68,68,0.2)]">BANNED</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="font-mono text-[10px] text-[var(--t2)]">{u.flagCount} flags</span>
+                              {u.contentTypes.map(ct => (
+                                <span key={ct} className="px-1.5 py-0.5 rounded font-mono text-[9px] tracking-[0.05em] bg-[rgba(59,130,246,0.08)] text-[var(--accent)] border border-[rgba(59,130,246,0.15)]">{ct}</span>
+                              ))}
+                            </div>
+                          </div>
+                          {!u.isBanned && (
+                            <button onClick={(e) => { e.stopPropagation(); setBanModal(u); setBanReason(''); setBanExpiry('') }}
+                              className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-mono text-[10px] font-bold tracking-[0.06em] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.06)] text-[var(--red,#ef4444)] hover:bg-[rgba(239,68,68,0.12)] transition-all">
+                              <Ban size={10} />
+                              BAN
+                            </button>
+                          )}
+                          {u.isBanned && (
+                            <button onClick={(e) => { e.stopPropagation(); handleUnbanUser(u.userId, u.username) }}
+                              className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-mono text-[10px] font-bold tracking-[0.06em] border border-[rgba(16,217,160,0.3)] bg-[rgba(16,217,160,0.06)] text-[var(--green)] hover:bg-[rgba(16,217,160,0.12)] transition-all">
+                              <X size={10} />
+                              UNBAN
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Banned Users */}
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-[3px] h-4 rounded-full bg-[var(--red,#ef4444)] flex-shrink-0" />
+                    <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">BANNED USERS</span>
+                    <span className="ml-auto font-mono text-[10px] text-[var(--t2)]">{bannedUsers.length} ACTIVE</span>
+                  </div>
+                  {bannedUsers.length === 0 ? (
+                    <p className="font-mono text-xs text-[var(--t2)] py-6 text-center tracking-[0.06em]">NO ACTIVE BANS</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {bannedUsers.map(b => (
+                        <div key={b.userId} className="flex items-start gap-3 p-3 rounded-xl border border-[rgba(239,68,68,0.2)] bg-[rgba(239,68,68,0.04)]">
+                          <div className="w-8 h-8 rounded-full bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            {b.avatarUrl
+                              ? <img src={b.avatarUrl} alt="" className="w-full h-full object-cover" />
+                              : <User size={14} className="text-[var(--t2)]" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-xs font-bold text-[var(--t1)] truncate">{b.displayName ?? b.username}</span>
+                              <span className="font-mono text-[10px] text-[var(--t2)]">@{b.username}</span>
+                            </div>
+                            <p className="font-mono text-[10px] text-[var(--t2)] mt-0.5 truncate" title={b.reason}>{b.reason}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="font-mono text-[10px] text-[var(--t3)]" title={`UTC: ${new Date(b.bannedAt).toISOString()}`}>
+                                {new Date(b.bannedAt).toLocaleString()}
+                              </span>
+                              <span className="font-mono text-[10px] text-[var(--t3)]" title={b.expiresAt ? `UTC: ${b.expiresAt}` : ''}>
+                                {b.expiresAt ? `until ${new Date(b.expiresAt).toLocaleString()}` : 'permanent'}
+                              </span>
+                            </div>
+                          </div>
+                          <button onClick={() => handleUnbanUser(b.userId, b.username)}
+                            className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-mono text-[10px] font-bold tracking-[0.06em] border border-[rgba(16,217,160,0.3)] bg-[rgba(16,217,160,0.06)] text-[var(--green)] hover:bg-[rgba(16,217,160,0.12)] transition-all">
+                            <X size={10} />
+                            UNBAN
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Flag Queue ─────────────────────────────────────────────── */}
+            <div className="flex flex-col gap-4 mt-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">FLAG QUEUE</span>
+
+                <select value={flagStatusFilter}
+                        onChange={e => setFlagStatusFilter(e.target.value as typeof flagStatusFilter)}
+                        className="ml-2 bg-[var(--bg-el)] border border-[var(--border-h)] rounded-md px-2 py-1 font-mono text-[10px] text-[var(--t1)]">
+                  <option value="">All statuses</option>
+                  <option value="open">Open</option>
+                  <option value="reviewing">Reviewing</option>
+                  <option value="removed">Removed</option>
+                  <option value="dismissed">Dismissed</option>
+                </select>
+
+                <select value={flagSeverityFilter}
+                        onChange={e => setFlagSeverityFilter(e.target.value as typeof flagSeverityFilter)}
+                        className="bg-[var(--bg-el)] border border-[var(--border-h)] rounded-md px-2 py-1 font-mono text-[10px] text-[var(--t1)]">
+                  <option value="">All severities</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+
+                <select value={flagTypeFilter}
+                        onChange={e => setFlagTypeFilter(e.target.value)}
+                        className="bg-[var(--bg-el)] border border-[var(--border-h)] rounded-md px-2 py-1 font-mono text-[10px] text-[var(--t1)]">
+                  <option value="">All types</option>
+                  <option value="byte">Byte</option>
+                  <option value="comment">Comment</option>
+                  <option value="interview">Interview</option>
+                  <option value="chat">Chat</option>
+                  <option value="profile">Profile</option>
+                  <option value="support">Support</option>
+                </select>
+
+                <span className="ml-auto font-mono text-[10px] text-[var(--t2)]">{flagQueue.length} ROWS</span>
+              </div>
+
+              {flagQueueLoading ? (
+                <p className="font-mono text-xs text-[var(--t2)] py-6 text-center tracking-[0.06em] animate-pulse">LOADING...</p>
+              ) : flagQueue.length === 0 ? (
+                <p className="font-mono text-xs text-[var(--t2)] py-6 text-center tracking-[0.06em]">QUEUE EMPTY</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {flagQueue.map(f => (
+                    <FlagQueueRow key={f.id} flag={f} onAction={handleUpdateFlagStatus} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Per-user drilldown modal */}
+        {drilldownUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setDrilldownUser(null)} />
+            <div className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] shadow-[0_16px_64px_rgba(0,0,0,0.8)]">
+              <div className="h-px bg-gradient-to-r from-[var(--accent)] via-[rgba(59,130,246,0.3)] to-transparent" />
+              <div className="p-5 flex flex-col gap-5">
+                <div className="flex items-center gap-2">
+                  <User size={14} className="text-[var(--accent)]" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">USER DRILLDOWN</span>
+                  <span className="ml-2 font-mono text-[10px] text-[var(--t2)]">
+                    {drilldownUser.displayName ?? drilldownUser.username} · @{drilldownUser.username}
+                  </span>
+                  <button onClick={() => setDrilldownUser(null)} className="ml-auto text-[var(--t3)] hover:text-[var(--t1)]"><X size={14} /></button>
+                </div>
+
+                {drilldownLoading ? (
+                  <p className="font-mono text-xs text-[var(--t2)] py-6 text-center animate-pulse">LOADING...</p>
+                ) : (
+                  <>
+                    <div>
+                      <span className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em]">FLAGS ({userFlags.length})</span>
+                      {userFlags.length === 0 ? (
+                        <p className="font-mono text-xs text-[var(--t2)] py-3">No flags for this user.</p>
+                      ) : (
+                        <div className="flex flex-col gap-2 mt-2">
+                          {userFlags.map(f => (
+                            <FlagQueueRow key={f.id} flag={f} onAction={handleUpdateFlagStatus} compact />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <span className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em]">BAN HISTORY ({userBanHistory.length})</span>
+                      {userBanHistory.length === 0 ? (
+                        <p className="font-mono text-xs text-[var(--t2)] py-3">Never banned.</p>
+                      ) : (
+                        <div className="flex flex-col gap-2 mt-2">
+                          {userBanHistory.map(h => (
+                            <div key={h.id} className="p-3 rounded-lg border border-[var(--border-h)] bg-[var(--bg-el)]">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold tracking-[0.06em] border ${h.liftedAt
+                                  ? 'bg-[rgba(16,217,160,0.06)] text-[var(--green)] border-[rgba(16,217,160,0.2)]'
+                                  : 'bg-[rgba(239,68,68,0.1)] text-[var(--red,#ef4444)] border-[rgba(239,68,68,0.2)]'}`}>
+                                  {h.liftedAt ? 'LIFTED' : 'ACTIVE'}
+                                </span>
+                                <span className="font-mono text-[10px] text-[var(--t3)]" title={`UTC: ${h.bannedAt}`}>
+                                  {new Date(h.bannedAt).toLocaleString()}
+                                </span>
+                                {h.bannedByUsername && (
+                                  <span className="font-mono text-[10px] text-[var(--t3)]">by @{h.bannedByUsername}</span>
+                                )}
+                              </div>
+                              <p className="font-mono text-[11px] text-[var(--t1)] mt-1.5">{h.reason}</p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className="font-mono text-[10px] text-[var(--t3)]" title={h.expiresAt ? `UTC: ${h.expiresAt}` : ''}>
+                                  {h.expiresAt ? `until ${new Date(h.expiresAt).toLocaleString()}` : 'permanent'}
+                                </span>
+                                {h.liftedAt && (
+                                  <span className="font-mono text-[10px] text-[var(--t3)]" title={`UTC: ${h.liftedAt}`}>
+                                    lifted {new Date(h.liftedAt).toLocaleString()}{h.liftedByUsername ? ` by @${h.liftedByUsername}` : ''}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ban user modal */}
+        {banModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setBanModal(null)} />
+            <div className="relative w-full max-w-md rounded-xl border border-[rgba(239,68,68,0.35)] bg-[var(--bg-card)] overflow-hidden shadow-[0_16px_64px_rgba(0,0,0,0.8)]">
+              <div className="h-px bg-gradient-to-r from-[var(--red,#ef4444)] via-[rgba(239,68,68,0.3)] to-transparent" />
+              <div className="p-5 flex flex-col gap-4">
+                <div className="flex items-center gap-2">
+                  <Ban size={14} className="text-[var(--red,#ef4444)]" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">BAN USER</span>
+                  <span className="ml-auto font-mono text-[10px] text-[var(--t2)]">@{banModal.username}</span>
+                </div>
+                <div>
+                  <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1.5 block">
+                    REASON <span className="text-[var(--red,#ef4444)]">*</span>
+                  </label>
+                  <input
+                    value={banReason}
+                    onChange={e => setBanReason(e.target.value)}
+                    maxLength={500}
+                    placeholder="e.g. Repeated violations of community guidelines"
+                    className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg px-3 py-2.5 font-mono text-[11px] text-[var(--t1)] focus:border-[var(--red,#ef4444)] focus:shadow-[0_0_0_3px_rgba(239,68,68,0.12)] outline-none transition-all placeholder:text-[var(--t2)]"
+                  />
+                </div>
+                <div>
+                  <label className="font-mono text-[10px] text-[var(--t2)] tracking-[0.08em] mb-1.5 block">
+                    EXPIRES <span className="text-[var(--t3)]">(leave blank for permanent)</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={banExpiry}
+                    onChange={e => setBanExpiry(e.target.value)}
+                    className="w-full bg-[var(--bg-el)] border border-[var(--border-h)] rounded-lg px-3 py-2.5 font-mono text-[11px] text-[var(--t1)] focus:border-[var(--red,#ef4444)] outline-none transition-all"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setBanModal(null)}
+                    className="flex-1 py-2 border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] rounded-lg font-mono text-[10px] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] transition-all">
+                    CANCEL
+                  </button>
+                  <button onClick={handleBanUser} disabled={savingBan || !banReason.trim()}
+                    className="flex-1 py-2 bg-gradient-to-br from-[#ef4444] to-[#dc2626] rounded-lg font-mono text-[10px] font-bold text-white shadow-[0_4px_24px_rgba(239,68,68,0.3)] hover:shadow-[0_8px_36px_rgba(239,68,68,0.4)] disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                    {savingBan ? 'BANNING...' : 'CONFIRM BAN →'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Feedback tab ──────────────────────────────────────────────────── */}
         {adminTab === 'feedback' && (
           <div className="flex flex-col gap-5">
@@ -857,6 +1273,75 @@ export function AdminScreen() {
           </div>
         )}
 
+      </div>
+    </div>
+  )
+}
+
+// ── Flag-queue row component ─────────────────────────────────────────────────
+// Used both in the main flag queue (under the moderation tab) and in the
+// per-user drilldown panel. `compact` slims the row for the modal context.
+interface FlagQueueRowProps {
+  flag: FlaggedContent
+  onAction: (flag: FlaggedContent, status: 'reviewing' | 'removed' | 'dismissed') => void
+  compact?: boolean
+}
+
+function FlagQueueRow({ flag, onAction, compact = false }: FlagQueueRowProps) {
+  const statusColor = flag.status === 'open'      ? 'text-[var(--yellow,#f59e0b)]'
+                    : flag.status === 'reviewing' ? 'text-[var(--accent)]'
+                    : flag.status === 'removed'   ? 'text-[var(--red,#ef4444)]'
+                    :                                'text-[var(--t3)]'
+  const sevColor = flag.severity === 'high'   ? 'text-[var(--red,#ef4444)] border-[rgba(239,68,68,0.3)]'
+                 : flag.severity === 'medium' ? 'text-[var(--yellow,#f59e0b)] border-[rgba(245,158,11,0.3)]'
+                 :                              'text-[var(--t2)] border-[var(--border-h)]'
+
+  return (
+    <div className={`p-3 rounded-lg border border-[var(--border-h)] bg-[var(--bg-el)] ${compact ? '' : 'hover:border-[rgba(59,130,246,0.3)] transition-all'}`}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={`px-1.5 py-0.5 rounded font-mono text-[9px] font-bold tracking-[0.06em] border ${sevColor} bg-[rgba(0,0,0,0.04)]`}>
+          {flag.severity.toUpperCase()}
+        </span>
+        <span className="px-1.5 py-0.5 rounded font-mono text-[9px] tracking-[0.05em] bg-[rgba(59,130,246,0.06)] text-[var(--accent)] border border-[rgba(59,130,246,0.15)]">
+          {flag.contentType}
+        </span>
+        <span className="font-mono text-[9px] font-bold text-[var(--t1)] bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.18)] px-1.5 py-0.5 rounded">
+          {flag.reasonCode}
+        </span>
+        <span className={`font-mono text-[9px] font-bold tracking-[0.06em] ${statusColor}`}>{flag.status.toUpperCase()}</span>
+        {flag.authorUsername && (
+          <span className="font-mono text-[10px] text-[var(--t2)] ml-auto">@{flag.authorUsername}</span>
+        )}
+      </div>
+
+      {flag.reasonMessage && (
+        <p className="font-mono text-[11px] text-[var(--t2)] mt-1.5">{flag.reasonMessage}</p>
+      )}
+
+      {flag.excerpt && (
+        <pre className="mt-1.5 px-2.5 py-2 rounded bg-[var(--bg)] border border-[var(--border-h)] font-mono text-[10px] text-[var(--t1)] whitespace-pre-wrap break-words max-h-32 overflow-y-auto">{flag.excerpt}</pre>
+      )}
+
+      <div className="flex items-center gap-2 mt-2 flex-wrap">
+        <span className="font-mono text-[10px] text-[var(--t3)]" title={`UTC: ${flag.createdAt}`}>
+          {new Date(flag.createdAt).toLocaleString()}
+        </span>
+        {flag.status === 'open' && (
+          <div className="ml-auto flex gap-1.5">
+            <button onClick={() => onAction(flag, 'reviewing')}
+              className="px-2 py-1 rounded font-mono text-[10px] font-bold tracking-[0.06em] border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.06)] text-[var(--accent)] hover:bg-[rgba(59,130,246,0.12)] transition-all">
+              REVIEW
+            </button>
+            <button onClick={() => onAction(flag, 'removed')}
+              className="px-2 py-1 rounded font-mono text-[10px] font-bold tracking-[0.06em] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.06)] text-[var(--red,#ef4444)] hover:bg-[rgba(239,68,68,0.12)] transition-all">
+              REMOVE
+            </button>
+            <button onClick={() => onAction(flag, 'dismissed')}
+              className="px-2 py-1 rounded font-mono text-[10px] font-bold tracking-[0.06em] border border-[var(--border-h)] bg-[var(--bg)] text-[var(--t2)] hover:border-[rgba(59,130,246,0.3)] transition-all">
+              DISMISS
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

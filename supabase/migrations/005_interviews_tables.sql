@@ -54,6 +54,10 @@ CREATE TABLE IF NOT EXISTS interviews.interviews (
     type          text        NOT NULL DEFAULT 'interview'
                               CHECK (type IN ('interview', 'system_design', 'behavioral', 'coding')),
     is_active     boolean     NOT NULL DEFAULT true,
+    -- is_hidden: moderation/ban-driven hide. Distinct from is_active (user soft-delete)
+    -- so unbanning doesn't accidentally restore content the user themselves removed.
+    -- Reads filter `is_active AND NOT is_hidden`.
+    is_hidden     boolean     NOT NULL DEFAULT false,
     is_anonymous  boolean     NOT NULL DEFAULT false,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now()
@@ -65,7 +69,9 @@ CREATE INDEX IF NOT EXISTS ix_interviews_embedding     ON interviews.interviews 
     WITH (m = 16, ef_construction = 64);
 CREATE INDEX IF NOT EXISTS ix_interviews_company       ON interviews.interviews (company) WHERE company IS NOT NULL;
 CREATE INDEX IF NOT EXISTS ix_interviews_is_active     ON interviews.interviews (is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS ix_interviews_is_hidden     ON interviews.interviews (is_hidden) WHERE is_hidden = false;
 COMMENT ON TABLE interviews.interviews IS 'Interview experience posts — separate content type from bytes';
+COMMENT ON COLUMN interviews.interviews.is_hidden IS 'True when hidden by moderation/ban. Distinct from is_active (user soft-delete).';
 
 -- interviews.interview_questions
 CREATE TABLE IF NOT EXISTS interviews.interview_questions (
@@ -113,11 +119,13 @@ CREATE INDEX IF NOT EXISTS ix_interview_views_viewed_at    ON interviews.intervi
 COMMENT ON TABLE interviews.interview_views IS 'View events per interview — user_id nullable for anonymous views';
 
 -- interviews.interview_comments
+-- parent_id uses ON DELETE SET NULL so hard-deleting a banned user's comments
+-- doesn't cascade-delete other users' replies underneath them.
 CREATE TABLE IF NOT EXISTS interviews.interview_comments (
     id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     interview_id uuid        NOT NULL REFERENCES interviews.interviews(id) ON DELETE CASCADE,
     author_id    uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
-    parent_id    uuid        REFERENCES interviews.interview_comments(id) ON DELETE CASCADE,
+    parent_id    uuid        REFERENCES interviews.interview_comments(id) ON DELETE SET NULL,
     body         text        NOT NULL CHECK (char_length(body) BETWEEN 1 AND 2000),
     vote_count   integer     NOT NULL DEFAULT 0,
     created_at   timestamptz NOT NULL DEFAULT now()
@@ -139,11 +147,13 @@ CREATE INDEX IF NOT EXISTS ix_iq_likes_user_id     ON interviews.interview_quest
 COMMENT ON TABLE interviews.interview_question_likes IS 'Per-question likes — composite PK prevents duplicates';
 
 -- interviews.interview_question_comments
+-- parent_id uses ON DELETE SET NULL so hard-deleting a banned user's comments
+-- doesn't cascade-delete other users' replies underneath them.
 CREATE TABLE IF NOT EXISTS interviews.interview_question_comments (
     id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     question_id uuid        NOT NULL REFERENCES interviews.interview_questions(id) ON DELETE CASCADE,
     author_id   uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
-    parent_id   uuid        REFERENCES interviews.interview_question_comments(id) ON DELETE CASCADE,
+    parent_id   uuid        REFERENCES interviews.interview_question_comments(id) ON DELETE SET NULL,
     body        text        NOT NULL CHECK (char_length(body) BETWEEN 1 AND 2000),
     vote_count  integer     NOT NULL DEFAULT 0,
     created_at  timestamptz NOT NULL DEFAULT now()

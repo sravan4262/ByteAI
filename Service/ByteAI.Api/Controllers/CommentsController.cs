@@ -4,6 +4,7 @@ using ByteAI.Api.ViewModels;
 using ByteAI.Api.ViewModels.Common;
 using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Infrastructure.Services;
 using ByteAI.Core.Moderation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +17,11 @@ namespace ByteAI.Api.Controllers;
 [Produces("application/json")]
 [Tags("Comments")]
 [RequireRole("user")]
-public sealed class CommentsController(ICommentsBusiness commentsBusiness, IModerationService moderation, AppDbContext db) : ControllerBase
+public sealed class CommentsController(
+    ICommentsBusiness commentsBusiness,
+    IModerationService moderation,
+    ICurrentUserService currentUserService,
+    AppDbContext db) : ControllerBase
 {
     /// <summary>List comments on a byte (includes author username and avatar).</summary>
     [HttpGet]
@@ -39,8 +44,9 @@ public sealed class CommentsController(ICommentsBusiness commentsBusiness, IMode
         Guid byteId, [FromBody] CreateCommentRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var authorId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
 
-        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, ct: ct);
+        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, authorId: authorId, ct: ct);
 
         try
         {
@@ -62,8 +68,9 @@ public sealed class CommentsController(ICommentsBusiness commentsBusiness, IMode
         Guid commentId, [FromBody] UpdateCommentRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var authorId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
 
-        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, contentId: commentId, ct: ct);
+        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, contentId: commentId, authorId: authorId, ct: ct);
 
         try
         {

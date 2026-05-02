@@ -7,7 +7,6 @@ using ByteAI.Core.Infrastructure.AI;
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Infrastructure.Services;
 using ByteAI.Core.Moderation;
-using ByteAI.Core.Pipeline;
 using MediatR;
 using ByteAI.Core.Services.AI;
 using ByteAI.Core.Services.Bookmarks;
@@ -89,10 +88,6 @@ try
     builder.Services.AddScoped<Layer1Moderator>();
     builder.Services.AddScoped<GeminiModerator>();
     builder.Services.AddScoped<IModerationService, CompositeModerator>();
-
-    // Open-generic pipeline behaviour — only opts-in for IModeratableCommand requests,
-    // pass-through for everything else.
-    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ModerationPipelineBehavior<,>));
 
     // ── FluentValidation — scan Core assembly for all validators ──────────────
     builder.Services.AddValidatorsFromAssemblyContaining<UserValidator>();
@@ -436,6 +431,7 @@ try
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseMiddleware<ByteAI.Api.Middleware.BanEnforcementMiddleware>();
 
     // Liveness: process is alive — no dependency checks (fast, never fails)
     app.MapHealthChecks("/health/live", new HealthCheckOptions

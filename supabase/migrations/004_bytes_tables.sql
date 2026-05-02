@@ -19,6 +19,10 @@ CREATE TABLE IF NOT EXISTS bytes.bytes (
     type          text        NOT NULL DEFAULT 'article'
                               CHECK (type IN ('article', 'tutorial', 'snippet', 'discussion')),
     is_active     boolean     NOT NULL DEFAULT true,
+    -- is_hidden: moderation/ban-driven hide. Distinct from is_active (user soft-delete)
+    -- so unbanning doesn't accidentally restore content the user themselves removed.
+    -- Reads filter `is_active AND NOT is_hidden`.
+    is_hidden     boolean     NOT NULL DEFAULT false,
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now()
 );
@@ -28,16 +32,21 @@ CREATE INDEX IF NOT EXISTS ix_bytes_search_vector ON bytes.bytes USING GIN (sear
 CREATE INDEX IF NOT EXISTS ix_bytes_embedding     ON bytes.bytes USING hnsw (embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64);
 CREATE INDEX IF NOT EXISTS ix_bytes_is_active     ON bytes.bytes (is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS ix_bytes_is_hidden     ON bytes.bytes (is_hidden) WHERE is_hidden = false;
 COMMENT ON TABLE  bytes.bytes           IS 'Core content unit — a short tech post';
 COMMENT ON COLUMN bytes.bytes.embedding IS '768-dim embedding for semantic/vector search';
 COMMENT ON COLUMN bytes.bytes.is_active IS 'Soft-delete flag';
+COMMENT ON COLUMN bytes.bytes.is_hidden IS 'True when hidden by moderation/ban. Distinct from is_active (user soft-delete).';
 
 -- bytes.comments
+-- parent_id uses ON DELETE SET NULL so hard-deleting a banned user's comments
+-- doesn't cascade-delete other users' replies underneath them. Replies become
+-- flat root-level comments instead of disappearing.
 CREATE TABLE IF NOT EXISTS bytes.comments (
     id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
     byte_id     uuid        NOT NULL REFERENCES bytes.bytes(id) ON DELETE CASCADE,
     author_id   uuid        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
-    parent_id   uuid        REFERENCES bytes.comments(id) ON DELETE CASCADE,
+    parent_id   uuid        REFERENCES bytes.comments(id) ON DELETE SET NULL,
     body        text        NOT NULL CHECK (char_length(body) BETWEEN 1 AND 2000),
     vote_count  integer     NOT NULL DEFAULT 0,
     created_at  timestamptz NOT NULL DEFAULT now()

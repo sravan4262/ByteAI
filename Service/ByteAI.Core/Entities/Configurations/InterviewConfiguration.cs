@@ -21,6 +21,7 @@ public sealed class InterviewConfiguration : IEntityTypeConfiguration<Interview>
         builder.Property(i => i.Difficulty).HasColumnName("difficulty").HasDefaultValue("medium");
         builder.Property(i => i.Type).HasColumnName("type").HasDefaultValue("interview");
         builder.Property(i => i.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+        builder.Property(i => i.IsHidden).HasColumnName("is_hidden").HasDefaultValue(false);
         builder.Property(i => i.IsAnonymous).HasColumnName("is_anonymous").HasDefaultValue(false);
         builder.Property(i => i.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
         builder.Property(i => i.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
@@ -33,5 +34,9 @@ public sealed class InterviewConfiguration : IEntityTypeConfiguration<Interview>
 
         builder.HasIndex(i => i.AuthorId).HasDatabaseName("ix_interviews_author_id");
         builder.HasIndex(i => i.CreatedAt).HasDatabaseName("ix_interviews_created_at").IsDescending();
+
+        // Global query filter — every read excludes ban/moderation-hidden rows.
+        // Admin endpoints that need to see hidden rows must call IgnoreQueryFilters().
+        builder.HasQueryFilter(i => !i.IsHidden);
     }
 }

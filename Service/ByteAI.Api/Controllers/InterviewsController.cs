@@ -131,10 +131,11 @@ public sealed class InterviewsController(
         [FromBody] CreateInterviewRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var authorId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
 
         await moderation.EnforceAsync(db,
             string.Join("\n", new[] { request.Title, request.Body }.Where(s => !string.IsNullOrWhiteSpace(s))),
-            ModerationContext.Interview, ct: ct);
+            ModerationContext.Interview, authorId: authorId, ct: ct);
 
         try
         {
@@ -156,6 +157,7 @@ public sealed class InterviewsController(
         [FromBody] CreateInterviewWithQuestionsRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var authorId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
 
         if (request.Questions is null || request.Questions.Count == 0)
             return BadRequest(new { error = "At least one question is required." });
@@ -169,7 +171,7 @@ public sealed class InterviewsController(
                 request.Questions.SelectMany(q => new[] { q.Question, q.Answer })
                                  .Where(s => !string.IsNullOrWhiteSpace(s)))
         }.Where(s => !string.IsNullOrWhiteSpace(s)));
-        await moderation.EnforceAsync(db, combined, ModerationContext.Interview, ct: ct);
+        await moderation.EnforceAsync(db, combined, ModerationContext.Interview, authorId: authorId, ct: ct);
 
         try
         {
@@ -260,8 +262,9 @@ public sealed class InterviewsController(
         Guid questionId, [FromBody] AddInterviewCommentRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var authorId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
 
-        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, ct: ct);
+        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.InterviewQuestionComment, authorId: authorId, ct: ct);
 
         try
         {
@@ -305,8 +308,9 @@ public sealed class InterviewsController(
     public async Task<ActionResult> AddComment(Guid id, [FromBody] AddInterviewCommentRequest request, CancellationToken ct)
     {
         var supabaseUserId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var authorId = await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct);
 
-        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.Comment, ct: ct);
+        await moderation.EnforceAsync(db, request.Body ?? string.Empty, ModerationContext.InterviewComment, authorId: authorId, ct: ct);
 
         try
         {

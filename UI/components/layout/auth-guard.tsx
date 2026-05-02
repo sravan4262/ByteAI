@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { setTokenProvider } from '@/lib/api/http'
 import { getCurrentUser, getMyBytes, getMyPreferences, updateProfile } from '@/lib/api/client'
 import { getMeCache, setMeCache, clearMeCache } from '@/lib/user-cache'
+import { AccountSuspendedScreen } from '@/components/auth/account-suspended-screen'
 import type { Session } from '@supabase/supabase-js'
 import type { ReactNode } from 'react'
 
@@ -20,8 +21,29 @@ function applyTheme(theme: string) {
 
 export function AuthGuard({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
+  const [suspended, setSuspended] = useState<{ message?: string } | null>(null)
   const router = useRouter()
   const hydrated = useRef(false)
+
+  // ── Account-suspended interceptor ───────────────────────────────────────────
+  // http.ts dispatches `byteai:account-suspended` whenever an API call returns
+  // 403 ACCOUNT_SUSPENDED. We sign the user out of Supabase locally so the JWT
+  // is forgotten, then mount the suspended screen in place of the app shell.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ message?: string }>).detail
+      setSuspended({ message: detail?.message })
+      clearMeCache()
+      void supabase.auth.signOut()
+    }
+    window.addEventListener('byteai:account-suspended', handler)
+    return () => window.removeEventListener('byteai:account-suspended', handler)
+  }, [])
+
+  const handleSuspendedSignOut = () => {
+    setSuspended(null)
+    router.replace('/')
+  }
 
   useEffect(() => {
     // onAuthStateChange fires INITIAL_SESSION with the real session from cookies
@@ -92,6 +114,11 @@ export function AuthGuard({ children }: { children: ReactNode }) {
       router.replace('/')
     }
   }, [session, router])
+
+  // Account-suspended takeover supersedes everything else.
+  if (suspended) {
+    return <AccountSuspendedScreen message={suspended.message} onSignOut={handleSuspendedSignOut} />
+  }
 
   // undefined = still loading; null = no session
   if (session === undefined || session === null) return null
