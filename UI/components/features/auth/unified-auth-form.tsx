@@ -48,7 +48,7 @@ export function UnifiedAuthForm() {
   const isSuspended = errorParam === 'account_suspended' || isBannedFromHash
 
   return (
-    <div className="flex flex-col gap-[13px] animate-fadeup" style={{ animationDelay: '0.2s' }}>
+    <div className="flex flex-col items-center gap-[13px] animate-fadeup" style={{ animationDelay: '0.2s' }}>
       {isSuspended && (
         <div className="rounded-lg border border-[rgba(239,68,68,0.35)] bg-[rgba(239,68,68,0.06)] p-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">

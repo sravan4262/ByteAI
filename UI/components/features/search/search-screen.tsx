@@ -462,7 +462,7 @@ export function SearchScreen() {
                             text-center flex flex-col items-center gap-2">
               <Users size={20} className="text-[var(--accent)] opacity-50" />
               <p className="font-mono text-xs font-bold text-[var(--t1)]">SEARCH PEOPLE</p>
-              <p className="text-xs text-[var(--t2)]">Find engineers and developers by name or username</p>
+              <p className="text-xs text-[var(--t2)]">Find tech professionals by name or username</p>
             </div>
           </div>
         )}

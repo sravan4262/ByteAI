@@ -12,9 +12,9 @@ const jetbrains = JetBrains_Mono({
   variable: '--font-mono'
 })
 
-const SITE_TITLE = 'ByteAI — Social Platform for Developers'
+const SITE_TITLE = 'ByteAI — The Knowledge Layer for Tech Professionals'
 const SITE_DESCRIPTION =
-  'Share insights, learn from peers, and level up your dev skills with the ByteAI developer community.'
+  'Share insights, learn from peers, and stay ahead with ByteAI — the knowledge platform built for tech professionals.'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.byteaiofficial.com'
 
 export const metadata: Metadata = {
