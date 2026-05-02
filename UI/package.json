@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "vitest run --config tests/vitest.config.ts",
     "test:watch": "vitest --config tests/vitest.config.ts",
-    "test:coverage": "vitest run --coverage --config tests/vitest.config.ts"
+    "test:coverage": "vitest run --coverage --config tests/vitest.config.ts",
+    "test:smoke": "playwright test --config tests/smoke/playwright.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

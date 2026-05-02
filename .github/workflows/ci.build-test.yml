@@ -74,6 +74,34 @@ jobs:
         working-directory: UI
         run: pnpm test
 
+      - name: Install Playwright browsers
+        working-directory: UI
+        run: npx playwright install --with-deps chromium
+
+      - name: Start production server
+        working-directory: UI
+        run: pnpm start &
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8090
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Wait for server
+        run: npx wait-on http://localhost:3000 --timeout 30000
+
+      - name: Smoke tests
+        working-directory: UI
+        run: pnpm test:smoke
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: Upload smoke screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: UI/tests/smoke/test-results/
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Publish Docker images to GHCR — after build & test pass
   # ─────────────────────────────────────────────────────────────────────────────
