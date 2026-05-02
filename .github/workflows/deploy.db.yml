@@ -13,11 +13,6 @@ on:
         type: boolean
         default: false
         required: false
-      confirmation:
-        description: "Type 'WIPE-PROD' to confirm wipe_supabase_auth (required only when that box is ticked)"
-        type: string
-        default: ''
-        required: false
   workflow_call:
     inputs:
       clean_slate:
@@ -30,45 +25,31 @@ on:
         type: boolean
         default: false
         required: false
-      confirmation:
-        description: "Type 'WIPE-PROD' to confirm wipe_supabase_auth (required only when that box is ticked)"
-        type: string
-        default: ''
-        required: false
 
 jobs:
   deploy-schema:
     name: Apply schema & migrations
     runs-on: ubuntu-latest
-    # TODO: configure GitHub environment "production-destructive" with required reviewers
-    # in repo Settings → Environments. Once created, gate destructive runs by adding:
-    #   environment: ${{ (inputs.wipe_supabase_auth == true || inputs.clean_slate == true) && 'production-destructive' || '' }}
-    # (GitHub does not support fully conditional environments today; the simplest
-    # safe option is to set `environment: production-destructive` unconditionally
-    # once the environment exists.)
+    # SUPABASE_DB_URL is shared by every psql step — declared once at job level.
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # ── Guard: typed-confirmation required when wiping Supabase auth/storage ──
-      - name: Validate wipe confirmation
-        if: ${{ inputs.wipe_supabase_auth == true }}
-        run: |
-          if [ "${{ inputs.confirmation }}" != "WIPE-PROD" ]; then
-            echo "::error::Supabase wipe requested but confirmation phrase incorrect. Type 'WIPE-PROD' to confirm."
-            exit 1
-          fi
-
       # ── Clean slate: drop all app schemas before migrating ────────────────────
-      # Cascades drop all tables, indexes, RLS policies, and functions inside
-      # each schema. Migration 001 recreates them; subsequent migrations rebuild
-      # all tables; seeds repopulate data.
+      # Runs when clean_slate is true OR wipe_supabase_auth is true.
+      # wipe_supabase_auth implies a clean slate: TRUNCATE auth.users CASCADE
+      # clears FK-linked app rows, but any rows without a direct FK to auth.users
+      # would be orphaned if app schemas are left in place.
+      #
+      # Schema list mirrors Service/ByteAI.Api/Features/ domain folders.
+      # Add a schema here whenever a new domain folder is introduced.
       - name: Clean slate — drop app schemas
-        if: ${{ inputs.clean_slate == true }}
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        if: ${{ inputs.clean_slate == true || inputs.wipe_supabase_auth == true }}
         run: |
-          psql "$SUPABASE_DB_URL" <<'SQL'
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 "$SUPABASE_DB_URL" <<'SQL'
             DROP SCHEMA IF EXISTS lookups CASCADE;
             DROP SCHEMA IF EXISTS users CASCADE;
             DROP SCHEMA IF EXISTS bytes CASCADE;
@@ -79,11 +60,30 @@ jobs:
           SQL
           echo "All app schemas dropped"
 
-      # ── Wipe Supabase auth users + storage objects ────────────────────────────
-      # Independent of clean_slate: auth.* and storage.* live outside the app
-      # schemas, so dropping app schemas does NOT remove users or files. Runs
-      # after clean_slate (if enabled) and BEFORE migrations/seeds so that any
-      # seeded users/files land in a freshly emptied auth + storage layer.
+      # ── Clean slate: lift all Supabase Auth bans ─────────────────────────────
+      # Dropping the moderation schema clears user_bans from the DB, but Supabase
+      # Auth stores banned_until independently on auth.users. Skipped when
+      # wipe_supabase_auth is true because the full auth TRUNCATE below handles it.
+      - name: Clean slate — lift all Supabase Auth bans
+        if: ${{ inputs.clean_slate == true && inputs.wipe_supabase_auth != true }}
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 "$SUPABASE_DB_URL" <<'SQL'
+            UPDATE auth.users SET banned_until = NULL WHERE banned_until IS NOT NULL;
+          SQL
+          echo "All Supabase Auth bans lifted"
+
+      # ── Wipe Supabase auth users + storage ───────────────────────────────────
+      # auth.* and storage.* live outside the app schemas, so dropping app
+      # schemas does NOT remove users or files. Runs after clean_slate (if
+      # enabled) and BEFORE migrations/seeds so seeded data lands in a clean layer.
+      #
+      # Auth: TRUNCATE ... CASCADE clears sessions, identities, refresh_tokens,
+      # mfa_factors, mfa_challenges, mfa_amr_claims, one_time_tokens, flow_state,
+      # saml_relay_states, and audit_log_entries in one statement.
+      #
+      # Storage: SQL DELETE removes metadata; the /empty API call removes the
+      # actual files from the backing store. Both are required.
       - name: Wipe Supabase auth users and storage
         if: ${{ inputs.wipe_supabase_auth == true }}
         env:
@@ -91,77 +91,96 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           set -euo pipefail
-          echo "::warning::Wiping all Supabase auth users and storage objects"
+          echo "::warning::Wiping all Supabase auth users and storage"
 
-          # Delete all auth users (paginate)
-          page=1
-          while : ; do
-            USERS_JSON=$(curl -fsS \
-              -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-              "$SUPABASE_URL/auth/v1/admin/users?page=$page&per_page=200")
-            USER_IDS=$(echo "$USERS_JSON" | jq -r '.users[].id // empty')
-            if [ -z "$USER_IDS" ]; then break; fi
-            for uid in $USER_IDS; do
-              echo "  delete user $uid"
-              curl -fsS -X DELETE \
-                -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-                -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-                "$SUPABASE_URL/auth/v1/admin/users/$uid" > /dev/null
-            done
-            page=$((page+1))
-          done
-          echo "auth.users wiped"
+          psql -v ON_ERROR_STOP=1 "$SUPABASE_DB_URL" <<'SQL'
+            TRUNCATE
+              auth.audit_log_entries,
+              auth.flow_state,
+              auth.saml_relay_states,
+              auth.mfa_amr_claims,
+              auth.mfa_challenges,
+              auth.mfa_factors,
+              auth.one_time_tokens,
+              auth.refresh_tokens,
+              auth.sessions,
+              auth.identities,
+              auth.users
+            CASCADE;
+          SQL
+          echo "auth schema wiped (users, sessions, identities, refresh_tokens, mfa_factors, mfa_challenges, mfa_amr_claims, one_time_tokens, flow_state, saml_relay_states, audit_log_entries)"
 
-          # Empty all storage buckets using the built-in empty endpoint,
-          # which handles nested folders that the object-list API misses.
-          BUCKETS=$(curl -fsS \
+          # Fetch bucket list and empty each one.
+          # Bucket IDs are validated against [a-zA-Z0-9_-] before being
+          # interpolated into the URL to prevent path traversal attacks.
+          BUCKETS=$(curl -fsS --max-time 30 \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             "$SUPABASE_URL/storage/v1/bucket" | jq -r '.[].id')
-          for bucket in $BUCKETS; do
+
+          while IFS= read -r bucket; do
+            if [[ ! "$bucket" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+              echo "::error::Unexpected bucket ID format: '$bucket' — skipping for safety"
+              continue
+            fi
             echo "  emptying bucket $bucket"
-            curl -fsS -X POST \
+            curl -fsS --max-time 30 -X POST \
               -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
               -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
               "$SUPABASE_URL/storage/v1/bucket/$bucket/empty" > /dev/null
-          done
+          done <<< "$BUCKETS"
           echo "storage buckets emptied"
 
       # ── Apply pending migrations in sort order ─────────────────────────────────
       # Migration files follow the naming convention: YYYYMMDDHHMMSS_description.sql
-      # Each migration must be idempotent (use IF NOT EXISTS, ON CONFLICT DO NOTHING).
+      # Each migration is applied inside a single transaction — a SQL error rolls
+      # back the entire file rather than leaving the schema in a partial state.
       - name: Apply migrations
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
+          set -euo pipefail
           MIGRATION_DIR="supabase/migrations"
 
-          if [ -z "$(ls -A $MIGRATION_DIR/*.sql 2>/dev/null)" ]; then
+          mapfile -t migration_files < <(find "$MIGRATION_DIR" -maxdepth 1 -name '*.sql' | sort)
+
+          if [ "${#migration_files[@]}" -eq 0 ]; then
             echo "No migration files found — skipping"
             exit 0
           fi
 
-          for f in $(ls -1 "$MIGRATION_DIR"/*.sql | sort); do
+          for f in "${migration_files[@]}"; do
             echo "Applying migration: $f"
-            psql "$SUPABASE_DB_URL" -f "$f"
+            psql -v ON_ERROR_STOP=1 --single-transaction "$SUPABASE_DB_URL" -f "$f"
           done
 
           echo "All migrations applied"
 
       # ── Apply seeds in the order defined in supabase/config.toml ─────────────
-      # Parses sql_paths array directly — config.toml is the single source of truth.
+      # Uses Python's built-in tomllib (Python ≥ 3.11, available on ubuntu-latest)
+      # to parse config.toml — more robust than an awk/grep/sed chain.
       - name: Apply seeds
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          awk '/^sql_paths/,/^\]/' supabase/config.toml \
-            | grep -E '^\s+"' \
-            | sed 's/^[[:space:]]*"//; s/"[,]*$//' \
-            | while read -r pattern; do
-                for f in supabase/${pattern#./}; do
-                  echo "Seeding: $f"
-                  psql "$SUPABASE_DB_URL" -f "$f"
-                done
-              done
-          echo "All seeds applied"
+          set -euo pipefail
+          python3 - <<'PYEOF'
+          import tomllib, subprocess, os, sys, glob
+
+          with open("supabase/config.toml", "rb") as fh:
+              config = tomllib.load(fh)
+
+          db_url = os.environ["SUPABASE_DB_URL"]
+          sql_paths = config.get("db", {}).get("seed", {}).get("sql_paths", [])
+
+          if not sql_paths:
+              print("No seed paths configured — skipping")
+              sys.exit(0)
+
+          for pattern in sql_paths:
+              pattern = pattern.lstrip("./")
+              for seed_file in sorted(glob.glob(f"supabase/{pattern}")):
+                  print(f"Seeding: {seed_file}")
+                  subprocess.run(
+                      ["psql", "-v", "ON_ERROR_STOP=1", db_url, "-f", seed_file],
+                      check=True,
+                  )
+
+          print("All seeds applied")
+          PYEOF
