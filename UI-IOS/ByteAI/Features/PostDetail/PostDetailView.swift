@@ -388,14 +388,6 @@ struct FlowLayout: Layout {
     }
 }
 
-#Preview {
-    NavigationStack {
-        PostDetailView(post: MockData.posts[0])
-    }
-    .environmentObject(ToastCenter.shared)
-    .background(Color.byteBackground)
-}
-
 // MARK: - Similar Bytes View
 // Mirrors web's `?byteId=` flow inside search-screen.tsx — shows semantically similar
 // bytes via /api/bytes/{id}/similar. Inlined here so no new project.pbxproj entry is needed.

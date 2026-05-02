@@ -287,17 +287,6 @@ private struct FlowTagRow: View {
     }
 }
 
-#Preview {
-    ScrollView {
-        VStack(spacing: 12) {
-            PostCardView(post: MockData.posts[0])
-            PostCardView(post: MockData.posts[1])
-        }
-        .padding()
-    }
-    .background(Color.byteBackground)
-}
-
 // MARK: - User Mini Profile Sheet
 // Mirrors UI/components/features/profile/user-mini-profile.tsx — opened from avatar taps
 // on post cards / interview cards. Lazy-loads the full profile on appear; supports
