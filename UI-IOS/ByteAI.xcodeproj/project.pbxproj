@@ -28,7 +28,6 @@
 		5F93A2FA2F9D1119009E36CA /* PostCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2D72F9D1119009E36CA /* PostCardView.swift */; };
 		5F93A2FB2F9D1119009E36CA /* ChatViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2CF2F9D1119009E36CA /* ChatViewModels.swift */; };
 		5F93A2FC2F9D1119009E36CA /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2CA2F9D1119009E36CA /* AuthView.swift */; };
-		5F93A2FD2F9D1119009E36CA /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2C12F9D1119009E36CA /* MockData.swift */; };
 		5F93A2FE2F9D1119009E36CA /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2B52F9D1119009E36CA /* AppDelegate.swift */; };
 		5F93A2FF2F9D1119009E36CA /* DeepLinkRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2B72F9D1119009E36CA /* DeepLinkRouter.swift */; };
 		5F93A3002F9D1119009E36CA /* DraftsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2D42F9D1119009E36CA /* DraftsListView.swift */; };
@@ -101,7 +100,6 @@
 		5F93A2BC2F9D1119009E36CA /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		5F93A2BD2F9D1119009E36CA /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		5F93A2BF2F9D1119009E36CA /* FeatureFlagsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlagsManager.swift; sourceTree = "<group>"; };
-		5F93A2C12F9D1119009E36CA /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
 		5F93A2C22F9D1119009E36CA /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		5F93A2C42F9D1119009E36CA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		5F93A2C62F9D1119009E36CA /* ChatConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConnection.swift; sourceTree = "<group>"; };
@@ -234,7 +232,6 @@
 		5F93A2C32F9D1119009E36CA /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				5F93A2C12F9D1119009E36CA /* MockData.swift */,
 				5F93A2C22F9D1119009E36CA /* Models.swift */,
 			);
 			path = Models;
@@ -557,7 +554,6 @@
 				5F1E00CC2FA2841E00210D6B /* BiometricLockView.swift in Sources */,
 				5F93A2FB2F9D1119009E36CA /* ChatViewModels.swift in Sources */,
 				5F93A2FC2F9D1119009E36CA /* AuthView.swift in Sources */,
-				5F93A2FD2F9D1119009E36CA /* MockData.swift in Sources */,
 				5F93A2FE2F9D1119009E36CA /* AppDelegate.swift in Sources */,
 				5F93A2FF2F9D1119009E36CA /* DeepLinkRouter.swift in Sources */,
 				5F93A3002F9D1119009E36CA /* DraftsListView.swift in Sources */,
