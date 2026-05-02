@@ -6,6 +6,7 @@ final class GestureManager: ObservableObject {
 
     @Published var showSupportTerminal = false
     @Published var showChatTerminal = false
+    @Published var showHiddenFeatures = false
     @Published var chatConversation: ConversationDto? = nil
     @Published var zoomScale: CGFloat = 1.0
 
@@ -34,5 +35,11 @@ final class GestureManager: ObservableObject {
         guard !showChatTerminal else { return }
         Haptics.medium()
         showChatTerminal = true
+    }
+
+    func openHiddenFeatures() {
+        guard !showHiddenFeatures else { return }
+        Haptics.light()
+        showHiddenFeatures = true
     }
 }

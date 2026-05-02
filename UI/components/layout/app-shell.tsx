@@ -15,6 +15,7 @@ import { useConversations } from '@/hooks/use-conversations'
 import { useEffect, useState, useMemo } from 'react'
 import { getUnreadNotificationCount } from '@/lib/api/client'
 import { TerminalWidget } from '@/components/features/terminal/TerminalWidget'
+import { HiddenFeaturesProvider } from '@/components/features/easter-eggs/HiddenFeaturesProvider'
 import type { ReactNode } from 'react'
 
 const pathToActiveTab = (pathname: string) => {
@@ -184,6 +185,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         open={termOpen}
         onOpenChange={(v) => { setTermOpen(v); if (v) setMsgOpen(false) }}
       />
+
+      {/* Hidden Features cheat sheet — `?` key, Konami, or `eastereggs` terminal command */}
+      <HiddenFeaturesProvider />
     </div>
     </NotificationContext.Provider>
   )

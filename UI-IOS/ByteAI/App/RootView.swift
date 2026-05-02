@@ -74,6 +74,14 @@ struct RootView: View {
             .presentationBackground(Color.byteCard)
             .presentationCornerRadius(20)
         }
+        // Global Hidden Features cheat sheet (triple-tap logo / quick action)
+        .sheet(isPresented: $gestures.showHiddenFeatures) {
+            HiddenFeaturesView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.byteBackground)
+                .presentationCornerRadius(20)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .apiDidReceiveAccountSuspended)) { note in
             let msg = (note.userInfo?["message"] as? String)
                 ?? "Your account has been suspended."
@@ -86,6 +94,8 @@ struct RootView: View {
                     await chat.start()
                     await requestPushPermission()
                 }
+                // Drain any home-screen quick action queued from cold launch.
+                QuickActionRouter.shared.consumePending()
             } else {
                 flags.stop()
                 Task { await chat.stop() }
@@ -147,7 +157,7 @@ struct RootView: View {
             do {
                 try await auth.refreshSession()
             } catch {
-                print("[Auth] auto-unlock refreshSession failed: \(error) — signing out")
+                dprint("[Auth] auto-unlock refreshSession failed: \(error) — signing out")
                 await auth.signOut()
             }
         } catch let nsError as NSError {
@@ -262,6 +272,12 @@ struct MainTabView: View {
             if !show { router.showNotifications = false }
         }
         .task { await notifBadge.load() }
+        .task {
+            // If the user is already authenticated when MainTabView mounts (warm
+            // launch with a valid session), the auth.state onChange in RootView
+            // never fires — drain any cold-launch quick action here too.
+            QuickActionRouter.shared.consumePending()
+        }
         .task {
             // Surface the FaceID opt-in sheet exactly once per device, and
             // only when biometrics are actually enrolled. Mark hasPrompted

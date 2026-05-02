@@ -13,8 +13,6 @@
 		5F1E00C62FA175A800210D6B /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1E00C52FA175A800210D6B /* ThemeManager.swift */; };
 		5F1E00CA2FA2840B00210D6B /* BiometricLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1E00C92FA2840B00210D6B /* BiometricLock.swift */; };
 		5F1E00CC2FA2841E00210D6B /* BiometricLockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1E00CB2FA2841E00210D6B /* BiometricLockView.swift */; };
-		5F3946242F8B087200F4A2D8 /* ClerkKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5F3946232F8B087200F4A2D8 /* ClerkKit */; };
-		5F3946262F8B087200F4A2D8 /* ClerkKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5F3946252F8B087200F4A2D8 /* ClerkKitUI */; };
 		5F93A1D12F9D04AD009E36CA /* SignalRClient in Frameworks */ = {isa = PBXBuildFile; productRef = 5F93A1D02F9D04AD009E36CA /* SignalRClient */; };
 		5F93A1D42F9D04D2009E36CA /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 5F93A1D32F9D04D2009E36CA /* Kingfisher */; };
 		5F93A1D72F9D0B23009E36CA /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 5F93A1D62F9D0B23009E36CA /* Auth */; };
@@ -24,6 +22,7 @@
 		5F93A1DF2F9D0B23009E36CA /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 5F93A1DE2F9D0B23009E36CA /* Storage */; };
 		5F93A1E12F9D0B23009E36CA /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 5F93A1E02F9D0B23009E36CA /* Supabase */; };
 		5F93A2F72F9D1119009E36CA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5F93A2E72F9D1119009E36CA /* Assets.xcassets */; };
+		AA8E0001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA8E0002 /* PrivacyInfo.xcprivacy */; };
 		5F93A2F92F9D1119009E36CA /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2B82F9D1119009E36CA /* RootView.swift */; };
 		5F93A2FA2F9D1119009E36CA /* PostCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2D72F9D1119009E36CA /* PostCardView.swift */; };
 		5F93A2FB2F9D1119009E36CA /* ChatViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2CF2F9D1119009E36CA /* ChatViewModels.swift */; };
@@ -58,6 +57,7 @@
 		5F93A3192F9D1119009E36CA /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2DC2F9D1119009E36CA /* NotificationsView.swift */; };
 		5F93A31A2F9D1119009E36CA /* CommentsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2DE2F9D1119009E36CA /* CommentsSheet.swift */; };
 		5F93A31B2F9D1119009E36CA /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2C82F9D1119009E36CA /* Configuration.swift */; };
+		AA8E0010 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8E0011 /* Log.swift */; };
 		5F93A31C2F9D1119009E36CA /* InterviewsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2DA2F9D1119009E36CA /* InterviewsView.swift */; };
 		5F93A31D2F9D1119009E36CA /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2DF2F9D1119009E36CA /* PostDetailView.swift */; };
 		5F93A31E2F9D1119009E36CA /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A2F12F9D1119009E36CA /* Haptics.swift */; };
@@ -77,12 +77,16 @@
 		5F93A3372F9D27AB009E36CA /* Tints.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F93A3362F9D27AB009E36CA /* Tints.swift */; };
 		5FBDB3AE2FA68572006DB2F1 /* AccountSuspendedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBDB3AD2FA68572006DB2F1 /* AccountSuspendedView.swift */; };
 		5FBDB3B02FA68590006DB2F1 /* ShakeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBDB3AF2FA68590006DB2F1 /* ShakeDetector.swift */; };
+		5FBDB3B32FA6A7FA006DB2F1 /* QuickActionRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBDB3B12FA6A7FA006DB2F1 /* QuickActionRouter.swift */; };
+		5FBDB3B72FA6A823006DB2F1 /* HiddenFeaturesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBDB3B42FA6A823006DB2F1 /* HiddenFeaturesView.swift */; };
+		5FBDB3B82FA6A823006DB2F1 /* TipStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBDB3B52FA6A823006DB2F1 /* TipStripView.swift */; };
 		9B35D811215486143515BE6B /* ContentRejectedModal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F10F3649B838D4CB27D750C /* ContentRejectedModal.swift */; };
 		AA01000000000000ABCDEF01 /* ShareURL.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF02 /* ShareURL.swift */; };
 		AA01000000000000ABCDEF03 /* ByteAILogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF04 /* ByteAILogoView.swift */; };
 		AA01000000000000ABCDEF23 /* AppleSignInCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF22 /* AppleSignInCoordinator.swift */; };
 		AA01000000000000ABCDEF27 /* BiometricOptInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF26 /* BiometricOptInSheet.swift */; };
 		AA01000000000000ABCDEF41 /* LaunchSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF40 /* LaunchSplashView.swift */; };
+		AA01000000000000ABCDEF51 /* GestureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF50 /* GestureManager.swift */; };
 		B766E3D959D980655959CDC4 /* ByteScrollbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A5A05B3DEA2D6F94DC219E3 /* ByteScrollbar.swift */; };
 		C25E9D8C38C09DC33644A919 /* TerminalChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCCB10E161C584E66C3B9BF /* TerminalChrome.swift */; };
 		EF98FFBA4D280710FBF59867 /* TerminalOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3F2EEFD954DC2B6CCE9A958 /* TerminalOrb.swift */; };
@@ -105,6 +109,7 @@
 		5F93A2C42F9D1119009E36CA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		5F93A2C62F9D1119009E36CA /* ChatConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConnection.swift; sourceTree = "<group>"; };
 		5F93A2C82F9D1119009E36CA /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
+		AA8E0011 /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
 		5F93A2CA2F9D1119009E36CA /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
 		5F93A2CB2F9D1119009E36CA /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		5F93A2CD2F9D1119009E36CA /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
@@ -126,6 +131,7 @@
 		5F93A2E42F9D1119009E36CA /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		5F93A2E72F9D1119009E36CA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5F93A2E82F9D1119009E36CA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AA8E0002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5F93A2EA2F9D1119009E36CA /* AvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarView.swift; sourceTree = "<group>"; };
 		5F93A2EB2F9D1119009E36CA /* ByteButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByteButton.swift; sourceTree = "<group>"; };
 		5F93A2EC2F9D1119009E36CA /* ByteTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByteTextField.swift; sourceTree = "<group>"; };
@@ -148,15 +154,17 @@
 		5F93A3362F9D27AB009E36CA /* Tints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tints.swift; sourceTree = "<group>"; };
 		5FBDB3AD2FA68572006DB2F1 /* AccountSuspendedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSuspendedView.swift; sourceTree = "<group>"; };
 		5FBDB3AF2FA68590006DB2F1 /* ShakeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShakeDetector.swift; sourceTree = "<group>"; };
+		5FBDB3B12FA6A7FA006DB2F1 /* QuickActionRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionRouter.swift; sourceTree = "<group>"; };
+		5FBDB3B42FA6A823006DB2F1 /* HiddenFeaturesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenFeaturesView.swift; sourceTree = "<group>"; };
+		5FBDB3B52FA6A823006DB2F1 /* TipStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipStripView.swift; sourceTree = "<group>"; };
 		7F10F3649B838D4CB27D750C /* ContentRejectedModal.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentRejectedModal.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF02 /* ShareURL.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareURL.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF04 /* ByteAILogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ByteAILogoView.swift; sourceTree = "<group>"; };
-		AA01000000000000ABCDEF50 /* GestureManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureManager.swift; sourceTree = "<group>"; };
-		AA01000000000000ABCDEF51 /* GestureManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000000000000ABCDEF50 /* GestureManager.swift */; };
 		AA01000000000000ABCDEF22 /* AppleSignInCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInCoordinator.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF26 /* BiometricOptInSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricOptInSheet.swift; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF28 /* ByteAI.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ByteAI.entitlements; sourceTree = "<group>"; };
 		AA01000000000000ABCDEF40 /* LaunchSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchSplashView.swift; sourceTree = "<group>"; };
+		AA01000000000000ABCDEF50 /* GestureManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureManager.swift; sourceTree = "<group>"; };
 		AA200000 /* ByteAI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ByteAI.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFGD0001 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		CFGD0002 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
@@ -179,8 +187,6 @@
 				5F93A1D42F9D04D2009E36CA /* Kingfisher in Frameworks */,
 				5F93A1DB2F9D0B23009E36CA /* PostgREST in Frameworks */,
 				5F93A1DD2F9D0B23009E36CA /* Realtime in Frameworks */,
-				5F3946242F8B087200F4A2D8 /* ClerkKit in Frameworks */,
-				5F3946262F8B087200F4A2D8 /* ClerkKitUI in Frameworks */,
 				5F93A1DF2F9D0B23009E36CA /* Storage in Frameworks */,
 				5F93A1D72F9D0B23009E36CA /* Auth in Frameworks */,
 				5F93A1D12F9D04AD009E36CA /* SignalRClient in Frameworks */,
@@ -256,17 +262,10 @@
 			path = Realtime;
 			sourceTree = "<group>";
 		};
-		AA01000000000000ABCDEF52 /* Gestures */ = {
-			isa = PBXGroup;
-			children = (
-				AA01000000000000ABCDEF50 /* GestureManager.swift */,
-			);
-			path = Gestures;
-			sourceTree = "<group>";
-		};
 		5F93A2C92F9D1119009E36CA /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				5FBDB3B22FA6A7FA006DB2F1 /* QuickActions */,
 				5F93A2BB2F9D1119009E36CA /* Auth */,
 				5F93A2BE2F9D1119009E36CA /* Design */,
 				5F93A2C02F9D1119009E36CA /* FeatureFlags */,
@@ -275,6 +274,7 @@
 				5F93A2C52F9D1119009E36CA /* Network */,
 				5F93A2C72F9D1119009E36CA /* Realtime */,
 				5F93A2C82F9D1119009E36CA /* Configuration.swift */,
+				AA8E0011 /* Log.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -366,6 +366,7 @@
 		5F93A2E62F9D1119009E36CA /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				5FBDB3B62FA6A823006DB2F1 /* EasterEggs */,
 				5F93A2CC2F9D1119009E36CA /* Auth */,
 				5F93A2D22F9D1119009E36CA /* Chat */,
 				5F93A2D52F9D1119009E36CA /* Compose */,
@@ -384,6 +385,7 @@
 			children = (
 				5F93A2E72F9D1119009E36CA /* Assets.xcassets */,
 				5F93A2E82F9D1119009E36CA /* Info.plist */,
+				AA8E0002 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -444,6 +446,31 @@
 				5F93A2F52F9D1119009E36CA /* Toast.swift */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		5FBDB3B22FA6A7FA006DB2F1 /* QuickActions */ = {
+			isa = PBXGroup;
+			children = (
+				5FBDB3B12FA6A7FA006DB2F1 /* QuickActionRouter.swift */,
+			);
+			path = QuickActions;
+			sourceTree = "<group>";
+		};
+		5FBDB3B62FA6A823006DB2F1 /* EasterEggs */ = {
+			isa = PBXGroup;
+			children = (
+				5FBDB3B42FA6A823006DB2F1 /* HiddenFeaturesView.swift */,
+				5FBDB3B52FA6A823006DB2F1 /* TipStripView.swift */,
+			);
+			path = EasterEggs;
+			sourceTree = "<group>";
+		};
+		AA01000000000000ABCDEF52 /* Gestures */ = {
+			isa = PBXGroup;
+			children = (
+				AA01000000000000ABCDEF50 /* GestureManager.swift */,
+			);
+			path = Gestures;
 			sourceTree = "<group>";
 		};
 		AA400000 = {
@@ -532,7 +559,6 @@
 			);
 			mainGroup = AA400000;
 			packageReferences = (
-				5F3946222F8B087200F4A2D8 /* XCRemoteSwiftPackageReference "clerk-ios" */,
 				5F93A1CE2F9D0483009E36CA /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				5F93A1CF2F9D04AD009E36CA /* XCRemoteSwiftPackageReference "SignalR-Client-Swift" */,
 				5F93A1D22F9D04D2009E36CA /* XCRemoteSwiftPackageReference "Kingfisher" */,
@@ -553,6 +579,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5F93A2F72F9D1119009E36CA /* Assets.xcassets in Resources */,
+				AA8E0001 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -597,6 +624,7 @@
 				5F93A3372F9D27AB009E36CA /* Tints.swift in Sources */,
 				5F93A3152F9D1119009E36CA /* Toast.swift in Sources */,
 				5F93A32C2F9D2797009E36CA /* RmConfirmButton.swift in Sources */,
+				5FBDB3B32FA6A7FA006DB2F1 /* QuickActionRouter.swift in Sources */,
 				5F93A32D2F9D2797009E36CA /* TabPills.swift in Sources */,
 				5F93A32E2F9D2797009E36CA /* FloatingHeaderCard.swift in Sources */,
 				5F93A32F2F9D2797009E36CA /* CardWithTopGradient.swift in Sources */,
@@ -613,6 +641,9 @@
 				5F1E00CA2FA2840B00210D6B /* BiometricLock.swift in Sources */,
 				5F93A31A2F9D1119009E36CA /* CommentsSheet.swift in Sources */,
 				5F93A31B2F9D1119009E36CA /* Configuration.swift in Sources */,
+				AA8E0010 /* Log.swift in Sources */,
+				5FBDB3B72FA6A823006DB2F1 /* HiddenFeaturesView.swift in Sources */,
+				5FBDB3B82FA6A823006DB2F1 /* TipStripView.swift in Sources */,
 				5F93A31C2F9D1119009E36CA /* InterviewsView.swift in Sources */,
 				5F93A31D2F9D1119009E36CA /* PostDetailView.swift in Sources */,
 				5F93A31E2F9D1119009E36CA /* Haptics.swift in Sources */,
@@ -849,14 +880,6 @@
 				minimumVersion = 9.1.0;
 			};
 		};
-		5F3946222F8B087200F4A2D8 /* XCRemoteSwiftPackageReference "clerk-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/clerk/clerk-ios";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.9;
-			};
-		};
 		5F93A1CE2F9D0483009E36CA /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";
@@ -893,16 +916,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5F1E00BE2F9E6F6600210D6B /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
-		};
-		5F3946232F8B087200F4A2D8 /* ClerkKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5F3946222F8B087200F4A2D8 /* XCRemoteSwiftPackageReference "clerk-ios" */;
-			productName = ClerkKit;
-		};
-		5F3946252F8B087200F4A2D8 /* ClerkKitUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 5F3946222F8B087200F4A2D8 /* XCRemoteSwiftPackageReference "clerk-ios" */;
-			productName = ClerkKitUI;
 		};
 		5F93A1D02F9D04AD009E36CA /* SignalRClient */ = {
 			isa = XCSwiftPackageProductDependency;

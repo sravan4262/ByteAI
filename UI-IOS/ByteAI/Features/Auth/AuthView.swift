@@ -30,6 +30,7 @@ struct AuthView: View {
                 .opacity(0.55)
                 .blur(radius: 0.4)
                 .allowsHitTesting(false)
+                .accessibilityHidden(true)
 
             ScrollView {
                 VStack(spacing: 20) {
@@ -109,8 +110,19 @@ private struct OAuthButton: View {
                 if isLoading {
                     ProgressView().tint(.byteText1).scaleEffect(0.85)
                 } else {
-                    Image(systemName: provider.iconAsset)
-                        .font(.system(size: 15, weight: .semibold))
+                    Group {
+                        if provider.iconAsset.isSystemSymbol {
+                            Image(systemName: provider.iconAsset.name)
+                                .font(.system(size: 15, weight: .semibold))
+                        } else {
+                            Image(provider.iconAsset.name)
+                                .resizable()
+                                .renderingMode(.original)
+                                .scaledToFit()
+                                .frame(width: 16, height: 16)
+                        }
+                    }
+                    .accessibilityHidden(true)
                 }
                 Text(isLoading ? "Redirecting…" : provider.label)
                     .font(.byteMono(13, weight: .semibold))
@@ -129,6 +141,9 @@ private struct OAuthButton: View {
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled && !isLoading ? 0.5 : 1)
+        .accessibilityLabel("Sign in with \(provider.label)")
+        .accessibilityHint(isLoading ? "Redirecting to \(provider.label)" : "Continue to \(provider.label) to authenticate")
+        .accessibilityAddTraits(.isButton)
     }
 }
 

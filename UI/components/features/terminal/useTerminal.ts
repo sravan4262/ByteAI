@@ -39,8 +39,18 @@ const HELP_TEXT = [
   '  feedback --type idea "message"    one-shot submission',
   '  report                            report offensive content',
   '  history                           view your last 5 submissions',
+  '  shortcuts                         keyboard shortcuts cheat sheet',
+  '  eastereggs                        reveal the full hidden-features menu',
   '  clear                             clear terminal',
   '  exit  /  Ctrl+C                   close terminal',
+]
+
+const SHORTCUTS_TEXT = [
+  '  Ctrl+`              open / close this terminal',
+  '  ?                   open the hidden-features cheat sheet',
+  '  Ctrl+W              close the active chat tab',
+  '  Ctrl+Shift+Esc      sign out from anywhere',
+  '  Esc                 close the open terminal',
 ]
 
 export function useTerminal(onClose: () => void) {
@@ -178,6 +188,18 @@ export function useTerminal(onClose: () => void) {
       case 'help':
         push('output', 'Commands:')
         HELP_TEXT.forEach(line => push('output', line))
+        break
+
+      case 'shortcuts':
+        push('output', 'Keyboard shortcuts:')
+        SHORTCUTS_TEXT.forEach(line => push('output', line))
+        break
+
+      case 'eastereggs':
+        push('success', '[✦] Opening hidden-features menu…')
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('byteai:open-eastereggs'))
+        }
         break
 
       case 'whoami': {

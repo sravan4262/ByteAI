@@ -2,11 +2,27 @@ import UIKit
 import UserNotifications
 import GoogleSignIn
 
-final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, UIGestureRecognizerDelegate {
+final class AppDelegate: NSObject, @preconcurrency UIApplicationDelegate, UNUserNotificationCenterDelegate, UIGestureRecognizerDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions options: [UIApplication.LaunchOptionsKey : Any]?) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         installGlobalTapToDismissKeyboard()
+
+        // Cold-launch via a home-screen quick action: stash it for handling once
+        // RootView is mounted and the user has authenticated. Returning false
+        // here is the documented way to prevent UIKit from also calling
+        // performActionFor on the same action.
+        if let item = options?[.shortcutItem] as? UIApplicationShortcutItem {
+            QuickActionRouter.shared.pending = item.type
+            return false
+        }
+        return true
+    }
+
+    // Warm-launch path: app is already running when the user picks a quick action.
+    func application(_ application: UIApplication,
+                     performActionFor shortcutItem: UIApplicationShortcutItem) async -> Bool {
+        await MainActor.run { QuickActionRouter.shared.handle(type: shortcutItem.type) }
         return true
     }
 
@@ -51,7 +67,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     func application(_ application: UIApplication,
                      didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("[Push] registration failed: \(error.localizedDescription)")
+        dprint("[Push] registration failed: \(error.localizedDescription)")
     }
 
     // MARK: - Foreground presentation

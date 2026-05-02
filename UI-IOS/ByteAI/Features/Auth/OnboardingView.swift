@@ -492,7 +492,7 @@ final class OnboardingViewModel: ObservableObject {
             seniorityOptions = try await s
             domainOptions = try await d
         } catch let err {
-            print("[Onboarding] loadLookups failed: \(err)")
+            dprint("[Onboarding] loadLookups failed: \(err)")
             ToastCenter.shared.show(error: err, context: "Couldn't load options")
         }
     }

@@ -25,6 +25,41 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<!-- Home-screen quick actions (long-press app icon). Routed via AppDelegate
+	     into GestureManager so they reuse the same shake/swipe surfaces. -->
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.byteai.shortcut.support</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Open Support</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Talk to the team</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeMessage</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.byteai.shortcut.chat</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Open Chat</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Jump to your inbox</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeCompose</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.byteai.shortcut.shortcuts</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Hidden Features</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Every gesture &amp; shortcut</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypeBookmark</string>
+		</dict>
+	</array>
 	<!-- Supabase project URL + anon key, injected from xcconfig / scheme env -->
 	<key>SupabaseURL</key>
 	<string>$(SUPABASE_URL)</string>
@@ -37,13 +72,17 @@
 	     production web URL when unset, so dev builds still produce valid links. -->
 	<key>ByteAIShareBaseURL</key>
 	<string>$(BYTEAI_SHARE_BASE_URL)</string>
-	<!-- Local network access (iOS 14+ to reach LAN backend in dev) -->
+#ifdef BYTEAI_DEBUG
+	<!-- Local network access — Debug builds only, so dev devices can reach a
+	     LAN/ngrok backend over HTTP. Stripped from Release builds via
+	     INFOPLIST_PREPROCESS so production binaries never declare it. -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>ByteAI needs local network access to connect to the development backend.</string>
+	<string>ByteAI uses your local network during development to reach a local backend.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_http._tcp</string>
 	</array>
+#endif
 	<!-- Face ID for biometric authentication -->
 	<key>NSFaceIDUsageDescription</key>
 	<string>ByteAI uses Face ID to securely sign you in.</string>
@@ -52,11 +91,17 @@
 	<string>ByteAI needs access to your photo library so you can choose a profile picture.</string>
 	<!-- Pasteboard usage description (defensive): standard UITextView edit-menu
 	     paste does not require this on iOS, but providing a string ensures any
-	     future programmatic UIPasteboard reads (e.g. "paste link" affordances)
-	     don't trip the iOS 16+ pasteboard prompt with a generic placeholder. -->
+	     future programmatic UIPasteboard reads (e.g. paste-link affordances)
+	     do not trip the iOS 16+ pasteboard prompt with a generic placeholder. -->
 	<key>NSPasteboardUsageDescription</key>
 	<string>ByteAI uses the clipboard so you can paste content into your posts.</string>
-	<!-- Allow plain HTTP to localhost for local dev -->
+#ifdef BYTEAI_DEBUG
+	<!-- App Transport Security exception — Debug builds only.
+	     NSAllowsLocalNetworking permits HTTP to .local hosts and IP literals
+	     on the local subnet of the device (LAN dev backend). NSAllowsArbitraryLoads
+	     covers ngrok HTTP tunnels in case TLS is not enabled.
+	     Stripped from Release builds via INFOPLIST_PREPROCESS so the App Store
+	     binary is fully ATS-compliant — Apple does not see this block. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
@@ -64,6 +109,12 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+#endif
+	<!-- App tracking: ByteAI does not perform any cross-app/IDFA tracking and
+	     therefore does not request ATT authorization. No analytics, ads, or
+	     attribution SDKs are integrated. If that changes, add
+	     NSUserTrackingUsageDescription here and call
+	     ATTrackingManager.requestTrackingAuthorization before any tracking. -->
 	<!-- Google Sign-In iOS client ID. Picked up automatically by GoogleSignIn SDK
 	     when GIDSignIn.configuration is not set programmatically.
 	     Format: <number>-<hash>.apps.googleusercontent.com -->
@@ -78,7 +129,7 @@
 	       Debug builds resolve it from Configs/Debug.xcconfig; Release builds are
 	       overwritten by the TestFlight workflow which derives it from the
 	       GOOGLE_IOS_CLIENT_ID secret. Keep CFBundleURLName = "com.byteai.googlesignin"
-	       so CI's dedup-and-replace logic finds and overwrites this entry. -->
+	       so the CI dedup-and-replace logic finds and overwrites this entry. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -114,7 +165,7 @@
 	</dict>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

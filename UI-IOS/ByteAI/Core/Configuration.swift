@@ -20,7 +20,10 @@ enum AppConfig {
         let raw = value(for: "BYTEAI_API_URL", plistKey: "ByteAIApiURL")
         let fallback = "http://127.0.0.1:5239"
         let final = raw.isEmpty || raw.hasPrefix("$(") ? fallback : raw
-        return URL(string: final)!
+        guard let url = URL(string: final) else {
+            fatalError("BYTEAI_API_URL is not a valid URL: \(final). Set it in Scheme → Run → Environment Variables or Configs/Debug.xcconfig.")
+        }
+        return url
     }()
 
     static let signalRHubURL: URL = apiBaseURL.appendingPathComponent("hubs/chat")
@@ -32,7 +35,10 @@ enum AppConfig {
         let raw = value(for: "BYTEAI_SHARE_BASE_URL", plistKey: "ByteAIShareBaseURL")
         let fallback = "https://www.byteaiofficial.com"
         let final = raw.isEmpty || raw.hasPrefix("$(") ? fallback : raw
-        return URL(string: final)!
+        guard let url = URL(string: final) else {
+            fatalError("BYTEAI_SHARE_BASE_URL is not a valid URL: \(final).")
+        }
+        return url
     }()
 
     /// Google Sign-In iOS client ID. Checked in order: scheme env var → Info.plist GIDClientID.

@@ -20,6 +20,7 @@ struct CTAButton: View {
                     .tracking(1.0)
                 Text(trailing)
                     .font(.byteMono(10, weight: .bold))
+                    .accessibilityHidden(true)
             }
             .foregroundColor(identity.solid)
             .padding(.horizontal, 16)
@@ -36,6 +37,7 @@ struct CTAButton: View {
         }
         .buttonStyle(.plain)
         .frame(minHeight: 36)
+        .accessibilityLabel(label.replacingOccurrences(of: "_", with: " ").capitalized)
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity,
                             perform: {},
                             onPressingChanged: { pressed = $0 })
@@ -58,6 +60,7 @@ struct SubmitButton: View {
             HStack(spacing: 8) {
                 if isLoading {
                     ProgressView().tint(.white).scaleEffect(0.85)
+                        .accessibilityHidden(true)
                 }
                 Text(label)
                     .font(.byteMono(12, weight: .bold))
@@ -78,6 +81,8 @@ struct SubmitButton: View {
         .buttonStyle(.plain)
         .disabled(isLoading || isDisabled)
         .opacity(isDisabled ? 0.4 : 1)
+        .accessibilityLabel(label.capitalized)
+        .accessibilityHint(isLoading ? "In progress" : "")
     }
 
     private var gradientEnd: Color {

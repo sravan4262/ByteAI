@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { FeedHeader } from './feed-header'
 import { FeedFilters } from './feed-filters'
 import { PostCard } from './post-card'
+import { TipStrip } from '@/components/features/easter-eggs/TipStrip'
 import * as api from '@/lib/api'
 import type { Post } from '@/lib/api'
 import { getMeCache } from '@/lib/user-cache'
@@ -203,6 +204,8 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
         onTabChange={handleTabChange}
         onStackFilter={(stack) => { setActiveStackFilter(stack); updateUrl(activeTab, stack) }}
       />
+
+      <TipStrip />
 
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-[var(--border-m)]">
         <div className="flex flex-col gap-2 p-2">

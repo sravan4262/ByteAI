@@ -64,6 +64,10 @@ struct PostCardView: View {
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { (onTap ?? {})() }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Byte by \(post.author.displayName): \(post.title)")
+                .accessibilityHint("Double-tap to open the full byte")
+                .accessibilityAddTraits(.isButton)
 
                 if !hideInteractions {
                     Divider().background(Color.byteBorderHigh).padding(.vertical, 2)
@@ -122,11 +126,14 @@ struct PostCardView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(post.likes) likes")
+                .accessibilityHint(post.likes > 0 ? "Show people who liked this byte" : "")
             }
 
             interactionPill(icon: "bubble.left", count: post.comments, isActive: false) {
                 onComment?() ?? onTap?()
             }
+            .accessibilityLabel(post.comments == 0 ? "View comments" : "View \(post.comments) comments")
 
             interactionPill(icon: post.isBookmarked ? "bookmark.fill" : "bookmark",
                             label: post.isBookmarked ? "SAVED" : "SAVE", isActive: post.isBookmarked) {
@@ -134,12 +141,14 @@ struct PostCardView: View {
                 if post.isBookmarked { Haptics.light() }
                 Task { try? await APIClient.shared.toggleBookmark(postId: post.id) }
             }
+            .accessibilityLabel(post.isBookmarked ? "Remove bookmark" : "Bookmark byte")
 
             ShareLink(item: ShareURL.post(id: post.id),
                       subject: Text(post.title),
                       message: Text(String(post.body.prefix(140)))) {
                 HStack(spacing: 6) {
                     Image(systemName: "square.and.arrow.up").font(.system(size: 13))
+                        .accessibilityHidden(true)
                     Text("SHARE").font(.byteTerminalSmall).tracking(0.5)
                 }
                 .foregroundColor(.byteText1)
@@ -148,10 +157,13 @@ struct PostCardView: View {
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(IdentityColor.blue.borderFaint, lineWidth: 1))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
+            .accessibilityLabel("Share byte")
 
             Spacer()
 
             CTAButton(label: "VIEW_FULL_BYTE") { onTap?() }
+                .accessibilityLabel("View full byte")
+                .accessibilityHint("Opens the full byte detail view")
         }
     }
 
@@ -171,8 +183,10 @@ struct PostCardView: View {
                     UnevenRoundedRectangle(topLeadingRadius: 8, bottomLeadingRadius: 8,
                                            bottomTrailingRadius: 0, topTrailingRadius: 0)
                 )
+                .accessibilityHidden(true)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(icon == "heart" ? (isActive ? "Unlike" : "Like") : icon)
     }
 
     @ViewBuilder

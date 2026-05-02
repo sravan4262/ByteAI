@@ -389,11 +389,11 @@ actor APIClient {
         }
 
         var body = Data()
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"avatar.jpg\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"avatar.jpg\"\r\n".utf8))
+        body.append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
         body.append(imageData)
-        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
         req.httpBody = body
         req.timeoutInterval = 30
 
@@ -879,8 +879,8 @@ enum APIError: LocalizedError {
                 // Compact fallback string for callers that don't render the modal
                 // (e.g. logging, generic toasts). Surfaces are expected to
                 // intercept .contentRejected and show the rich modal/banner.
-                let msg = r.reasons.first?.message
-                return (msg?.isEmpty == false ? msg! : "Content rejected by moderation")
+                let msg = r.reasons.first?.message ?? ""
+                return msg.isEmpty ? "Content rejected by moderation" : msg
             case .http(422, let msg) where !msg.isEmpty && msg != "Stream request failed.":
                 return msg
             case .http(400, let msg): return msg.isEmpty ? "Bad request — check your input" : msg
@@ -1386,7 +1386,10 @@ extension Interview {
             guard let username = r.authorUsername, !username.isEmpty else {
                 return User.placeholder(id: r.authorId)
             }
-            let displayName = r.authorDisplayName?.isEmpty == false ? r.authorDisplayName! : username
+            let displayName: String = {
+                if let name = r.authorDisplayName, !name.isEmpty { return name }
+                return username
+            }()
             let initials = String(displayName.prefix(1)).uppercased()
             return User(
                 id: r.authorId,

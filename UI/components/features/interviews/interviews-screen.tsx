@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Briefcase, Bell, Bookmark, Share2, ChevronsUpDown, ChevronsDownUp, MessageSquare, Wand2, X, CornerDownLeft } from 'lucide-react'
+import { Briefcase, Bell, Bookmark, Share2, ChevronsUpDown, ChevronsDownUp, MessageSquare, Wand2, X, CornerDownLeft, HelpCircle } from 'lucide-react'
 import { useNotifications } from '@/components/layout/notification-context'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
@@ -580,6 +580,17 @@ export function InterviewsScreen() {
                 SMART
               </button>
 
+              {smartMode && (
+                <button
+                  onClick={() => window.dispatchEvent(new Event('byteai:open-eastereggs'))}
+                  title="Smart-mode syntax cheat sheet"
+                  aria-label="Open smart-mode help"
+                  className="flex items-center justify-center w-7 h-7 rounded-lg text-[var(--purple)] border border-[rgba(167,139,250,0.4)] bg-[rgba(167,139,250,0.06)] hover:bg-[rgba(167,139,250,0.12)] transition-all"
+                >
+                  <HelpCircle size={12} />
+                </button>
+              )}
+
               {hasAnyFilter && (
                 <button
                   onClick={resetFilters}
@@ -668,6 +679,9 @@ export function InterviewsScreen() {
               <Briefcase size={20} className="text-[var(--purple)] opacity-50" />
               <p className="font-mono text-xs font-bold text-[var(--t1)]">NO INTERVIEWS FOUND</p>
               <p className="text-xs text-[var(--t2)]">Try adjusting your filters or post the first one.</p>
+              <p className="font-mono text-[10px] text-[var(--t3)] mt-2">
+                ◆ Smart Mode: <span className="text-[var(--purple)]">@google role:swe #hard</span>
+              </p>
             </div>
           ) : (
             interviews.map((interview, i) => (

@@ -23,3 +23,11 @@ BYTEAI_SHARE_BASE_URL = https://www.byteaiofficial.com
 // Web client ID:  Google Cloud Console → Credentials → Web application client
 GOOGLE_IOS_CLIENT_ID = REPLACE_ME.apps.googleusercontent.com
 GOOGLE_WEB_CLIENT_ID = REPLACE_ME.apps.googleusercontent.com
+
+// ─── Info.plist preprocessor ────────────────────────────────────────────────
+// Defines BYTEAI_DEBUG=1 so #ifdef BYTEAI_DEBUG blocks in Info.plist
+// (NSAppTransportSecurity, NSLocalNetworkUsageDescription, NSBonjourServices)
+// are kept in Debug builds and stripped from Release builds.
+INFOPLIST_PREPROCESS = YES
+INFOPLIST_PREPROCESSOR_DEFINITIONS = $(inherited) BYTEAI_DEBUG=1
+INFOPLIST_OTHER_PREPROCESSOR_FLAGS = $(inherited) -traditional-cpp

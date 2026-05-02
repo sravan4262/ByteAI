@@ -758,8 +758,15 @@ const handleLogout = async () => {
 
           {/* Spacer + sign out at bottom */}
           <div className="flex-1" />
+          <button
+            onClick={() => window.dispatchEvent(new Event('byteai:open-eastereggs'))}
+            title="Hidden features (?)"
+            className="flex flex-col items-center justify-center gap-1.5 py-3 mx-1.5 rounded-lg border border-[rgba(167,139,250,0.25)] bg-[rgba(167,139,250,0.04)] text-[var(--t1)] hover:border-[rgba(167,139,250,0.5)] hover:bg-[rgba(167,139,250,0.1)] hover:text-[var(--purple)] transition-all">
+            <span className="font-mono text-base leading-none">?</span>
+            <span className="font-mono text-[10px] font-bold tracking-[0.05em]">SHORTCUTS</span>
+          </button>
           <button onClick={handleLogout}
-            className="flex flex-col items-center justify-center gap-1.5 py-3 mx-1.5 mb-1.5 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(244,63,94,0.4)] hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--red)] transition-all group">
+            className="flex flex-col items-center justify-center gap-1.5 py-3 mx-1.5 mb-1.5 mt-1 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(244,63,94,0.4)] hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--red)] transition-all group">
             <LogOut size={15} />
             <span className="font-mono text-[10px] font-bold tracking-[0.05em]">SIGN OUT</span>
             <span className="flex flex-col items-center gap-0 opacity-50 group-hover:opacity-80 transition-opacity">

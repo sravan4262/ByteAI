@@ -44,6 +44,10 @@ struct ConversationsView: View {
                             Text("tap NEW_CONVERSATION below to start one")
                                 .font(.byteMono(10))
                                 .foregroundColor(.byteText2)
+                            Text("◆ try  dm @username  in the launcher")
+                                .font(.byteMono(10))
+                                .foregroundColor(.bytePurple.opacity(0.85))
+                                .padding(.top, 8)
                         }
                         Spacer()
                     } else {

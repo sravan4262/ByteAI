@@ -57,6 +57,8 @@ struct FeedView: View {
                         stackOptions: vm.stackOptions
                     )
                     .padding(.horizontal, 16)
+
+                    TipStripView()
                 }
                 .padding(.bottom, 6)
                 .background(Color.byteBackground)
@@ -730,7 +732,7 @@ final class FeedViewModel: ObservableObject {
         } catch {
             // Keep existing posts on refresh failure (or cancellation) — clearing them
             // makes a transient error look like an empty feed.
-            print("[Feed] load failed: \(error)")
+            dprint("[Feed] load failed: \(error)")
         }
         if let stacks = try? await APIClient.shared.getTechStacks() {
             let opts = stacks.map { TechOption(value: $0.name, label: $0.label) }

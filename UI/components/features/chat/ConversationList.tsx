@@ -22,12 +22,15 @@ export function ConversationList({ conversations, loading, activeId }: Props) {
 
   if (conversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-2">
         <span className="font-mono text-[10px] text-[var(--t3)] tracking-widest uppercase">
           no conversations
         </span>
-        <p className="font-mono text-[10px] text-[var(--t3)] mt-2 opacity-60">
+        <p className="font-mono text-[10px] text-[var(--t3)] opacity-60">
           follow each other to start messaging
+        </p>
+        <p className="font-mono text-[10px] text-[var(--t3)] opacity-60 mt-3">
+          ◆ try <span className="text-[var(--purple)]">dm @username</span> in the launcher
         </p>
       </div>
     )

@@ -29,7 +29,7 @@ struct FaintTintButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if let icon { Text(icon) }
+                if let icon { Text(icon).accessibilityHidden(true) }
                 Text(label)
                     .font(.byteMono(size.fontSize, weight: isSelected ? .bold : .regular))
                     .tracking(0.55)
@@ -39,6 +39,7 @@ struct FaintTintButton: View {
                 if let trailing {
                     Text(trailing)
                         .font(.byteMono(10, weight: .bold))
+                        .accessibilityHidden(true)
                 }
             }
             .foregroundColor(textColor)
@@ -56,6 +57,9 @@ struct FaintTintButton: View {
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.4 : 1)
         .frame(minHeight: 36)
+        .accessibilityLabel(label.replacingOccurrences(of: "_", with: " ").capitalized)
+        .accessibilityValue(isSelected ? "Selected" : "")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     private var textColor: Color {

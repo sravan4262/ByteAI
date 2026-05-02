@@ -39,6 +39,10 @@ struct FloatingHeaderCard<Trailing: View>: View {
                 HStack(spacing: 8) {
                     if useLogoMark {
                         ByteAILogoMark(size: 20)
+                            .contentShape(Rectangle())
+                            .onTapGesture(count: 3) {
+                                GestureManager.shared.openHiddenFeatures()
+                            }
                     } else {
                         Image(systemName: icon)
                             .font(.system(size: 14, weight: .semibold))

@@ -6,6 +6,8 @@ export type ParsedCommand =
   | { cmd: 'exit' }
   | { cmd: 'history' }
   | { cmd: 'whoami' }
+  | { cmd: 'shortcuts' }
+  | { cmd: 'eastereggs' }
   | { cmd: 'feedback'; feedbackType: FeedbackType; inlineMessage?: string }
   | { cmd: 'report'; contentType?: string; contentId?: string; message?: string }
   | { cmd: 'unknown'; raw: string }
@@ -20,11 +22,13 @@ export function parseCommand(input: string): ParsedCommand {
 
   const base = lower.split(/\s+/)[0]
 
-  if (base === 'help')    return { cmd: 'help' }
-  if (base === 'clear')   return { cmd: 'clear' }
-  if (base === 'exit')    return { cmd: 'exit' }
-  if (base === 'history') return { cmd: 'history' }
-  if (base === 'whoami')  return { cmd: 'whoami' }
+  if (base === 'help')       return { cmd: 'help' }
+  if (base === 'clear')      return { cmd: 'clear' }
+  if (base === 'exit')       return { cmd: 'exit' }
+  if (base === 'history')    return { cmd: 'history' }
+  if (base === 'whoami')     return { cmd: 'whoami' }
+  if (base === 'shortcuts')  return { cmd: 'shortcuts' }
+  if (base === 'eastereggs') return { cmd: 'eastereggs' }
 
   if (base === 'feedback') {
     const typeMatch = /--type\s+(good|bad|idea)/i.exec(trimmed)

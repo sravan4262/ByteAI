@@ -70,13 +70,30 @@ render() {
   echo "✓ $(basename "$out")  (${size}×${size})"
 }
 
+# Strip the alpha channel from a PNG, producing a flat RGB image.
+# Required for the App Store icon: Apple rejects RGBA PNGs (ITMS-90717),
+# even when every pixel is opaque. rsvg-convert and qlmanage always emit
+# RGBA, and macOS sips can't strip the alpha channel from PNGs cleanly,
+# so we delegate to a stdlib-only Python helper.
+strip_alpha() {
+  local file="$1"
+  python3 "$ROOT/strip-png-alpha.py" "$file" --bg 0e0b30
+  if file "$file" | grep -q "RGBA"; then
+    echo "⚠️  $(basename "$file") still reports RGBA — bailing." >&2
+    return 1
+  fi
+}
+
 echo "▶ Rasterizing icons (using $RASTERIZER)…"
 echo ""
 echo "── iOS (assets/branding/ios/) ──────────────────────────────────"
 
 # AppIcon — fully opaque square, no rounded corners (system applies mask).
 # Drop into UI-IOS/ByteAI/Resources/Assets.xcassets/AppIcon.appiconset/ByteAI-Logo.png
+# Apple rejects RGBA App Store icons (ITMS-90717), so strip the alpha channel
+# after rasterization — even fully-opaque RGBA PNGs are rejected.
 render "$SQUARE" "$IOS_OUT/AppIcon-1024.png" 1024
+strip_alpha "$IOS_OUT/AppIcon-1024.png"
 
 # Launch screen glyph — transparent cyan </>, sits over LaunchBackground color.
 # Drop into UI-IOS/ByteAI/Resources/Assets.xcassets/LaunchLogo.imageset/

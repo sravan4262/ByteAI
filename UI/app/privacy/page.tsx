@@ -7,7 +7,7 @@ export default function PrivacyPage() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 text-base text-gray-800 dark:text-gray-200 leading-relaxed">
       <h1 className="text-3xl font-bold text-black dark:text-white mb-1">PRIVACY POLICY</h1>
-      <p className="text-gray-500 dark:text-gray-400 mb-10">Last updated April 26, 2026</p>
+      <p className="text-gray-500 dark:text-gray-400 mb-10">Last updated May 02, 2026</p>
 
       <p className="mb-6">
         This Privacy Notice for Sravan Ravula (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) describes how and why we might
@@ -127,6 +127,87 @@ export default function PrivacyPage() {
         </a>
         .
       </p>
+
+      <h3 className="font-semibold text-black dark:text-white mb-2">Information collected by the iOS app</h3>
+      <p className="mb-2">
+        When you use ByteAI on iOS, we may additionally process the following:
+      </p>
+      <ul className="list-disc pl-6 mb-4 space-y-2">
+        <li>
+          <strong>Photos.</strong> If you choose to set or change your profile picture, you grant the app
+          access to your Photos library so you can pick an image. The selected image is uploaded to our
+          servers and stored as your avatar. We do not access any other photo, and we do not scan, index,
+          or analyze your photo library.
+        </li>
+        <li>
+          <strong>Push notification token.</strong> If you opt in to push notifications, Apple issues a
+          device token that we store on our servers and use to send notifications (new replies, mentions,
+          messages, moderation outcomes). The token identifies your device, not you personally; we
+          associate it with your account so we can route notifications to the right device.
+        </li>
+        <li>
+          <strong>Biometric authentication (Face ID / Touch ID).</strong> If you enable the biometric lock
+          for the app, the authentication is performed entirely on-device by Apple&rsquo;s Secure Enclave.
+          Your face or fingerprint data never leaves your device and we never see, receive, or store it.
+          We only receive a success/failure signal from iOS so we can unlock the app session.
+        </li>
+        <li>
+          <strong>Diagnostic data.</strong> If the app encounters an error, it sends a non-identifying
+          diagnostic record (error type, app version, OS version, screen name) to our backend so we can
+          fix bugs. We do not collect crash dumps with personal data, and no third-party analytics or
+          attribution SDKs are integrated.
+        </li>
+      </ul>
+      <p className="mb-10">
+        ByteAI does not perform cross-app or cross-website tracking and does not request App Tracking
+        Transparency authorization. We do not use the Advertising Identifier (IDFA).
+      </p>
+
+      <h3 className="font-semibold text-black dark:text-white mb-2">Third-party SDKs in the iOS app</h3>
+      <p className="mb-4">
+        The iOS app integrates the following third-party libraries to deliver core functionality. None of
+        them are used for advertising or cross-app tracking:
+      </p>
+      <ul className="list-disc pl-6 mb-10 space-y-2">
+        <li>
+          <strong>Supabase</strong> &mdash; authentication, database access, file storage, and real-time
+          updates. Subject to{" "}
+          <a
+            href="https://supabase.com/privacy"
+            className="text-blue-500 underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Supabase&rsquo;s privacy policy
+          </a>
+          .
+        </li>
+        <li>
+          <strong>Google Sign-In</strong> &mdash; OAuth authentication when you choose &ldquo;Sign in with
+          Google.&rdquo; Subject to{" "}
+          <a
+            href="https://policies.google.com/privacy"
+            className="text-blue-500 underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google&rsquo;s privacy policy
+          </a>
+          .
+        </li>
+        <li>
+          <strong>Kingfisher</strong> &mdash; on-device image cache for avatars and post images. Does not
+          send data to any third party.
+        </li>
+        <li>
+          <strong>SignalR Client</strong> &mdash; the WebSocket transport for real-time chat. Talks only to
+          our own backend.
+        </li>
+        <li>
+          <strong>PhoneNumberKit</strong> &mdash; on-device phone number formatting and validation. Does
+          not send data anywhere.
+        </li>
+      </ul>
 
       <h2 className="text-xl font-bold text-black dark:text-white mb-4">2. HOW DO WE PROCESS YOUR INFORMATION?</h2>
       <p className="mb-4">

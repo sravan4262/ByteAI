@@ -3835,6 +3835,7 @@ private struct FollowerRow: View {
 struct PreferencesView: View {
     @StateObject private var vm = PreferencesViewModel()
     @Environment(\.dismiss) private var dismiss
+    @State private var showHiddenFeatures = false
 
     var body: some View {
         NavigationStack {
@@ -3887,6 +3888,38 @@ struct PreferencesView: View {
                                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
                                     .clipShape(RoundedRectangle(cornerRadius: 12))
                             }
+
+                            AccentBarHeader(label: "TIPS & TRICKS", size: .compact)
+                            Button {
+                                showHiddenFeatures = true
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "wand.and.stars")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.bytePurple)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Gestures & Shortcuts")
+                                            .font(.byteSans(14, weight: .semibold))
+                                            .foregroundColor(.byteText1)
+                                        Text("Every hidden gesture, command, and Smart-Mode filter")
+                                            .font(.byteMono(10))
+                                            .foregroundColor(.byteText2)
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.byteText3)
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .background(Color.byteCard)
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .padding(20)
                     }
@@ -3914,6 +3947,11 @@ struct PreferencesView: View {
             }
         }
         .task { await vm.load() }
+        .sheet(isPresented: $showHiddenFeatures) {
+            HiddenFeaturesView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
     }
 }
 

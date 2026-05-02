@@ -20,3 +20,13 @@ GOOGLE_IOS_CLIENT_ID = REPLACE_ME_BY_CI
 // CI builds; keep the placeholder for parity with manual Release builds.
 GOOGLE_IOS_REVERSED_CLIENT_ID = REPLACE_ME_BY_CI
 GOOGLE_WEB_CLIENT_ID = REPLACE_ME_BY_CI
+
+// ─── Info.plist preprocessor ────────────────────────────────────────────────
+// Release builds intentionally do NOT define BYTEAI_DEBUG, so #ifdef BYTEAI_DEBUG
+// blocks in Info.plist (NSAppTransportSecurity, NSLocalNetworkUsageDescription,
+// NSBonjourServices) are stripped — production binaries are fully ATS-compliant
+// and never declare a local-network purpose string.
+// -traditional-cpp prevents the C preprocessor from mangling URLs that contain
+// // or /* ... */ inside <string> values.
+INFOPLIST_PREPROCESS = YES
+INFOPLIST_OTHER_PREPROCESSOR_FLAGS = $(inherited) -traditional-cpp

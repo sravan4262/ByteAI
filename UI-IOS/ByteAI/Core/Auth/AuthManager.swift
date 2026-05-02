@@ -19,10 +19,16 @@ enum AuthProvider: String, CaseIterable, Identifiable {
         }
     }
 
-    var iconAsset: String {
+    /// Whether the icon is an SF Symbol (`Image(systemName:)`) or a bundled
+    /// asset (`Image(_:)`). Apple's `applelogo` is an SF Symbol and is the
+    /// officially-sanctioned mark per Apple HIG. Google requires their
+    /// branded "G" logo from
+    /// https://developers.google.com/identity/branding-guidelines — ship that
+    /// asset under Assets.xcassets/GoogleGLogo.imageset and load by name.
+    var iconAsset: (name: String, isSystemSymbol: Bool) {
         switch self {
-        case .apple:  return "applelogo"
-        case .google: return "globe"
+        case .apple:  return ("applelogo", true)
+        case .google: return ("GoogleGLogo", false)
         }
     }
 
@@ -168,14 +174,14 @@ final class AuthManager: ObservableObject {
             state = .onboarding
         } catch APIError.unauthorized {
             // 401 — refresh path is handled by observeUnauthorized; don't fall through to onboarding.
-            print("[Auth] loadCurrentUser unauthorized — awaiting refresh or sign-out")
+            dprint("[Auth] loadCurrentUser unauthorized — awaiting refresh or sign-out")
         } catch APIError.http(let code, _) where code == 403 {
             // Stale session (Keychain survives app deletion; token may be revoked or env-mismatched).
             // Clear it so the user lands on the auth screen, not onboarding.
-            print("[Auth] loadCurrentUser forbidden — clearing stale session")
+            dprint("[Auth] loadCurrentUser forbidden — clearing stale session")
             try? await client.auth.signOut()
         } catch {
-            print("[Auth] loadCurrentUser failed: \(error)")
+            dprint("[Auth] loadCurrentUser failed: \(error)")
             let wasOnboarded = UserDefaults.standard.bool(forKey: "byteai_onboarded")
             state = wasOnboarded ? .unauthenticated : .onboarding
         }
@@ -195,10 +201,10 @@ final class AuthManager: ObservableObject {
                 email: session.user.email,
                 avatarUrl: avatarUrl
             )
-            print("[Auth] provisioned user (supabase: \(session.user.id), onboarded: \(isOnboarded))")
+            dprint("[Auth] provisioned user (supabase: \(session.user.id), onboarded: \(isOnboarded))")
             return isOnboarded
         } catch {
-            print("[Auth] provision failed: \(error)")
+            dprint("[Auth] provision failed: \(error)")
             return nil
         }
     }
@@ -256,7 +262,7 @@ final class AuthManager: ObservableObject {
         } catch let error as ASAuthorizationError where error.code == .canceled {
             // User dismissed the sheet — silent, like Google's `.canceled`.
         } catch {
-            print("[Auth] Apple sign-in failed: \(error)")
+            dprint("[Auth] Apple sign-in failed: \(error)")
             self.error = Self.signInErrorMessage(from: error)
         }
     }
@@ -305,7 +311,7 @@ final class AuthManager: ObservableObject {
             error.code == GIDSignInError.canceled.rawValue {
             // User dismissed the sheet — not an error worth surfacing.
         } catch {
-            print("[Auth] Google sign-in failed: \(error)")
+            dprint("[Auth] Google sign-in failed: \(error)")
             self.error = Self.signInErrorMessage(from: error)
         }
     }
