@@ -73,6 +73,9 @@ jobs:
             DROP SCHEMA IF EXISTS users CASCADE;
             DROP SCHEMA IF EXISTS bytes CASCADE;
             DROP SCHEMA IF EXISTS interviews CASCADE;
+            DROP SCHEMA IF EXISTS support CASCADE;
+            DROP SCHEMA IF EXISTS chat CASCADE;
+            DROP SCHEMA IF EXISTS moderation CASCADE;
           SQL
           echo "All app schemas dropped"
 
@@ -110,25 +113,18 @@ jobs:
           done
           echo "auth.users wiped"
 
-          # Empty all storage buckets
+          # Empty all storage buckets using the built-in empty endpoint,
+          # which handles nested folders that the object-list API misses.
           BUCKETS=$(curl -fsS \
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-            "$SUPABASE_URL/storage/v1/bucket" | jq -r '.[].name')
+            "$SUPABASE_URL/storage/v1/bucket" | jq -r '.[].id')
           for bucket in $BUCKETS; do
             echo "  emptying bucket $bucket"
-            OBJECTS=$(curl -fsS -X POST \
+            curl -fsS -X POST \
               -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
               -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-              -H "Content-Type: application/json" \
-              -d '{"prefix":"","limit":1000}' \
-              "$SUPABASE_URL/storage/v1/object/list/$bucket" | jq -r '.[].name // empty')
-            for obj in $OBJECTS; do
-              curl -fsS -X DELETE \
-                -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-                -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-                "$SUPABASE_URL/storage/v1/object/$bucket/$obj" > /dev/null || true
-            done
+              "$SUPABASE_URL/storage/v1/bucket/$bucket/empty" > /dev/null
           done
           echo "storage buckets emptied"
 
