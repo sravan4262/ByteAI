@@ -42,7 +42,7 @@ public sealed class SearchQueryHandler(
         // ── Search bytes ──────────────────────────────────────────────────────
         if (type is "bytes" or "all")
         {
-            var bytes = await search.SearchBytesAsync(request.Q, queryEmbedding, request.Limit, cancellationToken);
+            var bytes = await search.SearchBytesAsync(request.Q, queryEmbedding, request.Limit, cancellationToken, request.UserId);
             results.AddRange(bytes.Select(b => new SearchResultDto(
                 Id: b.Id,
                 AuthorId: b.AuthorId,
@@ -67,7 +67,7 @@ public sealed class SearchQueryHandler(
         // ── Search interviews ─────────────────────────────────────────────────
         if (type is "interviews" or "all")
         {
-            var interviews = await search.SearchInterviewsAsync(request.Q, queryEmbedding, request.Limit, cancellationToken);
+            var interviews = await search.SearchInterviewsAsync(request.Q, queryEmbedding, request.Limit, cancellationToken, request.UserId);
             results.AddRange(interviews.Select(i => new SearchResultDto(
                 Id: i.Id,
                 AuthorId: i.AuthorId,

@@ -15,6 +15,6 @@ public sealed class ReactionService(IMediator mediator) : IReactionService
     public Task<bool> DeleteReactionAsync(Guid byteId, Guid userId, CancellationToken ct)
         => mediator.Send(new DeleteReactionCommand(byteId, userId), ct);
 
-    public Task<List<LikerInfo>> GetLikersAsync(Guid byteId, CancellationToken ct)
-        => mediator.Send(new GetByteLikersQuery(byteId), ct);
+    public Task<List<LikerInfo>> GetLikersAsync(Guid byteId, CancellationToken ct, Guid? requesterId = null)
+        => mediator.Send(new GetByteLikersQuery(byteId, requesterId), ct);
 }

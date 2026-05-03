@@ -88,7 +88,7 @@ public sealed class ReactionsBusinessTests
     public async Task GetLikers_NeedsNoAuth_DelegatesToService()
     {
         var likers = new List<LikerInfo> { new(Guid.NewGuid(), "alice", "Alice", false) };
-        _reactionService.Setup(s => s.GetLikersAsync(_byteId, default)).ReturnsAsync(likers);
+        _reactionService.Setup(s => s.GetLikersAsync(_byteId, default, It.IsAny<Guid?>())).ReturnsAsync(likers);
 
         var result = await _sut.GetLikersAsync(_byteId, default);
 

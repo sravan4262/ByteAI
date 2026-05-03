@@ -260,10 +260,22 @@ struct NotificationRow: View {
                 return "You earned the \"\(label)\" badge!"
             }
             return "You earned a new badge!"
+        case .mention:
+            let where_ = mentionSurface(notification.payload.contentType)
+            return "\(actorName) mentioned you in \(where_)"
         case .feedbackUpdate:
             return notification.payload.message ?? "Your feedback was updated"
         case .system:
             return notification.payload.preview ?? notification.payload.message ?? "New notification"
+        }
+    }
+
+    private func mentionSurface(_ ct: String?) -> String {
+        switch ct {
+        case "byte":      return "a byte"
+        case "interview": return "an interview"
+        case "comment", "interview_comment", "interview_question_comment": return "a comment"
+        default:          return "a post"
         }
     }
 
@@ -276,6 +288,7 @@ struct NotificationRow: View {
         case .follow:         return "person.fill.badge.plus"
         case .unfollow:       return "person.fill.badge.minus"
         case .badge:          return "star.fill"
+        case .mention:        return "at"
         case .feedbackUpdate: return "bell.fill"
         case .system:         return "bell.fill"
         }
@@ -288,6 +301,7 @@ struct NotificationRow: View {
         case .follow:         return .byteGreen
         case .unfollow:       return .byteOrange
         case .badge:          return .byteOrange
+        case .mention:        return .byteAccent
         case .feedbackUpdate: return .bytePurple
         case .system:         return .byteText2
         }

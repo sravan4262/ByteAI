@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Heart, MessageCircle, UserPlus, UserMinus, Award, X, CheckCheck, Trash2 } from 'lucide-react'
+import { Bell, Heart, MessageCircle, UserPlus, UserMinus, Award, X, CheckCheck, Trash2, AtSign } from 'lucide-react'
 import {
   getNotifications,
   markNotificationRead,
@@ -91,6 +91,21 @@ function notificationMeta(n: NotificationResponse): NotificationMeta {
         text: (p?.message as string) || 'Your feedback was updated',
         preview: p?.preview as string | undefined,
       }
+    case 'mention': {
+      // Surface tells us where: 'byte' / 'comment' / 'interview' / 'interview_comment' / 'interview_question_comment'.
+      const ct = (p?.contentType as string | undefined) ?? 'post'
+      const where = ct === 'byte' ? 'a byte'
+        : ct === 'interview' ? 'an interview'
+        : ct.endsWith('comment') ? 'a comment'
+        : 'a post'
+      return {
+        icon: <AtSign size={10} />,
+        badgeColor: 'text-[var(--accent)]',
+        badgeBg: 'bg-[rgba(59,130,246,0.12)] border-[rgba(59,130,246,0.25)]',
+        text: actor ? `${actor} mentioned you in ${where}` : `Someone mentioned you in ${where}`,
+        preview: p?.snippet as string | undefined,
+      }
+    }
     default:
       return {
         icon: <Bell size={10} />,

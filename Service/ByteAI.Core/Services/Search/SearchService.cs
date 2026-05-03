@@ -10,13 +10,14 @@ public sealed class SearchService(AppDbContext db) : ISearchService
     private const int RrfK = 60; // RRF constant — standard value
 
     public async Task<List<Entities.Byte>> SearchBytesAsync(
-        string query, Vector? queryEmbedding, int limit, CancellationToken ct = default)
+        string query, Vector? queryEmbedding, int limit, CancellationToken ct = default, Guid? requesterId = null)
     {
         // ── Full-text results ─────────────────────────────────────────────────
         var ftResults = await db.Bytes
             .AsNoTracking()
             .Where(b => b.IsActive && EF.Functions.ToTsVector("english", b.Title + " " + b.Body)
                          .Matches(EF.Functions.PlainToTsQuery("english", query)))
+            .ExcludeBlockedFor(requesterId, db, b => b.AuthorId)
             .OrderByDescending(b => EF.Functions.ToTsVector("english", b.Title + " " + b.Body)
                                      .Rank(EF.Functions.PlainToTsQuery("english", query)))
             .Take(limit * 2)
@@ -30,6 +31,7 @@ public sealed class SearchService(AppDbContext db) : ISearchService
             vecResults = await db.Bytes
                 .AsNoTracking()
                 .Where(b => b.Embedding != null && b.IsActive && b.Embedding.CosineDistance(queryEmbedding) < 0.3)
+                .ExcludeBlockedFor(requesterId, db, b => b.AuthorId)
                 .OrderBy(b => b.Embedding!.CosineDistance(queryEmbedding))
                 .Take(limit * 2)
                 .Select(b => b.Id)
@@ -64,13 +66,14 @@ public sealed class SearchService(AppDbContext db) : ISearchService
     }
 
     public async Task<List<Entities.Interview>> SearchInterviewsAsync(
-        string query, Vector? queryEmbedding, int limit, CancellationToken ct = default)
+        string query, Vector? queryEmbedding, int limit, CancellationToken ct = default, Guid? requesterId = null)
     {
         // ── Full-text results ─────────────────────────────────────────────────
         var ftResults = await db.Interviews
             .AsNoTracking()
             .Where(i => EF.Functions.ToTsVector("english", i.Title + " " + i.Body)
                          .Matches(EF.Functions.PlainToTsQuery("english", query)))
+            .ExcludeBlockedFor(requesterId, db, i => i.AuthorId)
             .OrderByDescending(i => EF.Functions.ToTsVector("english", i.Title + " " + i.Body)
                                      .Rank(EF.Functions.PlainToTsQuery("english", query)))
             .Take(limit * 2)
@@ -84,6 +87,7 @@ public sealed class SearchService(AppDbContext db) : ISearchService
             vecResults = await db.Interviews
                 .AsNoTracking()
                 .Where(i => i.Embedding != null && i.Embedding.CosineDistance(queryEmbedding) < 0.3)
+                .ExcludeBlockedFor(requesterId, db, i => i.AuthorId)
                 .OrderBy(i => i.Embedding!.CosineDistance(queryEmbedding))
                 .Take(limit * 2)
                 .Select(i => i.Id)
@@ -114,13 +118,14 @@ public sealed class SearchService(AppDbContext db) : ISearchService
         return entities.OrderBy(i => topIds.IndexOf(i.Id)).ToList();
     }
 
-    public async Task<List<Entities.User>> SearchPeopleAsync(string query, int limit, CancellationToken ct = default)
+    public async Task<List<Entities.User>> SearchPeopleAsync(string query, int limit, CancellationToken ct = default, Guid? requesterId = null)
     {
         var q = query.ToLower();
         return await db.Users
             .AsNoTracking()
             .Where(u => u.Username.ToLower().Contains(q)
                      || (u.DisplayName != null && u.DisplayName.ToLower().Contains(q)))
+            .ExcludeBlockedFor(requesterId, db, u => u.Id)
             .Take(Math.Min(limit, 50))
             .ToListAsync(CancellationToken.None);
     }

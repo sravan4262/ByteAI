@@ -6,6 +6,7 @@ using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Moderation;
 using ByteAI.Core.Services.AI;
+using ByteAI.Core.Services.Mentions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Pgvector;
@@ -13,7 +14,7 @@ using Pgvector.EntityFrameworkCore;
 
 namespace ByteAI.Core.Services.Bytes;
 
-public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddingService embedding, IModerationService moderation) : IByteService
+public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddingService embedding, IModerationService moderation, IMentionNotifier mentionNotifier) : IByteService
 {
     public async Task UpdateEmbeddingAsync(Guid byteId, float[] embedding, CancellationToken ct = default)
     {
@@ -34,7 +35,9 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
                 return new PagedResult<ByteResult>([], 0, pagination.Page, pagination.PageSize);
         }
 
-        var query = db.Bytes.Where(b => b.IsActive).AsQueryable();
+        var query = db.Bytes.Where(b => b.IsActive)
+            .ExcludeBlockedFor(requesterId, db, b => b.AuthorId)
+            .AsQueryable();
 
         if (authorId.HasValue)
             query = query.Where(b => b.AuthorId == authorId.Value);
@@ -63,6 +66,7 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
     public Task<ByteResult?> GetByteByIdAsync(Guid byteId, CancellationToken ct, Guid? requesterId = null) =>
         db.Bytes
             .Where(b => b.Id == byteId && b.IsActive)
+            .ExcludeBlockedFor(requesterId, db, b => b.AuthorId)
             .Select(b => new ByteResult(
                 b.Id, b.AuthorId, b.Title, b.Body, b.CodeSnippet, b.Language, b.Type,
                 b.CreatedAt, b.UpdatedAt, b.Comments.Count(), b.UserLikes.Count(),
@@ -159,6 +163,13 @@ public sealed class ByteService(AppDbContext db, IPublisher publisher, IEmbeddin
         await publisher.Publish(
             new ByteCreatedEvent(entity.Id, entity.AuthorId, entity.Title, entity.Body, entity.CodeSnippet),
             ct);
+
+        var snippet = entity.Body.Length > 140 ? entity.Body[..140] : entity.Body;
+        await mentionNotifier.NotifyAsync(
+            authorId: entity.AuthorId,
+            content: $"{entity.Title}\n{entity.Body}",
+            context: new MentionContext("byte", entity.Id, snippet),
+            ct: ct);
 
         return new ByteResult(entity.Id, entity.AuthorId, entity.Title, entity.Body, entity.CodeSnippet, entity.Language, entity.Type, entity.CreatedAt, entity.UpdatedAt, 0, 0);
     }

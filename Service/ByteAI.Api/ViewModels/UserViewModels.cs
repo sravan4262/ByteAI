@@ -46,7 +46,9 @@ public sealed record UserResponse(
     int? FollowersCount = null,
     int? FollowingCount = null,
     bool? IsFollowedByMe = null,
-    IReadOnlyList<string>? TechStack = null
+    IReadOnlyList<string>? TechStack = null,
+    bool? IsBlockedByMe = null,
+    bool? HasBlockedMe = null
 );
 
 public sealed record SocialResponse(string Platform, string Url, string? Label);
@@ -57,7 +59,8 @@ public sealed record UserPreferencesResponse(
     bool NotifReactions,
     bool NotifComments,
     bool NotifFollowers,
-    bool NotifUnfollows
+    bool NotifUnfollows,
+    bool NotifMentions
 );
 
 public sealed record UpdatePreferencesRequest(
@@ -66,7 +69,8 @@ public sealed record UpdatePreferencesRequest(
     bool? NotifReactions,
     bool? NotifComments,
     bool? NotifFollowers,
-    bool? NotifUnfollows
+    bool? NotifUnfollows,
+    bool? NotifMentions
 );
 
 public sealed record UpsertSocialsRequest(List<UpsertSocialItem> Socials);

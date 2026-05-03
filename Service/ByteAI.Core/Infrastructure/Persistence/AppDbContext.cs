@@ -75,6 +75,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UserBan> UserBans => Set<UserBan>();
     public DbSet<UserBanHistory> UserBanHistories => Set<UserBanHistory>();
     public DbSet<BanHiddenContent> BanHiddenContents => Set<BanHiddenContent>();
+    public DbSet<UserBlock> UserBlocks => Set<UserBlock>();
 
     // Admin activity views (keyless)
     public DbSet<LoggedInTodayUser>    LoggedInToday     => Set<LoggedInTodayUser>();

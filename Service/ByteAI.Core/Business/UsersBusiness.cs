@@ -27,11 +27,17 @@ public sealed class UsersBusiness(
     public Task<bool> IsFollowingAsync(Guid followerId, Guid targetUserId, CancellationToken ct) =>
         userService.IsFollowingAsync(followerId, targetUserId, ct);
 
-    public async Task<PagedResult<User>> GetFollowersAsync(Guid userId, int page, int pageSize, CancellationToken ct) =>
-        await userService.GetFollowersAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
+    public async Task<PagedResult<User>> GetFollowersAsync(Guid userId, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null)
+    {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        return await userService.GetFollowersAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), ct, requesterId);
+    }
 
-    public async Task<PagedResult<User>> GetFollowingAsync(Guid userId, int page, int pageSize, CancellationToken ct) =>
-        await userService.GetFollowingAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), ct);
+    public async Task<PagedResult<User>> GetFollowingAsync(Guid userId, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null)
+    {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        return await userService.GetFollowingAsync(userId, new PaginationParams(page, Math.Min(pageSize, 100)), ct, requesterId);
+    }
 
     public async Task<User> UpdateProfileAsync(string supabaseUserId, Guid userId, string? displayName, string? bio, CancellationToken ct)
     {

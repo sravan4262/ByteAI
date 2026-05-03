@@ -31,6 +31,10 @@ struct User: Identifiable, Codable, Hashable {
     /// Server-derived flag — does the *current viewer* follow this user?
     /// nil when the projection didn't include it (e.g. /me, embedded post.author).
     var isFollowedByMe: Bool? = nil
+    /// Has the viewer blocked this user? nil when not provided (e.g. /me).
+    var isBlockedByMe: Bool? = nil
+    /// Has this user blocked the viewer? nil when not provided.
+    var hasBlockedMe: Bool? = nil
 }
 
 // Web parity (UI/lib/api/client.ts): authorId == SYSTEM_USER_ID flags AI-curated posts.
@@ -152,6 +156,7 @@ struct UserPreferences: Codable, Equatable {
     var notifComments: Bool
     var notifFollowers: Bool
     var notifUnfollows: Bool
+    var notifMentions: Bool
 
     static let `default` = UserPreferences(
         theme: "dark",
@@ -159,7 +164,8 @@ struct UserPreferences: Codable, Equatable {
         notifReactions: true,
         notifComments: true,
         notifFollowers: true,
-        notifUnfollows: false
+        notifUnfollows: false,
+        notifMentions: true
     )
 }
 
@@ -193,7 +199,7 @@ struct AppNotification: Identifiable, Codable {
     let createdAt: String
 
     enum NotificationType: String, Codable {
-        case like, comment, follow, unfollow, badge
+        case like, comment, follow, unfollow, badge, mention
         case feedbackUpdate = "feedback_update"
         case system
 
@@ -222,6 +228,10 @@ struct NotificationPayload: Codable {
     let badgeIcon: String?
     let message: String?
     let preview: String?
+    // Mention-specific fields (set by MentionNotifier on the backend).
+    let contentType: String?
+    let contentId: String?
+    let snippet: String?
 
     init(
         byteId: String? = nil,
@@ -236,7 +246,10 @@ struct NotificationPayload: Codable {
         badgeLabel: String? = nil,
         badgeIcon: String? = nil,
         message: String? = nil,
-        preview: String? = nil
+        preview: String? = nil,
+        contentType: String? = nil,
+        contentId: String? = nil,
+        snippet: String? = nil
     ) {
         self.byteId = byteId
         self.byteTitle = byteTitle
@@ -251,6 +264,9 @@ struct NotificationPayload: Codable {
         self.badgeIcon = badgeIcon
         self.message = message
         self.preview = preview
+        self.contentType = contentType
+        self.contentId = contentId
+        self.snippet = snippet
     }
 }
 

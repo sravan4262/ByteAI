@@ -83,6 +83,16 @@ struct ChatThreadView: View {
                 Spacer()
 
                 statusBadge
+
+                ContentOverflowMenu(
+                    contentType: "chat",
+                    contentId: vm.conversation.id,
+                    isOwnContent: false,
+                    authorUserId: vm.conversation.otherUserId,
+                    authorUsername: vm.conversation.otherUsername,
+                    showBlock: true,
+                    onBlocked: { dismiss() }
+                )
             }
             .padding(.horizontal, 14)
 

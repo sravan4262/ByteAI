@@ -320,7 +320,7 @@ export default function PrivacyPage() {
       </p>
 
       <h2 className="text-xl font-bold text-black dark:text-white mb-4">10. WHAT ARE YOUR PRIVACY RIGHTS?</h2>
-      <p className="mb-10">
+      <p className="mb-4">
         Depending on your location, you may have rights to access, correct, or delete your personal
         information, or to object to or restrict certain processing. To exercise these rights, please contact
         us at{" "}
@@ -328,6 +328,11 @@ export default function PrivacyPage() {
           officialbyteai@gmail.com
         </a>
         .
+      </p>
+      <p className="mb-10">
+        You can view and manage users you have blocked at <strong>Settings → Privacy → Blocked Users</strong>.
+        Blocking is symmetric — neither you nor the blocked user will see each other&apos;s posts, comments,
+        profile content, or messages, and existing follows are removed in both directions.
       </p>
 
       <h2 className="text-xl font-bold text-black dark:text-white mb-4">11. CONTROLS FOR DO-NOT-TRACK FEATURES</h2>

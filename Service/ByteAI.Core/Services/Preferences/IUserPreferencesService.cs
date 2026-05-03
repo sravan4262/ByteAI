@@ -13,5 +13,6 @@ public interface IUserPreferencesService
         bool? notifComments,
         bool? notifFollowers,
         bool? notifUnfollows,
+        bool? notifMentions,
         CancellationToken ct);
 }

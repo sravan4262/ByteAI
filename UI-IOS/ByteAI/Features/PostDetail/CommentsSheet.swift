@@ -118,12 +118,21 @@ private struct CommentRow: View {
                         Spacer()
                         if isOwn {
                             RmConfirmButton(onDelete: onDelete)
+                        } else {
+                            ContentOverflowMenu(
+                                contentType: "comment",
+                                contentId: comment.id,
+                                isOwnContent: false,
+                                authorUserId: nil as String?,
+                                authorUsername: nil as String?
+                            )
                         }
                     }
-                    Text(comment.content)
+                    Text(renderMentions(comment.content))
                         .font(.byteSans(14))
                         .foregroundColor(.byteText2)
                         .fixedSize(horizontal: false, vertical: true)
+                        .handleMentionTaps()
                     if comment.votes > 0 {
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.up").font(.system(size: 10))

@@ -46,10 +46,11 @@ struct PostDetailView: View {
                                     .foregroundColor(.byteText1)
                                     .fixedSize(horizontal: false, vertical: true)
 
-                                Text(post.body)
+                                Text(renderMentions(post.body))
                                     .font(.byteBodyMedium)
                                     .foregroundColor(.byteText2)
                                     .lineSpacing(5)
+                                    .handleMentionTaps()
 
                                 if let code = post.code {
                                     CodeBlockView(snippet: code)
@@ -105,6 +106,18 @@ struct PostDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.byteBackground, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                ContentOverflowMenu(
+                    contentType: "byte",
+                    contentId: post.id,
+                    isOwnContent: AuthManager.shared.currentUser?.id == post.author.id,
+                    authorUserId: post.author.id,
+                    authorUsername: post.author.username,
+                    showBlock: true
+                )
+            }
+        }
         .navigationDestination(isPresented: $showComments) {
             CommentsView(post: post)
         }
@@ -207,11 +220,12 @@ struct PostDetailView: View {
                                     .font(.byteMono(10))
                                     .foregroundColor(.byteText2)
                             }
-                            Text(c.content)
+                            Text(renderMentions(c.content))
                                 .font(.byteBodySmall)
                                 .foregroundColor(.byteText2)
                                 .lineLimit(3)
                                 .fixedSize(horizontal: false, vertical: true)
+                                .handleMentionTaps()
                         }
                         Spacer(minLength: 0)
                     }

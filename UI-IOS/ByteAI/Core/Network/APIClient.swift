@@ -816,6 +816,36 @@ actor APIClient {
                                                  reasonCode: "USER_REPORT", message: message))
         return w.data
     }
+
+    // MARK: - User blocking
+
+    struct BlockedUserDTO: Identifiable, Decodable, Hashable {
+        let id: String
+        let username: String
+        let displayName: String
+        let avatarUrl: String?
+        let blockedAt: String
+    }
+
+    /// Block a user. Idempotent — second call still succeeds.
+    func blockUser(_ userId: String) async throws {
+        struct Empty: Decodable {}
+        let _: Empty = try await fetch("/api/users/\(userId.lowercased())/block", method: "POST")
+    }
+
+    /// Unblock a user. Idempotent.
+    func unblockUser(_ userId: String) async throws {
+        struct Empty: Decodable {}
+        let _: Empty = try await fetch("/api/users/\(userId.lowercased())/block", method: "DELETE")
+    }
+
+    /// List the users the caller has blocked.
+    func getBlockedUsers(page: Int = 1, pageSize: Int = 20) async throws -> [BlockedUserDTO] {
+        struct Page: Decodable { let items: [BlockedUserDTO]; let total: Int; let page: Int; let pageSize: Int }
+        struct Wrapper: Decodable { let data: Page }
+        let w: Wrapper = try await fetch("/api/users/blocks?page=\(page)&pageSize=\(pageSize)")
+        return w.data.items
+    }
 }
 
 // MARK: - API Error

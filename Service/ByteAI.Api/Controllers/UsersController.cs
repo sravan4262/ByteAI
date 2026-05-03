@@ -7,6 +7,7 @@ using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Infrastructure.Services;
 using ByteAI.Core.Moderation;
 using ByteAI.Core.Services.Avatar;
+using ByteAI.Core.Services.Moderation;
 using ByteAI.Core.Services.Preferences;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +26,7 @@ public sealed class UsersController(
     IAvatarService avatarService,
     IModerationService moderation,
     ICurrentUserService currentUserService,
+    IUserBlockService blockService,
     AppDbContext db) : ControllerBase
 {
     /// <summary>Get a user's public profile by ID.</summary>
@@ -37,13 +39,20 @@ public sealed class UsersController(
         if (user is null) return NotFound(new { message = $"User {userId} not found" });
         var (bytesCount, followersCount, followingCount) = await usersBusiness.GetUserStatsAsync(userId, ct);
         bool? isFollowedByMe = null;
+        bool? isBlockedByMe = null;
+        bool? hasBlockedMe = null;
         var supabaseUserId = HttpContext.GetSupabaseUserId();
         if (supabaseUserId is not null)
         {
             var me = await usersBusiness.GetCurrentUserAsync(supabaseUserId, ct);
-            if (me is not null) isFollowedByMe = await usersBusiness.IsFollowingAsync(me.Id, userId, ct);
+            if (me is not null && me.Id != userId)
+            {
+                isFollowedByMe = await usersBusiness.IsFollowingAsync(me.Id, userId, ct);
+                isBlockedByMe = await blockService.HasBlockedAsync(me.Id, userId, ct);
+                hasBlockedMe = await blockService.HasBlockedAsync(userId, me.Id, ct);
+            }
         }
-        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount, isFollowedByMe)));
+        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount, isFollowedByMe, isBlockedByMe, hasBlockedMe)));
     }
 
     /// <summary>Get a user's public profile by username.</summary>
@@ -55,7 +64,21 @@ public sealed class UsersController(
         var user = await usersBusiness.GetUserByUsernameAsync(username, ct);
         if (user is null) return NotFound(new { message = $"User '{username}' not found" });
         var (bytesCount, followersCount, followingCount) = await usersBusiness.GetUserStatsAsync(user.Id, ct);
-        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount)));
+        bool? isFollowedByMe = null;
+        bool? isBlockedByMe = null;
+        bool? hasBlockedMe = null;
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        if (supabaseUserId is not null)
+        {
+            var me = await usersBusiness.GetCurrentUserAsync(supabaseUserId, ct);
+            if (me is not null && me.Id != user.Id)
+            {
+                isFollowedByMe = await usersBusiness.IsFollowingAsync(me.Id, user.Id, ct);
+                isBlockedByMe = await blockService.HasBlockedAsync(me.Id, user.Id, ct);
+                hasBlockedMe = await blockService.HasBlockedAsync(user.Id, me.Id, ct);
+            }
+        }
+        return Ok(ApiResponse<UserResponse>.Success(user.ToResponse(bytesCount, followersCount, followingCount, isFollowedByMe, isBlockedByMe, hasBlockedMe)));
     }
 
     /// <summary>Get the currently authenticated user's profile.</summary>
@@ -79,7 +102,8 @@ public sealed class UsersController(
     public async Task<ActionResult<ApiResponse<PagedResponse<UserResponse>>>> GetFollowers(
         Guid userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await usersBusiness.GetFollowersAsync(userId, page, pageSize, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var result = await usersBusiness.GetFollowersAsync(userId, page, pageSize, ct, supabaseUserId);
         var response = new PagedResponse<UserResponse>(result.Items.Select(u => u.ToResponse()).ToList(), result.Total, result.Page, result.PageSize);
         return Ok(ApiResponse<PagedResponse<UserResponse>>.Success(response));
     }
@@ -90,7 +114,8 @@ public sealed class UsersController(
     public async Task<ActionResult<ApiResponse<PagedResponse<UserResponse>>>> GetFollowing(
         Guid userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await usersBusiness.GetFollowingAsync(userId, page, pageSize, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var result = await usersBusiness.GetFollowingAsync(userId, page, pageSize, ct, supabaseUserId);
         var response = new PagedResponse<UserResponse>(result.Items.Select(u => u.ToResponse()).ToList(), result.Total, result.Page, result.PageSize);
         return Ok(ApiResponse<PagedResponse<UserResponse>>.Success(response));
     }
@@ -200,7 +225,8 @@ public sealed class UsersController(
         return Ok(ApiResponse<UserPreferencesResponse>.Success(new UserPreferencesResponse(
             prefs.Theme, prefs.Visibility,
             prefs.NotifReactions, prefs.NotifComments,
-            prefs.NotifFollowers, prefs.NotifUnfollows)));
+            prefs.NotifFollowers, prefs.NotifUnfollows,
+            prefs.NotifMentions)));
     }
 
     /// <summary>Update the current user's preferences (partial — only supplied fields are changed).</summary>
@@ -216,11 +242,13 @@ public sealed class UsersController(
         var prefs = await prefsService.UpsertAsync(
             me.Id, request.Theme, request.Visibility,
             request.NotifReactions, request.NotifComments,
-            request.NotifFollowers, request.NotifUnfollows, ct);
+            request.NotifFollowers, request.NotifUnfollows,
+            request.NotifMentions, ct);
         return Ok(ApiResponse<UserPreferencesResponse>.Success(new UserPreferencesResponse(
             prefs.Theme, prefs.Visibility,
             prefs.NotifReactions, prefs.NotifComments,
-            prefs.NotifFollowers, prefs.NotifUnfollows)));
+            prefs.NotifFollowers, prefs.NotifUnfollows,
+            prefs.NotifMentions)));
     }
 
     /// <summary>Upload a profile photo — resized to 256×256 WebP and stored in Supabase Storage.</summary>

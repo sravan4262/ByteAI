@@ -70,7 +70,8 @@ public sealed class ReactionsController(IReactionsBusiness reactionsBusiness) : 
     [ProducesResponseType(typeof(ApiResponse<List<LikerResponse>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<LikerResponse>>>> GetLikers(Guid byteId, CancellationToken ct)
     {
-        var likers = await reactionsBusiness.GetLikersAsync(byteId, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var likers = await reactionsBusiness.GetLikersAsync(byteId, ct, supabaseUserId);
         return Ok(ApiResponse<List<LikerResponse>>.Success(
             likers.Select(l => new LikerResponse(l.UserId, l.Username, l.DisplayName, l.IsVerified)).ToList()));
     }

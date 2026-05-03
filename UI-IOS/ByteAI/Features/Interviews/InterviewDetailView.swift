@@ -74,6 +74,16 @@ struct InterviewDetailView: View {
                             Image(systemName: "square.and.arrow.up")
                                 .foregroundColor(.byteText2)
                         }
+                        if !iv.isAnonymous {
+                            ContentOverflowMenu(
+                                contentType: "interview",
+                                contentId: iv.id,
+                                isOwnContent: AuthManager.shared.currentUser?.id == iv.author.id,
+                                authorUserId: iv.author.id,
+                                authorUsername: iv.author.username,
+                                showBlock: true
+                            )
+                        }
                     }
                 }
             }
@@ -457,12 +467,21 @@ private struct QuestionCommentRow: View {
                                 .foregroundColor(.byteText3)
                         }
                         .buttonStyle(.plain)
+                    } else {
+                        ContentOverflowMenu(
+                            contentType: "interview_question_comment",
+                            contentId: comment.id,
+                            isOwnContent: false,
+                            authorUserId: nil as String?,
+                            authorUsername: nil as String?
+                        )
                     }
                 }
-                Text(comment.body)
+                Text(renderMentions(comment.body))
                     .font(.byteSans(12))
                     .foregroundColor(.byteText2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .handleMentionTaps()
             }
         }
         .padding(8)
@@ -558,12 +577,21 @@ private struct InterviewCommentRow: View {
                                 .foregroundColor(.byteText3)
                         }
                         .buttonStyle(.plain)
+                    } else {
+                        ContentOverflowMenu(
+                            contentType: "interview_comment",
+                            contentId: comment.id,
+                            isOwnContent: false,
+                            authorUserId: nil as String?,
+                            authorUsername: nil as String?
+                        )
                     }
                 }
-                Text(comment.body)
+                Text(renderMentions(comment.body))
                     .font(.byteSans(13))
                     .foregroundColor(.byteText2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .handleMentionTaps()
             }
         }
         .padding(12)

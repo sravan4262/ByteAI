@@ -4,13 +4,14 @@ using ByteAI.Core.Entities;
 using ByteAI.Core.Events;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
+using ByteAI.Core.Services.Mentions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ByteAI.Core.Services.Interviews;
 
-public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILogger<InterviewService> logger) : IInterviewService
+public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILogger<InterviewService> logger, IMentionNotifier mentionNotifier) : IInterviewService
 {
     public async Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? role, string? location, List<string>? techStacks, string? difficulty, string sort, CancellationToken ct, Guid? requesterId = null)
     {
@@ -24,6 +25,7 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
 
         var query = db.Interviews.AsNoTracking()
             .Where(i => i.IsActive)
+            .ExcludeBlockedFor(requesterId, db, i => i.AuthorId)
             .Include(i => i.Author)
             .Include(i => i.Comments)
             .Include(i => i.Bookmarks)
@@ -85,10 +87,11 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
     public Task<List<Location>> GetLocationsAsync(CancellationToken ct) =>
         db.Locations.AsNoTracking().OrderBy(l => l.Name).ToListAsync(ct);
 
-    public Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct) =>
+    public Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, Guid? requesterId = null) =>
         db.Interviews
             .AsNoTracking()
             .Where(i => i.IsActive)
+            .ExcludeBlockedFor(requesterId, db, i => i.AuthorId)
             .Include(i => i.Author)
             .Include(i => i.Comments)
             .Include(i => i.Bookmarks)
@@ -125,6 +128,14 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
 
         await db.SaveChangesAsync(ct);
         await XpAwarder.AwardAsync(db, authorId, "post_interview", logger, ct);
+
+        var snippet = entity.Body.Length > 140 ? entity.Body[..140] : entity.Body;
+        await mentionNotifier.NotifyAsync(
+            authorId: authorId,
+            content: $"{entity.Title}\n{entity.Body}",
+            context: new MentionContext("interview", entity.Id, snippet),
+            ct: ct);
+
         return entity;
     }
 
@@ -298,16 +309,25 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
         };
         db.InterviewQuestionComments.Add(entity);
         await db.SaveChangesAsync(ct);
+
+        var snippet = body.Length > 140 ? body[..140] : body;
+        await mentionNotifier.NotifyAsync(
+            authorId: authorId,
+            content: body,
+            context: new MentionContext("interview_question_comment", entity.Id, snippet),
+            ct: ct);
+
         return await db.InterviewQuestionComments.AsNoTracking()
             .Include(c => c.Author)
             .FirstAsync(c => c.Id == entity.Id, ct);
     }
 
-    public async Task<PagedResult<InterviewQuestionComment>> GetQuestionCommentsAsync(Guid questionId, PaginationParams pagination, CancellationToken ct)
+    public async Task<PagedResult<InterviewQuestionComment>> GetQuestionCommentsAsync(Guid questionId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null)
     {
         var query = db.InterviewQuestionComments.AsNoTracking()
             .Include(c => c.Author)
             .Where(c => c.QuestionId == questionId && c.ParentId == null)
+            .ExcludeBlockedFor(requesterId, db, c => c.AuthorId)
             .OrderByDescending(c => c.VoteCount).ThenBy(c => c.CreatedAt);
 
         var total = await query.CountAsync(CancellationToken.None);
@@ -328,16 +348,25 @@ public sealed class InterviewService(AppDbContext db, IPublisher publisher, ILog
         };
         db.InterviewComments.Add(entity);
         await db.SaveChangesAsync(ct);
+
+        var snippet = body.Length > 140 ? body[..140] : body;
+        await mentionNotifier.NotifyAsync(
+            authorId: authorId,
+            content: body,
+            context: new MentionContext("interview_comment", entity.Id, snippet),
+            ct: ct);
+
         return await db.InterviewComments.AsNoTracking()
             .Include(c => c.Author)
             .FirstAsync(c => c.Id == entity.Id, ct);
     }
 
-    public async Task<PagedResult<InterviewComment>> GetCommentsAsync(Guid interviewId, PaginationParams pagination, CancellationToken ct)
+    public async Task<PagedResult<InterviewComment>> GetCommentsAsync(Guid interviewId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null)
     {
         var query = db.InterviewComments.AsNoTracking()
             .Include(c => c.Author)
             .Where(c => c.InterviewId == interviewId && c.ParentId == null)
+            .ExcludeBlockedFor(requesterId, db, c => c.AuthorId)
             .OrderByDescending(c => c.VoteCount).ThenBy(c => c.CreatedAt);
 
         var total = await query.CountAsync(CancellationToken.None);

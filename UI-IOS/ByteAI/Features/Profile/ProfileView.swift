@@ -178,6 +178,22 @@ struct ProfileView: View {
                         }
                         .accessibilityLabel("Edit profile")
                     }
+                } else if let target = vm.user, target.isSystem != true {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        ContentOverflowMenu(
+                            contentType: "profile",
+                            contentId: target.id,
+                            isOwnContent: false,
+                            authorUserId: target.id,
+                            authorUsername: target.username,
+                            showBlock: target.isBlockedByMe != true,
+                            onBlocked: {
+                                vm.user?.isBlockedByMe = true
+                                vm.user?.isFollowedByMe = false
+                                vm.isFollowing = false
+                            },
+                        )
+                    }
                 }
             }
             .sheet(isPresented: $showEditProfile) {
@@ -466,6 +482,7 @@ private struct ProfilePrefsTab: View {
                     if BiometricLock.shared.isAvailable {
                         biometricSection
                     }
+                    blockedUsersSection
                     dangerZoneSection
                 }
                 .padding(.horizontal, 16)
@@ -551,6 +568,33 @@ private struct ProfilePrefsTab: View {
                 .background(Color.byteCard)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    // MARK: Blocked Users Section
+
+    private var blockedUsersSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            AccentBarHeader(label: "BLOCKED USERS", size: .compact)
+            NavigationLink(destination: BlockedUsersView()) {
+                HStack {
+                    Image(systemName: "hand.raised.slash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.byteText2)
+                    Text("Manage blocked users")
+                        .font(.byteMono(12))
+                        .foregroundColor(.byteText1)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12))
+                        .foregroundColor(.byteText3)
+                }
+                .padding(.horizontal, 16).padding(.vertical, 14)
+                .background(Color.byteCard)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.byteBorderHigh, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -691,6 +735,7 @@ private struct ProfileAlertsTab: View {
         AlertItem(icon: "💬", label: "Comments",     subtitle: "When someone replies to your byte",  keyPath: \.notifComments),
         AlertItem(icon: "👤", label: "New Followers", subtitle: "When someone follows you",           keyPath: \.notifFollowers),
         AlertItem(icon: "👻", label: "Unfollows",    subtitle: "When someone unfollows you",         keyPath: \.notifUnfollows),
+        AlertItem(icon: "@",  label: "Mentions",     subtitle: "When someone @-mentions you",        keyPath: \.notifMentions),
     ]
 
     var body: some View {
@@ -1604,7 +1649,24 @@ private struct ProfileTabContent: View {
     @State private var interviewsSubTab: InterviewsSubTab = .posted
     @State private var showCompose = false
 
+    private var blockedEither: Bool {
+        !vm.isOwnProfile && (user.isBlockedByMe == true || user.hasBlockedMe == true)
+    }
+
+    @ViewBuilder
+    private var userUnavailableState: some View {
+        EmptyStateView(
+            icon: "hand.raised.slash",
+            title: "USER UNAVAILABLE",
+            message: user.isBlockedByMe == true ? "You blocked this user." : "You can't view this user's content."
+        )
+        .padding(.top, 40)
+    }
+
     var body: some View {
+        if blockedEither, tab != .profile {
+            userUnavailableState
+        } else {
         switch tab {
         case .profile:
             ProfileInfoTab(user: user, vm: vm)
@@ -1730,6 +1792,7 @@ private struct ProfileTabContent: View {
 
         case .alerts:
             ProfileAlertsTab()
+        }
         }
     }
 
@@ -3870,6 +3933,12 @@ struct PreferencesView: View {
                                     title: "Unfollows",
                                     subtitle: "When someone unfollows you",
                                     isOn: $vm.prefs.notifUnfollows
+                                )
+                                Divider().background(Color.byteBorderHigh.opacity(0.5))
+                                PreferencesToggle(
+                                    title: "Mentions",
+                                    subtitle: "When someone @-mentions you in a post or comment",
+                                    isOn: $vm.prefs.notifMentions
                                 )
                             }
                             .background(Color.byteCard)

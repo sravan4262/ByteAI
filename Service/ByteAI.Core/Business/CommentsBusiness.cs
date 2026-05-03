@@ -8,11 +8,17 @@ namespace ByteAI.Core.Business;
 
 public sealed class CommentsBusiness(ICommentService commentService, ICurrentUserService currentUserService) : ICommentsBusiness
 {
-    public async Task<PagedResult<Comment>> GetCommentsByByteAsync(Guid byteId, int page, int pageSize, CancellationToken ct) =>
-        await commentService.GetCommentsByByteAsync(byteId, new PaginationParams(page, Math.Min(pageSize, 200)), ct);
+    public async Task<PagedResult<Comment>> GetCommentsByByteAsync(Guid byteId, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null)
+    {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        return await commentService.GetCommentsByByteAsync(byteId, new PaginationParams(page, Math.Min(pageSize, 200)), ct, requesterId);
+    }
 
-    public async Task<PagedResult<CommentWithAuthor>> GetCommentsWithAuthorByByteAsync(Guid byteId, int page, int pageSize, CancellationToken ct) =>
-        await commentService.GetCommentsWithAuthorByByteAsync(byteId, new PaginationParams(page, Math.Min(pageSize, 200)), ct);
+    public async Task<PagedResult<CommentWithAuthor>> GetCommentsWithAuthorByByteAsync(Guid byteId, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null)
+    {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        return await commentService.GetCommentsWithAuthorByByteAsync(byteId, new PaginationParams(page, Math.Min(pageSize, 200)), ct, requesterId);
+    }
 
     public async Task<Comment> CreateCommentAsync(string supabaseUserId, Guid byteId, string body, Guid? parentCommentId, CancellationToken ct)
     {

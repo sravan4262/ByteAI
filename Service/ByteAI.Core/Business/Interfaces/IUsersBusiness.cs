@@ -8,8 +8,8 @@ public interface IUsersBusiness
     Task<User?> GetUserByIdAsync(Guid userId, CancellationToken ct);
     Task<User?> GetUserByUsernameAsync(string username, CancellationToken ct);
     Task<User?> GetCurrentUserAsync(string supabaseUserId, CancellationToken ct);
-    Task<PagedResult<User>> GetFollowersAsync(Guid userId, int page, int pageSize, CancellationToken ct);
-    Task<PagedResult<User>> GetFollowingAsync(Guid userId, int page, int pageSize, CancellationToken ct);
+    Task<PagedResult<User>> GetFollowersAsync(Guid userId, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null);
+    Task<PagedResult<User>> GetFollowingAsync(Guid userId, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null);
     Task<User> UpdateProfileAsync(string supabaseUserId, Guid userId, string? displayName, string? bio, CancellationToken ct);
 
     /// <summary>Provision a user after Supabase OAuth — creates on first call, idempotent on subsequent calls.</summary>

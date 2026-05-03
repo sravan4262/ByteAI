@@ -235,6 +235,10 @@ export function FeedScreen({ contentType = 'bytes' }: FeedScreenProps) {
                   onBookmark={handleBookmark}
                   onShare={handleShare}
                   shouldTruncate={shouldTruncate(post)}
+                  currentUserId={currentUserId}
+                  onAuthorBlocked={(authorId) =>
+                    setRawPosts((prev) => prev.filter((p) => p.author.id !== authorId))
+                  }
                 />
               ))}
 

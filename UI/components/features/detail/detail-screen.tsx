@@ -9,6 +9,8 @@ import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
 import { CodeBlock } from '@/components/ui/code-block'
 import { LikersSheet } from '@/components/ui/likers-sheet'
+import { OverflowMenu } from '@/components/features/moderation/overflow-menu'
+import { renderMentions } from '@/lib/utils/render-mentions'
 import * as api from '@/lib/api'
 import type { Post, Comment } from '@/lib/api'
 import { getMeCache } from '@/lib/user-cache'
@@ -42,7 +44,7 @@ function CommentCard({ comment: c, currentUserId, onDelete }: {
             {c.votes > 0 && (
               <span className="font-mono text-[10px] font-bold text-[var(--accent)]">+{c.votes}</span>
             )}
-            {isOwn && (
+            {isOwn ? (
               <div className="ml-auto flex items-center gap-1.5">
                 {confirming ? (
                   <>
@@ -69,9 +71,17 @@ function CommentCard({ comment: c, currentUserId, onDelete }: {
                   </button>
                 )}
               </div>
+            ) : (
+              <div className="ml-auto">
+                <OverflowMenu
+                  contentType="comment"
+                  contentId={c.id}
+                  isOwnContent={false}
+                />
+              </div>
             )}
           </div>
-          <p className="text-sm leading-relaxed text-[var(--t2)]">{c.content}</p>
+          <p className="text-sm leading-relaxed text-[var(--t2)]">{renderMentions(c.content)}</p>
         </div>
       </div>
     </div>
@@ -274,7 +284,7 @@ export function DetailScreen({ post }: DetailScreenProps) {
               {/* Author */}
               <div className="flex items-center gap-3">
                 <Avatar initials={post.author.initials} imageUrl={post.author.avatarUrl} size="md" />
-                <div>
+                <div className="flex-1">
                   <div className="font-mono text-xs lg:text-sm font-bold text-[var(--t1)] flex items-center gap-1.5">
                     @{post.author.username}
                     {post.author.isVerified && (
@@ -292,10 +302,19 @@ export function DetailScreen({ post }: DetailScreenProps) {
                     </div>
                   )}
                 </div>
+                <OverflowMenu
+                  contentType={post.type === 'interview' ? 'interview' : 'byte'}
+                  contentId={post.id}
+                  isOwnContent={!!currentUserId && currentUserId === post.author.id}
+                  authorUserId={post.author.id}
+                  authorUsername={post.author.username}
+                  showBlock
+                  onBlocked={() => router.push('/feed')}
+                />
               </div>
 
               <h1 className="text-xl lg:text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight">{post.title}</h1>
-              <p className="text-sm lg:text-base leading-relaxed text-[var(--t2)]">{post.body}</p>
+              <p className="text-sm lg:text-base leading-relaxed text-[var(--t2)]">{renderMentions(post.body)}</p>
 
               {post.code && (
                 <CodeBlock

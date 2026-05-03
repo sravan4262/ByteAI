@@ -9,6 +9,7 @@ public sealed class UserPreferences
     public bool NotifComments { get; set; } = true;
     public bool NotifFollowers { get; set; } = true;
     public bool NotifUnfollows { get; set; } = true;
+    public bool NotifMentions { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

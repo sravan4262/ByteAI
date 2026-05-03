@@ -75,6 +75,7 @@ public sealed class GetByteLikersQueryHandler(AppDbContext db)
     public async Task<List<LikerInfo>> Handle(GetByteLikersQuery request, CancellationToken ct) =>
         await db.UserLikes
             .Where(l => l.ByteId == request.ByteId)
+            .ExcludeBlockedFor(request.RequesterId, db, l => l.UserId)
             .OrderByDescending(l => l.CreatedAt)
             .Select(l => new LikerInfo(l.UserId, l.User.Username, l.User.DisplayName, l.User.IsVerified))
             .ToListAsync(CancellationToken.None);

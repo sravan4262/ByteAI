@@ -112,10 +112,13 @@ CREATE TABLE IF NOT EXISTS users.user_preferences (
     notif_comments    boolean     NOT NULL DEFAULT true,
     notif_followers   boolean     NOT NULL DEFAULT true,
     notif_unfollows   boolean     NOT NULL DEFAULT true,
+    notif_mentions    boolean     NOT NULL DEFAULT true,
     created_at        timestamptz NOT NULL DEFAULT now(),
     updated_at        timestamptz NOT NULL DEFAULT now()
 );
-COMMENT ON TABLE users.user_preferences IS 'Per-user preferences: theme, profile visibility, and notification toggles.';
+COMMENT ON TABLE  users.user_preferences IS 'Per-user preferences: theme, profile visibility, and notification toggles.';
+COMMENT ON COLUMN users.user_preferences.notif_mentions
+    IS 'When false, the user receives no in-app or push notifications for @-mentions. The mention text still renders in the post body.';
 
 -- users.user_roles
 CREATE TABLE IF NOT EXISTS users.user_roles (

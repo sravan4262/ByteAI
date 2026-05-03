@@ -98,6 +98,8 @@ export interface UserResponse {
   followingCount?: number
   isFollowedByMe?: boolean
   techStack?: string[]
+  isBlockedByMe?: boolean
+  hasBlockedMe?: boolean
 }
 
 export interface SeniorityTypeResponse {
@@ -790,6 +792,7 @@ export interface UserPreferences {
   notifComments: boolean
   notifFollowers: boolean
   notifUnfollows: boolean
+  notifMentions: boolean
 }
 
 export async function getMyPreferences(): Promise<UserPreferences | null> {
@@ -817,8 +820,73 @@ export async function updateTheme(theme: string): Promise<void> {
   await updatePreferences({ theme })
 }
 
-export async function updateNotificationSettings(settings: Partial<Pick<UserPreferences, 'notifReactions' | 'notifComments' | 'notifFollowers' | 'notifUnfollows'>>): Promise<void> {
+export async function updateNotificationSettings(settings: Partial<Pick<UserPreferences, 'notifReactions' | 'notifComments' | 'notifFollowers' | 'notifUnfollows' | 'notifMentions'>>): Promise<void> {
   await updatePreferences(settings)
+}
+
+// ── Reporting & Blocking ─────────────────────────────────────────────────────
+
+export type ReportableContentType =
+  | 'byte'
+  | 'comment'
+  | 'interview'
+  | 'interview_comment'
+  | 'interview_question_comment'
+  | 'chat'
+  | 'profile'
+
+export interface ReportContentResponse {
+  id: string
+  status: string
+}
+
+/**
+ * File a user report. Reason becomes "<label>: <freeText>" so the admin can read
+ * both bits. Always lands as reasonCode='USER_REPORT' on the backend.
+ */
+export async function reportContent(
+  contentType: ReportableContentType,
+  contentId: string,
+  reason: string,
+  freeText?: string,
+): Promise<ReportContentResponse | null> {
+  const message = freeText && freeText.trim().length > 0
+    ? `${reason}: ${freeText.trim()}`
+    : reason
+  try {
+    const res = await apiFetch<ApiResponse<ReportContentResponse>>('/api/moderation/reports', {
+      method: 'POST',
+      body: JSON.stringify({ contentType, contentId, reasonCode: 'USER_REPORT', message }),
+    })
+    return res.data
+  } catch {
+    return null
+  }
+}
+
+export interface BlockedUser {
+  id: string
+  username: string
+  displayName: string
+  avatarUrl?: string | null
+  blockedAt: string
+}
+
+export async function blockUser(userId: string): Promise<void> {
+  await apiFetch(`/api/users/${userId}/block`, { method: 'POST' })
+}
+
+export async function unblockUser(userId: string): Promise<void> {
+  await apiFetch(`/api/users/${userId}/block`, { method: 'DELETE' })
+}
+
+export async function getMyBlocks(page = 1, pageSize = 20): Promise<BlockedUser[]> {
+  try {
+    const res = await apiFetch<ApiResponse<PagedResponse<BlockedUser>>>(`/api/users/blocks?page=${page}&pageSize=${pageSize}`)
+    return res.data.items
+  } catch {
+    return []
+  }
 }
 
 export async function updatePrivacy(value: string): Promise<void> {
@@ -1126,7 +1194,7 @@ export interface NotificationPayloadBadge {
 export interface NotificationResponse {
   id: string
   userId: string
-  type: 'like' | 'comment' | 'follow' | 'unfollow' | 'badge' | 'system' | 'feedback_update'
+  type: 'like' | 'comment' | 'follow' | 'unfollow' | 'badge' | 'mention' | 'system' | 'feedback_update'
   payload: NotificationPayloadLike | NotificationPayloadComment | NotificationPayloadBadge | Record<string, unknown> | null
   /** Live actor profile (joined at read time on the backend, NOT cached in payload). */
   actorUsername?: string | null

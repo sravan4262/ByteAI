@@ -40,14 +40,16 @@ public sealed class SearchController(ISearchBusiness searchBusiness) : Controlle
         if (!validTypes.Contains(normalizedType))
             return BadRequest(new ApiError("INVALID_TYPE", "type must be one of: bytes, interviews, people."));
 
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+
         if (normalizedType == "people")
         {
-            var users = await searchBusiness.SearchPeopleAsync(q, Math.Min(limit, 50), ct);
+            var users = await searchBusiness.SearchPeopleAsync(q, Math.Min(limit, 50), ct, supabaseUserId);
             return Ok(ApiResponse<List<UserSearchResponse>>.Success(
                 users.Select(u => new UserSearchResponse(u.Id, u.Username, u.DisplayName ?? u.Username, u.Bio, u.AvatarUrl, u.IsVerified)).ToList()));
         }
 
-        var results = await searchBusiness.SearchContentAsync(q, normalizedType, Math.Min(limit, 50), ct);
+        var results = await searchBusiness.SearchContentAsync(q, normalizedType, Math.Min(limit, 50), ct, supabaseUserId);
         return Ok(ApiResponse<List<SearchResponse>>.Success(
             results.Select(r => r.ToSearchResponse()).ToList()));
     }

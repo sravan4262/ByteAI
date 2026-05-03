@@ -23,8 +23,11 @@ public sealed class ReactionsBusiness(IReactionService reactionService, ICurrent
         return await reactionService.DeleteReactionAsync(byteId, userId, ct);
     }
 
-    public async Task<List<LikerInfo>> GetLikersAsync(Guid byteId, CancellationToken ct) =>
-        await reactionService.GetLikersAsync(byteId, ct);
+    public async Task<List<LikerInfo>> GetLikersAsync(Guid byteId, CancellationToken ct, string? supabaseUserId = null)
+    {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        return await reactionService.GetLikersAsync(byteId, ct, requesterId);
+    }
 
     private async Task<Guid> ResolveUserIdAsync(string supabaseUserId, CancellationToken ct)
     {

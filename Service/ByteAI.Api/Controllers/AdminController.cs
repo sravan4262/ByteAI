@@ -316,6 +316,62 @@ public sealed class AdminController(
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
+    /// <summary>Open flags grouped by content author. Powers the "By Reported User" tab.</summary>
+    [HttpGet("moderation/by-author")]
+    [ProducesResponseType(typeof(ApiResponse<List<FlagsByAuthorEntryDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<FlagsByAuthorEntryDto>>>> GetFlagsByAuthor(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var rows = await adminBusiness.GetFlagsByAuthorAsync(page, pageSize, ct);
+        return Ok(ApiResponse<List<FlagsByAuthorEntryDto>>.Success(rows));
+    }
+
+    /// <summary>User-reports grouped by reporter. Powers the "By Reporter" tab.</summary>
+    [HttpGet("moderation/by-reporter")]
+    [ProducesResponseType(typeof(ApiResponse<List<FlagsByReporterEntryDto>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<FlagsByReporterEntryDto>>>> GetFlagsByReporter(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var rows = await adminBusiness.GetFlagsByReporterAsync(page, pageSize, ct);
+        return Ok(ApiResponse<List<FlagsByReporterEntryDto>>.Success(rows));
+    }
+
+    /// <summary>One-click dismiss. Marks the flag dismissed without touching the underlying content.</summary>
+    [HttpPost("moderation/flags/{flagId:guid}/dismiss")]
+    [ProducesResponseType(typeof(ApiResponse<FlaggedContentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<FlaggedContentDto>>> DismissFlag(
+        Guid flagId, CancellationToken ct)
+    {
+        var adminSupabaseId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var adminId = await currentUserService.GetCurrentUserIdAsync(adminSupabaseId, ct) ?? Guid.Empty;
+        var updated = await adminBusiness.UpdateFlagStatusAsync(flagId, "dismissed", null, adminId, ct);
+        if (updated is null) return NotFound(new { message = $"Flag {flagId} not found" });
+        return Ok(ApiResponse<FlaggedContentDto>.Success(updated));
+    }
+
+    /// <summary>
+    /// One-click delete. Marks the flag removed AND hides bytes/interviews or hard-deletes
+    /// comments/chats per the per-content-type rules in <see cref="AdminBusiness"/>.
+    /// Idempotent — calling twice on the same flag is harmless.
+    /// </summary>
+    [HttpPost("moderation/flags/{flagId:guid}/delete")]
+    [ProducesResponseType(typeof(ApiResponse<FlaggedContentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<FlaggedContentDto>>> DeleteFlaggedContent(
+        Guid flagId, CancellationToken ct)
+    {
+        var adminSupabaseId = HttpContext.GetSupabaseUserId() ?? throw new UnauthorizedAccessException();
+        var adminId = await currentUserService.GetCurrentUserIdAsync(adminSupabaseId, ct) ?? Guid.Empty;
+        var updated = await adminBusiness.UpdateFlagStatusAsync(flagId, "removed", null, adminId, ct);
+        if (updated is null) return NotFound(new { message = $"Flag {flagId} not found" });
+        return Ok(ApiResponse<FlaggedContentDto>.Success(updated));
+    }
+
     /// <summary>Append-only ban audit history for one user, newest first.</summary>
     [HttpGet("moderation/users/{userId:guid}/ban-history")]
     [ProducesResponseType(typeof(ApiResponse<List<UserBanHistoryDto>>), StatusCodes.Status200OK)]

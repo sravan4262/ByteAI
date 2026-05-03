@@ -46,11 +46,12 @@ struct PostCardView: View {
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text(post.body)
+                    Text(renderMentions(post.body))
                         .font(.byteBodyMedium)
                         .foregroundColor(.byteText2)
                         .lineSpacing(4)
                         .lineLimit(3)
+                        .handleMentionTaps()
 
                     if let code = post.code {
                         CodeBlockView(snippet: code)
@@ -271,6 +272,15 @@ struct PostHeader: View {
                         .foregroundColor(.byteOrange)
                 }
             }
+
+            ContentOverflowMenu(
+                contentType: "byte",
+                contentId: post.id,
+                isOwnContent: AuthManager.shared.currentUser?.id == post.author.id,
+                authorUserId: post.author.id,
+                authorUsername: post.author.username,
+                showBlock: true
+            )
         }
     }
 

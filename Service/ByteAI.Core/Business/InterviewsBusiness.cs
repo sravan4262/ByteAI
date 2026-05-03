@@ -21,8 +21,11 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
             authorId, company, role, location, techStacks, difficulty, sort, ct, requesterId);
     }
 
-    public async Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? supabaseUserId = null) =>
-        await interviewService.GetInterviewByIdAsync(id, ct);
+    public async Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, string? supabaseUserId = null)
+    {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        return await interviewService.GetInterviewByIdAsync(id, ct, requesterId);
+    }
 
     public Task<List<Company>> GetCompaniesAsync(CancellationToken ct) =>
         interviewService.GetCompaniesAsync(ct);
@@ -87,8 +90,11 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
     }
 
     public async Task<PagedResult<InterviewQuestionComment>> GetQuestionCommentsAsync(
-        Guid questionId, int page, int pageSize, CancellationToken ct) =>
-        await interviewService.GetQuestionCommentsAsync(questionId, new PaginationParams(page, pageSize), ct);
+        Guid questionId, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null)
+    {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        return await interviewService.GetQuestionCommentsAsync(questionId, new PaginationParams(page, pageSize), ct, requesterId);
+    }
 
     // ── Interview-level interactions ─────────────────────────────────────────
 
@@ -100,8 +106,11 @@ public sealed class InterviewsBusiness(IInterviewService interviewService, ICurr
     }
 
     public async Task<PagedResult<InterviewComment>> GetCommentsAsync(
-        Guid id, int page, int pageSize, CancellationToken ct) =>
-        await interviewService.GetCommentsAsync(id, new PaginationParams(page, pageSize), ct);
+        Guid id, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null)
+    {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        return await interviewService.GetCommentsAsync(id, new PaginationParams(page, pageSize), ct, requesterId);
+    }
 
     public async Task AddReactionAsync(string supabaseUserId, Guid id, string reactionType, CancellationToken ct)
     {

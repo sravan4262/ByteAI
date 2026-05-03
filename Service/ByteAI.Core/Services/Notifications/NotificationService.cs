@@ -49,6 +49,17 @@ public sealed class NotificationService(AppDbContext db) : INotificationService
             .Distinct()
             .ToList();
 
+        // Filter out actors blocked by, or who blocked, the recipient. The actor lives
+        // in JSON payload so we filter post-fetch rather than via ExcludeBlockedFor.
+        var blockedActorIds = actorIds.Count == 0
+            ? new HashSet<Guid>()
+            : (await db.UserBlocks.AsNoTracking()
+                .Where(b => (b.BlockerId == userId && actorIds.Contains(b.BlockedId))
+                         || (b.BlockedId == userId && actorIds.Contains(b.BlockerId)))
+                .Select(b => b.BlockerId == userId ? b.BlockedId : b.BlockerId)
+                .ToListAsync(ct))
+                .ToHashSet();
+
         var actorMap = actorIds.Count == 0
             ? new Dictionary<Guid, NotificationActor>()
             : await db.Users
@@ -58,6 +69,11 @@ public sealed class NotificationService(AppDbContext db) : INotificationService
                 .ToDictionaryAsync(x => x.Id, x => x.Actor, ct);
 
         var paired = items
+            .Where(n =>
+            {
+                var id = TryGetActorId(n.Payload);
+                return !id.HasValue || !blockedActorIds.Contains(id.Value);
+            })
             .Select(n =>
             {
                 var id = TryGetActorId(n.Payload);

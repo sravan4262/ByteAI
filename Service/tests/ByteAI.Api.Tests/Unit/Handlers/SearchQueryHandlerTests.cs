@@ -35,9 +35,9 @@ public sealed class SearchQueryHandlerTests : IDisposable
         _embedding.Setup(e => e.EmbedQueryAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(new float[768]);
 
-        _search.Setup(s => s.SearchBytesAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        _search.Setup(s => s.SearchBytesAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<Guid?>()))
                .ReturnsAsync([]);
-        _search.Setup(s => s.SearchInterviewsAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        _search.Setup(s => s.SearchInterviewsAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<Guid?>()))
                .ReturnsAsync([]);
     }
 
@@ -51,14 +51,14 @@ public sealed class SearchQueryHandlerTests : IDisposable
     public async Task Search_TypeBytes_CallsSearchBytesOnly()
     {
         var bytes = new List<ByteEntity> { MakeByte(_authorId, "Go Channels") };
-        _search.Setup(s => s.SearchBytesAsync("go", It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        _search.Setup(s => s.SearchBytesAsync("go", It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<Guid?>()))
                .ReturnsAsync(bytes);
 
         var result = await BuildHandler().Handle(new SearchQuery("go", Type: "bytes"), default);
 
         Assert.Single(result);
         Assert.Equal("byte", result[0].ContentType);
-        _search.Verify(s => s.SearchInterviewsAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _search.Verify(s => s.SearchInterviewsAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<Guid?>()), Times.Never);
     }
 
     // ── Type = "interviews" ────────────────────────────────────────────────────
@@ -67,14 +67,14 @@ public sealed class SearchQueryHandlerTests : IDisposable
     public async Task Search_TypeInterviews_CallsSearchInterviewsOnly()
     {
         var interviews = new List<Interview> { MakeInterview(_authorId, "System Design") };
-        _search.Setup(s => s.SearchInterviewsAsync("design", It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        _search.Setup(s => s.SearchInterviewsAsync("design", It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<Guid?>()))
                .ReturnsAsync(interviews);
 
         var result = await BuildHandler().Handle(new SearchQuery("design", Type: "interviews"), default);
 
         Assert.Single(result);
         Assert.Equal("interview", result[0].ContentType);
-        _search.Verify(s => s.SearchBytesAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _search.Verify(s => s.SearchBytesAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<Guid?>()), Times.Never);
     }
 
     // ── Type = "all" ──────────────────────────────────────────────────────────
@@ -85,9 +85,9 @@ public sealed class SearchQueryHandlerTests : IDisposable
         var older = MakeByte(_authorId, "Older");       older.CreatedAt = DateTime.UtcNow.AddDays(-2);
         var newer = MakeInterview(_authorId, "Newer");  newer.CreatedAt = DateTime.UtcNow;
 
-        _search.Setup(s => s.SearchBytesAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        _search.Setup(s => s.SearchBytesAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<Guid?>()))
                .ReturnsAsync([older]);
-        _search.Setup(s => s.SearchInterviewsAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        _search.Setup(s => s.SearchInterviewsAsync(It.IsAny<string>(), It.IsAny<Vector?>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<Guid?>()))
                .ReturnsAsync([newer]);
 
         var result = await BuildHandler().Handle(new SearchQuery("q", Limit: 10, Type: "all"), default);

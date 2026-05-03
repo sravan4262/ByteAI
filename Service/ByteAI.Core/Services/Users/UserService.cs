@@ -23,11 +23,12 @@ public sealed class UserService(AppDbContext db, ILogger<UserService> logger) : 
             .Include(u => u.UserBadges).ThenInclude(ub => ub.BadgeTypeNav)
             .FirstOrDefaultAsync(u => u.Username == username, ct);
 
-    public async Task<PagedResult<User>> GetFollowersAsync(Guid userId, PaginationParams pagination, CancellationToken ct)
+    public async Task<PagedResult<User>> GetFollowersAsync(Guid userId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null)
     {
         // users.followers: user_id = userId → follower_id are the users who follow me
         var query = db.UserFollowers
             .Where(f => f.UserId == userId)
+            .ExcludeBlockedFor(requesterId, db, f => f.FollowerId)
             .Include(f => f.Follower)
             .OrderByDescending(f => f.CreatedAt);
 
@@ -41,11 +42,12 @@ public sealed class UserService(AppDbContext db, ILogger<UserService> logger) : 
         return new PagedResult<User>(items, total, pagination.Page, pagination.PageSize);
     }
 
-    public async Task<PagedResult<User>> GetFollowingAsync(Guid userId, PaginationParams pagination, CancellationToken ct)
+    public async Task<PagedResult<User>> GetFollowingAsync(Guid userId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null)
     {
         // users.following: user_id = userId → following_id are the users I follow
         var query = db.UserFollowings
             .Where(f => f.UserId == userId)
+            .ExcludeBlockedFor(requesterId, db, f => f.FollowingId)
             .Include(f => f.Following)
             .OrderByDescending(f => f.CreatedAt);
 

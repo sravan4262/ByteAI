@@ -167,13 +167,13 @@ public sealed class UsersBusinessTests
     public async Task GetFollowers_PageSizeCappedAt100()
     {
         _userService
-            .Setup(s => s.GetFollowersAsync(_userId, It.Is<PaginationParams>(p => p.PageSize == 100), default))
+            .Setup(s => s.GetFollowersAsync(_userId, It.Is<PaginationParams>(p => p.PageSize == 100), default, It.IsAny<Guid?>()))
             .ReturnsAsync(new PagedResult<User>([], 0, 1, 100));
 
         await _sut.GetFollowersAsync(_userId, 1, 999, default);
 
         _userService.Verify(s =>
-            s.GetFollowersAsync(_userId, It.Is<PaginationParams>(p => p.PageSize == 100), default),
+            s.GetFollowersAsync(_userId, It.Is<PaginationParams>(p => p.PageSize == 100), default, It.IsAny<Guid?>()),
             Times.Once);
     }
 

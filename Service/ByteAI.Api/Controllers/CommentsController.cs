@@ -29,7 +29,8 @@ public sealed class CommentsController(
     public async Task<ActionResult<ApiResponse<PagedResponse<CommentWithAuthorResponse>>>> GetComments(
         Guid byteId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default)
     {
-        var result = await commentsBusiness.GetCommentsWithAuthorByByteAsync(byteId, page, pageSize, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var result = await commentsBusiness.GetCommentsWithAuthorByByteAsync(byteId, page, pageSize, ct, supabaseUserId);
         var response = new PagedResponse<CommentWithAuthorResponse>(result.Items.Select(c => c.ToWithAuthorResponse()).ToList(), result.Total, result.Page, result.PageSize);
         return Ok(ApiResponse<PagedResponse<CommentWithAuthorResponse>>.Success(response));
     }

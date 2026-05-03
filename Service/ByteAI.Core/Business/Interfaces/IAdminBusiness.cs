@@ -35,6 +35,18 @@ public interface IAdminBusiness
     Task<FlaggedContentDto?> UpdateFlagStatusAsync(
         Guid flagId, string status, string? note, Guid adminId, CancellationToken ct);
 
+    /// <summary>
+    /// Open flags grouped by author. Mixes user reports + system auto-flags.
+    /// Powers the admin moderation "By Reported User" sub-tab.
+    /// </summary>
+    Task<List<FlagsByAuthorEntryDto>> GetFlagsByAuthorAsync(int page, int pageSize, CancellationToken ct);
+
+    /// <summary>
+    /// User reports grouped by reporter (auto-flags excluded — they have no reporter).
+    /// Powers the "By Reporter" sub-tab and surfaces high-dismiss-rate reporters.
+    /// </summary>
+    Task<List<FlagsByReporterEntryDto>> GetFlagsByReporterAsync(int page, int pageSize, CancellationToken ct);
+
     // Ban history
     Task<List<UserBanHistoryDto>> GetUserBanHistoryAsync(Guid userId, CancellationToken ct);
 }
@@ -93,6 +105,28 @@ public sealed record FlaggedContentDto(
     DateTime CreatedAt,
     DateTime? ResolvedAt,
     Guid? ResolvedBy);
+
+/// <summary>One row in the "By Reported User" admin moderation sub-tab.</summary>
+public sealed record FlagsByAuthorEntryDto(
+    Guid AuthorId,
+    string Username,
+    string? DisplayName,
+    string? AvatarUrl,
+    int TotalFlags,
+    int UserReports,
+    int AutoFlags,
+    DateTime LastFlaggedAt);
+
+/// <summary>One row in the "By Reporter" admin moderation sub-tab.</summary>
+public sealed record FlagsByReporterEntryDto(
+    Guid ReporterId,
+    string Username,
+    string? DisplayName,
+    string? AvatarUrl,
+    int TotalReports,
+    int DismissedCount,
+    double DismissRate,
+    DateTime LastReportedAt);
 
 /// <summary>
 /// Filter for the admin flag-triage list endpoint. Every field is optional —

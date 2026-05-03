@@ -17,6 +17,7 @@ public sealed class UserPreferencesConfiguration : IEntityTypeConfiguration<User
         builder.Property(p => p.NotifComments).HasColumnName("notif_comments").HasDefaultValue(true);
         builder.Property(p => p.NotifFollowers).HasColumnName("notif_followers").HasDefaultValue(true);
         builder.Property(p => p.NotifUnfollows).HasColumnName("notif_unfollows").HasDefaultValue(true);
+        builder.Property(p => p.NotifMentions).HasColumnName("notif_mentions").HasDefaultValue(true);
         builder.Property(p => p.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
         builder.Property(p => p.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
 

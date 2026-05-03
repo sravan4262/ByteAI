@@ -23,11 +23,11 @@ public interface IInterviewsBusiness
     Task LikeQuestionAsync(string supabaseUserId, Guid questionId, CancellationToken ct);
     Task UnlikeQuestionAsync(string supabaseUserId, Guid questionId, CancellationToken ct);
     Task<InterviewQuestionComment> AddQuestionCommentAsync(string supabaseUserId, Guid questionId, string body, Guid? parentId, CancellationToken ct);
-    Task<PagedResult<InterviewQuestionComment>> GetQuestionCommentsAsync(Guid questionId, int page, int pageSize, CancellationToken ct);
+    Task<PagedResult<InterviewQuestionComment>> GetQuestionCommentsAsync(Guid questionId, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null);
 
     // Interview-level interactions
     Task<InterviewComment> AddCommentAsync(string supabaseUserId, Guid id, string body, Guid? parentId, CancellationToken ct);
-    Task<PagedResult<InterviewComment>> GetCommentsAsync(Guid id, int page, int pageSize, CancellationToken ct);
+    Task<PagedResult<InterviewComment>> GetCommentsAsync(Guid id, int page, int pageSize, CancellationToken ct, string? supabaseUserId = null);
     Task AddReactionAsync(string supabaseUserId, Guid id, string reactionType, CancellationToken ct);
     Task RemoveReactionAsync(string supabaseUserId, Guid id, CancellationToken ct);
     Task<bool> ToggleBookmarkAsync(string supabaseUserId, Guid id, CancellationToken ct);

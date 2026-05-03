@@ -147,6 +147,26 @@ CREATE INDEX IF NOT EXISTS idx_ban_hidden_user
 COMMENT ON TABLE moderation.ban_hidden_content
     IS 'Audit log of bytes/interviews hidden by a ban event. Consumed on unban to restore is_hidden=false.';
 
+-- ── user_blocks ─────────────────────────────────────────────────────────────
+-- Symmetric block list. If (blocker, blocked) is present, neither user
+-- should see the other's content, and neither can message the other.
+-- Filtered into every user-content list query via ExcludeBlockedFor().
+CREATE TABLE IF NOT EXISTS moderation.user_blocks (
+    blocker_id  UUID        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
+    blocked_id  UUID        NOT NULL REFERENCES users.users(id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (blocker_id, blocked_id),
+    CHECK (blocker_id <> blocked_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker
+    ON moderation.user_blocks(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked
+    ON moderation.user_blocks(blocked_id);
+
+COMMENT ON TABLE moderation.user_blocks
+    IS 'Symmetric block list. Filtered into every user-content list query via ExcludeBlockedFor().';
+
 -- ── RLS — service-role only ─────────────────────────────────────────────────
 -- Enable RLS and add NO permissive policies. Combined with FORCE ROW LEVEL
 -- SECURITY this denies all access to authenticated and anon roles. Only the
@@ -164,9 +184,13 @@ ALTER TABLE moderation.user_ban_history    FORCE  ROW LEVEL SECURITY;
 ALTER TABLE moderation.ban_hidden_content  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE moderation.ban_hidden_content  FORCE  ROW LEVEL SECURITY;
 
+ALTER TABLE moderation.user_blocks         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE moderation.user_blocks         FORCE  ROW LEVEL SECURITY;
+
 -- Revoke any default schema-level grants from non-service roles so even
 -- bypass-RLS attempts on these tables fail with permission denied.
 REVOKE ALL ON moderation.flagged_content    FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON moderation.user_bans          FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON moderation.user_ban_history   FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON moderation.ban_hidden_content FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON moderation.user_blocks        FROM PUBLIC, anon, authenticated;

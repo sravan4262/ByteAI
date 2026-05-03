@@ -3,6 +3,7 @@ using ByteAI.Core.Infrastructure.Services;
 using ByteAI.Core.Moderation;
 using ByteAI.Core.Services.Chat;
 using ByteAI.Core.Services.FeatureFlags;
+using ByteAI.Core.Services.Moderation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -14,6 +15,7 @@ public sealed class ChatHub(
     IFeatureFlagService featureFlagService,
     ICurrentUserService currentUserService,
     IModerationService moderation,
+    IUserBlockService blockService,
     AppDbContext db) : Hub<IChatClient>
 {
     public override async Task OnConnectedAsync()
@@ -49,6 +51,11 @@ public sealed class ChatHub(
             var codes = string.Join(",", ex.Reasons.Select(r => r.Code));
             throw new HubException($"Message rejected by moderation ({codes}).");
         }
+
+        // Block check before mutual-follow check — neutral message either way so the
+        // sender can't probe whether the other side blocked them.
+        if (await blockService.IsBlockedAsync(senderId.Value, recipientId, Context.ConnectionAborted))
+            throw new HubException("This conversation is unavailable.");
 
         var canMessage = await chatService.CanMessageAsync(senderId.Value, recipientId, Context.ConnectionAborted);
         if (!canMessage) throw new HubException("You must follow each other to send messages.");

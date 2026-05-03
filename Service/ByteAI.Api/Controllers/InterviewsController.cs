@@ -285,7 +285,8 @@ public sealed class InterviewsController(
     public async Task<ActionResult> GetQuestionComments(
         Guid questionId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await interviewsBusiness.GetQuestionCommentsAsync(questionId, page, pageSize, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var result = await interviewsBusiness.GetQuestionCommentsAsync(questionId, page, pageSize, ct, supabaseUserId);
         return Ok(ApiResponse<PagedResponse<object>>.Success(
             new PagedResponse<object>(
                 result.Items.Select(c => (object)new
@@ -331,7 +332,8 @@ public sealed class InterviewsController(
     public async Task<ActionResult> GetComments(Guid id,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        var result = await interviewsBusiness.GetCommentsAsync(id, page, pageSize, ct);
+        var supabaseUserId = HttpContext.GetSupabaseUserId();
+        var result = await interviewsBusiness.GetCommentsAsync(id, page, pageSize, ct, supabaseUserId);
         return Ok(ApiResponse<PagedResponse<object>>.Success(
             new PagedResponse<object>(
                 result.Items.Select(c => (object)new

@@ -1,16 +1,22 @@
 using ByteAI.Core.Business.Interfaces;
 using ByteAI.Core.Commands.Search;
 using ByteAI.Core.Entities;
+using ByteAI.Core.Infrastructure.Services;
 using ByteAI.Core.Services.AI;
 using ByteAI.Core.Services.Search;
 using Pgvector;
 
 namespace ByteAI.Core.Business;
 
-public sealed class SearchBusiness(ISearchService searchService, IEmbeddingService embeddingService) : ISearchBusiness
+public sealed class SearchBusiness(
+    ISearchService searchService,
+    IEmbeddingService embeddingService,
+    ICurrentUserService currentUserService) : ISearchBusiness
 {
-    public async Task<List<SearchResultDto>> SearchContentAsync(string q, string type, int limit, CancellationToken ct)
+    public async Task<List<SearchResultDto>> SearchContentAsync(string q, string type, int limit, CancellationToken ct, string? supabaseUserId = null)
     {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+
         Pgvector.Vector? queryEmbedding = null;
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -23,7 +29,7 @@ public sealed class SearchBusiness(ISearchService searchService, IEmbeddingServi
 
         if (typeLower is "bytes" or "all")
         {
-            var bytes = await searchService.SearchBytesAsync(q, queryEmbedding, limit, ct);
+            var bytes = await searchService.SearchBytesAsync(q, queryEmbedding, limit, ct, requesterId);
             results.AddRange(bytes.Select(b => new SearchResultDto(
                 Id: b.Id,
                 AuthorId: b.AuthorId,
@@ -47,7 +53,7 @@ public sealed class SearchBusiness(ISearchService searchService, IEmbeddingServi
 
         if (typeLower is "interviews" or "all")
         {
-            var interviews = await searchService.SearchInterviewsAsync(q, queryEmbedding, limit, ct);
+            var interviews = await searchService.SearchInterviewsAsync(q, queryEmbedding, limit, ct, requesterId);
             results.AddRange(interviews.Select(i => new SearchResultDto(
                 Id: i.Id,
                 AuthorId: i.AuthorId,
@@ -75,6 +81,9 @@ public sealed class SearchBusiness(ISearchService searchService, IEmbeddingServi
         return results;
     }
 
-    public async Task<List<User>> SearchPeopleAsync(string q, int limit, CancellationToken ct) =>
-        await searchService.SearchPeopleAsync(q, limit, ct);
+    public async Task<List<User>> SearchPeopleAsync(string q, int limit, CancellationToken ct, string? supabaseUserId = null)
+    {
+        var requesterId = supabaseUserId is not null ? await currentUserService.GetCurrentUserIdAsync(supabaseUserId, ct) : null;
+        return await searchService.SearchPeopleAsync(q, limit, ct, requesterId);
+    }
 }

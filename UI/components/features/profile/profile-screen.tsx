@@ -21,6 +21,7 @@ const themes = [
 ]
 import type { TechStackResponse, Post, InterviewWithQuestions, UserResponse, SocialLinkResponse, PersonResult, DraftResponse } from '@/lib/api'
 import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
+import { BlockedUsersList } from '@/components/features/moderation/blocked-users-list'
 import { setMeCache } from '@/lib/user-cache'
 
 // ─── Badge types ──────────────────────────────────────────────────────────────
@@ -252,7 +253,7 @@ export function ProfileScreen() {
   const [autoShowBadge, setAutoShowBadge] = useState<Badge | null>(null)
 
   // Notification
-  const [notifications, setNotifications] = useState({ reactions: true, comments: true, newFollowers: true, unfollows: true })
+  const [notifications, setNotifications] = useState({ reactions: true, comments: true, newFollowers: true, unfollows: true, mentions: true })
 
   // People sheets
   const [peopleSheet, setPeopleSheet] = useState<{ type: 'followers' | 'following'; list: PersonResult[] } | null>(null)
@@ -272,7 +273,7 @@ export function ProfileScreen() {
     api.getMyPreferences().then((prefs) => {
       if (!prefs) return
       setActiveTheme(prefs.theme)
-      setNotifications({ reactions: prefs.notifReactions, comments: prefs.notifComments, newFollowers: prefs.notifFollowers, unfollows: prefs.notifUnfollows })
+      setNotifications({ reactions: prefs.notifReactions, comments: prefs.notifComments, newFollowers: prefs.notifFollowers, unfollows: prefs.notifUnfollows, mentions: prefs.notifMentions })
     })
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') api.getCurrentUser().then((user) => { if (user) setCurrentUser(user) })
@@ -379,7 +380,7 @@ export function ProfileScreen() {
   const handleNotificationChange = async (key: keyof typeof notifications) => {
     const next = { ...notifications, [key]: !notifications[key] }
     setNotifications(next)
-    const apiMap: Record<string, string> = { reactions: 'notifReactions', comments: 'notifComments', newFollowers: 'notifFollowers', unfollows: 'notifUnfollows' }
+    const apiMap: Record<string, string> = { reactions: 'notifReactions', comments: 'notifComments', newFollowers: 'notifFollowers', unfollows: 'notifUnfollows', mentions: 'notifMentions' }
     await api.updateNotificationSettings({ [apiMap[key]]: next[key] } as Parameters<typeof api.updateNotificationSettings>[0])
   }
 
@@ -1269,6 +1270,17 @@ const handleLogout = async () => {
                 </div>
               </div>
 
+              {/* Privacy → Blocked Users */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-[3px] h-3.5 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                  <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.08em]">BLOCKED_USERS</span>
+                </div>
+                <div className="rounded-xl border border-[var(--border-h)] bg-[var(--bg-card)] px-4 py-3">
+                  <BlockedUsersList />
+                </div>
+              </div>
+
               {/* Danger Zone */}
               <div className="border border-[rgba(244,63,94,0.25)] rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-3 bg-[rgba(244,63,94,0.05)] border-b border-[rgba(244,63,94,0.15)]">
@@ -1302,6 +1314,7 @@ const handleLogout = async () => {
                   { key: 'comments',     icon: '💬', label: 'Comments',     sub: 'When someone replies to your byte' },
                   { key: 'newFollowers', icon: '👤', label: 'New Followers', sub: 'When someone follows you' },
                   { key: 'unfollows',    icon: '👻', label: 'Unfollows',     sub: 'When someone unfollows you' },
+                  { key: 'mentions',     icon: '@',  label: 'Mentions',      sub: 'When someone @-mentions you in a post or comment' },
                 ].map((item) => (
                   <div key={item.key} className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--border-h)] last:border-b-0 bg-[var(--bg-card)]">
                     <div className="flex items-center gap-3">

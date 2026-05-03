@@ -6,6 +6,7 @@ import { useMessages } from '@/hooks/use-messages'
 import { useChatConnection, type IncomingMessage } from '@/hooks/use-chat-connection'
 import { ChatMessage } from './ChatMessage'
 import { TerminalInput } from '@/components/features/terminal/TerminalInput'
+import { OverflowMenu } from '@/components/features/moderation/overflow-menu'
 import type { MessageDto } from '@/lib/api/chat'
 import type { ModerationReason } from '@/lib/api/http'
 
@@ -46,6 +47,7 @@ export function ChatThread({ conversationId, otherUsername, otherUserId, current
   const { messages, loading, hasMore, loadMore, appendMessage } = useMessages(conversationId)
   const [sending, setSending] = useState(false)
   const [moderationReasons, setModerationReasons] = useState<ModerationReason[] | null>(null)
+  const [blocked, setBlocked] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const topRef = useRef<HTMLDivElement>(null)
 
@@ -123,9 +125,20 @@ export function ChatThread({ conversationId, otherUsername, otherUserId, current
           </span>
         </div>
 
-        <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-[rgba(16,217,160,0.08)] border border-[rgba(16,217,160,0.2)] text-[var(--green)] tracking-wide">
-          {sending ? 'SENDING' : 'READY'}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-[rgba(16,217,160,0.08)] border border-[rgba(16,217,160,0.2)] text-[var(--green)] tracking-wide">
+            {sending ? 'SENDING' : 'READY'}
+          </span>
+          <OverflowMenu
+            contentType="chat"
+            contentId={conversationId}
+            isOwnContent={false}
+            authorUserId={otherUserId}
+            authorUsername={otherUsername}
+            showBlock
+            onBlocked={() => setBlocked(true)}
+          />
+        </div>
       </div>
 
       {/* Accent line */}
@@ -180,8 +193,16 @@ export function ChatThread({ conversationId, otherUsername, otherUserId, current
         </div>
       )}
 
-      {/* Input — reuses TerminalInput */}
-      <TerminalInput onSubmit={handleSubmit} disabled={sending} stage="awaiting-message" />
+      {/* Block banner — shown after the user blocks the other party in this thread */}
+      {blocked && (
+        <div className="px-3 py-2 border-t border-[var(--border-h)] bg-[var(--bg-el)] flex items-center gap-2">
+          <AlertTriangle size={11} className="text-[var(--t2)] flex-shrink-0" />
+          <span className="font-mono text-[10px] text-[var(--t2)]">This conversation is unavailable.</span>
+        </div>
+      )}
+
+      {/* Input — reuses TerminalInput, disabled when blocked */}
+      <TerminalInput onSubmit={handleSubmit} disabled={sending || blocked} stage="awaiting-message" />
     </div>
   )
 }

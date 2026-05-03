@@ -9,8 +9,8 @@ public interface IUserService
 {
     Task<User?> GetByIdAsync(Guid userId, CancellationToken ct);
     Task<User?> GetByUsernameAsync(string username, CancellationToken ct);
-    Task<PagedResult<User>> GetFollowersAsync(Guid userId, PaginationParams pagination, CancellationToken ct);
-    Task<PagedResult<User>> GetFollowingAsync(Guid userId, PaginationParams pagination, CancellationToken ct);
+    Task<PagedResult<User>> GetFollowersAsync(Guid userId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null);
+    Task<PagedResult<User>> GetFollowingAsync(Guid userId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null);
     Task<User> UpdateProfileAsync(Guid userId, string? displayName, string? bio, CancellationToken ct);
 
     /// <summary>Update the current user's full profile including seniority, domain, and tech stack.</summary>

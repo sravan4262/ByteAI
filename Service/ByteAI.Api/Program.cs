@@ -88,6 +88,9 @@ try
     builder.Services.AddScoped<Layer1Moderator>();
     builder.Services.AddScoped<GeminiModerator>();
     builder.Services.AddScoped<IModerationService, CompositeModerator>();
+    builder.Services.AddScoped<ByteAI.Core.Services.Moderation.IUserBlockService, ByteAI.Core.Services.Moderation.UserBlockService>();
+    builder.Services.AddSingleton<ByteAI.Core.Services.Mentions.IMentionExtractor, ByteAI.Core.Services.Mentions.MentionExtractor>();
+    builder.Services.AddScoped<ByteAI.Core.Services.Mentions.IMentionNotifier, ByteAI.Core.Services.Mentions.MentionNotifier>();
 
     // ── FluentValidation — scan Core assembly for all validators ──────────────
     builder.Services.AddValidatorsFromAssemblyContaining<UserValidator>();

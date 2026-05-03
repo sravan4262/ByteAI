@@ -20,6 +20,7 @@ public sealed class UserPreferencesService(AppDbContext db) : IUserPreferencesSe
         bool? notifComments,
         bool? notifFollowers,
         bool? notifUnfollows,
+        bool? notifMentions,
         CancellationToken ct)
     {
         var prefs = await db.UserPreferences.FindAsync([userId], ct);
@@ -36,6 +37,7 @@ public sealed class UserPreferencesService(AppDbContext db) : IUserPreferencesSe
         if (notifComments is not null) prefs.NotifComments = notifComments.Value;
         if (notifFollowers is not null) prefs.NotifFollowers = notifFollowers.Value;
         if (notifUnfollows is not null) prefs.NotifUnfollows = notifUnfollows.Value;
+        if (notifMentions is not null) prefs.NotifMentions = notifMentions.Value;
         prefs.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);

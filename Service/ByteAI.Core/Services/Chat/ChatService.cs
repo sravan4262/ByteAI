@@ -10,6 +10,13 @@ public sealed class ChatService(AppDbContext db, IPublisher publisher)
 {
     public async Task<bool> CanMessageAsync(Guid senderId, Guid recipientId, CancellationToken ct)
     {
+        // Block trumps follow: keeps the client-facing canMessage flag consistent with what
+        // ChatHub.SendMessage actually enforces, even if D2's follow-teardown ever drifts.
+        var blocked = await db.UserBlocks.AsNoTracking().AnyAsync(b =>
+            (b.BlockerId == senderId && b.BlockedId == recipientId) ||
+            (b.BlockerId == recipientId && b.BlockedId == senderId), ct);
+        if (blocked) return false;
+
         var count = await db.UserFollowings
             .CountAsync(f =>
                 (f.UserId == senderId && f.FollowingId == recipientId) ||
@@ -64,8 +71,16 @@ public sealed class ChatService(AppDbContext db, IPublisher publisher)
 
     public async Task<List<ConversationDto>> GetConversationsAsync(Guid userId, CancellationToken ct)
     {
+        // Hide conversations where the other participant is on either side of a block.
+        var blockedIds = await db.UserBlocks.AsNoTracking()
+            .Where(b => b.BlockerId == userId || b.BlockedId == userId)
+            .Select(b => b.BlockerId == userId ? b.BlockedId : b.BlockerId)
+            .Distinct()
+            .ToListAsync(ct);
+
         return await db.Conversations
             .Where(c => c.ParticipantAId == userId || c.ParticipantBId == userId)
+            .Where(c => !blockedIds.Contains(c.ParticipantAId == userId ? c.ParticipantBId : c.ParticipantAId))
             .OrderByDescending(c => c.LastMessageAt)
             .Select(c => new ConversationDto(
                 c.Id,
@@ -108,7 +123,8 @@ public sealed class ChatService(AppDbContext db, IPublisher publisher)
 
     public async Task<List<MessageDto>> GetMessagesAsync(Guid conversationId, Guid userId, DateTime? cursor, int limit, CancellationToken ct)
     {
-        var query = db.Messages.Where(m => m.ConversationId == conversationId);
+        var query = db.Messages.Where(m => m.ConversationId == conversationId)
+            .ExcludeBlockedFor(userId, db, m => m.SenderId);
 
         if (cursor.HasValue)
             query = query.Where(m => m.SentAt < cursor.Value);
@@ -132,7 +148,8 @@ public sealed class ChatService(AppDbContext db, IPublisher publisher)
         var query = db.UserFollowings
             .Where(f => f.UserId == userId &&
                 db.UserFollowings.Any(r => r.UserId == f.FollowingId && r.FollowingId == userId))
-            .Select(f => f.Following);
+            .Select(f => f.Following)
+            .ExcludeBlockedFor(userId, db, u => u.Id);
 
         if (!string.IsNullOrWhiteSpace(search))
             query = query.Where(u =>

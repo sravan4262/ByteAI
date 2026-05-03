@@ -63,6 +63,19 @@ public static class PushPayloads
             Badge: null,
             Data: new Dictionary<string, string> { ["type"] = "notification" });
 
+    public static PushPayload Mention(
+        Guid recipientId, string actorDisplay, string contentType, Guid contentId, string snippet) =>
+        new(recipientId,
+            Title: $"{actorDisplay} mentioned you",
+            Body: Truncate(snippet, 80),
+            Badge: null,
+            Data: new Dictionary<string, string>
+            {
+                ["type"] = "mention",
+                ["contentType"] = contentType,
+                ["contentId"] = contentId.ToString()
+            });
+
     private static string Truncate(string s, int max) =>
         s.Length <= max ? s : s[..max] + "…";
 }

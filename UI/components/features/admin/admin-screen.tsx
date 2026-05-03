@@ -33,6 +33,7 @@ import {
   BannedUser,
   FlaggedContent,
   UserBanHistory,
+  FlagsByReporterEntry,
   getFlaggedUsers,
   getBannedUsers,
   banUser,
@@ -41,11 +42,16 @@ import {
   getUserFlags,
   updateFlagStatus,
   getUserBanHistory,
+  getFlagsByReporter,
+  dismissFlag,
+  deleteFlaggedContent,
+  deleteConfirmCopy,
 } from '@/lib/api/admin-moderation'
 import { UserActivityPanels } from './user-activity-panels'
 
 const SYSTEM_ROLES = ['user', 'admin']
 type AdminTab = 'system' | 'feedback' | 'activity' | 'moderation'
+type ModerationSubTab = 'by-author' | 'by-reporter' | 'all'
 
 export function AdminScreen() {
   const { isAdmin, isLoaded } = useIsAdmin()
@@ -86,6 +92,8 @@ export function AdminScreen() {
   // ── Moderation state ──────────────────────────────────────────────────────
   const [flaggedUsers, setFlaggedUsers]     = useState<FlaggedUser[]>([])
   const [bannedUsers, setBannedUsers]       = useState<BannedUser[]>([])
+  const [byReporterEntries, setByReporterEntries] = useState<FlagsByReporterEntry[]>([])
+  const [moderationSubTab, setModerationSubTab] = useState<ModerationSubTab>('by-author')
   const [moderationLoading, setModerationLoading] = useState(false)
   const [banModal, setBanModal]             = useState<FlaggedUser | null>(null)
   const [banReason, setBanReason]           = useState('')
@@ -149,8 +157,12 @@ export function AdminScreen() {
   useEffect(() => {
     if (!isAdmin || adminTab !== 'moderation') return
     setModerationLoading(true)
-    Promise.all([getFlaggedUsers(), getBannedUsers()])
-      .then(([flagged, banned]) => { setFlaggedUsers(flagged); setBannedUsers(banned) })
+    Promise.all([getFlaggedUsers(), getBannedUsers(), getFlagsByReporter()])
+      .then(([flagged, banned, byReporter]) => {
+        setFlaggedUsers(flagged)
+        setBannedUsers(banned)
+        setByReporterEntries(byReporter)
+      })
       .finally(() => setModerationLoading(false))
   }, [isAdmin, adminTab])
 
@@ -759,6 +771,25 @@ export function AdminScreen() {
         {/* ── Moderation tab ───────────────────────────────────────────────── */}
         {adminTab === 'moderation' && (
           <div className="flex flex-col gap-6">
+
+            {/* Sub-tab pills (Phase 3.4.2 — By Reported User · By Reporter · All flags) */}
+            <div className="flex gap-2 flex-wrap">
+              {([
+                ['by-author',   'BY REPORTED USER'],
+                ['by-reporter', 'BY REPORTER'],
+                ['all',         'ALL FLAGS'],
+              ] as const).map(([key, label]) => (
+                <button key={key} onClick={() => setModerationSubTab(key)}
+                  className={`px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold tracking-[0.08em] border transition-all ${
+                    moderationSubTab === key
+                      ? 'border-[var(--accent)] bg-[var(--accent-d)] text-[var(--accent)] shadow-[0_0_12px_rgba(59,130,246,0.2)]'
+                      : 'border-[rgba(59,130,246,0.2)] bg-[rgba(59,130,246,0.03)] text-[var(--t1)] hover:border-[rgba(59,130,246,0.45)] hover:bg-[rgba(59,130,246,0.07)] hover:text-[var(--accent)]'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {moderationLoading ? (
               <div className="flex items-center justify-center py-16">
                 <span className="font-mono text-xs text-[var(--t2)] tracking-[0.08em] animate-pulse">LOADING...</span>
@@ -766,7 +797,8 @@ export function AdminScreen() {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                {/* At-Risk Users */}
+                {/* At-Risk Users — only on 'by-author' sub-tab */}
+                {moderationSubTab === 'by-author' && (
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <span className="w-[3px] h-4 rounded-full bg-[var(--yellow,#f59e0b)] flex-shrink-0" />
@@ -819,8 +851,48 @@ export function AdminScreen() {
                     </div>
                   )}
                 </div>
+                )}
 
-                {/* Banned Users */}
+                {/* By Reporter — only on 'by-reporter' sub-tab (Phase 1.5) */}
+                {moderationSubTab === 'by-reporter' && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
+                    <span className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.05em]">BY REPORTER</span>
+                    <span className="ml-auto font-mono text-[10px] text-[var(--t2)]">{byReporterEntries.length} REPORTERS</span>
+                  </div>
+                  {byReporterEntries.length === 0 ? (
+                    <p className="font-mono text-xs text-[var(--t2)] py-6 text-center tracking-[0.06em]">NO USER REPORTS</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {byReporterEntries.map(r => (
+                        <div key={r.reporterId} className="flex items-start gap-3 p-3 rounded-xl border border-[var(--border-h)] bg-[var(--bg-el)]">
+                          <div className="w-8 h-8 rounded-full bg-[rgba(59,130,246,0.12)] border border-[rgba(59,130,246,0.2)] overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            {r.avatarUrl
+                              ? <img src={r.avatarUrl} alt="" className="w-full h-full object-cover" />
+                              : <User size={14} className="text-[var(--t2)]" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-xs font-bold text-[var(--t1)] truncate">{r.displayName ?? r.username}</span>
+                              <span className="font-mono text-[10px] text-[var(--t2)]">@{r.username}</span>
+                              {r.dismissRate > 0.80 && (
+                                <span title="More than 80% of reports dismissed" className="px-1.5 py-0.5 rounded font-mono text-[9px] font-bold tracking-[0.08em] bg-[rgba(245,158,11,0.12)] text-[var(--yellow,#f59e0b)] border border-[rgba(245,158,11,0.2)]">⚠️ NOISY</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <span className="font-mono text-[10px] text-[var(--t2)]">{r.totalReports} reports</span>
+                              <span className="font-mono text-[10px] text-[var(--t3)]">{Math.round(r.dismissRate * 100)}% dismissed</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                )}
+
+                {/* Banned Users — always visible across sub-tabs */}
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <span className="w-[3px] h-4 rounded-full bg-[var(--red,#ef4444)] flex-shrink-0" />
@@ -866,7 +938,8 @@ export function AdminScreen() {
               </div>
             )}
 
-            {/* ── Flag Queue ─────────────────────────────────────────────── */}
+            {/* ── Flag Queue (All flags sub-tab) ──────────────────────────── */}
+            {moderationSubTab === 'all' && (
             <div className="flex flex-col gap-4 mt-4">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="w-[3px] h-4 rounded-full bg-[var(--accent)] flex-shrink-0" />
@@ -913,11 +986,12 @@ export function AdminScreen() {
               ) : (
                 <div className="flex flex-col gap-2">
                   {flagQueue.map(f => (
-                    <FlagQueueRow key={f.id} flag={f} onAction={handleUpdateFlagStatus} />
+                    <FlagQueueRow key={f.id} flag={f} onAction={handleUpdateFlagStatus} onResolved={loadFlagQueue} />
                   ))}
                 </div>
               )}
             </div>
+            )}
           </div>
         )}
 
@@ -948,7 +1022,8 @@ export function AdminScreen() {
                       ) : (
                         <div className="flex flex-col gap-2 mt-2">
                           {userFlags.map(f => (
-                            <FlagQueueRow key={f.id} flag={f} onAction={handleUpdateFlagStatus} compact />
+                            <FlagQueueRow key={f.id} flag={f} onAction={handleUpdateFlagStatus}
+                              onResolved={() => drilldownUser && openDrilldown(drilldownUser)} compact />
                           ))}
                         </div>
                       )}
@@ -1283,11 +1358,43 @@ export function AdminScreen() {
 // per-user drilldown panel. `compact` slims the row for the modal context.
 interface FlagQueueRowProps {
   flag: FlaggedContent
+  /** Used for the REVIEW button (PUT updateFlagStatus). */
   onAction: (flag: FlaggedContent, status: 'reviewing' | 'removed' | 'dismissed') => void
+  /** Refresh callback after a successful Dismiss/Delete via the new POST endpoints. */
+  onResolved?: () => void
   compact?: boolean
 }
 
-function FlagQueueRow({ flag, onAction, compact = false }: FlagQueueRowProps) {
+function FlagQueueRow({ flag, onAction, onResolved, compact = false }: FlagQueueRowProps) {
+  const [working, setWorking] = useState(false)
+
+  // Phase 3.4.3 — content-aware confirm copy. Bytes/interviews are reversible
+  // (is_hidden flip); comments/chats are hard deletes.
+  const handleDelete = async () => {
+    const ok = window.confirm(deleteConfirmCopy(flag.contentType))
+    if (!ok) return
+    setWorking(true)
+    const result = await deleteFlaggedContent(flag.id)
+    setWorking(false)
+    if (result) {
+      toast.success(flag.contentType === 'byte' || flag.contentType === 'interview' ? 'Content hidden' : 'Content deleted')
+      onResolved?.()
+    } else {
+      toast.error('Could not delete content')
+    }
+  }
+
+  const handleDismiss = async () => {
+    setWorking(true)
+    const result = await dismissFlag(flag.id)
+    setWorking(false)
+    if (result) {
+      toast.success('Flag dismissed')
+      onResolved?.()
+    } else {
+      toast.error('Could not dismiss flag')
+    }
+  }
   const statusColor = flag.status === 'open'      ? 'text-[var(--yellow,#f59e0b)]'
                     : flag.status === 'reviewing' ? 'text-[var(--accent)]'
                     : flag.status === 'removed'   ? 'text-[var(--red,#ef4444)]'
@@ -1308,6 +1415,9 @@ function FlagQueueRow({ flag, onAction, compact = false }: FlagQueueRowProps) {
         <span className="font-mono text-[9px] font-bold text-[var(--t1)] bg-[rgba(244,63,94,0.08)] border border-[rgba(244,63,94,0.18)] px-1.5 py-0.5 rounded">
           {flag.reasonCode}
         </span>
+        {flag.reasonCode !== 'USER_REPORT' && (
+          <span title="Auto-flagged by moderation pipeline" className="font-mono text-[10px]">🤖</span>
+        )}
         <span className={`font-mono text-[9px] font-bold tracking-[0.06em] ${statusColor}`}>{flag.status.toUpperCase()}</span>
         {flag.authorUsername && (
           <span className="font-mono text-[10px] text-[var(--t2)] ml-auto">@{flag.authorUsername}</span>
@@ -1328,16 +1438,16 @@ function FlagQueueRow({ flag, onAction, compact = false }: FlagQueueRowProps) {
         </span>
         {flag.status === 'open' && (
           <div className="ml-auto flex gap-1.5">
-            <button onClick={() => onAction(flag, 'reviewing')}
-              className="px-2 py-1 rounded font-mono text-[10px] font-bold tracking-[0.06em] border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.06)] text-[var(--accent)] hover:bg-[rgba(59,130,246,0.12)] transition-all">
+            <button disabled={working} onClick={() => onAction(flag, 'reviewing')}
+              className="px-2 py-1 rounded font-mono text-[10px] font-bold tracking-[0.06em] border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.06)] text-[var(--accent)] hover:bg-[rgba(59,130,246,0.12)] transition-all disabled:opacity-50">
               REVIEW
             </button>
-            <button onClick={() => onAction(flag, 'removed')}
-              className="px-2 py-1 rounded font-mono text-[10px] font-bold tracking-[0.06em] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.06)] text-[var(--red,#ef4444)] hover:bg-[rgba(239,68,68,0.12)] transition-all">
-              REMOVE
+            <button disabled={working} onClick={handleDelete}
+              className="px-2 py-1 rounded font-mono text-[10px] font-bold tracking-[0.06em] border border-[rgba(239,68,68,0.3)] bg-[rgba(239,68,68,0.06)] text-[var(--red,#ef4444)] hover:bg-[rgba(239,68,68,0.12)] transition-all disabled:opacity-50">
+              DELETE
             </button>
-            <button onClick={() => onAction(flag, 'dismissed')}
-              className="px-2 py-1 rounded font-mono text-[10px] font-bold tracking-[0.06em] border border-[var(--border-h)] bg-[var(--bg)] text-[var(--t2)] hover:border-[rgba(59,130,246,0.3)] transition-all">
+            <button disabled={working} onClick={handleDismiss}
+              className="px-2 py-1 rounded font-mono text-[10px] font-bold tracking-[0.06em] border border-[var(--border-h)] bg-[var(--bg)] text-[var(--t2)] hover:border-[rgba(59,130,246,0.3)] transition-all disabled:opacity-50">
               DISMISS
             </button>
           </div>

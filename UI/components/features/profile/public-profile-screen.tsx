@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { ArrowLeft, BadgeCheck, UserPlus, UserMinus, Heart, MessageSquare, Layers, FileText } from 'lucide-react'
 import { PhoneFrame } from '@/components/layout/phone-frame'
-import { getProfile, getUserBytes, getInterviews, followUser, unfollowUser } from '@/lib/api/client'
+import { getProfile, getUserBytes, getInterviews, followUser, unfollowUser, blockUser, unblockUser } from '@/lib/api/client'
+import { OverflowMenu } from '@/components/features/moderation/overflow-menu'
 import { toast } from 'sonner'
 import type { UserResponse, Post, InterviewWithQuestions } from '@/lib/api/client'
 
@@ -139,18 +140,29 @@ export function PublicProfileScreen({ username }: { username: string }) {
   const [bytes, setBytes] = useState<Post[]>([])
   const [interviews, setInterviews] = useState<InterviewWithQuestions[]>([])
   const [contentLoading, setContentLoading] = useState(false)
+  const [isBlockedByMe, setIsBlockedByMe] = useState(false)
+  const [hasBlockedMe, setHasBlockedMe] = useState(false)
 
   useEffect(() => {
     setLoading(true)
     getProfile(username).then(p => {
       setProfile(p)
       if (p?.isFollowedByMe !== undefined) setIsFollowing(p.isFollowedByMe)
+      setIsBlockedByMe(p?.isBlockedByMe ?? false)
+      setHasBlockedMe(p?.hasBlockedMe ?? false)
       setLoading(false)
     })
   }, [username])
 
   useEffect(() => {
     if (!profile) return
+    // If either side blocked the other, content tabs render empty — skip the fetch.
+    if (isBlockedByMe || hasBlockedMe) {
+      setBytes([])
+      setInterviews([])
+      setContentLoading(false)
+      return
+    }
     setContentLoading(true)
     if (tab === 'bytes') {
       getUserBytes(profile.id, { pageSize: 30 }).then(res => {
@@ -163,7 +175,25 @@ export function PublicProfileScreen({ username }: { username: string }) {
         setContentLoading(false)
       })
     }
-  }, [profile, tab])
+  }, [profile, tab, isBlockedByMe, hasBlockedMe])
+
+  const handleToggleBlock = async () => {
+    if (!profile) return
+    try {
+      if (isBlockedByMe) {
+        await unblockUser(profile.id)
+        setIsBlockedByMe(false)
+        toast.success(`Unblocked @${profile.username}`)
+      } else {
+        await blockUser(profile.id)
+        setIsBlockedByMe(true)
+        setIsFollowing(false)
+        toast.success(`Blocked @${profile.username}`)
+      }
+    } catch {
+      toast.error('Action failed — try again')
+    }
+  }
 
   const handleFollow = async () => {
     if (!profile) return
@@ -240,22 +270,42 @@ export function PublicProfileScreen({ username }: { username: string }) {
                         <span className="font-mono text-[10px] font-bold text-[var(--purple)] tracking-[0.08em]">✦ OFFICIAL</span>
                       </div>
                     ) : (
-                      <button
-                        onClick={handleFollow}
-                        disabled={followLoading}
-                        className={`px-4 py-2 rounded-lg font-mono text-[10px] font-bold tracking-[0.08em] flex items-center gap-1.5 transition-all disabled:opacity-50 ${
-                          isFollowing
-                            ? 'border border-[var(--border-h)] text-[var(--t1)] bg-[var(--bg-el)] hover:border-[rgba(244,63,94,0.4)] hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--red)]'
-                            : 'bg-gradient-to-br from-[var(--accent)] to-[#2563eb] text-white shadow-[0_4px_20px_var(--accent-glow)]'
-                        }`}
-                      >
-                        {followLoading
-                          ? <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
-                          : isFollowing
-                            ? <><UserMinus size={12} /> UNFOLLOW</>
-                            : <><UserPlus size={12} /> FOLLOW</>
-                        }
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {isBlockedByMe ? (
+                          <button
+                            onClick={handleToggleBlock}
+                            className="px-4 py-2 rounded-lg font-mono text-[10px] font-bold tracking-[0.08em] flex items-center gap-1.5 transition-all border border-[rgba(244,63,94,0.4)] bg-[rgba(244,63,94,0.08)] text-[var(--red)] hover:border-[rgba(244,63,94,0.7)] hover:bg-[rgba(244,63,94,0.15)]"
+                          >
+                            UNBLOCK
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleFollow}
+                            disabled={followLoading}
+                            className={`px-4 py-2 rounded-lg font-mono text-[10px] font-bold tracking-[0.08em] flex items-center gap-1.5 transition-all disabled:opacity-50 ${
+                              isFollowing
+                                ? 'border border-[var(--border-h)] text-[var(--t1)] bg-[var(--bg-el)] hover:border-[rgba(244,63,94,0.4)] hover:bg-[rgba(244,63,94,0.08)] hover:text-[var(--red)]'
+                                : 'bg-gradient-to-br from-[var(--accent)] to-[#2563eb] text-white shadow-[0_4px_20px_var(--accent-glow)]'
+                            }`}
+                          >
+                            {followLoading
+                              ? <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                              : isFollowing
+                                ? <><UserMinus size={12} /> UNFOLLOW</>
+                                : <><UserPlus size={12} /> FOLLOW</>
+                            }
+                          </button>
+                        )}
+                        <OverflowMenu
+                          contentType="profile"
+                          contentId={profile.id}
+                          isOwnContent={false}
+                          authorUserId={profile.id}
+                          authorUsername={profile.username}
+                          showBlock={!isBlockedByMe}
+                          onBlocked={() => { setIsBlockedByMe(true); setIsFollowing(false) }}
+                        />
+                      </div>
                     )}
                   </div>
                 )
@@ -316,8 +366,15 @@ export function PublicProfileScreen({ username }: { username: string }) {
               ))}
             </div>
 
-            {/* Content */}
-            {contentLoading ? (
+            {/* Content — when blocked in either direction, content tabs render empty */}
+            {(isBlockedByMe || hasBlockedMe) ? (
+              <div className="mx-4 mt-4 border border-[var(--border-h)] bg-[var(--bg-el)] rounded-xl px-5 py-10 text-center flex flex-col items-center gap-2">
+                <p className="font-mono text-xs font-bold text-[var(--t1)] tracking-[0.06em]">USER UNAVAILABLE</p>
+                <p className="text-xs text-[var(--t2)]">
+                  {isBlockedByMe ? 'You blocked this user.' : "You can't view this user's content."}
+                </p>
+              </div>
+            ) : contentLoading ? (
               <div className="flex items-center justify-center h-32">
                 <div className="w-5 h-5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
               </div>

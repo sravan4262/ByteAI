@@ -7,6 +7,8 @@ import { Avatar } from '@/components/layout/avatar'
 import { CodeBlock } from '@/components/ui/code-block'
 import { LikersSheet } from '@/components/ui/likers-sheet'
 import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
+import { OverflowMenu } from '@/components/features/moderation/overflow-menu'
+import { renderMentions } from '@/lib/utils/render-mentions'
 import type { Post } from '@/lib/api'
 
 interface PostCardProps {
@@ -16,9 +18,11 @@ interface PostCardProps {
   onBookmark: (id: string) => void
   onShare: (id: string) => void
   shouldTruncate: boolean
+  currentUserId?: string | null
+  onAuthorBlocked?: (authorId: string) => void
 }
 
-export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldTruncate }: PostCardProps) {
+export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldTruncate, currentUserId, onAuthorBlocked }: PostCardProps) {
   const router = useRouter()
   const [showLikers, setShowLikers] = useState(false)
   const [showMiniProfile, setShowMiniProfile] = useState(false)
@@ -54,13 +58,24 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
             {post.author.role} @ {post.author.company}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <span className="font-mono text-[10px] md:text-xs text-[var(--t2)] flex-shrink-0">{post.createdAt}</span>
-          {activeTab === 'trending' && post.views && (
-            <span className="font-mono text-[10px] text-[var(--orange)]">
-              {post.views.toLocaleString()} views
-            </span>
-          )}
+        <div className="flex items-start gap-2">
+          <div className="flex flex-col items-end gap-1">
+            <span className="font-mono text-[10px] md:text-xs text-[var(--t2)] flex-shrink-0">{post.createdAt}</span>
+            {activeTab === 'trending' && post.views && (
+              <span className="font-mono text-[10px] text-[var(--orange)]">
+                {post.views.toLocaleString()} views
+              </span>
+            )}
+          </div>
+          <OverflowMenu
+            contentType="byte"
+            contentId={post.id}
+            isOwnContent={!!currentUserId && currentUserId === post.author.id}
+            authorUserId={post.author.id}
+            authorUsername={post.author.username}
+            showBlock
+            onBlocked={() => onAuthorBlocked?.(post.author.id)}
+          />
         </div>
       </div>
 
@@ -69,7 +84,7 @@ export function PostCard({ post, activeTab, onLike, onBookmark, onShare, shouldT
 
       {/* Post body */}
       <p className={`text-sm md:text-base leading-relaxed text-[var(--t2)] ${shouldTruncate ? 'line-clamp-3' : ''}`}>
-        {post.body}
+        {renderMentions(post.body)}
       </p>
 
       {/* Code block */}

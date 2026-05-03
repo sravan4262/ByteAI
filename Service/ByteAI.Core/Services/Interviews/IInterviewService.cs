@@ -7,7 +7,7 @@ namespace ByteAI.Core.Services.Interviews;
 public interface IInterviewService
 {
     Task<PagedResult<Interview>> GetInterviewsAsync(PaginationParams pagination, Guid? authorId, string? company, string? role, string? location, List<string>? techStacks, string? difficulty, string sort, CancellationToken ct, Guid? requesterId = null);
-    Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct);
+    Task<Interview?> GetInterviewByIdAsync(Guid id, CancellationToken ct, Guid? requesterId = null);
     Task<List<Company>> GetCompaniesAsync(CancellationToken ct);
     Task<List<InterviewRole>> GetRolesAsync(CancellationToken ct);
     Task<List<Location>> GetLocationsAsync(CancellationToken ct);
@@ -18,9 +18,9 @@ public interface IInterviewService
     Task LikeQuestionAsync(Guid questionId, Guid userId, CancellationToken ct);
     Task UnlikeQuestionAsync(Guid questionId, Guid userId, CancellationToken ct);
     Task<InterviewQuestionComment> AddQuestionCommentAsync(Guid questionId, Guid authorId, string body, Guid? parentId, CancellationToken ct);
-    Task<PagedResult<InterviewQuestionComment>> GetQuestionCommentsAsync(Guid questionId, PaginationParams pagination, CancellationToken ct);
+    Task<PagedResult<InterviewQuestionComment>> GetQuestionCommentsAsync(Guid questionId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null);
     Task<InterviewComment> AddCommentAsync(Guid interviewId, Guid authorId, string body, Guid? parentId, CancellationToken ct);
-    Task<PagedResult<InterviewComment>> GetCommentsAsync(Guid interviewId, PaginationParams pagination, CancellationToken ct);
+    Task<PagedResult<InterviewComment>> GetCommentsAsync(Guid interviewId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null);
     Task AddReactionAsync(Guid interviewId, Guid userId, string reactionType, CancellationToken ct);
     Task RemoveReactionAsync(Guid interviewId, Guid userId, CancellationToken ct);
     Task<bool> ToggleBookmarkAsync(Guid interviewId, Guid userId, CancellationToken ct);

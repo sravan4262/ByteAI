@@ -6,6 +6,8 @@ import { ChevronLeft, Send, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/layout/avatar'
 import { CodeBlock } from '@/components/ui/code-block'
+import { OverflowMenu } from '@/components/features/moderation/overflow-menu'
+import { renderMentions } from '@/lib/utils/render-mentions'
 import { addComment, getCurrentUser, deleteComment, getPostComments } from '@/lib/api'
 import type { Comment, Post } from '@/lib/api'
 import { ApiError, type ModerationReason } from '@/lib/api/http'
@@ -36,7 +38,7 @@ function CommentCard({ comment: c, currentUserId, onDelete }: {
             {c.votes > 0 && (
               <span className="font-mono text-[10px] font-bold text-[var(--accent)]">+{c.votes}</span>
             )}
-            {isOwn && (
+            {isOwn ? (
               <div className="ml-auto flex items-center gap-1.5">
                 {confirming ? (
                   <>
@@ -64,9 +66,13 @@ function CommentCard({ comment: c, currentUserId, onDelete }: {
                   </button>
                 )}
               </div>
+            ) : (
+              <div className="ml-auto">
+                <OverflowMenu contentType="comment" contentId={c.id} isOwnContent={false} />
+              </div>
             )}
           </div>
-          <p className="text-sm leading-relaxed text-[var(--t2)]">{c.content}</p>
+          <p className="text-sm leading-relaxed text-[var(--t2)]">{renderMentions(c.content)}</p>
           {c.badge && (
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[rgba(59,130,246,0.2)] bg-[var(--accent-d)] px-2.5 py-1 text-[var(--accent)] font-mono text-[10px]">
               {c.badge}

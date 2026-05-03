@@ -3,6 +3,7 @@ using ByteAI.Core.Events;
 using ByteAI.Core.Infrastructure;
 using ByteAI.Core.Infrastructure.Persistence;
 using ByteAI.Core.Services.Badges;
+using ByteAI.Core.Services.Mentions;
 using ByteAI.Core.Services.Notifications;
 using ByteAI.Core.Services.Push;
 using MediatR;
@@ -15,12 +16,14 @@ public sealed class CommentService(
     IBadgeService badgeService,
     INotificationService notifications,
     IPushDispatcher pushDispatcher,
-    IPublisher publisher) : ICommentService
+    IPublisher publisher,
+    IMentionNotifier mentionNotifier) : ICommentService
 {
-    public async Task<PagedResult<Comment>> GetCommentsByByteAsync(Guid byteId, PaginationParams pagination, CancellationToken ct)
+    public async Task<PagedResult<Comment>> GetCommentsByByteAsync(Guid byteId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null)
     {
         var query = db.Comments
             .Where(c => c.ByteId == byteId && c.ParentId == null)
+            .ExcludeBlockedFor(requesterId, db, c => c.AuthorId)
             .OrderByDescending(c => c.CreatedAt);
 
         var total = await query.CountAsync(CancellationToken.None);
@@ -32,10 +35,11 @@ public sealed class CommentService(
         return new PagedResult<Comment>(items, total, pagination.Page, pagination.PageSize);
     }
 
-    public async Task<PagedResult<CommentWithAuthor>> GetCommentsWithAuthorByByteAsync(Guid byteId, PaginationParams pagination, CancellationToken ct)
+    public async Task<PagedResult<CommentWithAuthor>> GetCommentsWithAuthorByByteAsync(Guid byteId, PaginationParams pagination, CancellationToken ct, Guid? requesterId = null)
     {
         var query = db.Comments
             .Where(c => c.ByteId == byteId && c.ParentId == null)
+            .ExcludeBlockedFor(requesterId, db, c => c.AuthorId)
             .OrderByDescending(c => c.CreatedAt);
 
         var total = await query.CountAsync(CancellationToken.None);
@@ -126,6 +130,13 @@ public sealed class CommentService(
 
         // ── XP event — published after all DB operations complete ──────────────
         await publisher.Publish(new CommentCreatedEvent(comment.Id, authorId, byteAuthorId), CancellationToken.None);
+
+        var snippet = body.Length > 140 ? body[..140] : body;
+        await mentionNotifier.NotifyAsync(
+            authorId: authorId,
+            content: body,
+            context: new MentionContext("comment", comment.Id, snippet),
+            ct: ct);
 
         return comment;
     }

@@ -57,7 +57,7 @@ public sealed class CommentsBusinessTests
     {
         var expected = new PagedResult<Comment>([], 0, 1, 20);
         _commentService
-            .Setup(s => s.GetCommentsByByteAsync(_byteId, It.IsAny<PaginationParams>(), default))
+            .Setup(s => s.GetCommentsByByteAsync(_byteId, It.IsAny<PaginationParams>(), default, It.IsAny<Guid?>()))
             .ReturnsAsync(expected);
 
         var result = await _sut.GetCommentsByByteAsync(_byteId, 1, 20, default);
@@ -69,13 +69,13 @@ public sealed class CommentsBusinessTests
     public async Task GetCommentsByByte_PageSizeCappedAt200()
     {
         _commentService
-            .Setup(s => s.GetCommentsByByteAsync(_byteId, It.Is<PaginationParams>(p => p.PageSize == 200), default))
+            .Setup(s => s.GetCommentsByByteAsync(_byteId, It.Is<PaginationParams>(p => p.PageSize == 200), default, It.IsAny<Guid?>()))
             .ReturnsAsync(new PagedResult<Comment>([], 0, 1, 200));
 
         await _sut.GetCommentsByByteAsync(_byteId, 1, 9999, default);
 
         _commentService.Verify(s =>
-            s.GetCommentsByByteAsync(_byteId, It.Is<PaginationParams>(p => p.PageSize == 200), default),
+            s.GetCommentsByByteAsync(_byteId, It.Is<PaginationParams>(p => p.PageSize == 200), default, It.IsAny<Guid?>()),
             Times.Once);
     }
 

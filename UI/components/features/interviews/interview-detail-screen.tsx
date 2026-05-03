@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 import { PhoneFrame } from '@/components/layout/phone-frame'
 import { Avatar } from '@/components/layout/avatar'
 import { UserMiniProfile } from '@/components/features/profile/user-mini-profile'
+import { OverflowMenu } from '@/components/features/moderation/overflow-menu'
+import { renderMentions } from '@/lib/utils/render-mentions'
 import { getMeCache } from '@/lib/user-cache'
 import * as api from '@/lib/api'
 import type { InterviewWithQuestions, InterviewQuestion, InterviewComment, QuestionComment } from '@/lib/api'
@@ -113,16 +115,22 @@ function QuestionCommentThread({
                       <span className="font-mono text-[10px] text-[var(--t2)] ml-auto">
                         {new Date(c.createdAt).toLocaleDateString()}
                       </span>
-                      {(c.authorId === 'me' || (currentUserId && c.authorId === currentUserId)) && (
+                      {(c.authorId === 'me' || (currentUserId && c.authorId === currentUserId)) ? (
                         <button
                           onClick={() => handleDelete(c.id)}
                           className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--t3)] hover:text-[var(--red)] transition-all"
                         >
                           <Trash2 size={10} />
                         </button>
+                      ) : (
+                        <OverflowMenu
+                          contentType="interview_question_comment"
+                          contentId={c.id}
+                          isOwnContent={false}
+                        />
                       )}
                     </div>
-                    <p className="text-xs leading-relaxed text-[var(--t2)]">{c.body}</p>
+                    <p className="text-xs leading-relaxed text-[var(--t2)]">{renderMentions(c.body)}</p>
                   </div>
                 </div>
               ))}
@@ -346,6 +354,17 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
                 <span className="ml-auto font-mono text-[10px] text-[var(--t2)]">
                   {new Date(interview.createdAt).toLocaleDateString()}
                 </span>
+                {!interview.isAnonymous && (
+                  <OverflowMenu
+                    contentType="interview"
+                    contentId={interview.id}
+                    isOwnContent={!!currentUserId && currentUserId === interview.authorId}
+                    authorUserId={interview.authorId}
+                    authorUsername={interview.authorUsername ?? undefined}
+                    showBlock
+                    onBlocked={() => router.push('/interviews')}
+                  />
+                )}
               </div>
 
               {/* Type badge + metadata chips */}
@@ -491,16 +510,22 @@ export function InterviewDetailScreen({ interview }: { interview: InterviewWithQ
                         <span className="font-mono text-[10px] text-[var(--t2)] ml-auto">
                           {new Date(c.createdAt).toLocaleDateString()}
                         </span>
-                        {(c.authorId === 'me' || (currentUserId && c.authorId === currentUserId)) && (
+                        {(c.authorId === 'me' || (currentUserId && c.authorId === currentUserId)) ? (
                           <button
                             onClick={() => handleDeleteComment(c.id)}
                             className="opacity-0 group-hover:opacity-100 p-1 rounded text-[var(--t3)] hover:text-[var(--red)] hover:bg-[rgba(244,63,94,0.08)] transition-all"
                           >
                             <Trash2 size={11} />
                           </button>
+                        ) : (
+                          <OverflowMenu
+                            contentType="interview_comment"
+                            contentId={c.id}
+                            isOwnContent={false}
+                          />
                         )}
                       </div>
-                      <p className="text-xs lg:text-sm leading-relaxed text-[var(--t2)]">{c.body}</p>
+                      <p className="text-xs lg:text-sm leading-relaxed text-[var(--t2)]">{renderMentions(c.body)}</p>
                     </div>
                   </div>
                 ))

@@ -10,7 +10,9 @@ public static class UserMappers
         int? bytesCount = null,
         int? followersCount = null,
         int? followingCount = null,
-        bool? isFollowedByMe = null) =>
+        bool? isFollowedByMe = null,
+        bool? isBlockedByMe = null,
+        bool? hasBlockedMe = null) =>
         new(
             Id: entity.Id,
             SupabaseUserId: entity.SupabaseUserId,
@@ -48,6 +50,8 @@ public static class UserMappers
             TechStack: entity.UserTechStacks
                 .Where(uts => uts.TechStack?.Name is not null)
                 .Select(uts => uts.TechStack.Name)
-                .ToList()
+                .ToList(),
+            IsBlockedByMe: isBlockedByMe,
+            HasBlockedMe: hasBlockedMe
         );
 }

@@ -4,6 +4,7 @@ using ByteAI.Core.Events;
 using ByteAI.Core.Moderation;
 using ByteAI.Core.Services.AI;
 using ByteAI.Core.Services.Bytes;
+using ByteAI.Core.Services.Mentions;
 using MediatR;
 using ByteEntity = ByteAI.Core.Entities.Byte;
 
@@ -21,6 +22,7 @@ public sealed class ByteServiceTests : IDisposable
     private readonly Mock<IPublisher> _publisher = new();
     private readonly Mock<IEmbeddingService> _embedding = new();
     private readonly Mock<IModerationService> _moderation = new();
+    private readonly Mock<IMentionNotifier> _mentionNotifier = new();
     private readonly ByteService _sut;
 
     private readonly Guid _authorId = Guid.NewGuid();
@@ -41,7 +43,11 @@ public sealed class ByteServiceTests : IDisposable
         _publisher.Setup(p => p.Publish(It.IsAny<ByteCreatedEvent>(), It.IsAny<CancellationToken>()))
                   .Returns(Task.CompletedTask);
 
-        _sut = new ByteService(_db, _publisher.Object, _embedding.Object, _moderation.Object);
+        _mentionNotifier.Setup(m => m.NotifyAsync(
+                It.IsAny<Guid>(), It.IsAny<string?>(), It.IsAny<MentionContext>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _sut = new ByteService(_db, _publisher.Object, _embedding.Object, _moderation.Object, _mentionNotifier.Object);
     }
 
     public void Dispose() => _db.Dispose();

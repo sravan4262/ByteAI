@@ -523,6 +523,99 @@ public sealed class AdminBusiness(
         return hydrated.FirstOrDefault();
     }
 
+    public async Task<List<FlagsByAuthorEntryDto>> GetFlagsByAuthorAsync(
+        int page, int pageSize, CancellationToken ct)
+    {
+        if (page < 1) page = 1;
+        if (pageSize is < 1 or > 100) pageSize = 20;
+
+        // Aggregate open flags per author. Mix user reports + auto-flags.
+        var groups = await db.FlaggedContents.AsNoTracking()
+            .Where(f => f.Status == "open" && f.ContentAuthorId != null)
+            .GroupBy(f => f.ContentAuthorId!.Value)
+            .Select(g => new
+            {
+                AuthorId = g.Key,
+                TotalFlags = g.Count(),
+                UserReports = g.Count(f => f.ReasonCode == "USER_REPORT"),
+                AutoFlags = g.Count(f => f.ReasonCode != "USER_REPORT"),
+                LastFlaggedAt = g.Max(f => f.CreatedAt),
+            })
+            .OrderByDescending(r => r.TotalFlags)
+            .ThenByDescending(r => r.LastFlaggedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        if (groups.Count == 0) return [];
+
+        var authorIds = groups.Select(g => g.AuthorId).ToList();
+        var users = await db.Users.AsNoTracking()
+            .Where(u => authorIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Username, u.DisplayName, u.AvatarUrl })
+            .ToDictionaryAsync(u => u.Id, ct);
+
+        return groups.Select(g =>
+        {
+            users.TryGetValue(g.AuthorId, out var u);
+            return new FlagsByAuthorEntryDto(
+                AuthorId: g.AuthorId,
+                Username: u?.Username ?? "unknown",
+                DisplayName: u?.DisplayName,
+                AvatarUrl: u?.AvatarUrl,
+                TotalFlags: g.TotalFlags,
+                UserReports: g.UserReports,
+                AutoFlags: g.AutoFlags,
+                LastFlaggedAt: g.LastFlaggedAt);
+        }).ToList();
+    }
+
+    public async Task<List<FlagsByReporterEntryDto>> GetFlagsByReporterAsync(
+        int page, int pageSize, CancellationToken ct)
+    {
+        if (page < 1) page = 1;
+        if (pageSize is < 1 or > 100) pageSize = 20;
+
+        // Group user-reports by reporter. Auto-flags excluded — they have no reporter.
+        var groups = await db.FlaggedContents.AsNoTracking()
+            .Where(f => f.ReasonCode == "USER_REPORT" && f.ReporterUserId != null)
+            .GroupBy(f => f.ReporterUserId!.Value)
+            .Select(g => new
+            {
+                ReporterId = g.Key,
+                TotalReports = g.Count(),
+                DismissedCount = g.Count(f => f.Status == "dismissed"),
+                LastReportedAt = g.Max(f => f.CreatedAt),
+            })
+            .OrderByDescending(r => r.TotalReports)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        if (groups.Count == 0) return [];
+
+        var reporterIds = groups.Select(g => g.ReporterId).ToList();
+        var users = await db.Users.AsNoTracking()
+            .Where(u => reporterIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Username, u.DisplayName, u.AvatarUrl })
+            .ToDictionaryAsync(u => u.Id, ct);
+
+        return groups.Select(g =>
+        {
+            users.TryGetValue(g.ReporterId, out var u);
+            var rate = g.TotalReports == 0 ? 0d : (double)g.DismissedCount / g.TotalReports;
+            return new FlagsByReporterEntryDto(
+                ReporterId: g.ReporterId,
+                Username: u?.Username ?? "unknown",
+                DisplayName: u?.DisplayName,
+                AvatarUrl: u?.AvatarUrl,
+                TotalReports: g.TotalReports,
+                DismissedCount: g.DismissedCount,
+                DismissRate: rate,
+                LastReportedAt: g.LastReportedAt);
+        }).ToList();
+    }
+
     public async Task<List<UserBanHistoryDto>> GetUserBanHistoryAsync(Guid userId, CancellationToken ct)
     {
         var rows = await db.UserBanHistories.AsNoTracking()

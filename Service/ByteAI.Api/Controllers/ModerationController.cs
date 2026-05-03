@@ -25,7 +25,8 @@ public sealed class ModerationController(AppDbContext db, ICurrentUserService cu
     private static readonly HashSet<string> AllowedContentTypes =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            "byte", "comment", "interview", "chat", "support", "profile"
+            "byte", "comment", "interview_comment", "interview_question_comment",
+            "interview", "chat", "support", "profile"
         };
 
     /// <summary>
